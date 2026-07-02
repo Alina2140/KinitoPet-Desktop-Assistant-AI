@@ -206,7 +206,27 @@ Using `pythonw.exe` hides the black console window.
 
 ---
 
-## Step 8 (Optional): Developer tools
+---
+
+## Step 8 (Optional): Ollama AI chat
+
+Kinito can chat with you using a **local** Ollama model. Nothing is sent to the cloud.
+
+1. Install Ollama from [https://ollama.com/](https://ollama.com/)
+2. Open a terminal and pull a model:
+
+```powershell
+ollama pull llama3.2:3b
+```
+
+3. Keep Ollama running (tray icon or `ollama serve`)
+4. In Kinito: **right-click → Chat**
+
+If chat fails, Kinito still works with all scripted lines. Set `OLLAMA_MODEL` to match a model you installed.
+
+---
+
+## Step 9 (Optional): Developer tools
 
 If you want to run tests or contribute:
 

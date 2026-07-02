@@ -4,6 +4,7 @@ import math
 import random
 import threading
 import time
+import tkinter as tk
 
 from kinito.assets import bomp_file_path, surf_file_path
 
@@ -68,7 +69,11 @@ class MovementMixin:
         """Swap the visible sprite unless the user is currently dragging."""
         if self.is_dragging:
             return
-        self.panel.config(image=new_sprite)
+        try:
+            if self.panel.winfo_exists():
+                self.panel.config(image=new_sprite)
+        except tk.TclError:
+            pass
 
     def _surf_sprite_for_movement(self, dx):
         """Pick the left or right surf sprite from horizontal movement."""
@@ -117,6 +122,8 @@ class MovementMixin:
             ):
                 if random.random() < self.MENU_ACTION_CHANCE:
                     self.perform_random_menu_action()
+                elif self._should_use_ai_idle_line():
+                    self.speak_ai_idle_line()
                 else:
                     self.speak_random_question()
             else:

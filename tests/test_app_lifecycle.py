@@ -4,11 +4,19 @@ import pytest
 
 from content.goodbye_lines import GOODBYE_LINES
 from kinito.app import FloatingAssistant, _open_sprite
+from kinito.features.llm import LLMMixin
 from kinito.speech import SpeechMixin
 
 
 class AppStub(SpeechMixin):
     BUBBLE_MAX_WIDTH = 800
+
+
+def test_floating_assistant_prefers_llm_speak():
+    """LLMMixin must precede SpeechMixin so ai_hint reaches the AI speak wrapper."""
+    assert FloatingAssistant.__mro__.index(LLMMixin) < FloatingAssistant.__mro__.index(SpeechMixin)
+    assert FloatingAssistant.speak is LLMMixin.speak
+    assert FloatingAssistant.speak_whisper is LLMMixin.speak_whisper
 
 
 @pytest.fixture

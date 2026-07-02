@@ -5,6 +5,7 @@ import threading
 import time
 
 from content import dialogue as dlg
+from content import llm_prompts as prompts
 from content.facts import get_random_fact
 from content.fancy_lines import FANCY_LINES
 from content.poems import POEMS
@@ -61,13 +62,14 @@ class ContentMixin:
                 volume=self.POEM_BACKGROUND_MUSIC_VOLUME,
             )
         if poem.get("whisper"):
-            self.speak_whisper(poem["text"], long_bubble=True)
+            self.speak_whisper(poem["text"], long_bubble=True, ai_hint=prompts.POEM_PROMPT)
         else:
             self.speak(
                 poem["text"],
                 pitch=45,
                 long_bubble=True,
                 voice_candidates=SpeechMixin.VOICE_NORMAL_CANDIDATES,
+                ai_hint=prompts.POEM_PROMPT,
             )
 
     def spontaneous_nap(self):
@@ -76,7 +78,7 @@ class ContentMixin:
 
     def say_random_fact(self):
         """Speak a random fun fact."""
-        self.speak(get_random_fact())
+        self.speak(get_random_fact(), ai_hint=prompts.FUN_FACT_PROMPT)
 
     def say_random_wisdom(self):
         """Share a random wisdom line during idle reading."""
@@ -95,7 +97,7 @@ class ContentMixin:
         """Tell the story queued by offer_random_story."""
         story = self._pending_story or random.choice(STORIES)
         self._pending_story = None
-        self.speak(story)
+        self.speak(story, ai_hint="Tell a very short story in two to four sentences. No markdown.")
 
     def perform_fancy_show(self):
         """Play TinyTune and deliver a fancy-mode line."""
@@ -122,7 +124,7 @@ class ContentMixin:
 
     def say_random_joke(self):
         """Tell a random corny joke."""
-        self.speak(dlg.pick_line(dlg.JOKES))
+        self.speak(dlg.pick_line(dlg.JOKES), ai_hint=prompts.JOKE_PROMPT)
 
     def say_random_compliment(self):
         """Give the user a random compliment."""

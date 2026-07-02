@@ -487,6 +487,11 @@ STORY_DECLINED_LINES = [
 # Right-click menu
 MENU_PROMPT = "What would you like me to do?"
 
+CHAT_GREETING = "Hey! I'm all ears — what's on your mind?"
+CHAT_UNAVAILABLE = (
+    "I'd love to chat, but I can't reach my brain right now."
+)
+
 SCREEN_EFFECTS_ON_LINES = [
     "Screen effects enabled. If the picture hiccups, that might be me.",
     "Glitch mode on. The screen and I share moods now.",
@@ -977,6 +982,7 @@ BUTTON_SCREEN_EFFECTS_ON = "Screen Effects on"
 BUTTON_SCREEN_EFFECTS_OFF = "Screen Effects off"
 BUTTON_SING_SONG = "Sing"
 BUTTON_FUN_FACT = "Fun Fact"
+BUTTON_CHAT = "Chat"
 BUTTON_VISIT_WEBSITE = "Visit a Website"
 BUTTON_PLAY_MUSIC = "Play Music"
 BUTTON_PLAY_GAME = "Play a Game"

@@ -37,6 +37,7 @@ from kinito.features.content import ContentMixin
 from kinito.features.games import GamesMixin
 from kinito.features.glitch import GlitchMixin
 from kinito.features.hug import HugMixin
+from kinito.features.llm import LLMMixin
 from kinito.features.music import MusicMixin
 from kinito.features.programs import ProgramsMixin
 from kinito.movement import MovementMixin
@@ -58,6 +59,7 @@ def _open_sprite(path, fallback_path):
 
 
 class FloatingAssistant(
+    LLMMixin,
     SpeechMixin,
     MovementMixin,
     GlitchMixin,
@@ -180,6 +182,7 @@ class FloatingAssistant(
         self._number_guess_target = None
         self._number_guess_attempts = 0
         self._available_voices = self._load_available_voices()
+        self._init_llm()
         self.root.wm_attributes("-topmost", True)
 
         self._log_optional_deps()
@@ -207,6 +210,10 @@ class FloatingAssistant(
         from kinito.assets import engine as tts_engine
 
         status["pyttsx3"] = "ok" if tts_engine is not None else "missing"
+        ollama_status = "disabled"
+        if getattr(self, "_llm_config", None) and self._llm_config.enabled:
+            ollama_status = "ok" if self._ollama_client.is_available() else "unreachable"
+        status["ollama"] = ollama_status
         print(f"Kinito optional deps: {status}", flush=True)
 
     def _schedule_startup_line(self):

@@ -15,7 +15,7 @@ def test_credits_dialog_spec_has_link_buttons():
     spec = find_dialog_spec(credits.CREDITS_TEXT)
     assert dlg.BUTTON_CREDITS_STEAM in spec.ui.buttons
     assert dlg.BUTTON_CREDITS_GITHUB in spec.ui.buttons
-    assert dlg.BUTTON_OKAY in spec.ui.buttons
+    assert dlg.BUTTON_OKAY not in spec.ui.buttons
 
 
 @patch("content.dialog_registry.webbrowser.open")

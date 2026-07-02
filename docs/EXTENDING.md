@@ -424,6 +424,46 @@ Key test files:
 
 ---
 
+---
+
+## 15. Ollama / AI chat
+
+Kinito can use a **local Ollama** instance for free-form chat and optional idle lines.
+
+### How it fits the architecture
+
+```
+Right-click → Chat
+       ↓
+LLMMixin (kinito/features/llm.py)
+       ↓
+OllamaClient (kinito/llm/ollama_client.py)
+       ↓
+Speech bubble chat UI (kinito/speech_chat.py)
+```
+
+**Golden rule still applies:** prompts and fallback text live in `content/llm_prompts.py` and `content/dialogue.py`. Network and history logic live in `kinito/llm/` and `kinito/features/llm.py`.
+
+### Change Kinito's AI personality
+
+Edit `SYSTEM_PROMPT` in [`content/llm_prompts.py`](../content/llm_prompts.py).
+
+### Disable AI without removing code
+
+Set environment variable `OLLAMA_ENABLED=false` before starting Kinito.
+
+### Files involved
+
+| File | Role |
+|------|------|
+| `content/llm_prompts.py` | System prompt, idle prompt, error fallbacks |
+| `content/dialogue.py` | `BUTTON_CHAT`, `CHAT_GREETING`, `CHAT_UNAVAILABLE` |
+| `kinito/llm/config.py` | Env-based settings |
+| `kinito/features/llm.py` | Chat start, send message, idle AI lines |
+| `kinito/speech_chat.py` | Scrollable chat bubble |
+
+---
+
 ## Need more help?
 
 - Read the code comments in `content/dialog_registry.py`

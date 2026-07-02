@@ -123,3 +123,23 @@ def test_idle_wait_before_next_action_in_valid_ranges(movement):
     with patch("kinito.movement.random.random", return_value=0.95):
         wait = movement._idle_wait_before_next_action()
         assert MovementMixin.IDLE_WAIT_LONG[0] <= wait <= MovementMixin.IDLE_WAIT_LONG[1]
+
+
+def test_smooth_movement_calls_ai_idle_line(movement):
+    movement._startup_complete = True
+    movement._allow_random_questions = True
+    movement._focus_mode = False
+    movement._should_use_ai_idle_line = MagicMock(return_value=True)
+    movement.speak_ai_idle_line = MagicMock(side_effect=lambda: setattr(movement, "_running", False))
+    movement.perform_random_menu_action = MagicMock()
+    movement.speak_random_question = MagicMock()
+    movement._idle_wait_before_next_action = MagicMock(return_value=0)
+
+    with (
+        patch("kinito.movement.random.random", side_effect=[0.1, 0.5]),
+        patch("kinito.movement.time.sleep"),
+    ):
+        movement.smooth_movement()
+
+    movement.speak_ai_idle_line.assert_called_once()
+    movement.speak_random_question.assert_not_called()

@@ -85,6 +85,7 @@ def menu_options_for(app) -> list[str]:
         effects_label,
         dlg.BUTTON_SING_SONG,
         dlg.BUTTON_FUN_FACT,
+        dlg.BUTTON_CHAT,
         dlg.BUTTON_VISIT_WEBSITE,
         dlg.BUTTON_PLAY_MUSIC,
         dlg.BUTTON_PLAY_GAME,
@@ -214,6 +215,7 @@ def _handle_menu(app, response: str) -> None:
         dlg.BUTTON_SCREEN_EFFECTS_OFF: lambda a: a.toggle_screen_effects(),
         dlg.BUTTON_SING_SONG: lambda a: a.say_random_poem(),
         dlg.BUTTON_FUN_FACT: lambda a: a.say_random_fact(),
+        dlg.BUTTON_CHAT: lambda a: a.start_chat(),
         dlg.BUTTON_VISIT_WEBSITE: lambda a: a.ask_browser_category(),
         dlg.BUTTON_PLAY_MUSIC: lambda a: a.ask_music_player_pick(),
         dlg.BUTTON_PLAY_GAME: lambda a: a.offer_game_picker(),
@@ -519,7 +521,6 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
             buttons=(
                 dlg.BUTTON_CREDITS_STEAM,
                 dlg.BUTTON_CREDITS_GITHUB,
-                dlg.BUTTON_OKAY,
             ),
         ),
         _handle_credits,

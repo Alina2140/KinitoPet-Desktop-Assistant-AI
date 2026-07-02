@@ -28,7 +28,8 @@ A free, open-source desktop companion inspired by **KinitoPET**. Kinito lives on
 | **Text-to-speech** | Speaks lines aloud (Balcon TTS + pyttsx3 fallback) |
 | **Speech bubbles** | Interactive buttons and text boxes for replies |
 | **Random questions** | 30+ conversation topics while idle |
-| **Right-click menu** | Reminders, time, sleep mode, poems, facts, browser, music, hug, goodbye |
+| **AI chat (Ollama)** | Free-form chat via local Ollama model; optional AI idle lines |
+| **Right-click menu** | Reminders, time, sleep mode, poems, facts, chat, browser, music, hug, goodbye |
 | **Safe browser** | Opens whitelisted HTTPS sites in a small window (or your default browser) |
 | **Camera** | Optional webcam view (requires OpenCV) |
 | **Music player** | Play MP3s from your PC |
@@ -96,6 +97,7 @@ For a **full beginner walkthrough** (screenshots-level detail), see **[docs/INST
 - **Screen Effects on** / **Screen Effects off** — rare glitch effects; label shows current state
 - **Sing** — recites a random poem (some include background music)
 - **Fun Fact** — random fact
+- **Chat** — free-form conversation with a local Ollama model (see below)
 - **Visit a Website** — pick a category (Animals, Knowledge, Games, Horror, Surprise Me)
 - **Play Music** — pick an MP3 or play a random one from your Music/Downloads folders
 - **Hug** — hug pose sprites + hug line
@@ -106,6 +108,7 @@ For a **full beginner walkthrough** (screenshots-level detail), see **[docs/INST
 While idle, Kinito may:
 
 - Ask a random question (answer with buttons or a text field)
+- Say a short AI-generated line (when Ollama is running)
 - Offer to open the camera, browser, music, or a hug
 - Read a short story or wisdom quote
 - Do a “fancy” show with a top hat sprite
@@ -126,9 +129,11 @@ KinitoPET-Python-Virtual-Assistant/
 ├── kinito/                  # Application code
 │   ├── app.py               # Main window & lifecycle
 │   ├── speech.py            # TTS, speech bubbles, menu
+│   ├── speech_chat.py       # Multi-turn chat bubble UI
 │   ├── movement.py          # Drag, wander, idle animations
 │   ├── assets.py            # Paths to GameAssets files
-│   └── features/            # Browser, camera, music, hug, programs, content
+│   ├── llm/                 # Ollama client & config
+│   └── features/            # Browser, camera, music, hug, llm, programs, content
 ├── content/                 # All dialogue & data (easy to edit!)
 │   ├── dialogue.py          # Questions, buttons, response lines
 │   ├── dialog_registry.py   # Links questions → UI → actions
@@ -155,12 +160,36 @@ KinitoPET-Python-Virtual-Assistant/
 | `pygame` | Sound effects & MP3 | Required for sounds |
 | `pyautogui` | Minimize windows (image easter egg) | That action silently fails |
 | `Pillow` | Images / sprites | Required |
+| **Ollama** (local) | AI chat & optional idle lines | Chat disabled; scripted lines still work |
 
 On startup, Kinito prints optional dependency status to the console, e.g.:
 
 ```
-Kinito optional deps: {'pywebview': 'ok', 'opencv': 'missing', 'balcon': 'ok', 'pyttsx3': 'ok'}
+Kinito optional deps: {'pywebview': 'ok', 'opencv': 'missing', 'balcon': 'ok', 'pyttsx3': 'ok', 'ollama': 'ok'}
 ```
+
+### Ollama (AI chat)
+
+1. Install [Ollama](https://ollama.com/) and start it (default: `http://127.0.0.1:11434`)
+2. Pull a model, e.g. `ollama pull llama3.2:3b`
+3. Right-click Kinito → **Chat**
+
+Optional environment variables:
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | Ollama API URL |
+| `OLLAMA_MODEL` | `llama3.2:3b` | Model name |
+| `OLLAMA_ENABLED` | `true` | Enable/disable AI features |
+| `OLLAMA_IDLE_LINES` | `true` | AI-generated spontaneous lines |
+| `OLLAMA_REPLACE_CHANCE` | `0.30` | Chance that any non-interactive spoken line is AI-generated |
+| `OLLAMA_IDLE_CHANCE` | `0.30` | Legacy alias for `OLLAMA_REPLACE_CHANCE` |
+
+If Ollama is offline, Kinito falls back to the existing scripted dialogue in `content/`.
+
+**What can become AI-generated:** startup/goodbye lines, poems, facts, jokes, stories, hugs, game reactions, reminder/time replies, idle remarks, and similar plain speech.
+
+**What stays scripted:** menu prompts, yes/no questions with buttons, game pickers, credits, reminders input prompts, and other interactive dialog flows (so buttons still work).
 
 ### GameAssets folder
 
@@ -197,6 +226,13 @@ pip install -r requirements.txt --trusted-host pypi.org --trusted-host files.pyt
 ```
 
 Or install packages one by one. **Minimum to start:** `Pillow`, `pygame`, `pyttsx3`.
+
+### Chat does not work / “can't reach my brain”
+
+1. Make sure Ollama is running (`ollama serve` or the Ollama desktop app)
+2. Verify the API: open `http://127.0.0.1:11434` in a browser
+3. Pull the model: `ollama pull llama3.2:3b` (or set `OLLAMA_MODEL` to a model you have)
+4. Check the console line `ollama: ok` on startup
 
 ### No voice / TTS silent
 

@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 
@@ -78,7 +78,9 @@ def test_say_random_poem_whisper(content):
     poem = {"text": "secret poem", "whisper": True, "play_music": False}
     with patch("kinito.features.content.random.choice", return_value=poem):
         content.say_random_poem()
-    content.speak_whisper.assert_called_once_with("secret poem", long_bubble=True)
+    content.speak_whisper.assert_called_once_with(
+        "secret poem", long_bubble=True, ai_hint=ANY
+    )
 
 
 def test_say_random_poem_plays_music_and_uses_normal_voice(content):
@@ -94,6 +96,7 @@ def test_say_random_poem_plays_music_and_uses_normal_voice(content):
         pitch=45,
         long_bubble=True,
         voice_candidates=SpeechMixin.VOICE_NORMAL_CANDIDATES,
+        ai_hint=ANY,
     )
 
 
@@ -110,10 +113,10 @@ def test_say_pending_story_clears_pending(content):
     content._pending_story = STORIES[1]
     content.say_pending_story()
     assert content._pending_story is None
-    content.speak.assert_called_once_with(STORIES[1])
+    content.speak.assert_called_once_with(STORIES[1], ai_hint=ANY)
 
 
 def test_say_random_fact(content):
     with patch("kinito.features.content.get_random_fact", return_value=FACTS[0]):
         content.say_random_fact()
-    content.speak.assert_called_once_with(FACTS[0])
+    content.speak.assert_called_once_with(FACTS[0], ai_hint=ANY)

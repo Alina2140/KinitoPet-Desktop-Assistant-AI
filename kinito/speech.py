@@ -576,6 +576,13 @@ class SpeechMixin:
 
     def close_speech_bubble(self):
         """Destroy the speech bubble and reset speech/hug state."""
+        if getattr(self, "_chat_mode", False) and hasattr(self, "close_chat_mode"):
+            self.close_chat_mode()
+            return
+        self._close_speech_bubble_impl()
+
+    def _close_speech_bubble_impl(self):
+        """Destroy the speech bubble without chat-mode teardown."""
         self._cancel_bubble_close_timer()
         self._awaiting_response = False
         self._preserve_sprite = False

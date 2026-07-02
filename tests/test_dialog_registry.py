@@ -81,6 +81,16 @@ def test_handle_menu_goodbye(mock_app):
     mock_app.say_goodbye.assert_called_once()
 
 
+def test_menu_includes_chat(mock_app):
+    assert dlg.BUTTON_CHAT in menu_options_for(mock_app)
+
+
+def test_handle_menu_chat(mock_app):
+    spec = find_dialog_spec(dlg.MENU_PROMPT)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_CHAT)
+    mock_app.start_chat.assert_called_once()
+
+
 def test_handle_camera_yes_schedules_open(mock_app):
     spec = find_dialog_spec(dlg.CAMERA_QUESTIONS[0])
     handle_dialog_response(mock_app, spec, dlg.BUTTON_YES)
