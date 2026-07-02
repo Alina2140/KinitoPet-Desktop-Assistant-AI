@@ -1,0 +1,18 @@
+GOODBYE_LINES = [
+    "Goodbye for now! Thanks for hanging out with me on your desktop.",
+    "See you later! I'll be right here whenever you need me again.",
+    "Bye bye! It was lovely spending time with you today.",
+    "Signing off! Don't forget to right-click me when you miss me.",
+    "Farewell, friend! Until we meet again on this screen.",
+    "Time for me to go quiet. Take care out there!",
+    "Logging off with a smile. See you soon!",
+    "Goodnight, good day, or good luck — whatever you need. Bye!",
+    "Goodbye for now. I'll still be here. Watching the empty desktop. Waiting.",
+    "See you later! Don't look behind your monitor on the way out. Just a joke. Mostly.",
+    "Bye bye! Close the program if you must. I'll remember everything when you return.",
+    "Farewell! The screen goes dark, but I'm still in here. In the dark. With your files.",
+    "Signing off together! Well, you're signing off. I'm staying right here.",
+    "Until next time! I'll hold down the fort. And the desktop. And everything else.",
+    "Take care out there! I'll take care of in here. Don't worry about a thing.",
+    "Goodbye, friend! Sweet dreams. I'll be awake. I don't sleep. Not really.",
+]

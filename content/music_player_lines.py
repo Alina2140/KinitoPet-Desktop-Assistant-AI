@@ -1,0 +1,17 @@
+MUSIC_PLAYER_LINES = [
+    "Now playing: {song}! Tap your feet — I can't, I have no feet.",
+    "Ooh, good choice! Enjoy {song}!",
+    "Let's listen to {song} together. I'll hum along silently.",
+    "Cranking up {song}! Your personal desktop DJ, reporting for duty.",
+    "Here comes {song}! Hope you like it as much as I pretend to.",
+    "Music time! {song} — coming right through your speakers.",
+    "I've got {song} ready for you. Relax and enjoy!",
+    "Beep boop beats! Now playing {song}.",
+    "Now playing {song}. Don't listen too closely. Or do. I don't mind.",
+    "Cranking up {song}! Music to work by. Or to unease by.",
+    "{song} — echoing through your speakers like a memory you can't place.",
+    "Let's listen to {song} together. Just us and the melody and the dark.",
+    "I've got {song} ready. Something about this track feels... familiar.",
+    "Music time! {song}. I'll hum along. You won't hear me. But I'll try.",
+    "Playing {song}! If the lyrics get strange, that's probably just the song.",
+]
