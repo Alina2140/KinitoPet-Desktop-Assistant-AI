@@ -1,6 +1,8 @@
+import math
 from unittest.mock import MagicMock, patch
 
 import pytest
+from PIL import Image
 
 from kinito.movement import MovementMixin
 
@@ -29,6 +31,9 @@ def movement():
     stub.tk_img_surf_left = "surf_left"
     stub.tk_img_surf_right = "surf_right"
     stub.tk_img_normal = "normal"
+    stub.img_surf_left = Image.new("RGBA", (24, 48), (255, 255, 255, 0))
+    stub.img_surf_right = Image.new("RGBA", (24, 48), (255, 255, 255, 0))
+    stub._surf_render_cache = {}
     stub._surf_facing = "right"
     stub.play_sfx = MagicMock()
     stub.clamp_position = MagicMock(side_effect=lambda x, y: (x, y))
@@ -85,11 +90,99 @@ def test_change_sprite_skipped_while_dragging(movement):
 
 
 def test_move_towards_reaches_target(movement):
-    movement.root.winfo_rootx.side_effect = [0, 5, 10, 15, 20]
-    movement.root.winfo_rooty.return_value = 0
+    movement.x = 0
+    movement.y = 0
     movement._running = True
-    movement.move_towards(20, 0, speed=5)
+    with patch.object(movement, "_render_surf_sprite"):
+        movement.move_towards(20, 0, speed=5)
     assert movement.root.geometry.called
+    assert movement.x == 20
+    assert movement.y == 0
+
+
+def test_surf_wave_offset_oscillates():
+    assert MovementMixin._surf_wave_offset(0) == 0
+    assert MovementMixin._surf_wave_offset(math.pi / 2) == pytest.approx(
+        MovementMixin.SURF_WAVE_AMPLITUDE
+    )
+    assert MovementMixin._surf_wave_offset(math.pi) == pytest.approx(0, abs=1e-6)
+
+
+def test_apply_surf_geometry_bobs_display_y(movement):
+    movement._apply_surf_geometry(120, 200, math.pi / 2)
+    movement.clamp_position.assert_called_once_with(120, 200 + MovementMixin.SURF_WAVE_AMPLITUDE)
+    movement.root.geometry.assert_called_once_with(
+        f"+120+{int(200 + MovementMixin.SURF_WAVE_AMPLITUDE)}"
+    )
+    assert movement.x == 120
+    assert movement.y == 200
+
+
+def test_move_towards_geometry_y_varies_with_wave(movement):
+    movement.x = 100
+    movement.y = 100
+    geometries = []
+    movement.root.geometry = lambda geometry: geometries.append(geometry)
+    with patch.object(movement, "_render_surf_sprite"):
+        movement.move_towards(100, 160, speed=20)
+    ys = {int(geometry.split("+")[2]) for geometry in geometries}
+    assert len(ys) > 1
+    assert movement.x == 100
+    assert movement.y == 160
+
+
+def test_surf_tilt_follows_wave_rise_and_fall(movement):
+    movement._surf_facing = "right"
+    rising = movement._surf_tilt_degrees(0)
+    falling = movement._surf_tilt_degrees(math.pi)
+    assert rising > 0
+    assert falling < 0
+
+
+def test_surf_tilt_flips_when_facing_left(movement):
+    movement._surf_facing = "right"
+    right_tilt = movement._surf_tilt_degrees(0)
+    movement._surf_facing = "left"
+    left_tilt = movement._surf_tilt_degrees(0)
+    assert right_tilt * left_tilt < 0
+
+
+def test_rotate_sprite_padded_keeps_white_corners():
+    sprite = Image.new("RGBA", (40, 40), (255, 255, 255, 0))
+    for x in range(14, 26):
+        sprite.putpixel((x, 20), (255, 0, 0, 255))
+    rotated = MovementMixin._rotate_sprite_padded(sprite, 8)
+    assert rotated.getpixel((0, 0)) == (255, 255, 255)
+    assert rotated.getpixel((39, 39)) == (255, 255, 255)
+
+
+def test_snap_soft_edges_preserves_opaque_pixels():
+    sprite = Image.new("RGBA", (6, 6), (255, 255, 255, 0))
+    sprite.putpixel((2, 2), (0, 0, 0, 255))
+    sprite.putpixel((3, 2), (255, 240, 245, 80))
+    flat = MovementMixin._flatten_sprite_on_white(sprite)
+    assert flat.getpixel((2, 2)) == (0, 0, 0)
+    assert flat.getpixel((3, 2)) == (255, 255, 255)
+
+
+def test_render_surf_sprite_caches_rotated_frames(movement):
+    import tkinter as tk
+
+    root = tk.Tk()
+    root.withdraw()
+    movement.root = root
+    movement._render_surf_sprite(40, math.pi / 4)
+    movement._render_surf_sprite(40, math.pi / 4)
+    assert len(movement._surf_render_cache) == 1
+    movement.panel.config.assert_called()
+    root.destroy()
+
+
+def test_finish_surf_movement_clears_cache_and_restores_sprite(movement):
+    movement._surf_render_cache[("right", 4.0)] = "cached"
+    movement._finish_surf_movement()
+    assert movement._surf_render_cache == {}
+    movement.panel.config.assert_called_with(image="normal")
 
 
 def test_surf_sprite_for_movement_uses_direction(movement):

@@ -110,8 +110,12 @@ class FloatingAssistant(
         self.tk_img_normal_2 = ImageTk.PhotoImage(self.img_normal_2)
         self.tk_img_idle = ImageTk.PhotoImage(self.img_idle)
         self.tk_img_fancy = ImageTk.PhotoImage(self.img_fancy)
-        self.tk_img_surf_left = ImageTk.PhotoImage(self.img_surf_left)
-        self.tk_img_surf_right = ImageTk.PhotoImage(self.img_surf_right)
+        self.tk_img_surf_left = ImageTk.PhotoImage(
+            MovementMixin._flatten_sprite_on_white(self.img_surf_left)
+        )
+        self.tk_img_surf_right = ImageTk.PhotoImage(
+            MovementMixin._flatten_sprite_on_white(self.img_surf_right)
+        )
         self.tk_img_sleep = ImageTk.PhotoImage(self.img_sleep)
         self.tk_img_sleep3 = ImageTk.PhotoImage(self.img_sleep3)
         self.tk_img_sleep2 = ImageTk.PhotoImage(self.img_sleep2)
@@ -122,6 +126,8 @@ class FloatingAssistant(
         self.tk_img_thinking2 = ImageTk.PhotoImage(self.img_thinking2)
         self.tk_img_hug = ImageTk.PhotoImage(self.img_hug)
         self.tk_img_hug2 = ImageTk.PhotoImage(self.img_hug2)
+        self._surf_render_cache = {}
+        self._surf_tk_image = None
 
         self.panel = tk.Label(self.root, bg="white")
         self.panel.pack(side="top", anchor="n")
