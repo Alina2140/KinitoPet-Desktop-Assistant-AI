@@ -74,3 +74,25 @@ def test_set_chat_generating_disables_input(chat_app):
     chat_app._chat_entry_widget = entry
     chat_app.set_chat_generating(True)
     entry.configure.assert_called_with(state=tk.DISABLED)
+
+
+def test_append_chat_message_styles_speaker_labels(chat_app):
+    root = tk.Tk()
+    root.withdraw()
+    log = tk.Text(root)
+    log.winfo_exists = MagicMock(return_value=True)
+    chat_app._chat_log_widget = log
+    chat_app._configure_chat_log_tags(log)
+
+    chat_app.append_chat_message("Kinito", "Hello there!")
+    chat_app.append_chat_message("Alina", "hi :)")
+
+    content = log.get("1.0", tk.END)
+    assert "Kinito: Hello there!" in content
+    assert "Alina: hi :)" in content
+    assert "chat_kinito" in log.tag_names("1.0")
+    alina_index = log.search("Alina:", "1.0", tk.END)
+    assert alina_index
+    assert "chat_alina" in log.tag_names(alina_index)
+
+    root.destroy()

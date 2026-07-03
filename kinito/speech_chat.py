@@ -15,6 +15,8 @@ class SpeechChatMixin:
     CHAT_TITLE = "Kinito Chat"
     CHAT_LOG_HEIGHT_PX = 120
     CHAT_LOG_WIDTH_PX = 360
+    CHAT_KINITO_COLOR = "#cd77d1"
+    CHAT_ALINA_COLOR = "#6A25EB"
 
     def _init_chat_state(self) -> None:
         """Initialize chat-related instance attributes (call from app __init__)."""
@@ -59,6 +61,7 @@ class SpeechChatMixin:
             cursor="arrow",
         )
         log.pack(fill=tk.BOTH, expand=True)
+        self._configure_chat_log_tags(log)
         self._chat_log_widget = log
 
         self._show_chat_input_row(container)
@@ -105,14 +108,40 @@ class SpeechChatMixin:
         self.send_chat_message(text)
         return "break"
 
+    def _configure_chat_log_tags(self, log: tk.Text) -> None:
+        """Style speaker labels in the chat log."""
+        log.tag_configure(
+            "chat_kinito",
+            foreground=self.CHAT_KINITO_COLOR,
+            underline=True,
+        )
+        log.tag_configure(
+            "chat_alina",
+            foreground=self.CHAT_ALINA_COLOR,
+            underline=True,
+        )
+
+    def _chat_role_tag(self, role: str) -> str | None:
+        """Return the text tag for a chat speaker label, if any."""
+        if role == prompts.CHAT_ASSISTANT_LABEL:
+            return "chat_kinito"
+        if role == prompts.CHAT_USER_LABEL:
+            return "chat_alina"
+        return None
+
     def append_chat_message(self, role: str, text: str) -> None:
         """Append a line to the scrollable chat log."""
         log = getattr(self, "_chat_log_widget", None)
         if log is None or not log.winfo_exists():
             return
-        line = f"{role}: {text.strip()}\n"
+        message = text.strip()
+        tag = self._chat_role_tag(role)
         log.configure(state=tk.NORMAL)
-        log.insert(tk.END, line)
+        if tag is not None:
+            log.insert(tk.END, f"{role}:", tag)
+            log.insert(tk.END, f" {message}\n")
+        else:
+            log.insert(tk.END, f"{role}: {message}\n")
         log.configure(state=tk.DISABLED)
         log.see(tk.END)
         self._fit_speech_bubble_to_content()
