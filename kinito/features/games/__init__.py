@@ -31,7 +31,7 @@ class GamesMixin:
 
     def speak_game_line(self, line, *, show_bubble=True):
         """Speak a game comment with TTS and show Kinito's speech bubble."""
-        self.speak(line, show_bubble=show_bubble)
+        self.speak(line, show_bubble=show_bubble, skip_ai=True)
 
     def _ensure_single_game_window(self):
         """Close any open game window so only one game runs at a time."""

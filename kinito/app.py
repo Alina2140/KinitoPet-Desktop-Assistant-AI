@@ -87,6 +87,7 @@ class FloatingAssistant(
         set_default_window_icon(self.root)
         self.root.overrideredirect(True)
         self.root.attributes("-transparentcolor", "white")
+        self.root.configure(bg="white")
 
         fallback = sprite_path_normal
         self.img_normal = _open_sprite(sprite_path_normal, fallback)
@@ -123,7 +124,7 @@ class FloatingAssistant(
         self.tk_img_hug2 = ImageTk.PhotoImage(self.img_hug2)
 
         self.panel = tk.Label(self.root, bg="white")
-        self.panel.pack(side="top", fill="both", expand="yes")
+        self.panel.pack(side="top", anchor="n")
         self.change_sprite(self.tk_img_normal)
         self.setup_reminder_countdown_button()
 
@@ -183,6 +184,7 @@ class FloatingAssistant(
         self._number_guess_attempts = 0
         self._available_voices = self._load_available_voices()
         self._init_llm()
+        self._ai_generating = False
         self.root.wm_attributes("-topmost", True)
 
         self._log_optional_deps()

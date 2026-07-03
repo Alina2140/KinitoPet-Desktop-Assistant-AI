@@ -160,6 +160,7 @@ def test_interrupt_speech_stops_active_tts_and_bumps_epoch(speech):
     speech.talking = True
     speech._cancel_bubble_close_timer = MagicMock()
     speech._stop_active_tts = MagicMock()
+    speech._has_active_speech_bubble = MagicMock(return_value=False)
 
     speech.interrupt_speech()
 
@@ -167,6 +168,45 @@ def test_interrupt_speech_stops_active_tts_and_bumps_epoch(speech):
     speech._cancel_bubble_close_timer.assert_called_once()
     assert speech._speech_epoch == 4
     assert speech.talking is False
+
+
+def test_interrupt_speech_closes_orphan_bubble(speech):
+    speech._speech_epoch = 1
+    speech._cancel_bubble_close_timer = MagicMock()
+    speech._stop_active_tts = MagicMock()
+    speech._has_active_speech_bubble = MagicMock(return_value=True)
+    speech._close_speech_bubble_impl = MagicMock()
+    speech._chat_mode = False
+    speech._awaiting_response = False
+
+    speech.interrupt_speech()
+
+    speech._close_speech_bubble_impl.assert_called_once()
+
+
+def test_interrupt_speech_keeps_interactive_bubble(speech):
+    speech._cancel_bubble_close_timer = MagicMock()
+    speech._stop_active_tts = MagicMock()
+    speech._has_active_speech_bubble = MagicMock(return_value=True)
+    speech._close_speech_bubble_impl = MagicMock()
+    speech._chat_mode = False
+    speech._awaiting_response = True
+
+    speech.interrupt_speech()
+
+    speech._close_speech_bubble_impl.assert_not_called()
+
+
+def test_interrupt_speech_keeps_chat_bubble(speech):
+    speech._cancel_bubble_close_timer = MagicMock()
+    speech._stop_active_tts = MagicMock()
+    speech._has_active_speech_bubble = MagicMock(return_value=True)
+    speech._close_speech_bubble_impl = MagicMock()
+    speech._chat_mode = True
+
+    speech.interrupt_speech()
+
+    speech._close_speech_bubble_impl.assert_not_called()
 
 
 def test_response_buttons_need_close_without_not_now(speech):
@@ -190,6 +230,7 @@ def test_handle_response_interrupts_before_handler(speech):
     speech.close_speech_bubble = MagicMock()
     speech.speech_bubble = MagicMock()
     speech.speech_bubble.wm_title.return_value = dlg.MENU_PROMPT
+    speech._has_active_speech_bubble = MagicMock(return_value=True)
 
     with patch("kinito.speech.handle_dialog_response") as handle:
         speech.handle_response(dlg.BUTTON_FUN_FACT)

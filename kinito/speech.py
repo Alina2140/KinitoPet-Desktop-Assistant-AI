@@ -171,8 +171,13 @@ class SpeechMixin:
             return False
 
     def _is_busy_with_speech(self):
-        """Return True while TTS, a bubble, or a user response is in progress."""
-        return self.talking or self._awaiting_response or self._has_active_speech_bubble()
+        """Return True while TTS, a bubble, a user response, or AI generation is in progress."""
+        return (
+            self.talking
+            or self._awaiting_response
+            or self._has_active_speech_bubble()
+            or getattr(self, "_ai_generating", False)
+        )
 
     def _is_background_music_playing(self):
         """Return True if pygame is playing background music."""
@@ -238,11 +243,29 @@ class SpeechMixin:
             except Exception:
                 pass
 
+    def _speech_bubble_title(self) -> str:
+        """Return the active bubble title, or empty string if none exists."""
+        if not self._has_active_speech_bubble():
+            return ""
+        try:
+            return self.speech_bubble.wm_title()
+        except tk.TclError:
+            return ""
+
     def interrupt_speech(self):
         """Stop current TTS and invalidate pending bubble callbacks."""
         self._next_speech_epoch()
         self._stop_active_tts()
         self._cancel_bubble_close_timer()
+        if getattr(self, "_ai_generating", False):
+            self._ai_generating = False
+        if (
+            not getattr(self, "_chat_mode", False)
+            and not getattr(self, "_awaiting_response", False)
+            and self._has_active_speech_bubble()
+            and hasattr(self, "_close_speech_bubble_impl")
+        ):
+            self._close_speech_bubble_impl()
         self._preserve_sprite = False
         self._talk_sprite_mode = "talking"
         self.talking = False
@@ -321,8 +344,12 @@ class SpeechMixin:
         allow_in_focus=False,
         preserve_sprite=False,
         question=None,
+        *,
+        ai_hint=None,
+        skip_ai=False,
     ):
         """Speak *text* in a background thread; optionally show and auto-close a bubble."""
+        del ai_hint, skip_ai  # handled by LLMMixin when present in the MRO
         if getattr(self, "_focus_mode", False) and not allow_in_focus:
             return
         self.interrupt_speech()
@@ -377,8 +404,9 @@ class SpeechMixin:
         self.show_speech_bubble(text, evergoaway=False, speech_epoch=epoch, force=True)
         self._schedule_bubble_close_if_current(epoch, display_ms)
 
-    def speak_whisper(self, text, pitch=25, slow=False, long_bubble=False):
+    def speak_whisper(self, text, pitch=25, slow=False, long_bubble=False, *, ai_hint=None, skip_ai=False):
         """Speak *text* with whisper voice candidates and optional long bubble display."""
+        del ai_hint, skip_ai
         self.speak(
             text,
             pitch=pitch,
@@ -566,8 +594,8 @@ class SpeechMixin:
 
     def handle_response(self, response):
         """Route a button or textbox answer to the matching dialog handler."""
+        current_question = self._speech_bubble_title()
         self.interrupt_speech()
-        current_question = self.speech_bubble.wm_title()
         self.close_speech_bubble()
 
         spec = find_dialog_spec(current_question)
@@ -708,4 +736,4 @@ class SpeechMixin:
         ):
             self.close_speech_bubble()
             return
-        self.speak(dlg.MENU_PROMPT, 45, True, allow_in_focus=True, preserve_sprite=True)
+        self.speak(dlg.MENU_PROMPT, 45, True, allow_in_focus=True)

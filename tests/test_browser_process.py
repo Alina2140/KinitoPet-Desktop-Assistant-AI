@@ -56,3 +56,6 @@ def test_on_before_load_handler_blocks_unlisted_urls():
     assert handler() is True
     assert fake_webview.create_window.call_args.kwargs["resizable"] is True
     assert fake_webview.create_window.call_args.kwargs["min_size"] == (480, 360)
+    fake_webview.start.assert_called_once()
+    assert fake_webview.start.call_args.kwargs["debug"] is False
+    assert fake_webview.start.call_args.kwargs["icon"] is not None

@@ -44,13 +44,15 @@ class OllamaClient:
         except OllamaError:
             return False
 
-    def chat(self, messages: list[dict[str, str]]) -> str:
+    def chat(self, messages: list[dict[str, str]], *, max_tokens: int | None = None) -> str:
         """Send a chat completion request and return the assistant reply text."""
+        tokens = max_tokens if max_tokens is not None else self.config.max_tokens_long
         payload = {
             "model": self.config.model,
             "messages": messages,
             "stream": False,
-            "options": {"num_predict": 256},
+            "keep_alive": self.config.keep_alive,
+            "options": {"num_predict": tokens},
         }
         data = self._request("POST", "/api/chat", body=payload)
         content = self._extract_message_content(data)
@@ -64,6 +66,7 @@ class OllamaClient:
             "model": self.config.model,
             "prompt": prompt,
             "stream": False,
+            "keep_alive": self.config.keep_alive,
         }
         if system:
             payload["system"] = system
@@ -113,6 +116,10 @@ class OllamaClient:
         if not isinstance(parsed, dict):
             raise OllamaUnavailableError("Ollama returned an unexpected response shape.")
         return parsed
+
+    def warmup(self) -> None:
+        """Load the model into memory so later requests start faster."""
+        self.generate("Hi", system="Reply with one word.", max_tokens=4)
 
     def invalidate_availability_cache(self) -> None:
         """Force the next availability check to hit the network."""

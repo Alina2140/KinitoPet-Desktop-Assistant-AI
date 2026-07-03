@@ -62,6 +62,25 @@ def test_launch_shortcut_returns_false_on_error(programs):
         assert programs._launch_shortcut("missing.lnk") is False
 
 
+def test_show_reminder_countdown_places_below_sprite(programs):
+    programs.panel = MagicMock()
+    programs.panel.winfo_height.return_value = 180
+    programs.img_normal = MagicMock(height=180)
+    programs._window_screen_size = MagicMock(return_value=(120, 180))
+    programs.root.winfo_width.return_value = 120
+    programs.root.winfo_height.return_value = 180
+    programs._reminder_countdown_btn.winfo_reqheight.return_value = 20
+
+    programs._show_reminder_countdown_button()
+
+    programs._reminder_countdown_btn.place.assert_called_once()
+    place_kwargs = programs._reminder_countdown_btn.place.call_args.kwargs
+    assert place_kwargs["y"] == 190
+    assert place_kwargs["anchor"] == "n"
+    programs.root.geometry.assert_called_once()
+    assert programs.root.geometry.call_args.args[0].startswith("120x214+")
+
+
 def test_minimize_current_window_swallows_failsafe(programs):
     import pyautogui
 

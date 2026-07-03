@@ -15,6 +15,14 @@ def window_icon_path() -> str:
     return os.path.abspath(favicon_path)
 
 
+def browser_window_icon_path() -> str | None:
+    """Return an icon path for pywebview; prefer ICO on Windows."""
+    for path in (icon_path, favicon_path):
+        if os.path.isfile(path):
+            return os.path.abspath(path)
+    return None
+
+
 def _load_photo() -> tk.PhotoImage | None:
     """Load and cache the favicon as a Tk PhotoImage."""
     global _cached_photo

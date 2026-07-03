@@ -34,9 +34,15 @@ class HugMixin:
         delay = self.HUG_DURATION_MS if delay_ms is None else delay_ms
         self._hug_timer = self.root.after(delay, self.end_hug)
 
-    def give_hug(self):
-        """Show hug sprites and speak a hug line."""
+    def _enter_hug_pose(self):
+        """Show hug sprites for the hug interaction."""
         self._hug_mode = True
         self.change_sprite(self.tk_img_hug)
         self._schedule_hug_end()
-        self.speak(random.choice(HUG_LINES))
+
+    def give_hug(self):
+        """Show hug sprites and speak a hug line."""
+        from content import llm_prompts as prompts
+
+        self._begin_hug_after_speech = True
+        self.speak(random.choice(HUG_LINES), ai_hint=prompts.HUG_PROMPT)

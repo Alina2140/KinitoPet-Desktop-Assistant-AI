@@ -19,6 +19,9 @@ from kinito.window_icon import apply_window_icon
 class ProgramsMixin:
     """Launch programs, show images, set timers, and report the time."""
 
+    _REMINDER_COUNTDOWN_GAP = 10
+    _REMINDER_COUNTDOWN_BOTTOM_MARGIN = 4
+
     def setup_reminder_countdown_button(self):
         """Create the on-screen countdown button (hidden until a timer runs)."""
         self._reminder_end_at = None
@@ -31,6 +34,9 @@ class ProgramsMixin:
             bd=1,
             padx=4,
             pady=1,
+            bg="#d9d9d9",
+            activebackground="#d9d9d9",
+            highlightthickness=0,
             command=self._open_reminder_controls,
         )
 
@@ -72,6 +78,67 @@ class ProgramsMixin:
         except tk.TclError:
             pass
 
+    def _sprite_display_height(self) -> int:
+        """Return the visible sprite height in pixels."""
+        panel = getattr(self, "panel", None)
+        if panel is not None:
+            try:
+                self.root.update_idletasks()
+                height = panel.winfo_height()
+                if height > 1:
+                    return height
+            except tk.TclError:
+                pass
+        img = getattr(self, "img_normal", None)
+        return max(getattr(img, "height", 0), 1)
+
+    def _reminder_countdown_window_height(self) -> int:
+        """Return the assistant window height needed for sprite + countdown."""
+        button = getattr(self, "_reminder_countdown_btn", None)
+        self.root.update_idletasks()
+        button_h = button.winfo_reqheight() if button is not None else 22
+        return (
+            self._sprite_display_height()
+            + self._REMINDER_COUNTDOWN_GAP
+            + button_h
+            + self._REMINDER_COUNTDOWN_BOTTOM_MARGIN
+        )
+
+    def _extend_window_for_reminder_countdown(self):
+        """Reserve space below the sprite so the countdown does not overlap the feet."""
+        if getattr(self, "_reminder_countdown_extended", False):
+            return
+        try:
+            self.root.update_idletasks()
+            width = max(self.root.winfo_width(), self._window_screen_size()[0], 1)
+            self._reminder_countdown_prev_height = max(self.root.winfo_height(), 1)
+            target_h = self._reminder_countdown_window_height()
+            x = getattr(self, "x", self.root.winfo_x())
+            y = getattr(self, "y", self.root.winfo_y())
+            self.root.geometry(f"{width}x{target_h}+{x}+{y}")
+            self._reminder_countdown_extended = True
+        except tk.TclError:
+            pass
+
+    def _restore_window_after_reminder_countdown(self):
+        """Shrink the assistant window after the countdown is hidden."""
+        if not getattr(self, "_reminder_countdown_extended", False):
+            return
+        try:
+            self.root.update_idletasks()
+            width = max(self.root.winfo_width(), 1)
+            height = getattr(self, "_reminder_countdown_prev_height", None)
+            if height is None:
+                height = self._sprite_display_height()
+            x = getattr(self, "x", self.root.winfo_x())
+            y = getattr(self, "y", self.root.winfo_y())
+            self.root.geometry(f"{width}x{height}+{x}+{y}")
+        except tk.TclError:
+            pass
+        finally:
+            self._reminder_countdown_extended = False
+            self._reminder_countdown_prev_height = None
+
     def _show_reminder_countdown_button(self):
         """Show the countdown button centered under Kinito's sprite."""
         button = getattr(self, "_reminder_countdown_btn", None)
@@ -80,7 +147,9 @@ class ProgramsMixin:
         self._update_reminder_countdown_button()
         try:
             if not button.winfo_ismapped():
-                button.place(relx=0.5, rely=1.0, anchor="s", y=-2)
+                self._extend_window_for_reminder_countdown()
+                y = self._sprite_display_height() + self._REMINDER_COUNTDOWN_GAP
+                button.place(relx=0.5, y=y, anchor="n")
         except tk.TclError:
             pass
 
@@ -94,6 +163,7 @@ class ProgramsMixin:
                 button.place_forget()
         except tk.TclError:
             pass
+        self._restore_window_after_reminder_countdown()
 
     def _clear_reminder(self):
         """Stop the active reminder and hide the countdown button."""

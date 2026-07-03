@@ -23,6 +23,35 @@ class LLMMixin(SpeechChatMixin):
         self._llm_config = LLMConfig.from_env()
         self._ollama_client = OllamaClient(self._llm_config)
         self._conversation = ConversationHistory(max_messages=self._llm_config.max_history)
+        self._begin_hug_after_speech = False
+        if self._llm_config.enabled and self._llm_config.warmup_on_start:
+            threading.Thread(target=self._warm_ollama_model, daemon=True).start()
+
+    def _warm_ollama_model(self) -> None:
+        """Pre-load the Ollama model in the background."""
+        try:
+            if self._ollama_client.is_available():
+                self._ollama_client.warmup()
+        except OllamaUnavailableError:
+            pass
+
+    def _activate_pending_visuals(self) -> None:
+        """Start pose-specific visuals once the spoken line is actually ready."""
+        if getattr(self, "_begin_hug_after_speech", False):
+            self._begin_hug_after_speech = False
+            self._enter_hug_pose()
+
+    def _show_ai_thinking_sprite(self) -> None:
+        """Show the thinking sprite while Ollama generates a line."""
+        self._ai_generating = True
+        self.talking = True
+        self._talk_sprite_mode = "thinking"
+        if hasattr(self, "change_sprite") and hasattr(self, "tk_img_thinking"):
+            self.change_sprite(self.tk_img_thinking)
+
+    def _clear_ai_generating(self) -> None:
+        """Clear the in-flight AI generation flag."""
+        self._ai_generating = False
 
     def speak(
         self,
@@ -42,6 +71,7 @@ class LLMMixin(SpeechChatMixin):
     ):
         """Speak *text*, optionally replacing scripted lines with Ollama output."""
         if skip_ai or wait_for_tts or not self._should_ai_replace(text):
+            self._activate_pending_visuals()
             super().speak(
                 text,
                 pitch,
@@ -56,7 +86,7 @@ class LLMMixin(SpeechChatMixin):
             )
             return
 
-        max_tokens = 256 if long_bubble else 128
+        max_tokens = self._llm_config.max_tokens_long if long_bubble else self._llm_config.max_tokens_short
         self._generate_and_speak(
             str(text),
             ai_hint=ai_hint,
@@ -105,8 +135,9 @@ class LLMMixin(SpeechChatMixin):
         hint = prompts.replacement_hint_for(scripted_text)
         return prompts.REPLACEMENT_PROMPT.format(scripted=scripted_text.strip(), hint=hint)
 
-    def _generate_and_speak(self, scripted_text: str, *, ai_hint=None, max_tokens=128, **speak_kwargs):
+    def _generate_and_speak(self, scripted_text: str, *, ai_hint=None, max_tokens=64, **speak_kwargs):
         """Generate a line in the background, then speak it or fall back to scripted text."""
+        self._show_ai_thinking_sprite()
         prompt = self._build_generation_prompt(scripted_text, ai_hint)
 
         def worker():
@@ -121,22 +152,24 @@ class LLMMixin(SpeechChatMixin):
                 spoken = scripted_text.strip()
             self.root.after(
                 0,
-                lambda: super(LLMMixin, self).speak(
-                    spoken,
-                    skip_ai=True,
-                    **speak_kwargs,
-                ),
+                lambda spoken=spoken: self._deliver_generated_line(spoken, speak_kwargs),
             )
 
         threading.Thread(target=worker, daemon=True).start()
 
+    def _deliver_generated_line(self, spoken: str, speak_kwargs: dict) -> None:
+        """Speak a generated line on the UI thread."""
+        self._clear_ai_generating()
+        self.close_speech_bubble()
+        self.speak(spoken, skip_ai=True, **speak_kwargs)
+
     def start_chat(self) -> None:
         """Open chat mode if Ollama is reachable, otherwise show a fallback line."""
         if not self._llm_config.enabled:
-            super().speak(dlg.CHAT_UNAVAILABLE, skip_ai=True)
+            self.speak(dlg.CHAT_UNAVAILABLE, skip_ai=True)
             return
         if not self._ollama_client.is_available():
-            super().speak(dlg.CHAT_UNAVAILABLE, skip_ai=True)
+            self.speak(dlg.CHAT_UNAVAILABLE, skip_ai=True)
             return
         self._conversation.reset()
         self.open_chat_bubble(dlg.CHAT_GREETING)

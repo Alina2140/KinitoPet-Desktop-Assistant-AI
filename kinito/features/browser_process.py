@@ -1,17 +1,8 @@
 """Run pywebview in a separate process (launched via python -m)."""
 
-import os
 import sys
 
-from kinito.assets import favicon_path, icon_path
-
-
-def _browser_icon_path() -> str | None:
-    """Return an absolute icon path for pywebview, preferring the PNG favicon."""
-    for path in (favicon_path, icon_path):
-        if os.path.isfile(path):
-            return os.path.abspath(path)
-    return None
+from kinito.window_icon import browser_window_icon_path
 
 
 def run_browser_window(url, x, y, width, height):
@@ -33,24 +24,19 @@ def run_browser_window(url, x, y, width, height):
             return True
         return is_allowed_url(args[0])
 
-    icon = _browser_icon_path()
-    window_kwargs = {
-        "title": "Kinito's Window",
-        "url": url,
-        "width": width,
-        "height": height,
-        "x": x,
-        "y": y,
-        "resizable": True,
-        "min_size": (480, 360),
-        "on_top": True,
-    }
-    if icon is not None:
-        window_kwargs["icon"] = icon
-
-    window = webview.create_window(**window_kwargs)
+    window = webview.create_window(
+        title="Kinito's Window",
+        url=url,
+        width=width,
+        height=height,
+        x=x,
+        y=y,
+        resizable=True,
+        min_size=(480, 360),
+        on_top=True,
+    )
     window.events.before_load += on_before_load
-    webview.start(debug=False)
+    webview.start(debug=False, icon=browser_window_icon_path())
     return 0
 
 

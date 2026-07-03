@@ -184,6 +184,9 @@ Optional environment variables:
 | `OLLAMA_IDLE_LINES` | `true` | AI-generated spontaneous lines |
 | `OLLAMA_REPLACE_CHANCE` | `0.30` | Chance that any non-interactive spoken line is AI-generated |
 | `OLLAMA_IDLE_CHANCE` | `0.30` | Legacy alias for `OLLAMA_REPLACE_CHANCE` |
+| `OLLAMA_MAX_TOKENS_SHORT` | `64` | Max tokens for short lines (faster generation) |
+| `OLLAMA_KEEP_ALIVE` | `10m` | Keeps the model loaded in Ollama between requests |
+| `OLLAMA_WARMUP` | `true` | Pre-load model on startup |
 
 If Ollama is offline, Kinito falls back to the existing scripted dialogue in `content/`.
 

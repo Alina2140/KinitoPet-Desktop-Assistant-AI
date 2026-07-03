@@ -223,6 +223,15 @@ class MovementMixin:
                 if getattr(self, "_preserve_sprite", False):
                     time.sleep(0.1)
                     continue
+                if getattr(self, "_ai_generating", False):
+                    sprite_a, sprite_b = self._talking_sprite_pair()
+                    self.change_sprite(sprite_a)
+                    time.sleep(1)
+                    if not self._running:
+                        break
+                    self.change_sprite(sprite_b)
+                    time.sleep(1)
+                    continue
                 if self._fancy_mode:
                     self.change_sprite(self.tk_img_fancy)
                     time.sleep(1)

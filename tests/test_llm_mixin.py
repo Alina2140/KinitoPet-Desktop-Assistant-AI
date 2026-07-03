@@ -48,6 +48,7 @@ def llm_app():
     app._can_initiate_spontaneous_speech = MagicMock(return_value=True)
     app._chat_mode = False
     app._chat_generating = False
+    app._ai_generating = False
     return app
 
 
@@ -101,6 +102,14 @@ def test_should_use_ai_idle_line_requires_availability(llm_app):
     assert llm_app._should_use_ai_idle_line() is False
 
 
+def test_activate_pending_visuals_starts_hug(llm_app):
+    llm_app._begin_hug_after_speech = True
+    llm_app._enter_hug_pose = MagicMock()
+    llm_app._activate_pending_visuals()
+    llm_app._enter_hug_pose.assert_called_once()
+    assert llm_app._begin_hug_after_speech is False
+
+
 @patch.object(SpeechMixin, "speak")
 def test_speak_ai_idle_line_fallback_on_error(mock_speak, llm_app):
     llm_app._ollama_client.generate.side_effect = OllamaUnavailableError("down")
@@ -111,7 +120,22 @@ def test_speak_ai_idle_line_fallback_on_error(mock_speak, llm_app):
         thread_cls.call_args.kwargs["target"]()
 
     mock_speak.assert_called_once()
-    assert mock_speak.call_args.kwargs["skip_ai"] is True
+    assert mock_speak.call_args.args[0]
+    assert llm_app._ai_generating is False
+
+
+@patch.object(SpeechMixin, "speak")
+def test_generate_and_speak_shows_thinking_sprite(mock_speak, llm_app):
+    llm_app.change_sprite = MagicMock()
+    llm_app.tk_img_thinking = "thinking"
+
+    with patch("kinito.features.llm.threading.Thread") as thread_cls:
+        thread_cls.return_value = MagicMock()
+        llm_app._generate_and_speak("fallback", ai_hint="say hi")
+
+    llm_app.change_sprite.assert_called_with("thinking")
+    assert llm_app._talk_sprite_mode == "thinking"
+    assert llm_app._ai_generating is True
 
 
 @patch.object(SpeechMixin, "speak")
@@ -133,4 +157,3 @@ def test_speak_uses_ai_for_plain_lines(mock_speak, llm_app):
 
     mock_speak.assert_called_once()
     assert mock_speak.call_args.args[0] == "Just checking in on you."
-    assert mock_speak.call_args.kwargs["skip_ai"] is True

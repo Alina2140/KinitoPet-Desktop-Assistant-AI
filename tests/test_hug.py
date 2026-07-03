@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 
@@ -26,16 +26,20 @@ def hug():
     return stub
 
 
-def test_give_hug_shows_hug_sprite_and_speaks(hug):
-    with (
-        patch("kinito.features.hug.random.choice", return_value=HUG_LINES[0]),
-        patch.object(hug, "_schedule_hug_end") as schedule,
-    ):
+def test_give_hug_defers_pose_until_speech(hug):
+    with patch("kinito.features.hug.random.choice", return_value=HUG_LINES[0]):
         hug.give_hug()
+    hug.change_sprite.assert_not_called()
+    assert hug._begin_hug_after_speech is True
+    hug.speak.assert_called_once_with(HUG_LINES[0], ai_hint=ANY)
+
+
+def test_enter_hug_pose_shows_sprite(hug):
+    with patch.object(hug, "_schedule_hug_end") as schedule:
+        hug._enter_hug_pose()
     hug.change_sprite.assert_called_once_with("hug")
     schedule.assert_called_once()
     assert hug._hug_mode is True
-    hug.speak.assert_called_once_with(HUG_LINES[0])
 
 
 def test_end_hug_restores_normal_sprite_when_idle(hug):

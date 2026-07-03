@@ -46,6 +46,10 @@ class LLMConfig:
     idle_chance: float = 0.25
     replace_chance: float = 0.30
     max_history: int = 20
+    max_tokens_short: int = 64
+    max_tokens_long: int = 200
+    keep_alive: str = "10m"
+    warmup_on_start: bool = True
     availability_cache_s: float = 30.0
 
     @classmethod
@@ -63,6 +67,10 @@ class LLMConfig:
                 _env_float("OLLAMA_IDLE_CHANCE", 0.30),
             ),
             max_history=_env_int("OLLAMA_MAX_HISTORY", 20),
+            max_tokens_short=_env_int("OLLAMA_MAX_TOKENS_SHORT", 64),
+            max_tokens_long=_env_int("OLLAMA_MAX_TOKENS_LONG", 200),
+            keep_alive=os.environ.get("OLLAMA_KEEP_ALIVE", "10m"),
+            warmup_on_start=_env_bool("OLLAMA_WARMUP", True),
             availability_cache_s=_env_float("OLLAMA_AVAILABILITY_CACHE_S", 30.0),
         )
 

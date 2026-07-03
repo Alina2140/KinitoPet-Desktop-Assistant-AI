@@ -32,6 +32,10 @@ FUN_FACT_PROMPT = (
     "Share one surprising fun fact with the user. One or two sentences. No markdown."
 )
 
+HUG_PROMPT = (
+    "Say one short, warm hug line to the user. One or two sentences. No markdown."
+)
+
 Joke_PROMPT = "Tell one short, corny/ funny joke. Two sentences max. No markdown."
 
 GAME_REACTION_PROMPT = (
