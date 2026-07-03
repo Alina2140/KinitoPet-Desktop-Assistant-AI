@@ -281,6 +281,51 @@ class SpeechMixin:
         except Exception:
             return False
 
+    @staticmethod
+    def _balcon_command(voice: str, pitch: int) -> list[str]:
+        """Build a balcon argv that reads speech text from stdin."""
+        return [
+            balconexe_directory,
+            "-n",
+            voice,
+            "-i",
+            "-enc",
+            "utf8",
+            "-p",
+            str(pitch),
+        ]
+
+    def _run_balcon_tts(self, voice: str, text: str, pitch: int, speech_epoch=None) -> bool:
+        """Run balcon for *text*, feeding the line via stdin to survive quotes."""
+        if self._tts_interrupted(speech_epoch):
+            return False
+        try:
+            process = subprocess.Popen(
+                self._balcon_command(voice, pitch),
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                encoding="utf-8",
+            )
+        except (OSError, subprocess.SubprocessError, ValueError):
+            return False
+
+        self._tts_process = process
+        try:
+            try:
+                process.communicate(input=text, timeout=120)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.communicate()
+                return False
+        finally:
+            self._tts_process = None
+
+        if self._tts_interrupted(speech_epoch):
+            return False
+        return process.returncode == 0
+
     def _run_tts(self, text, pitch=45, voice_candidates=None, speech_epoch=None):
         """Run TTS via balcon (preferred) or pyttsx3 fallback."""
         if voice_candidates is None:
@@ -290,33 +335,12 @@ class SpeechMixin:
 
         if os.path.isfile(balconexe_directory):
             for voice in voice_candidates:
-                if self._tts_interrupted(speech_epoch):
-                    return False
                 if voice not in self._available_voices:
                     continue
-                command = [balconexe_directory, "-n", voice, "-t", text, "-p", str(pitch)]
-                try:
-                    process = subprocess.Popen(
-                        command,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        text=True,
-                    )
-                    self._tts_process = process
-                    try:
-                        process.communicate(timeout=120)
-                    except subprocess.TimeoutExpired:
-                        process.kill()
-                        process.communicate()
-                        return False
-                    finally:
-                        self._tts_process = None
-                    if self._tts_interrupted(speech_epoch):
-                        return False
-                    if process.returncode == 0:
-                        return True
-                except (OSError, subprocess.SubprocessError, ValueError):
-                    break
+                if self._run_balcon_tts(voice, text, pitch, speech_epoch=speech_epoch):
+                    return True
+                if self._tts_interrupted(speech_epoch):
+                    return False
 
         if self._tts_interrupted(speech_epoch):
             return False

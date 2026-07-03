@@ -3,6 +3,7 @@ from unittest.mock import ANY, MagicMock, patch
 import pytest
 
 from content import dialogue as dlg
+from content import llm_prompts as prompts
 from content.facts import FACTS
 from content.questions import QUESTIONS
 from content.stories import STORIES
@@ -120,3 +121,10 @@ def test_say_random_fact(content):
     with patch("kinito.features.content.get_random_fact", return_value=FACTS[0]):
         content.say_random_fact()
     content.speak.assert_called_once_with(FACTS[0], ai_hint=ANY)
+
+
+def test_say_random_joke(content):
+    joke = dlg.JOKES[0]
+    with patch("kinito.features.content.dlg.pick_line", return_value=joke):
+        content.say_random_joke()
+    content.speak.assert_called_once_with(joke, ai_hint=prompts.JOKE_PROMPT)

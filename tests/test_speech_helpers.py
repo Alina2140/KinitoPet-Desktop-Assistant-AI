@@ -54,7 +54,23 @@ def test_run_tts_uses_balcon_when_available(speech):
     ):
         assert speech._run_tts("Hello") is True
         popen.assert_called_once()
-        process.communicate.assert_called_once()
+        command = popen.call_args.args[0]
+        assert "-i" in command
+        assert "-t" not in command
+        assert process.communicate.call_args.kwargs["input"] == "Hello"
+
+
+def test_run_tts_passes_quoted_text_via_stdin(speech):
+    speech._available_voices = {"Eddie"}
+    process = MagicMock(returncode=0)
+    process.communicate.return_value = ("", "")
+    quoted = 'Play "Duck, Duck, Goose" now'
+    with (
+        patch("kinito.speech.os.path.isfile", return_value=True),
+        patch("kinito.speech.subprocess.Popen", return_value=process),
+    ):
+        assert speech._run_tts(quoted) is True
+    assert process.communicate.call_args.kwargs["input"] == quoted
 
 
 def test_run_tts_falls_back_to_pyttsx3(speech):

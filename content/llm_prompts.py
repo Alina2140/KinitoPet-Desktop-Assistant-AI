@@ -36,7 +36,7 @@ HUG_PROMPT = (
     "Say one short, warm hug line to the user. One or two sentences. No markdown."
 )
 
-Joke_PROMPT = "Tell one short, corny/ funny joke. Two sentences max. No markdown."
+JOKE_PROMPT = "Tell one short, corny/ funny joke. Two sentences max. No markdown."
 
 GAME_REACTION_PROMPT = (
     "React briefly to a mini-game moment as Kinito. One or two sentences. No markdown."
