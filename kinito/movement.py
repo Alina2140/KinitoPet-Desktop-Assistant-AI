@@ -21,8 +21,8 @@ class MovementMixin:
     READING_STORY_CHANCE = 0.03
     IDLE_FANCY_CHANCE = 0.02
     READING_DURATION_SECONDS = (10, 32)
-    READING_PAGE_TURN_CHANCE = 0.45
-    READING_PAGE_TURN_START = True
+    READING_PAGE_TURN_CHANCE = 0.14
+    READING_PAGE_TURN_VOLUME = 0.3
     READING_SPRITE_SWAP_SECONDS = 2.4
     IDLE_WAIT_SHORT = (20, 40)
     IDLE_WAIT_NORMAL = (40, 80)
@@ -245,31 +245,52 @@ class MovementMixin:
         """No-op unless AdsMixin is mixed in."""
         return False
 
+    def _is_reading_idle_active(self) -> bool:
+        """Return True while Kinito is uninterrupted in the book-idle animation."""
+        if not getattr(self, "_reading_idle_active", False):
+            return False
+        if not self._running or self.paused or self.moving or self.is_dragging:
+            return False
+        if getattr(self, "_focus_mode", False):
+            return False
+        if self.talking and not getattr(self, "_preserve_sprite", False):
+            return False
+        return True
+
+    def _maybe_play_reading_page_turn(self) -> None:
+        """Play a page-turn sound only during an active, uninterrupted reading idle."""
+        if not self._is_reading_idle_active():
+            return
+        if random.random() >= self.READING_PAGE_TURN_CHANCE:
+            return
+        self.play_sfx(page_turn_file_path, volume=self.READING_PAGE_TURN_VOLUME)
+
     def _run_reading_idle(self):
         """Animate book sprites, optionally play page-turn sounds, and trigger speech."""
         reading_sprites = getattr(self, "_reading_sprites", (self.tk_img_idle,))
-        frame = 0
-        self.change_sprite(reading_sprites[frame % len(reading_sprites)])
-        if random.random() < self.READING_STORY_CHANCE:
-            threading.Thread(target=self.offer_random_story, daemon=True).start()
-        elif random.random() < self.READING_WISDOM_CHANCE:
-            threading.Thread(target=self.say_random_wisdom, daemon=True).start()
-
-        duration = random.randint(*self.READING_DURATION_SECONDS)
-        elapsed = 0.0
-        if self.READING_PAGE_TURN_START:
-            self.play_sfx(page_turn_file_path, volume=0.3)
-        while elapsed < duration:
-            if not self._running or self.paused:
-                break
-            if self.talking and not getattr(self, "_preserve_sprite", False):
-                break
-            if random.random() < self.READING_PAGE_TURN_CHANCE:
-                self.play_sfx(page_turn_file_path, volume=0.3)
-            time.sleep(self.READING_SPRITE_SWAP_SECONDS)
-            elapsed += self.READING_SPRITE_SWAP_SECONDS
-            frame += 1
+        self._reading_idle_active = True
+        try:
+            frame = 0
             self.change_sprite(reading_sprites[frame % len(reading_sprites)])
+            if random.random() < self.READING_STORY_CHANCE:
+                threading.Thread(target=self.offer_random_story, daemon=True).start()
+            elif random.random() < self.READING_WISDOM_CHANCE:
+                threading.Thread(target=self.say_random_wisdom, daemon=True).start()
+
+            duration = random.randint(*self.READING_DURATION_SECONDS)
+            elapsed = 0.0
+            while elapsed < duration:
+                if not self._is_reading_idle_active():
+                    break
+                time.sleep(self.READING_SPRITE_SWAP_SECONDS)
+                elapsed += self.READING_SPRITE_SWAP_SECONDS
+                if not self._is_reading_idle_active():
+                    break
+                frame += 1
+                self.change_sprite(reading_sprites[frame % len(reading_sprites)])
+                self._maybe_play_reading_page_turn()
+        finally:
+            self._reading_idle_active = False
 
     def smooth_movement(self):
         """Background loop: roam the screen or trigger spontaneous speech/actions."""

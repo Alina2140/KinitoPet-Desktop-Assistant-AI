@@ -158,6 +158,7 @@ class FloatingAssistant(
         self._reminder_id = 0
         self._pending_story = None
         self._fancy_mode = False
+        self._reading_idle_active = False
         self._hug_mode = False
         self._camera_active = False
         self._camera_cap = None

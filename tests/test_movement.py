@@ -236,3 +236,37 @@ def test_smooth_movement_calls_ai_idle_line(movement):
 
     movement.speak_ai_idle_line.assert_called_once()
     movement.speak_random_question.assert_not_called()
+
+
+def test_is_reading_idle_active_requires_uninterrupted_state(movement):
+    movement._reading_idle_active = True
+    movement._focus_mode = False
+    assert movement._is_reading_idle_active() is True
+
+    movement.moving = True
+    assert movement._is_reading_idle_active() is False
+
+    movement.moving = False
+    movement.talking = True
+    assert movement._is_reading_idle_active() is False
+
+
+def test_maybe_play_reading_page_turn_skips_when_interrupted(movement):
+    movement.play_sfx = MagicMock()
+    movement._reading_idle_active = True
+    movement.talking = True
+
+    movement._maybe_play_reading_page_turn()
+
+    movement.play_sfx.assert_not_called()
+
+
+def test_maybe_play_reading_page_turn_plays_when_active(movement):
+    movement.play_sfx = MagicMock()
+    movement._reading_idle_active = True
+    movement.talking = False
+
+    with patch("kinito.movement.random.random", return_value=0.0):
+        movement._maybe_play_reading_page_turn()
+
+    movement.play_sfx.assert_called_once()
