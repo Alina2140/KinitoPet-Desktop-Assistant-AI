@@ -247,15 +247,15 @@ class MovementMixin:
 
     def _is_reading_idle_active(self) -> bool:
         """Return True while Kinito is uninterrupted in the book-idle animation."""
-        if not getattr(self, "_reading_idle_active", False):
-            return False
-        if not self._running or self.paused or self.moving or self.is_dragging:
-            return False
-        if getattr(self, "_focus_mode", False):
-            return False
-        if self.talking and not getattr(self, "_preserve_sprite", False):
-            return False
-        return True
+        return (
+            getattr(self, "_reading_idle_active", False)
+            and self._running
+            and not self.paused
+            and not self.moving
+            and not self.is_dragging
+            and not getattr(self, "_focus_mode", False)
+            and (not self.talking or getattr(self, "_preserve_sprite", False))
+        )
 
     def _maybe_play_reading_page_turn(self) -> None:
         """Play a page-turn sound only during an active, uninterrupted reading idle."""
