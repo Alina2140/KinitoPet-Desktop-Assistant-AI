@@ -76,11 +76,47 @@ def test_set_chat_generating_disables_input(chat_app):
     entry.configure.assert_called_with(state=tk.DISABLED)
 
 
+class _RecordingChatLog:
+    """Minimal tk.Text stand-in that records tagged inserts for unit tests."""
+
+    def __init__(self):
+        self._chunks = []
+
+    def winfo_exists(self):
+        return True
+
+    def configure(self, **kwargs):
+        pass
+
+    def insert(self, index, text, tag=None):
+        self._chunks.append((text, tag))
+
+    def get(self, start, end):
+        return "".join(text for text, _ in self._chunks)
+
+    def search(self, pattern, start, end):
+        pos = self.get(start, end).find(pattern)
+        return "" if pos < 0 else f"1.{pos}"
+
+    def tag_names(self, index):
+        offset = int(str(index).split(".", 1)[1]) if isinstance(index, str) and "." in index else 0
+        tags = set()
+        pos = 0
+        for text, tag in self._chunks:
+            if tag and pos <= offset < pos + len(text):
+                tags.add(tag)
+            pos += len(text)
+        return tuple(tags)
+
+    def see(self, index):
+        pass
+
+    def tag_configure(self, name, **kwargs):
+        pass
+
+
 def test_append_chat_message_styles_speaker_labels(chat_app):
-    root = tk.Tk()
-    root.withdraw()
-    log = tk.Text(root)
-    log.winfo_exists = MagicMock(return_value=True)
+    log = _RecordingChatLog()
     chat_app._chat_log_widget = log
     chat_app._configure_chat_log_tags(log)
 
@@ -94,5 +130,3 @@ def test_append_chat_message_styles_speaker_labels(chat_app):
     alina_index = log.search("Alina:", "1.0", tk.END)
     assert alina_index
     assert "chat_alina" in log.tag_names(alina_index)
-
-    root.destroy()

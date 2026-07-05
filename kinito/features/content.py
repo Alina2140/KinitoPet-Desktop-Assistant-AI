@@ -107,19 +107,25 @@ class ContentMixin:
         self.speak(random.choice(FANCY_LINES))
 
     def _run_fancy_idle(self):
-        """Hold the fancy sprite while perform_fancy_show runs in the background."""
+        """Cycle magician sprites for the full fancy performance, including while talking."""
         self._fancy_mode = True
-        self.change_sprite(self.tk_img_fancy)
+        magician_sprites = getattr(self, "_magician_sprites", (self.tk_img_fancy,))
+        if len(magician_sprites) < 2:
+            magician_sprites = (self.tk_img_fancy, getattr(self, "tk_img_fancy_2", self.tk_img_fancy))
+        frame = 0
+        self.change_sprite(magician_sprites[0])
         threading.Thread(target=self.perform_fancy_show, daemon=True).start()
-        for _ in range(random.randint(6, 12)):
-            if not self._running or self.paused:
-                break
+
+        speech_started = False
+        while self._running and not self.paused:
+            time.sleep(0.45)
+            frame += 1
+            self.change_sprite(magician_sprites[frame % len(magician_sprites)])
             if self.talking:
+                speech_started = True
+            elif speech_started:
                 break
-            self.change_sprite(self.tk_img_fancy)
-            time.sleep(1)
-        while self.talking and self._running:
-            time.sleep(0.2)
+
         self._fancy_mode = False
 
     def say_random_joke(self):

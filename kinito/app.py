@@ -15,9 +15,11 @@ from content.startup import STARTUP_LINES
 from kinito.assets import (
     balconexe_directory,
     sprite_path_fancy,
+    sprite_path_fancy_1,
     sprite_path_hug,
     sprite_path_hug2,
     sprite_path_idle,
+    sprite_path_idle_2,
     sprite_path_normal,
     sprite_path_normal_2,
     sprite_path_sleep,
@@ -31,6 +33,7 @@ from kinito.assets import (
     sprite_path_thinking,
     sprite_path_thinking2,
 )
+from kinito.features.ads import AdsMixin
 from kinito.features.browser import BrowserMixin
 from kinito.features.camera import CameraMixin
 from kinito.features.content import ContentMixin
@@ -70,6 +73,7 @@ class FloatingAssistant(
     ProgramsMixin,
     CameraMixin,
     BrowserMixin,
+    AdsMixin,
 ):
     """Borderless desktop friend that combines speech, movement, and feature mixins."""
 
@@ -93,7 +97,9 @@ class FloatingAssistant(
         self.img_normal = _open_sprite(sprite_path_normal, fallback)
         self.img_normal_2 = _open_sprite(sprite_path_normal_2, fallback)
         self.img_idle = _open_sprite(sprite_path_idle, fallback)
+        self.img_idle_2 = _open_sprite(sprite_path_idle_2, fallback)
         self.img_fancy = _open_sprite(sprite_path_fancy, fallback)
+        self.img_fancy_2 = _open_sprite(sprite_path_fancy_1, fallback)
         self.img_surf_left = _open_sprite(sprite_path_surf_left, fallback)
         self.img_surf_right = _open_sprite(sprite_path_surf_right, fallback)
         self.img_sleep = _open_sprite(sprite_path_sleep, fallback)
@@ -109,7 +115,12 @@ class FloatingAssistant(
         self.tk_img_normal = ImageTk.PhotoImage(self.img_normal)
         self.tk_img_normal_2 = ImageTk.PhotoImage(self.img_normal_2)
         self.tk_img_idle = ImageTk.PhotoImage(self.img_idle)
+        self.tk_img_idle_2 = ImageTk.PhotoImage(self.img_idle_2)
         self.tk_img_fancy = ImageTk.PhotoImage(self.img_fancy)
+        self.tk_img_fancy_2 = ImageTk.PhotoImage(self.img_fancy_2)
+        self._reading_sprites = (self.tk_img_idle, self.tk_img_idle_2)
+        self._magician_sprites = (self.tk_img_fancy, self.tk_img_fancy_2)
+        self._magician_frame = 0
         self.tk_img_surf_left = ImageTk.PhotoImage(
             MovementMixin._flatten_sprite_on_white(self.img_surf_left)
         )
@@ -180,6 +191,9 @@ class FloatingAssistant(
         self._glitch_window = None
         self._glitch_hide_timer = None
         self._glitch_tk_image = None
+        self._crash_window = None
+        self._crash_hide_timer = None
+        self._crash_tk_image = None
         self._game_window = None
         self._auto_wake_timer = None
         self._bubble_position_timer = None
@@ -256,6 +270,7 @@ class FloatingAssistant(
         self.close_speech_bubble()
         self.end_hug()
         self.hide_screen_glitch()
+        self.hide_blue_screen()
         if hasattr(self, "_ensure_single_game_window"):
             self._ensure_single_game_window()
         self.close_camera()
@@ -510,6 +525,7 @@ class FloatingAssistant(
         self._ensure_single_game_window()
         self.end_hug()
         self.hide_screen_glitch()
+        self.hide_blue_screen()
         line = random.choice(GOODBYE_LINES)
 
         def run_goodbye():
@@ -544,6 +560,7 @@ class FloatingAssistant(
         self._ensure_single_game_window()
         self.end_hug()
         self.hide_screen_glitch()
+        self.hide_blue_screen()
 
     def _start_worker_threads(self):
         """Start movement, idle animation, and speech-bubble position update loops."""

@@ -18,6 +18,9 @@ def test_assets_directory_is_under_project_root():
         ("sounds_directory", os.path.join("GameAssets", "sounds")),
         ("secret_images_directory", os.path.join("GameAssets", "SecretImages")),
         ("programs_directory", os.path.join("GameAssets", "Programs")),
+        ("ads_directory", os.path.join("GameAssets", "ads")),
+        ("websites_directory", os.path.join("GameAssets", "websites")),
+        ("crash_directory", os.path.join("GameAssets", "crash")),
     ],
 )
 def test_asset_subdirectories(directory_attr, relative_path):
@@ -33,7 +36,9 @@ def test_asset_subdirectories(directory_attr, relative_path):
         ("sprite_path_normal", "KinitoNormal.png", "sprites_directory"),
         ("sprite_path_normal_2", "KinitoNormal2.png", "sprites_directory"),
         ("sprite_path_idle", "Idle.png", "sprites_directory"),
+        ("sprite_path_idle_2", "Idle2.png", "sprites_directory"),
         ("sprite_path_fancy", "Fancy.png", "sprites_directory"),
+        ("sprite_path_fancy_1", "Fancy1.png", "sprites_directory"),
         ("sprite_path_surf_left", "KinitoSurfLeft.png", "sprites_directory"),
         ("sprite_path_surf_right", "KinitoSurfRight.png", "sprites_directory"),
         ("sprite_path_moving", "KinitoSurfRight.png", "sprites_directory"),
@@ -47,6 +52,8 @@ def test_asset_subdirectories(directory_attr, relative_path):
         ("sprite_path_thinking2", "Thinking2.png", "sprites_directory"),
         ("sprite_path_hug", "KinitoHug.png", "sprites_directory"),
         ("sprite_path_hug2", "KinitoHug2.png", "sprites_directory"),
+        ("crash_image_path", "blueScreen.png", "crash_directory"),
+        ("page_turn_file_path", "PageTurn.mp3", "sounds_directory"),
         ("icon_path", "Icon.ico", "icons_directory"),
         ("favicon_path", "Favicon.png", "icons_directory"),
         ("timer_file_path", "Timer.mp3", "sounds_directory"),
@@ -72,7 +79,9 @@ def test_asset_paths_point_to_expected_files(path_attr, filename, parent_attr):
         "sprite_path_normal",
         "sprite_path_normal_2",
         "sprite_path_idle",
+        "sprite_path_idle_2",
         "sprite_path_fancy",
+        "sprite_path_fancy_1",
         "sprite_path_surf_left",
         "sprite_path_surf_right",
         "sprite_path_moving",
@@ -113,11 +122,21 @@ def test_icon_paths_stay_under_icons_directory(path_attr):
         "bomp_file_path",
         "tune_file_path",
         "newbeginnings_file_path",
+        "page_turn_file_path",
     ],
 )
 def test_sound_paths_stay_under_sounds_directory(path_attr):
     path = getattr(assets, path_attr)
     assert path.startswith(assets.sounds_directory + os.sep)
+
+
+def test_list_image_files_returns_sorted_paths(tmp_path):
+    for name in ("b.png", "a.webp", "notes.txt"):
+        (tmp_path / name).write_bytes(b"x")
+    files = assets.list_image_files(str(tmp_path))
+    assert len(files) == 2
+    assert files[0].endswith("a.webp")
+    assert files[1].endswith("b.png")
 
 
 @pytest.mark.skipif(
@@ -126,11 +145,11 @@ def test_sound_paths_stay_under_sounds_directory(path_attr):
 )
 def test_packaged_asset_files_exist_on_disk():
     expected_files = [
-        assets.sprite_path_surf_left,
-        assets.sprite_path_surf_right,
-        assets.sprite_path_talking,
-        assets.sprite_path_hug,
-        assets.sprite_path_hug2,
+        assets.sprite_path_idle,
+        assets.sprite_path_idle_2,
+        assets.sprite_path_fancy_1,
+        assets.crash_image_path,
+        assets.page_turn_file_path,
         assets.icon_path,
         assets.favicon_path,
         assets.timer_file_path,

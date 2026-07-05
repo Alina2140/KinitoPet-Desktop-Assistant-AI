@@ -39,11 +39,38 @@ def test_open_allowed_site_launches_thread_for_valid_site(browser):
     site = ALLOWED_SITES["animals"][0]
     with (
         patch("kinito.features.browser.pick_random_site", return_value=site),
+        patch.object(browser, "_roll_browser_surprise", return_value=None),
         patch("kinito.features.browser.threading.Thread") as thread_cls,
     ):
         browser.open_allowed_site("animals")
     thread_cls.assert_called_once()
     assert browser._browser_category == "animals"
+
+
+def test_open_allowed_site_kinitopet_surprise(browser):
+    site = ALLOWED_SITES["animals"][0]
+    with (
+        patch("kinito.features.browser.pick_random_site", return_value=site),
+        patch.object(browser, "_roll_browser_surprise", return_value="kinitopet"),
+        patch("kinito.features.browser.threading.Thread") as thread_cls,
+    ):
+        browser.open_allowed_site("animals")
+    thread_cls.assert_called_once()
+    args = thread_cls.call_args.kwargs["args"]
+    assert args[0] == "https://www.kinitopet.com/"
+
+
+def test_open_allowed_site_fake_website_surprise(browser):
+    site = ALLOWED_SITES["animals"][0]
+    with (
+        patch("kinito.features.browser.pick_random_site", return_value=site),
+        patch.object(browser, "_roll_browser_surprise", return_value="fake_image"),
+        patch.object(browser, "_pick_website_image", return_value="C:/fake/site.png"),
+        patch("kinito.features.browser.threading.Thread") as thread_cls,
+    ):
+        browser.open_allowed_site("animals")
+    thread_cls.assert_called_once()
+    assert thread_cls.call_args.kwargs["target"] == browser._launch_fake_website
 
 
 def test_launch_browser_skips_when_not_running(browser):

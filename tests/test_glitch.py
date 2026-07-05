@@ -58,6 +58,21 @@ def test_maybe_trigger_screen_glitch_skips_on_miss(glitch):
     glitch.root.after.assert_not_called()
 
 
+def test_maybe_trigger_blue_screen_schedules_on_hit(glitch):
+    with (
+        patch("kinito.features.glitch.os.path.isfile", return_value=True),
+        patch("kinito.features.glitch.random.random", return_value=0.0),
+    ):
+        assert glitch.maybe_trigger_blue_screen() is True
+    glitch.root.after.assert_called_once_with(0, glitch._flash_blue_screen)
+
+
+def test_maybe_trigger_blue_screen_skips_when_image_missing(glitch):
+    with patch("kinito.features.glitch.os.path.isfile", return_value=False):
+        assert glitch.maybe_trigger_blue_screen() is False
+    glitch.root.after.assert_not_called()
+
+
 def test_toggle_screen_effects_disables(glitch):
     glitch.toggle_screen_effects()
     assert glitch._screen_effects_enabled is False

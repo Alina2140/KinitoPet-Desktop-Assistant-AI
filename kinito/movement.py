@@ -8,7 +8,7 @@ import tkinter as tk
 
 from PIL import Image, ImageTk
 
-from kinito.assets import bomp_file_path, surf_file_path
+from kinito.assets import bomp_file_path, page_turn_file_path, surf_file_path
 
 
 class MovementMixin:
@@ -20,6 +20,10 @@ class MovementMixin:
     READING_WISDOM_CHANCE = 0.10
     READING_STORY_CHANCE = 0.03
     IDLE_FANCY_CHANCE = 0.02
+    READING_DURATION_SECONDS = (10, 32)
+    READING_PAGE_TURN_CHANCE = 0.45
+    READING_PAGE_TURN_START = True
+    READING_SPRITE_SWAP_SECONDS = 2.4
     IDLE_WAIT_SHORT = (20, 40)
     IDLE_WAIT_NORMAL = (40, 80)
     IDLE_WAIT_LONG = (85, 140)
@@ -233,6 +237,40 @@ class MovementMixin:
         """No-op unless GlitchMixin is mixed in."""
         return False
 
+    def maybe_trigger_blue_screen(self) -> bool:
+        """No-op unless GlitchMixin is mixed in."""
+        return False
+
+    def maybe_trigger_random_ad(self) -> bool:
+        """No-op unless AdsMixin is mixed in."""
+        return False
+
+    def _run_reading_idle(self):
+        """Animate book sprites, optionally play page-turn sounds, and trigger speech."""
+        reading_sprites = getattr(self, "_reading_sprites", (self.tk_img_idle,))
+        frame = 0
+        self.change_sprite(reading_sprites[frame % len(reading_sprites)])
+        if random.random() < self.READING_STORY_CHANCE:
+            threading.Thread(target=self.offer_random_story, daemon=True).start()
+        elif random.random() < self.READING_WISDOM_CHANCE:
+            threading.Thread(target=self.say_random_wisdom, daemon=True).start()
+
+        duration = random.randint(*self.READING_DURATION_SECONDS)
+        elapsed = 0.0
+        if self.READING_PAGE_TURN_START:
+            self.play_sfx(page_turn_file_path, volume=0.3)
+        while elapsed < duration:
+            if not self._running or self.paused:
+                break
+            if self.talking and not getattr(self, "_preserve_sprite", False):
+                break
+            if random.random() < self.READING_PAGE_TURN_CHANCE:
+                self.play_sfx(page_turn_file_path, volume=0.3)
+            time.sleep(self.READING_SPRITE_SWAP_SECONDS)
+            elapsed += self.READING_SPRITE_SWAP_SECONDS
+            frame += 1
+            self.change_sprite(reading_sprites[frame % len(reading_sprites)])
+
     def smooth_movement(self):
         """Background loop: roam the screen or trigger spontaneous speech/actions."""
         while self._running:
@@ -246,6 +284,8 @@ class MovementMixin:
                 time.sleep(0.1)
                 continue
             self.maybe_trigger_screen_glitch()
+            self.maybe_trigger_blue_screen()
+            self.maybe_trigger_random_ad()
             if (
                 random.random() < self.SPONTANEOUS_CHANCE
                 and self._allow_random_questions
@@ -262,7 +302,6 @@ class MovementMixin:
                 target_x, target_y = self.random_position_on_screen()
                 self.moving = True
                 current_x = self.root.winfo_rootx()
-                current_y = self.root.winfo_rooty()
                 self._render_surf_sprite(target_x - current_x, 0.0)
                 self.play_sfx(surf_file_path)
                 self.move_towards(target_x, target_y)
@@ -322,17 +361,7 @@ class MovementMixin:
                     and idle_roll < self.IDLE_READING_CHANCE
                     and self._allow_random_questions
                 ):
-                    self.change_sprite(self.tk_img_idle)
-                    if random.random() < self.READING_STORY_CHANCE:
-                        threading.Thread(target=self.offer_random_story, daemon=True).start()
-                    elif random.random() < self.READING_WISDOM_CHANCE:
-                        threading.Thread(target=self.say_random_wisdom, daemon=True).start()
-                    for _ in range(random.randint(5, 12)):
-                        if not self._running or self.paused:
-                            break
-                        if self.talking and not getattr(self, "_preserve_sprite", False):
-                            break
-                        time.sleep(1)
+                    self._run_reading_idle()
                     continue
                 if (
                     not focus_mode
@@ -372,8 +401,11 @@ class MovementMixin:
                     time.sleep(1)
                     continue
                 if self._fancy_mode:
-                    self.change_sprite(self.tk_img_fancy)
-                    time.sleep(1)
+                    magician_sprites = getattr(self, "_magician_sprites", (self.tk_img_fancy,))
+                    frame = getattr(self, "_magician_frame", 0)
+                    self.change_sprite(magician_sprites[frame % len(magician_sprites)])
+                    self._magician_frame = frame + 1
+                    time.sleep(0.45)
                     continue
                 if self._hug_mode:
                     self.change_sprite(self.tk_img_hug)

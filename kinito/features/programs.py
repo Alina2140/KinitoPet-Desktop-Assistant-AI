@@ -301,6 +301,58 @@ class ProgramsMixin:
             self.speak(dlg.pick_line(dlg.SECRET_IMAGES_NOT_FOUND_LINES))
             self.speak_random_question()
 
+    def show_popup_image(
+        self,
+        image_path,
+        *,
+        width=360,
+        height=280,
+        x=None,
+        y=None,
+        title="KinitoPET",
+        on_close=None,
+        modal=False,
+    ):
+        """Show *image_path* in a compact popup window."""
+        try:
+            img = Image.open(image_path)
+        except OSError:
+            if on_close is not None:
+                on_close()
+            return
+
+        popup = Toplevel(self.root)
+        popup.title(title)
+        apply_window_icon(popup)
+        popup.geometry(f"{width}x{height}")
+        popup.wm_attributes("-topmost", True)
+
+        tk_img = ImageTk.PhotoImage(img)
+        label = Label(popup, image=tk_img)
+        label.image = tk_img
+        label.pack(fill="both", expand=True)
+
+        if x is None or y is None:
+            vroot_x = self.root.winfo_vrootx()
+            vroot_y = self.root.winfo_vrooty()
+            vroot_w = self.root.winfo_vrootwidth()
+            vroot_h = self.root.winfo_vrootheight()
+            x = vroot_x + (vroot_w - width) // 2
+            y = vroot_y + (vroot_h - height) // 2
+        popup.geometry(f"{width}x{height}+{int(x)}+{int(y)}")
+
+        def _handle_close():
+            if on_close is not None:
+                on_close()
+            try:
+                popup.destroy()
+            except tk.TclError:
+                pass
+
+        popup.protocol("WM_DELETE_WINDOW", _handle_close)
+        if modal:
+            popup.wait_window(popup)
+
     def show_image_window(self, image_path):
         """Show *image_path* in a modal window and freeze mouse until closed."""
         try:
