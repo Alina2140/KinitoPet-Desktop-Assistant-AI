@@ -68,6 +68,8 @@ class LLMMixin(SpeechChatMixin):
         *,
         ai_hint=None,
         skip_ai=False,
+        speech_accompaniment_path=None,
+        speech_accompaniment_volume=None,
     ):
         """Speak *text*, optionally replacing scripted lines with Ollama output."""
         if skip_ai or wait_for_tts or not self._should_ai_replace(text):
@@ -83,6 +85,8 @@ class LLMMixin(SpeechChatMixin):
                 allow_in_focus=allow_in_focus,
                 preserve_sprite=preserve_sprite,
                 question=question,
+                speech_accompaniment_path=speech_accompaniment_path,
+                speech_accompaniment_volume=speech_accompaniment_volume,
             )
             return
 
@@ -100,9 +104,22 @@ class LLMMixin(SpeechChatMixin):
             preserve_sprite=preserve_sprite,
             question=question,
             max_tokens=max_tokens,
+            speech_accompaniment_path=speech_accompaniment_path,
+            speech_accompaniment_volume=speech_accompaniment_volume,
         )
 
-    def speak_whisper(self, text, pitch=25, slow=False, long_bubble=False, *, ai_hint=None, skip_ai=False):
+    def speak_whisper(
+        self,
+        text,
+        pitch=25,
+        slow=False,
+        long_bubble=False,
+        *,
+        ai_hint=None,
+        skip_ai=False,
+        speech_accompaniment_path=None,
+        speech_accompaniment_volume=None,
+    ):
         """Speak with whisper voices, with the same optional AI replacement."""
         self.speak(
             text,
@@ -112,6 +129,8 @@ class LLMMixin(SpeechChatMixin):
             long_bubble=long_bubble,
             ai_hint=ai_hint,
             skip_ai=skip_ai,
+            speech_accompaniment_path=speech_accompaniment_path,
+            speech_accompaniment_volume=speech_accompaniment_volume,
         )
 
     def _should_ai_replace(self, text: str | None) -> bool:
@@ -129,11 +148,16 @@ class LLMMixin(SpeechChatMixin):
     def _build_generation_prompt(self, scripted_text: str, ai_hint: str | None) -> str:
         """Build the Ollama prompt for replacing a scripted line."""
         if ai_hint and not scripted_text.strip():
-            return ai_hint
-        if ai_hint:
-            return f"{ai_hint}\nInspired by: {scripted_text.strip()}"
-        hint = prompts.replacement_hint_for(scripted_text)
-        return prompts.REPLACEMENT_PROMPT.format(scripted=scripted_text.strip(), hint=hint)
+            prompt = ai_hint
+        elif ai_hint:
+            prompt = f"{ai_hint}\nInspired by: {scripted_text.strip()}"
+        else:
+            hint = prompts.replacement_hint_for(scripted_text)
+            prompt = prompts.REPLACEMENT_PROMPT.format(
+                scripted=scripted_text.strip(),
+                hint=hint,
+            )
+        return prompts.append_time_context_if_needed(prompt, scripted_text, ai_hint)
 
     def _generate_and_speak(self, scripted_text: str, *, ai_hint=None, max_tokens=64, **speak_kwargs):
         """Generate a line in the background, then speak it or fall back to scripted text."""

@@ -154,3 +154,55 @@ def test_play_sfx_swallows_pygame_errors(goodbye_app, tmp_path):
         ),
     ):
         goodbye_app.play_sfx(str(mp3))
+
+
+def test_stop_speech_accompaniment_music_stops_flagged_playback(goodbye_app):
+    goodbye_app._speech_accompaniment_active = True
+    goodbye_app._on_background_music_stopped = MagicMock()
+
+    with (
+        patch("kinito.app.pygame.mixer.get_init", return_value=True),
+        patch("kinito.app.pygame.mixer.music") as music,
+    ):
+        FloatingAssistant.stop_speech_accompaniment_music(goodbye_app)
+
+    music.stop.assert_called_once()
+    goodbye_app._on_background_music_stopped.assert_not_called()
+    assert goodbye_app._speech_accompaniment_active is False
+
+
+def test_stop_speech_accompaniment_music_ignores_user_music(goodbye_app):
+    goodbye_app._speech_accompaniment_active = False
+    goodbye_app.stop_background_music = MagicMock()
+
+    FloatingAssistant.stop_speech_accompaniment_music(goodbye_app)
+
+    goodbye_app.stop_background_music.assert_not_called()
+
+
+def test_play_mp3_marks_speech_accompaniment(goodbye_app, tmp_path):
+    mp3 = tmp_path / "poem.mp3"
+    mp3.write_bytes(b"fake")
+
+    with (
+        patch.object(goodbye_app, "_ensure_mixer"),
+        patch("kinito.app.pygame.mixer.music") as music,
+    ):
+        goodbye_app.play_mp3(str(mp3), speech_accompaniment=True)
+
+    assert goodbye_app._speech_accompaniment_active is True
+    music.play.assert_called_once()
+
+
+def test_play_mp3_clears_speech_accompaniment_for_user_music(goodbye_app, tmp_path):
+    mp3 = tmp_path / "song.mp3"
+    mp3.write_bytes(b"fake")
+    goodbye_app._speech_accompaniment_active = True
+
+    with (
+        patch.object(goodbye_app, "_ensure_mixer"),
+        patch("kinito.app.pygame.mixer.music"),
+    ):
+        goodbye_app.play_mp3(str(mp3))
+
+    assert goodbye_app._speech_accompaniment_active is False

@@ -56,13 +56,17 @@ class ContentMixin:
     def say_random_poem(self):
         """Recite a random poem in Kinito's normal voice, optionally with background music."""
         poem = random.choice(POEMS)
-        if poem.get("play_music") and not poem.get("whisper"):
-            self.play_mp3(
-                newbeginnings_file_path,
-                volume=self.POEM_BACKGROUND_MUSIC_VOLUME,
-            )
+        play_music = poem.get("play_music") and not poem.get("whisper")
+        accompaniment_path = newbeginnings_file_path if play_music else None
+        accompaniment_volume = self.POEM_BACKGROUND_MUSIC_VOLUME if play_music else None
         if poem.get("whisper"):
-            self.speak_whisper(poem["text"], long_bubble=True, ai_hint=prompts.POEM_PROMPT)
+            self.speak_whisper(
+                poem["text"],
+                long_bubble=True,
+                ai_hint=prompts.POEM_PROMPT,
+                speech_accompaniment_path=accompaniment_path,
+                speech_accompaniment_volume=accompaniment_volume,
+            )
         else:
             self.speak(
                 poem["text"],
@@ -70,6 +74,8 @@ class ContentMixin:
                 long_bubble=True,
                 voice_candidates=SpeechMixin.VOICE_NORMAL_CANDIDATES,
                 ai_hint=prompts.POEM_PROMPT,
+                speech_accompaniment_path=accompaniment_path,
+                speech_accompaniment_volume=accompaniment_volume,
             )
 
     def spontaneous_nap(self):

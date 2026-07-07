@@ -49,13 +49,43 @@ def movement():
 def test_on_mouse_down_stops_moving_and_plays_bomp(movement):
     movement.moving = True
     movement.stop_background_music = MagicMock()
-    event = MagicMock(x_root=50, y_root=60)
+    movement._stop_audio_for_drag = MagicMock()
+    event = MagicMock(x_root=50, y_root=60, widget=movement.panel)
     movement.on_mouse_down(event)
     assert movement.is_dragging is True
     assert movement.moving is False
     assert movement._drag_moved is False
-    movement.stop_background_music.assert_called_once()
+    movement._stop_audio_for_drag.assert_called_once()
     movement.play_sfx.assert_called_once()
+
+
+def test_stop_audio_for_drag_keeps_user_music(movement):
+    movement._user_music_path = "song.mp3"
+    movement.stop_background_music = MagicMock()
+    movement.stop_speech_accompaniment_music = MagicMock()
+
+    movement._stop_audio_for_drag()
+
+    movement.stop_background_music.assert_not_called()
+    movement.stop_speech_accompaniment_music.assert_not_called()
+
+
+def test_stop_audio_for_drag_stops_speech_accompaniment(movement):
+    movement._speech_accompaniment_active = True
+    movement.stop_speech_accompaniment_music = MagicMock()
+
+    movement._stop_audio_for_drag()
+
+    movement.stop_speech_accompaniment_music.assert_called_once()
+
+
+def test_setup_mouse_bindings_drags_sprite_only(movement):
+    movement.panel = MagicMock()
+    movement.root = MagicMock()
+    movement.setup_mouse_bindings()
+    movement.panel.bind.assert_called_once_with("<Button-1>", movement.on_mouse_down)
+    movement.root.bind.assert_any_call("<B1-Motion>", movement.on_mouse_move)
+    movement.root.bind.assert_any_call("<ButtonRelease-1>", movement.on_mouse_up)
 
 
 def test_on_mouse_up_plays_bomp_after_drag(movement):
@@ -238,6 +268,23 @@ def test_smooth_movement_calls_ai_idle_line(movement):
     movement.speak_random_question.assert_not_called()
 
 
+def test_smooth_movement_waits_while_reading_idle(movement):
+    movement._reading_idle_active = True
+    movement.move_towards = MagicMock()
+    movement.play_sfx = MagicMock()
+    sleeps = iter([None])
+
+    def stop_after_wait(*_args, **_kwargs):
+        movement._running = False
+
+    with patch("kinito.movement.time.sleep", side_effect=stop_after_wait) as sleep_mock:
+        movement.smooth_movement()
+
+    movement.move_towards.assert_not_called()
+    movement.play_sfx.assert_not_called()
+    sleep_mock.assert_called_once_with(0.1)
+
+
 def test_is_reading_idle_active_requires_uninterrupted_state(movement):
     movement._reading_idle_active = True
     movement._focus_mode = False
@@ -250,13 +297,41 @@ def test_is_reading_idle_active_requires_uninterrupted_state(movement):
     movement.talking = True
     assert movement._is_reading_idle_active() is False
 
+    movement.talking = False
+    movement._fancy_mode = True
+    assert movement._is_reading_idle_active() is False
+
 
 def test_maybe_play_reading_page_turn_skips_when_interrupted(movement):
     movement.play_sfx = MagicMock()
     movement._reading_idle_active = True
+    movement._reading_idle_session = 1
     movement.talking = True
 
-    movement._maybe_play_reading_page_turn()
+    movement._maybe_play_reading_page_turn(1)
+
+    movement.play_sfx.assert_not_called()
+
+
+def test_maybe_play_reading_page_turn_skips_when_fancy_mode(movement):
+    movement.play_sfx = MagicMock()
+    movement._reading_idle_active = True
+    movement._reading_idle_session = 1
+    movement._fancy_mode = True
+
+    with patch("kinito.movement.random.random", return_value=0.0):
+        movement._maybe_play_reading_page_turn(1)
+
+    movement.play_sfx.assert_not_called()
+
+
+def test_maybe_play_reading_page_turn_skips_stale_session(movement):
+    movement.play_sfx = MagicMock()
+    movement._reading_idle_active = True
+    movement._reading_idle_session = 2
+
+    with patch("kinito.movement.random.random", return_value=0.0):
+        movement._maybe_play_reading_page_turn(1)
 
     movement.play_sfx.assert_not_called()
 
@@ -264,9 +339,9 @@ def test_maybe_play_reading_page_turn_skips_when_interrupted(movement):
 def test_maybe_play_reading_page_turn_plays_when_active(movement):
     movement.play_sfx = MagicMock()
     movement._reading_idle_active = True
-    movement.talking = False
+    movement._reading_idle_session = 1
 
     with patch("kinito.movement.random.random", return_value=0.0):
-        movement._maybe_play_reading_page_turn()
+        movement._maybe_play_reading_page_turn(1)
 
     movement.play_sfx.assert_called_once()

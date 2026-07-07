@@ -437,6 +437,12 @@ MUSIC_PLAYER_ERROR_LINES = [
     "Hmm, I couldn't play that file. Maybe try another one?",
     "Something went wrong with that MP3. Sorry about that!",
 ]
+MUSIC_MANAGE_PROMPT = "Music is still playing. What would you like to do?"
+MUSIC_STOPPED_LINES = [
+    "Music off. The silence is dramatic.",
+    "Stopped the song. Your ears can rest now.",
+    "Okay, no more music. Unless you change your mind.",
+]
 
 # Hug
 HUG_QUESTION_MARKER = "give me a hug"
@@ -985,6 +991,8 @@ BUTTON_FUN_FACT = "Fun Fact"
 BUTTON_CHAT = "Chat"
 BUTTON_VISIT_WEBSITE = "Visit a Website"
 BUTTON_PLAY_MUSIC = "Play Music"
+BUTTON_STOP_MUSIC = "Stop music"
+BUTTON_CHANGE_SONG = "Pick another song"
 BUTTON_PLAY_GAME = "Play a Game"
 BUTTON_QUICK_GAMES = "Quick Games"
 BUTTON_BOARD_GAMES = "Board Games"

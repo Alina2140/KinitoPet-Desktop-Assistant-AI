@@ -1,5 +1,10 @@
 """Prompts and fallback lines for Ollama-powered chat."""
 
+from __future__ import annotations
+
+import re
+from datetime import datetime
+
 SYSTEM_PROMPT = """You are Kinito, a cheerful desktop companion inspired by the game KinitoPET.
 You live in a small floating window on the user's screen and keep them company while they work.
 
@@ -47,6 +52,89 @@ REPLACEMENT_PROMPT = (
     "Say it in your own words as Kinito instead. {hint} "
     "Spoken style, no markdown."
 )
+
+_TIME_AWARE_AI_HINTS = frozenset({IDLE_PROMPT, RANDOM_QUESTION_PROMPT})
+
+_TIME_CONTEXT_PATTERNS = (
+    r"\bnight\b",
+    r"\btonight\b",
+    r"\blast night\b",
+    r"\bmorning\b",
+    r"\bgood morning\b",
+    r"\bevening\b",
+    r"\bafternoon\b",
+    r"\bnoon\b",
+    r"\bmidday\b",
+    r"\bmidnight\b",
+    r"\bsleep\b",
+    r"\bslept\b",
+    r"\bcoffee\b",
+    r"\bbreakfast\b",
+    r"\blunch\b",
+    r"\bdinner\b",
+    r"\btoday\b",
+    r"\byour day\b",
+    r"\bhow is your day\b",
+    r"\bmorgen\b",
+    r"\bmittag\b",
+    r"\babend\b",
+    r"\bnacht\b",
+    r"\bheute\b",
+    r"\bschlaf",
+    r"\bkaffee\b",
+    r"\btime\b",
+    r"\{time\}",
+    r"\bearly\b",
+    r"\blate\b",
+    r"\bsunrise\b",
+    r"\bsunset\b",
+    r"\btwilight\b",
+    r"\bgoodnight\b",
+    r"\bgood day\b",
+)
+
+
+def scripted_line_needs_time_context(scripted: str | None, ai_hint: str | None = None) -> bool:
+    """Return True when a generated line should know the user's local time."""
+    if ai_hint in _TIME_AWARE_AI_HINTS:
+        return True
+    blob = f"{scripted or ''} {ai_hint or ''}".lower()
+    return any(re.search(pattern, blob) for pattern in _TIME_CONTEXT_PATTERNS)
+
+
+def local_time_context(now: datetime | None = None) -> str:
+    """Return a short local-time note for time-sensitive AI lines."""
+    moment = now or datetime.now()
+    hour = moment.hour
+    if 5 <= hour < 11:
+        period = "morning"
+        period_de = "Morgen"
+    elif 11 <= hour < 14:
+        period = "midday"
+        period_de = "Mittag"
+    elif 14 <= hour < 17:
+        period = "afternoon"
+        period_de = "Nachmittag"
+    elif 17 <= hour < 21:
+        period = "evening"
+        period_de = "Abend"
+    else:
+        period = "night"
+        period_de = "Nacht"
+
+    time_str = moment.strftime("%H:%M")
+    return (
+        f"Current local time for the user: {time_str} ({period}; {period_de}). "
+        "Match your wording to this time of day. "
+        "Do not ask about night, sleep, or morning routines when it is the wrong time."
+    )
+
+
+def append_time_context_if_needed(prompt: str, scripted: str | None, ai_hint: str | None = None) -> str:
+    """Append local time context only when the line is time-sensitive."""
+    if not scripted_line_needs_time_context(scripted, ai_hint):
+        return prompt
+    return f"{prompt}\n\n{local_time_context()}"
 
 
 def replacement_hint_for(scripted: str) -> str:

@@ -157,3 +157,25 @@ def test_speak_uses_ai_for_plain_lines(mock_speak, llm_app):
 
     mock_speak.assert_called_once()
     assert mock_speak.call_args.args[0] == "Just checking in on you."
+
+
+@patch.object(SpeechMixin, "speak")
+def test_speak_preserves_poem_accompaniment_through_ai(mock_speak, llm_app):
+    llm_app.close_speech_bubble = MagicMock()
+
+    with patch("kinito.features.llm.find_dialog_spec", return_value=None):
+        with patch("kinito.features.llm.threading.Thread") as thread_cls:
+            thread_cls.return_value = MagicMock()
+            llm_app.speak(
+                "Roses are red",
+                long_bubble=True,
+                speech_accompaniment_path="poem.mp3",
+                speech_accompaniment_volume=0.75,
+            )
+            thread_cls.call_args.kwargs["target"]()
+
+    mock_speak.assert_called_once()
+    assert mock_speak.call_args.args[0] == "Just checking in on you."
+    assert mock_speak.call_args.kwargs["speech_accompaniment_path"] == "poem.mp3"
+    assert mock_speak.call_args.kwargs["speech_accompaniment_volume"] == 0.75
+    assert mock_speak.call_args.kwargs["long_bubble"] is True

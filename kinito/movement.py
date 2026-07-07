@@ -37,19 +37,30 @@ class MovementMixin:
     SURF_MOVE_FRAME_DELAY = 0.022
 
     def setup_mouse_bindings(self):
-        """Bind left-click drag events for repositioning Kinito."""
-        self.root.bind("<Button-1>", self.on_mouse_down)
+        """Bind drag to the sprite only so control buttons stay clickable."""
+        self.panel.bind("<Button-1>", self.on_mouse_down)
         self.root.bind("<B1-Motion>", self.on_mouse_move)
         self.root.bind("<ButtonRelease-1>", self.on_mouse_up)
         self.x, self.y = self.root.winfo_rootx(), self.root.winfo_rooty()
+
+    def _stop_audio_for_drag(self) -> None:
+        """Stop poem/ambient music on drag, but keep user-selected songs playing."""
+        if getattr(self, "_user_music_path", None):
+            return
+        if getattr(self, "_speech_accompaniment_active", False) and hasattr(
+            self, "stop_speech_accompaniment_music"
+        ):
+            self.stop_speech_accompaniment_music()
+            return
+        if hasattr(self, "stop_background_music"):
+            self.stop_background_music()
 
     def on_mouse_down(self, event):
         """Begin dragging, stop roam sounds, and play the bomp click sound."""
         self.is_dragging = True
         self._drag_moved = False
         self.moving = False
-        if hasattr(self, "stop_background_music"):
-            self.stop_background_music()
+        self._stop_audio_for_drag()
         if not self._should_skip_drag_sounds():
             self.play_sfx(bomp_file_path)
         self.root.update_idletasks()
@@ -254,20 +265,39 @@ class MovementMixin:
             and not self.moving
             and not self.is_dragging
             and not getattr(self, "_focus_mode", False)
+            and not getattr(self, "_fancy_mode", False)
             and (not self.talking or getattr(self, "_preserve_sprite", False))
         )
 
-    def _maybe_play_reading_page_turn(self) -> None:
+    def _can_play_reading_page_turn(self, session: int) -> bool:
+        """Return True only while an uninterrupted reading-idle session is still active."""
+        return (
+            getattr(self, "_reading_idle_session", None) == session
+            and getattr(self, "_reading_idle_active", False)
+            and self._running
+            and not self.paused
+            and not self.moving
+            and not self.is_dragging
+            and not self.talking
+            and not getattr(self, "_focus_mode", False)
+            and not getattr(self, "_fancy_mode", False)
+        )
+
+    def _maybe_play_reading_page_turn(self, session: int) -> None:
         """Play a page-turn sound only during an active, uninterrupted reading idle."""
-        if not self._is_reading_idle_active():
+        if not self._can_play_reading_page_turn(session):
             return
         if random.random() >= self.READING_PAGE_TURN_CHANCE:
+            return
+        if not self._can_play_reading_page_turn(session):
             return
         self.play_sfx(page_turn_file_path, volume=self.READING_PAGE_TURN_VOLUME)
 
     def _run_reading_idle(self):
         """Animate book sprites, optionally play page-turn sounds, and trigger speech."""
         reading_sprites = getattr(self, "_reading_sprites", (self.tk_img_idle,))
+        session = getattr(self, "_reading_idle_session", 0) + 1
+        self._reading_idle_session = session
         self._reading_idle_active = True
         try:
             frame = 0
@@ -288,9 +318,10 @@ class MovementMixin:
                     break
                 frame += 1
                 self.change_sprite(reading_sprites[frame % len(reading_sprites)])
-                self._maybe_play_reading_page_turn()
+                self._maybe_play_reading_page_turn(session)
         finally:
-            self._reading_idle_active = False
+            if getattr(self, "_reading_idle_session", None) == session:
+                self._reading_idle_active = False
 
     def smooth_movement(self):
         """Background loop: roam the screen or trigger spontaneous speech/actions."""
@@ -301,6 +332,7 @@ class MovementMixin:
                 or not self._startup_complete
                 or self._is_busy_with_speech()
                 or self._is_background_music_playing()
+                or getattr(self, "_reading_idle_active", False)
             ):
                 time.sleep(0.1)
                 continue

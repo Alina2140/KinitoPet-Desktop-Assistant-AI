@@ -93,41 +93,102 @@ class ProgramsMixin:
         return max(getattr(img, "height", 0), 1)
 
     def _reminder_countdown_window_height(self) -> int:
-        """Return the assistant window height needed for sprite + countdown."""
-        button = getattr(self, "_reminder_countdown_btn", None)
-        self.root.update_idletasks()
-        button_h = button.winfo_reqheight() if button is not None else 22
-        return (
-            self._sprite_display_height()
-            + self._REMINDER_COUNTDOWN_GAP
-            + button_h
-            + self._REMINDER_COUNTDOWN_BOTTOM_MARGIN
-        )
+        """Return the assistant window height needed for sprite + active controls."""
+        return self._assistant_controls_window_height()
 
-    def _extend_window_for_reminder_countdown(self):
-        """Reserve space below the sprite so the countdown does not overlap the feet."""
-        if getattr(self, "_reminder_countdown_extended", False):
-            return
+    def _control_button_height(self, button) -> int:
+        """Return the requested height for a control button, with a safe fallback."""
+        if button is None:
+            return 22
         try:
             self.root.update_idletasks()
+            return button.winfo_reqheight()
+        except tk.TclError:
+            return 22
+
+    def _assistant_controls_active(self) -> bool:
+        """Return True while reminder or user-music controls should be visible."""
+        music_active = (
+            hasattr(self, "_user_music_controls_visible")
+            and self._user_music_controls_visible()
+        )
+        return self._reminder_is_active() or music_active
+
+    def _assistant_controls_window_height(self) -> int:
+        """Return the assistant window height needed for sprite + control buttons."""
+        height = self._sprite_display_height()
+        gap = self._REMINDER_COUNTDOWN_GAP
+        margin = self._REMINDER_COUNTDOWN_BOTTOM_MARGIN
+        reminder_btn = getattr(self, "_reminder_countdown_btn", None)
+        music_btn = getattr(self, "_music_control_btn", None)
+        if self._reminder_is_active():
+            height += gap + self._control_button_height(reminder_btn)
+        if hasattr(self, "_user_music_controls_visible") and self._user_music_controls_visible():
+            height += gap + self._control_button_height(music_btn)
+        return height + margin
+
+    def _sync_assistant_controls_layout(self):
+        """Resize the window and place reminder/music buttons under the sprite."""
+        reminder_btn = getattr(self, "_reminder_countdown_btn", None)
+        music_btn = getattr(self, "_music_control_btn", None)
+        reminder_active = self._reminder_is_active()
+        music_active = (
+            hasattr(self, "_user_music_controls_visible")
+            and self._user_music_controls_visible()
+        )
+
+        if not reminder_active and reminder_btn is not None:
+            try:
+                if reminder_btn.winfo_ismapped():
+                    reminder_btn.place_forget()
+            except tk.TclError:
+                pass
+
+        if not music_active and music_btn is not None:
+            try:
+                if music_btn.winfo_ismapped():
+                    music_btn.place_forget()
+            except tk.TclError:
+                pass
+
+        if not self._assistant_controls_active():
+            self._restore_window_after_assistant_controls()
+            return
+
+        try:
+            self.root.update_idletasks()
+            if not getattr(self, "_assistant_controls_extended", False):
+                self._assistant_controls_prev_height = max(self.root.winfo_height(), 1)
+                self._assistant_controls_extended = True
             width = max(self.root.winfo_width(), self._window_screen_size()[0], 1)
-            self._reminder_countdown_prev_height = max(self.root.winfo_height(), 1)
-            target_h = self._reminder_countdown_window_height()
+            target_h = self._assistant_controls_window_height()
             x = getattr(self, "x", self.root.winfo_x())
             y = getattr(self, "y", self.root.winfo_y())
             self.root.geometry(f"{width}x{target_h}+{x}+{y}")
-            self._reminder_countdown_extended = True
+
+            y = self._sprite_display_height() + self._REMINDER_COUNTDOWN_GAP
+            if reminder_active and reminder_btn is not None:
+                self._update_reminder_countdown_button()
+                reminder_btn.place(relx=0.5, y=y, anchor="n")
+                y += self._control_button_height(reminder_btn) + self._REMINDER_COUNTDOWN_GAP
+            if music_active and music_btn is not None:
+                self._update_music_control_button()
+                music_btn.place(relx=0.5, y=y, anchor="n")
         except tk.TclError:
             pass
 
-    def _restore_window_after_reminder_countdown(self):
-        """Shrink the assistant window after the countdown is hidden."""
-        if not getattr(self, "_reminder_countdown_extended", False):
+    def _extend_window_for_reminder_countdown(self):
+        """Reserve space below the sprite for on-screen assistant controls."""
+        self._sync_assistant_controls_layout()
+
+    def _restore_window_after_assistant_controls(self):
+        """Shrink the assistant window after all control buttons are hidden."""
+        if not getattr(self, "_assistant_controls_extended", False):
             return
         try:
             self.root.update_idletasks()
             width = max(self.root.winfo_width(), 1)
-            height = getattr(self, "_reminder_countdown_prev_height", None)
+            height = getattr(self, "_assistant_controls_prev_height", None)
             if height is None:
                 height = self._sprite_display_height()
             x = getattr(self, "x", self.root.winfo_x())
@@ -136,34 +197,20 @@ class ProgramsMixin:
         except tk.TclError:
             pass
         finally:
-            self._reminder_countdown_extended = False
-            self._reminder_countdown_prev_height = None
+            self._assistant_controls_extended = False
+            self._assistant_controls_prev_height = None
+
+    def _restore_window_after_reminder_countdown(self):
+        """Shrink the assistant window after the countdown is hidden."""
+        self._restore_window_after_assistant_controls()
 
     def _show_reminder_countdown_button(self):
         """Show the countdown button centered under Kinito's sprite."""
-        button = getattr(self, "_reminder_countdown_btn", None)
-        if button is None:
-            return
-        self._update_reminder_countdown_button()
-        try:
-            if not button.winfo_ismapped():
-                self._extend_window_for_reminder_countdown()
-                y = self._sprite_display_height() + self._REMINDER_COUNTDOWN_GAP
-                button.place(relx=0.5, y=y, anchor="n")
-        except tk.TclError:
-            pass
+        self._sync_assistant_controls_layout()
 
     def _hide_reminder_countdown_button(self):
         """Hide the countdown button when no timer is running."""
-        button = getattr(self, "_reminder_countdown_btn", None)
-        if button is None:
-            return
-        try:
-            if button.winfo_ismapped():
-                button.place_forget()
-        except tk.TclError:
-            pass
-        self._restore_window_after_reminder_countdown()
+        self._sync_assistant_controls_layout()
 
     def _clear_reminder(self):
         """Stop the active reminder and hide the countdown button."""

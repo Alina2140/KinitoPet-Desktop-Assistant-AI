@@ -63,6 +63,8 @@ def test_launch_shortcut_returns_false_on_error(programs):
 
 
 def test_show_reminder_countdown_places_below_sprite(programs):
+    import time
+
     programs.panel = MagicMock()
     programs.panel.winfo_height.return_value = 180
     programs.img_normal = MagicMock(height=180)
@@ -70,6 +72,7 @@ def test_show_reminder_countdown_places_below_sprite(programs):
     programs.root.winfo_width.return_value = 120
     programs.root.winfo_height.return_value = 180
     programs._reminder_countdown_btn.winfo_reqheight.return_value = 20
+    programs._reminder_end_at = time.monotonic() + 300
 
     programs._show_reminder_countdown_button()
 

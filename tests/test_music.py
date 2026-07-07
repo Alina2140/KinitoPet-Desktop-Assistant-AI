@@ -14,8 +14,14 @@ def music():
     stub = MusicStub()
     stub.speak = MagicMock()
     stub.play_mp3 = MagicMock()
+    stub.stop_background_music = MagicMock()
     stub.root = MagicMock()
+    stub.root.winfo_exists.return_value = True
+    stub._running = True
     stub._is_busy_with_speech = MagicMock(return_value=False)
+    stub._is_background_music_playing = MagicMock(return_value=True)
+    stub._sync_assistant_controls_layout = MagicMock()
+    stub.setup_music_control_button()
     return stub
 
 
@@ -53,7 +59,49 @@ def test_play_user_mp3_plays_and_announces(music, tmp_path):
     ):
         music.play_user_mp3(str(mp3))
     music.play_mp3.assert_called_once_with(str(mp3), volume=0.75)
+    assert music._user_music_path == str(mp3)
+    music._sync_assistant_controls_layout.assert_called_once()
     thread_cls.assert_called_once()
+
+
+def test_format_music_button_label_truncates_long_names():
+    label = MusicMixin._format_music_button_label("A" * 30)
+    assert label.startswith("♪ ")
+    assert label.endswith("…")
+    assert len(label) <= MusicMixin._MUSIC_BUTTON_LABEL_MAX + 3
+
+
+def test_open_music_controls_offers_manage_dialog(music):
+    music._user_music_path = "song.mp3"
+    music._open_music_controls()
+    music.speak.assert_called_once()
+
+
+def test_music_poll_waits_before_clearing_controls(music):
+    music._user_music_path = "song.mp3"
+    music._is_background_music_playing = MagicMock(return_value=False)
+
+    with patch("kinito.features.music.schedule_after") as schedule_after:
+        music._schedule_user_music_poll()
+
+    assert music._user_music_poll_misses == 1
+    schedule_after.assert_called_once()
+    assert music._user_music_path == "song.mp3"
+
+
+def test_stop_user_music_stops_playback_and_speaks(music):
+    music._user_music_path = "song.mp3"
+    with patch("kinito.features.music.dlg.pick_line", return_value="Stopped."):
+        music.stop_user_music()
+    music.stop_background_music.assert_called_once()
+    music.speak.assert_called_once_with("Stopped.")
+
+
+def test_on_background_music_stopped_clears_state(music):
+    music._user_music_path = "song.mp3"
+    music._on_background_music_stopped()
+    assert music._user_music_path is None
+    music._sync_assistant_controls_layout.assert_called_once()
 
 
 def test_play_random_mp3_no_files(music):

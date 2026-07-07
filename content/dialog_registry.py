@@ -293,6 +293,16 @@ def _handle_music_pick(app, response: str) -> None:
         app.play_random_mp3()
 
 
+def _handle_music_manage(app, response: str) -> None:
+    """Stop or replace the song that is currently playing."""
+    if response == dlg.BUTTON_STOP_MUSIC:
+        app.stop_user_music()
+    elif response == dlg.BUTTON_CHANGE_SONG:
+        app.root.after(0, app.pick_and_play_mp3)
+    elif response == dlg.BUTTON_CATEGORY_RANDOM:
+        app.play_random_mp3()
+
+
 def _handle_poem(app, response: str) -> None:
     """Accept a poem, or reject it (with optional window minimizing)."""
     if response == dlg.BUTTON_YES:
@@ -662,6 +672,18 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
             buttons=(dlg.BUTTON_PICK_SONG, dlg.BUTTON_CATEGORY_RANDOM, dlg.BUTTON_NOT_NOW),
         ),
         _handle_music_pick,
+    ),
+    DialogSpec(
+        dlg.MUSIC_MANAGE_PROMPT,
+        DialogUI(
+            "buttons",
+            buttons=(
+                dlg.BUTTON_STOP_MUSIC,
+                dlg.BUTTON_CHANGE_SONG,
+                dlg.BUTTON_CATEGORY_RANDOM,
+            ),
+        ),
+        _handle_music_manage,
     ),
     DialogSpec(
         dlg.STORY_QUESTION_MARKER,

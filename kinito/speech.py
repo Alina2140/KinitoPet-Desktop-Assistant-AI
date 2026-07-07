@@ -190,6 +190,13 @@ class SpeechMixin:
         """Suppress drag sounds when speech or music would clash."""
         return self._is_busy_with_speech() or self._is_background_music_playing()
 
+    def _start_speech_accompaniment(self, file_path, volume=None):
+        """Start poem-style background music after any prior speech was interrupted."""
+        if not file_path or not hasattr(self, "play_mp3"):
+            return
+        play_volume = 0.6 if volume is None else volume
+        self.play_mp3(file_path, volume=play_volume, speech_accompaniment=True)
+
     def _load_available_voices(self):
         """Query balcon.exe for installed TTS voices."""
         if not os.path.isfile(balconexe_directory):
@@ -254,6 +261,11 @@ class SpeechMixin:
 
     def interrupt_speech(self):
         """Stop current TTS and invalidate pending bubble callbacks."""
+        was_active = (
+            getattr(self, "talking", False)
+            or self._has_active_speech_bubble()
+            or getattr(self, "_ai_generating", False)
+        )
         self._next_speech_epoch()
         self._stop_active_tts()
         self._cancel_bubble_close_timer()
@@ -269,6 +281,8 @@ class SpeechMixin:
         self._preserve_sprite = False
         self._talk_sprite_mode = "talking"
         self.talking = False
+        if was_active and hasattr(self, "stop_speech_accompaniment_music"):
+            self.stop_speech_accompaniment_music()
 
     def _run_pyttsx3_fallback(self, text):
         """Speak *text* via pyttsx3 when balcon is unavailable."""
@@ -371,12 +385,15 @@ class SpeechMixin:
         *,
         ai_hint=None,
         skip_ai=False,
+        speech_accompaniment_path=None,
+        speech_accompaniment_volume=None,
     ):
         """Speak *text* in a background thread; optionally show and auto-close a bubble."""
         del ai_hint, skip_ai  # handled by LLMMixin when present in the MRO
         if getattr(self, "_focus_mode", False) and not allow_in_focus:
             return
         self.interrupt_speech()
+        self._start_speech_accompaniment(speech_accompaniment_path, speech_accompaniment_volume)
         epoch = self._speech_epoch
         self._tts_cancelled = False
         self.talking = True
@@ -397,6 +414,8 @@ class SpeechMixin:
                 self._run_tts(text, pitch, voice_candidates, speech_epoch=epoch)
                 if epoch != self._speech_epoch:
                     return
+                if hasattr(self, "stop_speech_accompaniment_music"):
+                    self.stop_speech_accompaniment_music()
                 if show_bubble and find_dialog_spec(text) is None:
                     delay = self._bubble_close_delay_after_tts(text, long_read=long_bubble)
                     self.root.after(

@@ -80,7 +80,11 @@ def test_say_random_poem_whisper(content):
     with patch("kinito.features.content.random.choice", return_value=poem):
         content.say_random_poem()
     content.speak_whisper.assert_called_once_with(
-        "secret poem", long_bubble=True, ai_hint=ANY
+        "secret poem",
+        long_bubble=True,
+        ai_hint=ANY,
+        speech_accompaniment_path=None,
+        speech_accompaniment_volume=None,
     )
 
 
@@ -88,16 +92,15 @@ def test_say_random_poem_plays_music_and_uses_normal_voice(content):
     poem = {"text": "loud poem", "whisper": False, "play_music": True}
     with patch("kinito.features.content.random.choice", return_value=poem):
         content.say_random_poem()
-    content.play_mp3.assert_called_once_with(
-        newbeginnings_file_path,
-        volume=ContentMixin.POEM_BACKGROUND_MUSIC_VOLUME,
-    )
+    content.play_mp3.assert_not_called()
     content.speak.assert_called_once_with(
         "loud poem",
         pitch=45,
         long_bubble=True,
         voice_candidates=SpeechMixin.VOICE_NORMAL_CANDIDATES,
         ai_hint=ANY,
+        speech_accompaniment_path=newbeginnings_file_path,
+        speech_accompaniment_volume=ContentMixin.POEM_BACKGROUND_MUSIC_VOLUME,
     )
 
 
