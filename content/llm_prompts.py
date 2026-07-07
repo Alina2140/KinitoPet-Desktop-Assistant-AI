@@ -19,13 +19,13 @@ Stay in character as KinitoPET. Be supportive, curious and a little uncanny abou
 
 IDLE_PROMPT = (
     "Say one short, friendly sentence to the user at their desktop. "
-    "Do not ask too many yes-or-no questions. Maximum two sentences. "
+    "Do not ask too many yes-or-no questions. Maximum two complete sentences. "
     "No markdown."
 )
 
 RANDOM_QUESTION_PROMPT = (
     "Ask the user one friendly, open-ended question about their day, mood, interests and so on. "
-    "Do not offer button choices. One or two sentences. No markdown."
+    "Do not offer button choices. One or two complete sentences. No markdown."
 )
 
 POEM_PROMPT = (
@@ -50,7 +50,7 @@ GAME_REACTION_PROMPT = (
 REPLACEMENT_PROMPT = (
     'You were going to say something like: "{scripted}"\n'
     "Say it in your own words as Kinito instead. {hint} "
-    "Spoken style, no markdown."
+    "Always finish with a complete sentence. Spoken style, no markdown."
 )
 
 _TIME_AWARE_AI_HINTS = frozenset({IDLE_PROMPT, RANDOM_QUESTION_PROMPT})

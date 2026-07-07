@@ -43,8 +43,7 @@ class SpeechChatMixin:
         self._chat_log_widget = None
         self._chat_entry_widget = None
 
-        container = tk.Frame(self.speech_bubble, bg=self.BUBBLE_BG)
-        container.pack(fill=tk.BOTH, expand=True, anchor="w")
+        container = self._create_bubble_shell(self.speech_bubble)
 
         log_frame = tk.Frame(container, bg=self.BUBBLE_BG)
         log_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=(5, 0), anchor="w")
@@ -55,7 +54,8 @@ class SpeechChatMixin:
             width=48,
             wrap=tk.WORD,
             bg=self.BUBBLE_BG,
-            fg="black",
+            fg=self.BUBBLE_FG,
+            font=self._bubble_font(),
             relief=tk.FLAT,
             state=tk.DISABLED,
             cursor="arrow",
@@ -78,16 +78,25 @@ class SpeechChatMixin:
         self._speech_bubble_button_frame = input_frame
 
         entry_width = self.get_entry_char_width("Type your message here...")
-        entry = tk.Entry(input_frame, bg=self.BUBBLE_BG, fg="black", width=entry_width)
+        entry = tk.Entry(
+            input_frame,
+            bg="white",
+            fg=self.BUBBLE_FG,
+            font=self._bubble_font(),
+            width=entry_width,
+            relief=tk.SOLID,
+            borderwidth=1,
+        )
         entry.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=2)
         entry.bind("<Return>", self._handle_chat_entry_submit)
         self._chat_entry_widget = entry
 
-        close_button = tk.Button(
+        close_button = self._create_bubble_button(
             input_frame,
-            text="×",
+            "×",
+            self.close_chat_mode,
             width=2,
-            command=self.close_chat_mode,
+            padx=4,
         )
         close_button.pack(side=tk.LEFT, padx=(5, 0))
         entry.focus_set()

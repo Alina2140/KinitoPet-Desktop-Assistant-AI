@@ -159,8 +159,14 @@ class LLMMixin(SpeechChatMixin):
             )
         return prompts.append_time_context_if_needed(prompt, scripted_text, ai_hint)
 
-    def _generate_and_speak(self, scripted_text: str, *, ai_hint=None, max_tokens=64, **speak_kwargs):
+    def _generate_and_speak(self, scripted_text: str, *, ai_hint=None, max_tokens=None, **speak_kwargs):
         """Generate a line in the background, then speak it or fall back to scripted text."""
+        if max_tokens is None:
+            max_tokens = (
+                self._llm_config.max_tokens_long
+                if speak_kwargs.get("long_bubble")
+                else self._llm_config.max_tokens_short
+            )
         self._show_ai_thinking_sprite()
         prompt = self._build_generation_prompt(scripted_text, ai_hint)
 

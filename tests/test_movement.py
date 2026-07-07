@@ -272,7 +272,6 @@ def test_smooth_movement_waits_while_reading_idle(movement):
     movement._reading_idle_active = True
     movement.move_towards = MagicMock()
     movement.play_sfx = MagicMock()
-    sleeps = iter([None])
 
     def stop_after_wait(*_args, **_kwargs):
         movement._running = False

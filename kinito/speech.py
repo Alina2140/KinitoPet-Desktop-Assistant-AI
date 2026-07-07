@@ -15,6 +15,12 @@ from content.dialog_registry import (
     handle_dialog_response,
 )
 from kinito.assets import balconexe_directory, engine, starttalk_file_path, stoptalk_file_path
+from kinito.bubble_ui import (
+    ChamferedButton,
+    draw_bubble_shell,
+    measure_chamfered_button,
+    outline_canvas_pad,
+)
 from kinito.tk_timers import schedule_after
 
 
@@ -22,8 +28,21 @@ class SpeechMixin:
     """TTS playback, speech bubbles, and user response handling."""
 
     BUBBLE_MAX_WIDTH = 800
-    BUBBLE_BG = "light gray"
+    BUBBLE_BG = "#FFF8E7"
+    BUBBLE_BORDER = "#000000"
+    BUBBLE_FG = "#111111"
     BUBBLE_TRANSPARENT_BG = "white"
+    BUBBLE_BORDER_WIDTH = 1
+    BUBBLE_CHAMFER = 8
+    BUBBLE_BTN_CHAMFER = 5
+    BUBBLE_TAIL_HEIGHT = 12
+    BUBBLE_TAIL_HALF_WIDTH = 11
+    BUBBLE_PAD_X = 12
+    BUBBLE_PAD_Y = 10
+    BUBBLE_BTN_BG = "#fff1ce"
+    BUBBLE_BTN_ACTIVE = "#FFE9A8"
+    BUBBLE_BTN_PAD_X = 8
+    BUBBLE_BTN_PAD_Y = 2
     DISMISS_RESPONSE_BUTTONS = frozenset(
         {
             dlg.BUTTON_NOT_NOW,
@@ -59,6 +78,140 @@ class SpeechMixin:
         """Return the maximum width of a speech bubble in pixels."""
         return self.BUBBLE_MAX_WIDTH
 
+    def _bubble_font(self):
+        """Return the font used inside KinitoPET-style speech bubbles."""
+        if os.name == "nt":
+            return ("Tahoma", 10, "italic")
+        return ("Helvetica", 11, "italic")
+
+    def _bubble_button_font(self):
+        """Return the font used on speech-bubble action buttons."""
+        if os.name == "nt":
+            return ("Tahoma", 10)
+        return ("Helvetica", 11)
+
+    def _bubble_button_options(self, **extra):
+        """Return shared styling kwargs for speech-bubble action buttons."""
+        del extra
+        return {
+            "font": self._bubble_button_font(),
+            "bg": self.BUBBLE_BTN_BG,
+            "active_bg": self.BUBBLE_BTN_ACTIVE,
+            "fg": self.BUBBLE_FG,
+            "border": self.BUBBLE_BORDER,
+            "border_width": self.BUBBLE_BORDER_WIDTH,
+            "chamfer": self.BUBBLE_BTN_CHAMFER,
+            "padx": self.BUBBLE_BTN_PAD_X,
+            "pady": self.BUBBLE_BTN_PAD_Y,
+            "cursor": "hand2",
+        }
+
+    def _create_bubble_button(self, parent, text, command, **extra):
+        """Create a speech-bubble button with chamfered corners."""
+        options = self._bubble_button_options()
+        options.update(extra)
+        return ChamferedButton(parent, text=text, command=command, **options)
+
+    def _create_bubble_shell(self, parent):
+        """Build the cream speech panel with chamfered corners and bottom tail."""
+        outer = tk.Frame(parent, bg=self.BUBBLE_TRANSPARENT_BG)
+        outer.pack(anchor="w")
+
+        shell = tk.Canvas(
+            outer,
+            bg=self.BUBBLE_TRANSPARENT_BG,
+            highlightthickness=0,
+            borderwidth=0,
+        )
+        shell.pack(anchor="w")
+
+        body = tk.Frame(shell, bg=self.BUBBLE_BG)
+        body_window = shell.create_window(0, 0, window=body, anchor="nw")
+
+        self._speech_bubble_outer = outer
+        self._speech_bubble_canvas = shell
+        self._speech_bubble_body = body
+        self._speech_bubble_body_window = body_window
+        return body
+
+    def _kinito_screen_center_x(self):
+        """Return Kinito's horizontal center in screen coordinates."""
+        kinito_x = self.root.winfo_rootx()
+        kinito_y = self.root.winfo_rooty()
+        if kinito_x <= 0 or kinito_y <= 0:
+            kinito_x = getattr(self, "x", kinito_x)
+        kinito_w = max(
+            self.root.winfo_width(),
+            getattr(getattr(self, "img_normal", None), "width", 0),
+            1,
+        )
+        return kinito_x + (kinito_w // 2)
+
+    def _bubble_tail_center_x(self, tail_width):
+        """Return where the bubble tail should sit to point at Kinito."""
+        if tail_width <= 0:
+            return 0
+        if not self._has_active_speech_bubble():
+            return tail_width // 2
+        try:
+            aim_x = self._kinito_screen_center_x() - self.speech_bubble.winfo_rootx()
+        except (tk.TclError, AttributeError):
+            return tail_width // 2
+        margin = self.BUBBLE_TAIL_HALF_WIDTH + self.BUBBLE_BORDER_WIDTH
+        if tail_width <= (2 * margin):
+            return tail_width // 2
+        return max(margin, min(int(aim_x), tail_width - margin))
+
+    def _redraw_bubble_shell(self):
+        """Resize the bubble chrome and redraw chamfered corners plus tail."""
+        canvas = getattr(self, "_speech_bubble_canvas", None)
+        body = getattr(self, "_speech_bubble_body", None)
+        body_window = getattr(self, "_speech_bubble_body_window", None)
+        if (
+            canvas is None
+            or body is None
+            or body_window is None
+            or not self._has_active_speech_bubble()
+        ):
+            return
+        try:
+            body.update_idletasks()
+            content_w = max(body.winfo_reqwidth(), body.winfo_width(), 1)
+            content_h = max(body.winfo_reqheight(), body.winfo_height(), 1)
+            inset = self.BUBBLE_CHAMFER + self.BUBBLE_BORDER_WIDTH
+            outline_pad = outline_canvas_pad(self.BUBBLE_BORDER_WIDTH)
+            panel_w = content_w + (2 * inset)
+            panel_h = content_h + (2 * inset) + self.BUBBLE_TAIL_HEIGHT
+            canvas.configure(
+                width=panel_w + (2 * outline_pad),
+                height=panel_h + outline_pad,
+            )
+            canvas.coords(body_window, inset + outline_pad, inset + outline_pad)
+            canvas.itemconfigure(body_window, width=content_w, height=content_h)
+            tail_center_x = self._bubble_tail_center_x(panel_w)
+            draw_bubble_shell(
+                canvas,
+                panel_width=panel_w,
+                body_height=content_h,
+                tail_center_x=tail_center_x,
+                bg=self.BUBBLE_BG,
+                border=self.BUBBLE_BORDER,
+                border_width=self.BUBBLE_BORDER_WIDTH,
+                chamfer=self.BUBBLE_CHAMFER,
+                tail_height=self.BUBBLE_TAIL_HEIGHT,
+                tail_half_width=self.BUBBLE_TAIL_HALF_WIDTH,
+                offset_x=outline_pad,
+                offset_y=outline_pad,
+            )
+            canvas.tag_lower("bubble")
+            canvas.lift(body_window)
+        except tk.TclError:
+            pass
+
+    def _update_bubble_tail(self):
+        """Redraw bubble chrome so the tail keeps pointing at Kinito."""
+        self._redraw_bubble_shell()
+
     def get_entry_char_width(self, prompt=""):
         """Compute a sensible Entry widget width from the prompt length."""
         return min(40, max(15, len(prompt) // 3 + 8))
@@ -77,14 +230,17 @@ class SpeechMixin:
 
     def _measure_button_width(self, parent, text, *, width=None):
         """Return the pixel width a button with *text* needs."""
-        kwargs = {"text": text}
-        if width is not None:
-            kwargs["width"] = width
-        temp = tk.Button(parent, **kwargs)
-        temp.update_idletasks()
-        measured = temp.winfo_reqwidth()
-        temp.destroy()
-        return measured
+        button_w, _button_h = measure_chamfered_button(
+            parent,
+            text=text,
+            font=self._bubble_button_font(),
+            padx=self.BUBBLE_BTN_PAD_X,
+            pady=self.BUBBLE_BTN_PAD_Y,
+            chamfer=self.BUBBLE_BTN_CHAMFER,
+            border_width=self.BUBBLE_BORDER_WIDTH,
+            width=width,
+        )
+        return button_w
 
     def create_wrapped_label(self, parent, text):
         """Create a word-wrapped label for bubble text."""
@@ -92,7 +248,8 @@ class SpeechMixin:
             parent,
             text=text,
             bg=self.BUBBLE_BG,
-            fg="black",
+            fg=self.BUBBLE_FG,
+            font=self._bubble_font(),
             wraplength=self._bubble_wraplength(text),
             justify="left",
         )
@@ -109,6 +266,7 @@ class SpeechMixin:
             height = bubble.winfo_reqheight()
             if width > 0 and height > 0:
                 bubble.geometry(f"{width}x{height}")
+            self._redraw_bubble_shell()
         except tk.TclError:
             pass
 
@@ -477,13 +635,15 @@ class SpeechMixin:
         self._speech_bubble_label = None
         self._speech_bubble_text_frame = None
         self._speech_bubble_button_frame = None
+        self._speech_bubble_buttons_content_width = 0
+        bubble_body = self._create_bubble_shell(self.speech_bubble)
 
-        text_frame = tk.Frame(self.speech_bubble, bg=self.BUBBLE_BG)
+        text_frame = tk.Frame(bubble_body, bg=self.BUBBLE_BG)
         text_frame.pack(fill=tk.X, anchor="w")
         self._speech_bubble_text_frame = text_frame
 
         label = self.create_wrapped_label(text_frame, text)
-        label.pack(fill=tk.BOTH, expand=True, ipadx=5, ipady=5, anchor="w")
+        label.pack(fill=tk.BOTH, expand=True, ipadx=self.BUBBLE_PAD_X, ipady=self.BUBBLE_PAD_Y, anchor="w")
         self._speech_bubble_label = label
 
         spec = find_dialog_spec(text)
@@ -525,8 +685,8 @@ class SpeechMixin:
             text = label.cget("text")
             text_width = self._measure_text_width(text_frame, text)
 
-            buttons_width = 0
-            if button_frame is not None and button_frame.winfo_exists():
+            buttons_width = getattr(self, "_speech_bubble_buttons_content_width", 0)
+            if buttons_width <= 0 and button_frame is not None and button_frame.winfo_exists():
                 button_frame.update_idletasks()
                 buttons_width = button_frame.winfo_reqwidth()
 
@@ -554,45 +714,58 @@ class SpeechMixin:
 
     def show_response_buttons(self, options):
         """Add wrapped rows of response buttons below the bubble text."""
+        bubble_body = getattr(self, "_speech_bubble_body", None)
+        if bubble_body is None or not bubble_body.winfo_exists():
+            return
         if hasattr(self, "speech_bubble") and self.speech_bubble.winfo_exists():
-            button_frame = tk.Frame(self.speech_bubble, bg=self.BUBBLE_TRANSPARENT_BG)
-            button_frame.pack(anchor="w")
+            button_frame = tk.Frame(bubble_body, bg=self.BUBBLE_BG)
+            button_frame.pack(fill=tk.X, padx=self.BUBBLE_PAD_X, pady=(0, self.BUBBLE_PAD_Y))
             self._speech_bubble_button_frame = button_frame
 
             max_row_width = self.get_max_bubble_width() - 20
             show_close = self._response_buttons_need_close(options)
             close_width = (
-                self._measure_button_width(button_frame, "×", width=2) + 10 if show_close else 0
+                self._measure_button_width(button_frame, "×", width=2) + 8 if show_close else 0
             )
-            row_frame = tk.Frame(button_frame, bg=self.BUBBLE_TRANSPARENT_BG)
-            row_frame.pack(anchor="w")
+            row_wrapper = tk.Frame(button_frame, bg=self.BUBBLE_BG)
+            row_wrapper.pack(fill=tk.X, pady=(0, 3))
+            row_frame = tk.Frame(row_wrapper, bg=self.BUBBLE_BG)
+            row_frame.pack()
             row_width = 0
+            widest_row_width = 0
 
             for option in options:
-                btn_width = self._measure_button_width(row_frame, option) + 10
+                btn_width = self._measure_button_width(row_frame, option) + 8
                 needs_new_row = (
                     row_width > 0 and row_width + btn_width + close_width > max_row_width
                 )
                 if needs_new_row:
-                    row_frame = tk.Frame(button_frame, bg=self.BUBBLE_TRANSPARENT_BG)
-                    row_frame.pack(anchor="w")
+                    widest_row_width = max(widest_row_width, row_width)
+                    row_wrapper = tk.Frame(button_frame, bg=self.BUBBLE_BG)
+                    row_wrapper.pack(fill=tk.X, pady=(0, 3))
+                    row_frame = tk.Frame(row_wrapper, bg=self.BUBBLE_BG)
+                    row_frame.pack()
                     row_width = 0
-                option_button = tk.Button(
+                option_button = self._create_bubble_button(
                     row_frame,
-                    text=option,
-                    command=lambda response=option: self.handle_response(response),
+                    option,
+                    lambda response=option: self.handle_response(response),
                 )
-                option_button.pack(side=tk.LEFT, padx=5)
+                option_button.pack(side=tk.LEFT, padx=3)
                 row_width += btn_width
 
             if show_close:
-                close_button = tk.Button(
+                close_button = self._create_bubble_button(
                     row_frame,
-                    text="×",
+                    "×",
+                    self.close_speech_bubble,
                     width=2,
-                    command=self.close_speech_bubble,
+                    padx=4,
                 )
-                close_button.pack(side=tk.LEFT, padx=5)
+                close_button.pack(side=tk.LEFT, padx=3)
+                row_width += close_width
+
+            self._speech_bubble_buttons_content_width = max(widest_row_width, row_width)
 
             self._align_bubble_text_to_buttons()
             self._fit_speech_bubble_to_content()
@@ -604,15 +777,24 @@ class SpeechMixin:
         input_frame.pack(ipadx=10, ipady=5, anchor="w")
 
         entry_width = self.get_entry_char_width(prompt)
-        entry = tk.Entry(input_frame, bg=self.BUBBLE_BG, fg="black", width=entry_width)
+        entry = tk.Entry(
+            input_frame,
+            bg="white",
+            fg=self.BUBBLE_FG,
+            font=self._bubble_font(),
+            width=entry_width,
+            relief=tk.SOLID,
+            borderwidth=1,
+        )
         entry.pack(side=tk.LEFT, ipady=2)
         entry.bind("<Return>", lambda event: self.handle_response(entry.get()))
 
-        close_button = tk.Button(
+        close_button = self._create_bubble_button(
             input_frame,
-            text="×",
+            "×",
+            self.close_speech_bubble,
             width=2,
-            command=self.close_speech_bubble,
+            padx=4,
         )
         close_button.pack(side=tk.LEFT, padx=(5, 0))
 
@@ -627,11 +809,12 @@ class SpeechMixin:
             self._schedule_speech_bubble_position()
         else:
             self.speech_bubble = self._new_speech_bubble_toplevel(prompt)
+            bubble_body = self._create_bubble_shell(self.speech_bubble)
 
-            label = self.create_wrapped_label(self.speech_bubble, prompt)
-            label.pack(ipadx=10, ipady=5, anchor="w")
+            label = self.create_wrapped_label(bubble_body, prompt)
+            label.pack(ipadx=self.BUBBLE_PAD_X, ipady=self.BUBBLE_PAD_Y, anchor="w")
 
-            self._add_textbox_row(self.speech_bubble, prompt)
+            self._add_textbox_row(bubble_body, prompt)
             self._fit_speech_bubble_to_content()
             self._schedule_speech_bubble_position()
 
@@ -662,6 +845,11 @@ class SpeechMixin:
         self._speech_bubble_label = None
         self._speech_bubble_text_frame = None
         self._speech_bubble_button_frame = None
+        self._speech_bubble_buttons_content_width = 0
+        self._speech_bubble_body = None
+        self._speech_bubble_canvas = None
+        self._speech_bubble_body_window = None
+        self._speech_bubble_outer = None
         self._stop_active_tts()
         if self._has_active_speech_bubble():
             self.speech_bubble.destroy()
@@ -734,13 +922,12 @@ class SpeechMixin:
         bubble_y = max(min_y, min(bubble_y, max_y))
 
         new_pos = (bubble_x, bubble_y)
-        if getattr(self, "_speech_bubble_last_pos", None) == new_pos:
-            return
-        self._speech_bubble_last_pos = new_pos
-
-        self.speech_bubble.geometry(f"+{bubble_x}+{bubble_y}")
-        self.speech_bubble.lift()
-        self.speech_bubble.wm_attributes("-topmost", True)
+        if getattr(self, "_speech_bubble_last_pos", None) != new_pos:
+            self._speech_bubble_last_pos = new_pos
+            self.speech_bubble.geometry(f"+{bubble_x}+{bubble_y}")
+            self.speech_bubble.lift()
+            self.speech_bubble.wm_attributes("-topmost", True)
+        self._update_bubble_tail()
 
     def _update_speech_bubble_position(self):
         """Periodic callback to keep bubbles on-screen and follow Kinito."""

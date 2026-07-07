@@ -222,3 +222,34 @@ def test_battleships_lose_when_out_of_shots():
     assert results[-1] == "lose"
     assert state["finished"] is True
     assert not all_sunk(state)
+
+
+def test_game_window_close_shows_speech_bubble():
+    from unittest.mock import MagicMock, patch
+
+    from kinito.features.games.base import open_game_window
+
+    app = MagicMock()
+    app._game_window = None
+    app._ensure_single_game_window = MagicMock()
+    app.speak_game_line = MagicMock()
+    app.root = MagicMock()
+    app.root.update_idletasks = MagicMock()
+    app.root.winfo_vrootx.return_value = 0
+    app.root.winfo_vrooty.return_value = 0
+    app.root.winfo_vrootwidth.return_value = 1920
+    app.root.winfo_vrootheight.return_value = 1080
+
+    window = MagicMock()
+    with (
+        patch("kinito.features.games.base.Toplevel", return_value=window),
+        patch("kinito.features.games.base.apply_window_icon"),
+    ):
+        open_game_window(app, "Test Game", 400, 500)
+
+    close_handler = window.protocol.call_args.args[1]
+    close_handler()
+    app.root.after.assert_called_once()
+    after_callback = app.root.after.call_args.args[1]
+    after_callback()
+    app.speak_game_line.assert_called_once()
