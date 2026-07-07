@@ -36,6 +36,7 @@ A free, open-source desktop companion inspired by **KinitoPET**. Kinito lives on
 | **Hug** | Hug sprites + sweet lines |
 | **Idle animations** | Blinking, reading, fancy hat mode, sleep sprites |
 | **Reminders** | Timer with sound after X minutes |
+| **Mini-games** | Tic-tac-toe, memory, battleships, RPS, trivia, and more (right-click → **Play a Game**) |
 
 ---
 
@@ -100,6 +101,7 @@ For a **full beginner walkthrough** (screenshots-level detail), see **[docs/INST
 - **Chat** — free-form conversation with a local Ollama model (see below)
 - **Visit a Website** — pick a category (Animals, Knowledge, Games, Horror, Surprise Me)
 - **Play Music** — pick an MP3 or play a random one from your Music/Downloads folders
+- **Play a Game** — mini-games (quick games and board games)
 - **Hug** — hug pose sprites + hug line
 - **Goodbye** — farewell line, then closes the app
 
@@ -114,6 +116,12 @@ While idle, Kinito may:
 - Do a “fancy” show with a top hat sprite
 
 Click the buttons in the speech bubble to respond. Press **Enter** in text boxes to submit.
+
+### Easter eggs (intentional behavior)
+
+Some choices trigger **KinitoPET-style surprises** — not bugs:
+
+- **Declining a poem** (**No**) or **declining a secret image** (**Not now**) can cause certain intended things to happen. It needs `pyautogui` installed.
 
 ### Browser safety
 
@@ -130,10 +138,11 @@ KinitoPET-Python-Virtual-Assistant/
 │   ├── app.py               # Main window & lifecycle
 │   ├── speech.py            # TTS, speech bubbles, menu
 │   ├── speech_chat.py       # Multi-turn chat bubble UI
+│   ├── bubble_ui.py         # Chamfered bubble chrome & buttons
 │   ├── movement.py          # Drag, wander, idle animations
 │   ├── assets.py            # Paths to GameAssets files
 │   ├── llm/                 # Ollama client & config
-│   └── features/            # Browser, camera, music, hug, llm, programs, content
+│   └── features/            # Browser, camera, music, hug, llm, programs, content, games
 ├── content/                 # All dialogue & data (easy to edit!)
 │   ├── dialogue.py          # Questions, buttons, response lines
 │   ├── dialog_registry.py   # Links questions → UI → actions
@@ -142,7 +151,7 @@ KinitoPET-Python-Virtual-Assistant/
 │   ├── facts.py, poems.py, stories.py, ...
 │   └── site_validator.py    # URL safety checks
 ├── GameAssets/              # Sprites, MP3s, balcon.exe (required)
-├── tests/                   # Automated tests (274+)
+├── tests/                   # Automated tests (800+)
 ├── docs/                    # Detailed guides
 ├── requirements.txt         # Runtime dependencies
 └── requirements-dev.txt     # pytest, ruff (for contributors)
@@ -158,7 +167,7 @@ KinitoPET-Python-Virtual-Assistant/
 | `opencv-python` | Webcam feature | Camera questions still appear; opening camera shows a message |
 | `pyttsx3` | TTS fallback | Uses `balcon.exe` only |
 | `pygame` | Sound effects & MP3 | Required for sounds |
-| `pyautogui` | Minimize windows (image easter egg) | That action silently fails |
+| `pyautogui` | Minimize windows (poem/image easter egg) | That easter egg silently fails |
 | `Pillow` | Images / sprites | Required |
 | **Ollama** (local) | AI chat & optional idle lines | Chat disabled; scripted lines still work |
 
@@ -184,7 +193,8 @@ Optional environment variables:
 | `OLLAMA_IDLE_LINES` | `true` | AI-generated spontaneous lines |
 | `OLLAMA_REPLACE_CHANCE` | `0.30` | Chance that any non-interactive spoken line is AI-generated |
 | `OLLAMA_IDLE_CHANCE` | `0.30` | Legacy alias for `OLLAMA_REPLACE_CHANCE` |
-| `OLLAMA_MAX_TOKENS_SHORT` | `64` | Max tokens for short lines (faster generation) |
+| `OLLAMA_MAX_TOKENS_SHORT` | `140` | Max tokens for short lines |
+| `OLLAMA_MAX_TOKENS_LONG` | `320` | Max tokens for poems and long bubbles |
 | `OLLAMA_KEEP_ALIVE` | `10m` | Keeps the model loaded in Ollama between requests |
 | `OLLAMA_WARMUP` | `true` | Pre-load model on startup |
 
@@ -274,6 +284,10 @@ Common causes: missing `GameAssets`, missing `Pillow`, or no display (won’t ru
 ### Speech bubble buttons do nothing
 
 The spoken line must contain a **marker substring** registered in `content/dialog_registry.py`. If you add new question text, see **[docs/EXTENDING.md](docs/EXTENDING.md)**.
+
+### My windows minimized — is that a bug?
+
+Usually **no**. Declining certain offers (poem **No**, secret image **Not now**) triggers intentional window minimizing on Windows — a KinitoPET-style easter egg. See [Easter eggs](#easter-eggs-intentional-behavior) above.
 
 ---
 

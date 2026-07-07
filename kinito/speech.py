@@ -27,7 +27,7 @@ from kinito.tk_timers import schedule_after
 class SpeechMixin:
     """TTS playback, speech bubbles, and user response handling."""
 
-    BUBBLE_MAX_WIDTH = 800
+    BUBBLE_MAX_WIDTH = 533
     BUBBLE_BG = "#FFF8E7"
     BUBBLE_BORDER = "#000000"
     BUBBLE_FG = "#111111"
@@ -41,6 +41,7 @@ class SpeechMixin:
     BUBBLE_PAD_Y = 10
     BUBBLE_BTN_BG = "#fff1ce"
     BUBBLE_BTN_ACTIVE = "#FFE9A8"
+    BUBBLE_ENTRY_BG = "#FFFEF8"
     BUBBLE_BTN_PAD_X = 8
     BUBBLE_BTN_PAD_Y = 2
     DISMISS_RESPONSE_BUTTONS = frozenset(
@@ -122,6 +123,7 @@ class SpeechMixin:
             bg=self.BUBBLE_TRANSPARENT_BG,
             highlightthickness=0,
             borderwidth=0,
+            takefocus=0,
         )
         shell.pack(anchor="w")
 
@@ -205,12 +207,31 @@ class SpeechMixin:
             )
             canvas.tag_lower("bubble")
             canvas.lift(body_window)
+            self._focus_bubble_entry()
         except tk.TclError:
             pass
 
     def _update_bubble_tail(self):
         """Redraw bubble chrome so the tail keeps pointing at Kinito."""
         self._redraw_bubble_shell()
+
+    def _bubble_body_parent(self):
+        """Return the frame that holds interactive bubble content."""
+        body = getattr(self, "_speech_bubble_body", None)
+        if body is not None and body.winfo_exists():
+            return body
+        return None
+
+    def _focus_bubble_entry(self):
+        """Move keyboard focus to the active bubble text field, if any."""
+        entry = getattr(self, "_speech_bubble_entry", None)
+        if entry is None:
+            return
+        try:
+            if entry.winfo_exists():
+                entry.focus_set()
+        except tk.TclError:
+            pass
 
     def get_entry_char_width(self, prompt=""):
         """Compute a sensible Entry widget width from the prompt length."""
@@ -551,6 +572,8 @@ class SpeechMixin:
         if getattr(self, "_focus_mode", False) and not allow_in_focus:
             return
         self.interrupt_speech()
+        if hasattr(self, "_stop_roaming"):
+            self._stop_roaming()
         self._start_speech_accompaniment(speech_accompaniment_path, speech_accompaniment_volume)
         epoch = self._speech_epoch
         self._tts_cancelled = False
@@ -636,6 +659,7 @@ class SpeechMixin:
         self._speech_bubble_text_frame = None
         self._speech_bubble_button_frame = None
         self._speech_bubble_buttons_content_width = 0
+        self._speech_bubble_entry = None
         bubble_body = self._create_bubble_shell(self.speech_bubble)
 
         text_frame = tk.Frame(bubble_body, bg=self.BUBBLE_BG)
@@ -779,8 +803,9 @@ class SpeechMixin:
         entry_width = self.get_entry_char_width(prompt)
         entry = tk.Entry(
             input_frame,
-            bg="white",
+            bg=self.BUBBLE_ENTRY_BG,
             fg=self.BUBBLE_FG,
+            insertbackground=self.BUBBLE_FG,
             font=self._bubble_font(),
             width=entry_width,
             relief=tk.SOLID,
@@ -788,6 +813,7 @@ class SpeechMixin:
         )
         entry.pack(side=tk.LEFT, ipady=2)
         entry.bind("<Return>", lambda event: self.handle_response(entry.get()))
+        self._speech_bubble_entry = entry
 
         close_button = self._create_bubble_button(
             input_frame,
@@ -803,10 +829,13 @@ class SpeechMixin:
 
     def show_response_textbox(self, prompt):
         """Show or extend the bubble with a text entry for the user's answer."""
-        if self._has_active_speech_bubble():
-            self._add_textbox_row(self.speech_bubble, prompt)
+        body = self._bubble_body_parent()
+        if body is not None:
+            self._add_textbox_row(body, prompt)
             self._fit_speech_bubble_to_content()
             self._schedule_speech_bubble_position()
+            delay = self._speech_bubble_reveal_delay_ms()
+            self.root.after(delay + delay + 50, self._focus_bubble_entry)
         else:
             self.speech_bubble = self._new_speech_bubble_toplevel(prompt)
             bubble_body = self._create_bubble_shell(self.speech_bubble)
@@ -817,6 +846,8 @@ class SpeechMixin:
             self._add_textbox_row(bubble_body, prompt)
             self._fit_speech_bubble_to_content()
             self._schedule_speech_bubble_position()
+            delay = self._speech_bubble_reveal_delay_ms()
+            self.root.after(delay + delay + 50, self._focus_bubble_entry)
 
     def handle_response(self, response):
         """Route a button or textbox answer to the matching dialog handler."""
@@ -846,6 +877,7 @@ class SpeechMixin:
         self._speech_bubble_text_frame = None
         self._speech_bubble_button_frame = None
         self._speech_bubble_buttons_content_width = 0
+        self._speech_bubble_entry = None
         self._speech_bubble_body = None
         self._speech_bubble_canvas = None
         self._speech_bubble_body_window = None

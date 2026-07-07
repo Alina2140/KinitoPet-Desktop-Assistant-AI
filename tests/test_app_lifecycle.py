@@ -9,7 +9,7 @@ from kinito.speech import SpeechMixin
 
 
 class AppStub(SpeechMixin):
-    BUBBLE_MAX_WIDTH = 800
+    BUBBLE_MAX_WIDTH = 533
 
 
 def test_floating_assistant_prefers_llm_speak():

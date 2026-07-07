@@ -43,6 +43,8 @@ class LLMMixin(SpeechChatMixin):
 
     def _show_ai_thinking_sprite(self) -> None:
         """Show the thinking sprite while Ollama generates a line."""
+        if hasattr(self, "_stop_roaming"):
+            self._stop_roaming()
         self._ai_generating = True
         self.talking = True
         self._talk_sprite_mode = "thinking"

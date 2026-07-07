@@ -30,7 +30,7 @@ Thank you for helping improve KinitoPET! This project is free and open for every
 
 - **Browser whitelist** (`content/allowed_sites.py`) — only family-friendly HTTPS sites
 - **Dialog markers** — every question variant must contain its marker substring (see [EXTENDING.md](docs/EXTENDING.md))
-- **Windows-only features** — document if something only works on Windows
+- **Windows-only features** — document if something only works on Windows (e.g. the minimize easter egg)
 
 ## Attribution
 

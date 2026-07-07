@@ -119,6 +119,41 @@ def test_change_sprite_skipped_while_dragging(movement):
     movement.panel.config.assert_not_called()
 
 
+def test_move_towards_stops_when_speech_starts(movement):
+    movement.x = 0
+    movement.y = 0
+    movement.root.winfo_rootx.return_value = 0
+    movement.root.winfo_rooty.return_value = 0
+    movement._running = True
+    busy_checks = {"count": 0}
+
+    def busy():
+        busy_checks["count"] += 1
+        return busy_checks["count"] > 1
+
+    movement._is_busy_with_speech = busy
+    with (
+        patch.object(movement, "_render_surf_sprite"),
+        patch.object(movement, "_finish_surf_movement") as finish,
+        patch.object(movement, "_realign_speech_bubble_after_move") as realign,
+    ):
+        movement.move_towards(100, 0, speed=5)
+
+    finish.assert_called()
+    realign.assert_called_once()
+    assert movement.x < 100
+
+
+def test_stop_roaming_clears_moving_flag(movement):
+    movement.moving = True
+    movement._finish_surf_movement = MagicMock()
+
+    movement._stop_roaming()
+
+    assert movement.moving is False
+    movement._finish_surf_movement.assert_called_once()
+
+
 def test_move_towards_reaches_target(movement):
     movement.x = 0
     movement.y = 0

@@ -80,8 +80,9 @@ class SpeechChatMixin:
         entry_width = self.get_entry_char_width("Type your message here...")
         entry = tk.Entry(
             input_frame,
-            bg="white",
+            bg=self.BUBBLE_ENTRY_BG,
             fg=self.BUBBLE_FG,
+            insertbackground=self.BUBBLE_FG,
             font=self._bubble_font(),
             width=entry_width,
             relief=tk.SOLID,
@@ -90,6 +91,7 @@ class SpeechChatMixin:
         entry.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=2)
         entry.bind("<Return>", self._handle_chat_entry_submit)
         self._chat_entry_widget = entry
+        self._speech_bubble_entry = entry
 
         close_button = self._create_bubble_button(
             input_frame,

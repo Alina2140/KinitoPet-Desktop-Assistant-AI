@@ -222,6 +222,20 @@ class MovementMixin:
             cache.clear()
         self.change_sprite(self.tk_img_normal)
 
+    def _stop_roaming(self) -> None:
+        """Abort an in-progress surf move so speech bubbles stay with Kinito."""
+        self.moving = False
+        self._finish_surf_movement()
+
+    def _realign_speech_bubble_after_move(self) -> None:
+        """Keep an open speech bubble anchored above Kinito after movement stops."""
+        if not hasattr(self, "_has_active_speech_bubble"):
+            return
+        if not self._has_active_speech_bubble():
+            return
+        if hasattr(self, "position_speech_bubble"):
+            self.root.after(0, self.position_speech_bubble)
+
     def _apply_surf_geometry(self, x: float, y: float, wave_phase: float) -> None:
         """Move the window along the path while bobbing on a sine wave."""
         display_y = y + self._surf_wave_offset(wave_phase)
@@ -380,7 +394,9 @@ class MovementMixin:
         target_x, target_y = self.clamp_position(target_x, target_y)
         wave_phase = 0.0
         while self._running:
-            if self.paused or self.is_dragging:
+            if self.paused or self.is_dragging or self._is_busy_with_speech():
+                self._finish_surf_movement()
+                self._realign_speech_bubble_after_move()
                 return
             current_x, current_y = self.x, self.y
             dx = target_x - current_x

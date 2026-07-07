@@ -59,6 +59,25 @@ def test_bubble_button_style_matches_bubble_palette(speech):
     assert options["fg"] == speech.BUBBLE_FG
     assert options["chamfer"] == speech.BUBBLE_BTN_CHAMFER
     assert speech.BUBBLE_BTN_BG != speech.BUBBLE_BG
+    assert speech.BUBBLE_ENTRY_BG.lower() != speech.BUBBLE_TRANSPARENT_BG.lower()
+
+
+def test_show_response_textbox_uses_bubble_body(speech):
+    from unittest.mock import MagicMock
+
+    speech._has_active_speech_bubble = MagicMock(return_value=True)
+    speech._speech_bubble_body = MagicMock()
+    speech._speech_bubble_body.winfo_exists.return_value = True
+    speech._add_textbox_row = MagicMock()
+    speech._fit_speech_bubble_to_content = MagicMock()
+    speech._schedule_speech_bubble_position = MagicMock()
+    speech._speech_bubble_reveal_delay_ms = MagicMock(return_value=0)
+    speech.root = MagicMock()
+
+    speech.show_response_textbox("Answer:")
+
+    speech._add_textbox_row.assert_called_once_with(speech._speech_bubble_body, "Answer:")
+    speech.root.after.assert_called_once()
 
 
 def test_bubble_tail_aims_at_kinito_when_bubble_is_offset(speech):
