@@ -87,6 +87,7 @@ def menu_options_for(app) -> list[str]:
         dlg.BUTTON_FUN_FACT,
         dlg.BUTTON_CHAT,
         dlg.BUTTON_VISIT_WEBSITE,
+        dlg.BUTTON_SHOW_MEDIA,
         dlg.BUTTON_PLAY_MUSIC,
         dlg.BUTTON_PLAY_GAME,
         dlg.BUTTON_GIVE_HUG,
@@ -225,6 +226,7 @@ def _handle_menu(app, response: str) -> None:
         dlg.BUTTON_FUN_FACT: lambda a: a.say_random_fact(),
         dlg.BUTTON_CHAT: lambda a: a.start_chat(),
         dlg.BUTTON_VISIT_WEBSITE: lambda a: a.ask_browser_category(),
+        dlg.BUTTON_SHOW_MEDIA: lambda a: a.ask_media_type(),
         dlg.BUTTON_PLAY_MUSIC: lambda a: a.ask_music_player_pick(),
         dlg.BUTTON_PLAY_GAME: lambda a: a.offer_game_picker(),
         dlg.BUTTON_GIVE_HUG: lambda a: a.give_hug(),
@@ -289,6 +291,14 @@ def _handle_browser_category(app, response: str) -> None:
         category = category_map.get(response)
     if category:
         app.open_allowed_site(category)
+
+
+def _handle_media_type(app, response: str) -> None:
+    """Map picture/video buttons to the matching media action."""
+    if response == dlg.BUTTON_SHOW_PICTURE:
+        app.show_allowed_image()
+    elif response == dlg.BUTTON_SHOW_VIDEO:
+        app.show_allowed_video()
 
 
 def _handle_music_pick(app, response: str) -> None:
@@ -672,6 +682,14 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
             ),
         ),
         _handle_browser_category,
+    ),
+    DialogSpec(
+        dlg.MEDIA_TYPE_MARKER,
+        DialogUI(
+            "buttons",
+            buttons=(dlg.BUTTON_SHOW_PICTURE, dlg.BUTTON_SHOW_VIDEO),
+        ),
+        _handle_media_type,
     ),
     DialogSpec(
         dlg.MUSIC_PLAYER_PICK_MARKER,

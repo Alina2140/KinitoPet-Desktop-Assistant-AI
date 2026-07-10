@@ -402,6 +402,32 @@ BROWSER_ERROR_LINES = [
     "Browser error! Even the web gets scared sometimes.",
 ]
 
+# User media — pictures from GameAssets/UserMedia/, videos from folder or whitelist
+MEDIA_TYPE_MARKER = "picture or a video"
+MEDIA_TYPE_QUESTION = "Nice! Do you want a picture or a video?"
+MEDIA_NO_IMAGES_LINES = [
+    "I don't have any pictures yet! Drop some images into GameAssets/UserMedia/.",
+    "My picture folder is empty. Add some images to GameAssets/UserMedia/ first!",
+]
+MEDIA_NO_VIDEOS_LINES = [
+    "I don't have any videos right now. Add files to GameAssets/UserMedia/videos/ "
+    "or check content/allowed_videos.py.",
+    "No videos available yet! Put MP4s in GameAssets/UserMedia/videos/ for local clips.",
+]
+MEDIA_CLOSE_LINES = [
+    "All done! Hope you enjoyed that.",
+    "Window's closed! That was fun.",
+    "Media time over. See you next time!",
+]
+MEDIA_BLOCKED_LINES = [
+    "I can't play that — it isn't on my video list!",
+    "Nope! I only open videos I know are safe.",
+]
+MEDIA_ERROR_LINES = [
+    "Hmm, I couldn't open that. Maybe try another one?",
+    "Something went wrong loading the media. Sorry about that!",
+]
+
 # Music player (MP3 files on the PC)
 MUSIC_PLAYER_QUESTION_MARKER = "play music from your computer"
 MUSIC_PLAYER_QUESTIONS = [
@@ -990,6 +1016,9 @@ BUTTON_SING_SONG = "Sing"
 BUTTON_FUN_FACT = "Fun Fact"
 BUTTON_CHAT = "Chat"
 BUTTON_VISIT_WEBSITE = "Visit a Website"
+BUTTON_SHOW_MEDIA = "Show Picture or Video"
+BUTTON_SHOW_PICTURE = "A Picture"
+BUTTON_SHOW_VIDEO = "A Video"
 BUTTON_PLAY_MUSIC = "Play Music"
 BUTTON_STOP_MUSIC = "Stop music"
 BUTTON_CHANGE_SONG = "Pick another song"

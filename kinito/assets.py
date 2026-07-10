@@ -18,6 +18,8 @@ secret_images_directory = os.path.join(assets_directory, "SecretImages")
 programs_directory = os.path.join(assets_directory, "Programs")
 ads_directory = os.path.join(assets_directory, "ads")
 websites_directory = os.path.join(assets_directory, "websites")
+user_media_directory = os.path.join(assets_directory, "UserMedia")
+user_videos_directory = os.path.join(user_media_directory, "videos")
 crash_directory = os.path.join(assets_directory, "crash")
 balconexe_directory = os.path.join(programs_directory, "balcon.exe")
 
@@ -58,6 +60,13 @@ bomp_file_path = os.path.join(sounds_directory, "Bomp.mp3")
 page_turn_file_path = os.path.join(sounds_directory, "PageTurn.mp3")
 
 _IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp")
+_VIDEO_EXTENSIONS = (".mp4", ".webm", ".mov", ".mkv", ".avi")
+
+
+def ensure_user_media_directories():
+    """Create GameAssets/UserMedia folders if they do not exist yet."""
+    os.makedirs(user_media_directory, exist_ok=True)
+    os.makedirs(user_videos_directory, exist_ok=True)
 
 
 def list_image_files(directory):
@@ -67,5 +76,16 @@ def list_image_files(directory):
     files = []
     for name in os.listdir(directory):
         if name.lower().endswith(_IMAGE_EXTENSIONS):
+            files.append(os.path.join(directory, name))
+    return sorted(files)
+
+
+def list_video_files(directory):
+    """Return absolute paths to video files inside *directory*."""
+    if not os.path.isdir(directory):
+        return []
+    files = []
+    for name in os.listdir(directory):
+        if name.lower().endswith(_VIDEO_EXTENSIONS):
             files.append(os.path.join(directory, name))
     return sorted(files)

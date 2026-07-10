@@ -31,6 +31,7 @@ A free, open-source desktop companion inspired by **KinitoPET**. Kinito lives on
 | **AI chat (Ollama)** | Free-form chat via local Ollama model; optional AI idle lines |
 | **Right-click menu** | Reminders, time, sleep mode, poems, facts, chat, browser, music, hug, goodbye |
 | **Safe browser** | Opens whitelisted HTTPS sites in a small window (or your default browser) |
+| **Pictures & videos** | Shows images from `GameAssets/UserMedia/` and videos from folder or whitelist |
 | **Camera** | Optional webcam view (requires OpenCV) |
 | **Music player** | Play MP3s from your PC |
 | **Hug** | Hug sprites + sweet lines |
@@ -100,6 +101,7 @@ For a **full beginner walkthrough** (screenshots-level detail), see **[docs/INST
 - **Fun Fact** — random fact
 - **Chat** — free-form conversation with a local Ollama model (see below)
 - **Visit a Website** — pick a category (Animals, Knowledge, Games, Horror, Surprise Me)
+- **Show Picture or Video** — open a user image or allow-listed video in a window
 - **Play Music** — pick an MP3 or play a random one from your Music/Downloads folders
 - **Play a Game** — mini-games (quick games and board games)
 - **Hug** — hug pose sprites + hug line
@@ -127,6 +129,14 @@ Some choices trigger **KinitoPET-style surprises** — not bugs:
 
 Kinito only opens URLs from a **manual whitelist** in `content/allowed_sites.py`. Navigation to other HTTPS sites is blocked inside the built-in browser window.
 
+### User media (pictures & videos)
+
+- **Images:** drop files into `GameAssets/UserMedia/` (PNG, JPG, WEBP, GIF, BMP)
+- **Local videos:** drop files into `GameAssets/UserMedia/videos/` (MP4, WEBM, MOV, MKV, AVI)
+- **Online videos:** curated whitelist in `content/allowed_videos.py` (same safety model as websites)
+
+Kinito only opens media from these folders or the video whitelist — never arbitrary paths on your PC.
+
 ---
 
 ## Project structure
@@ -148,8 +158,10 @@ KinitoPET-Python-Virtual-Assistant/
 │   ├── dialog_registry.py   # Links questions → UI → actions
 │   ├── questions.py         # Pool of random questions
 │   ├── allowed_sites.py     # Browser whitelist
+│   ├── allowed_videos.py    # Online video whitelist
 │   ├── facts.py, poems.py, stories.py, ...
-│   └── site_validator.py    # URL safety checks
+│   ├── site_validator.py    # URL safety checks
+│   └── media_validator.py   # User media path & video URL checks
 ├── GameAssets/              # Sprites, MP3s, balcon.exe (required)
 ├── tests/                   # Automated tests (800+)
 ├── docs/                    # Detailed guides
@@ -213,7 +225,9 @@ GameAssets/
 ├── Kinito.png, KinitoNormal.png, KinitoHug.png, Thinking.png, ...   # Sprites
 ├── Timer.mp3, Woosh.mp3, StartTalking.mp3, ...       # Sounds
 ├── Programs/balcon.exe                               # Windows TTS (optional fallback: pyttsx3)
-└── SecretImages/                                     # Optional images for easter egg
+├── SecretImages/                                     # Optional images for easter egg
+└── UserMedia/                                        # Your pictures & local videos
+    └── videos/                                       # Local video files (MP4, etc.)
 ```
 
 If a sprite is missing, Kinito falls back to `KinitoNormal.png`.

@@ -33,6 +33,7 @@ def content():
     for name in (
         "print_current_datetime",
         "offer_browser_visit",
+        "show_random_media",
         "offer_random_music",
         "offer_game_picker",
         "give_hug",

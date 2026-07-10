@@ -86,6 +86,7 @@ def test_menu_options_include_all_actions():
         dlg.BUTTON_FUN_FACT,
         dlg.BUTTON_CHAT,
         dlg.BUTTON_VISIT_WEBSITE,
+        dlg.BUTTON_SHOW_MEDIA,
         dlg.BUTTON_PLAY_MUSIC,
         dlg.BUTTON_PLAY_GAME,
         dlg.BUTTON_GIVE_HUG,
@@ -93,7 +94,7 @@ def test_menu_options_include_all_actions():
         dlg.BUTTON_SAY_GOODBYE,
     }
     assert expected.issubset(set(opts))
-    assert len(opts) == 14
+    assert len(opts) == 15
 
 
 def test_static_questions_match_expected_markers():
