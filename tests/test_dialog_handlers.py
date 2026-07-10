@@ -217,6 +217,13 @@ def test_handle_menu_wake_up(mock_app):
     mock_app.toggle_pause.assert_called_once()
 
 
+def test_handle_menu_wake_up_allowed_during_sleep(mock_app):
+    mock_app.paused = True
+    spec = find_dialog_spec(dlg.MENU_PROMPT)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_WAKE_UP)
+    mock_app.toggle_pause.assert_called_once()
+
+
 def test_handle_menu_unfocus(mock_app):
     spec = find_dialog_spec(dlg.MENU_PROMPT)
     handle_dialog_response(mock_app, spec, dlg.BUTTON_UNFOCUS)
@@ -225,6 +232,13 @@ def test_handle_menu_unfocus(mock_app):
 
 def test_handle_menu_blocked_during_focus_mode(mock_app):
     mock_app._focus_mode = True
+    spec = find_dialog_spec(dlg.MENU_PROMPT)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_FUN_FACT)
+    mock_app.say_random_fact.assert_not_called()
+
+
+def test_handle_menu_blocked_during_sleep(mock_app):
+    mock_app.paused = True
     spec = find_dialog_spec(dlg.MENU_PROMPT)
     handle_dialog_response(mock_app, spec, dlg.BUTTON_FUN_FACT)
     mock_app.say_random_fact.assert_not_called()

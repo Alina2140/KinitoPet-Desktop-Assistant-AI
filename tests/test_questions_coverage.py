@@ -55,12 +55,19 @@ def test_menu_options_default_toggle_labels():
 
 def test_menu_options_reflect_active_states():
     opts = menu_options_for(_menu_app(paused=True, screen_effects_enabled=False))
-    assert dlg.BUTTON_WAKE_UP in opts
-    assert dlg.BUTTON_SLEEP not in opts
-    assert dlg.BUTTON_FOCUS in opts
-    assert dlg.BUTTON_UNFOCUS not in opts
-    assert dlg.BUTTON_SCREEN_EFFECTS_ON in opts
-    assert dlg.BUTTON_SCREEN_EFFECTS_OFF not in opts
+    assert opts == [dlg.BUTTON_WAKE_UP]
+
+
+def test_menu_options_hide_blocked_actions_when_sleeping():
+    opts = menu_options_for(_menu_app(paused=True))
+    assert opts == [dlg.BUTTON_WAKE_UP]
+    assert dlg.BUTTON_SET_REMINDER not in opts
+    assert dlg.BUTTON_SING_SONG not in opts
+
+
+def test_menu_options_show_wake_up_and_unfocus_when_sleeping_in_focus_mode():
+    opts = menu_options_for(_menu_app(paused=True, focus_mode=True))
+    assert opts == [dlg.BUTTON_WAKE_UP, dlg.BUTTON_UNFOCUS]
 
 
 def test_menu_options_hide_blocked_actions_in_focus_mode():

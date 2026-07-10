@@ -93,11 +93,17 @@ def menu_options_for(app) -> list[str]:
         dlg.BUTTON_SHOW_CREDITS,
         dlg.BUTTON_SAY_GOODBYE,
     ]
+    allowed: set[str] = set()
+    if getattr(app, "paused", False):
+        allowed |= _MENU_SLEEP_BUTTONS
     if getattr(app, "_focus_mode", False):
-        return [option for option in options if option in _MENU_FOCUS_BUTTONS]
+        allowed |= _MENU_FOCUS_BUTTONS
+    if allowed:
+        return [option for option in options if option in allowed]
     return options
 
 
+_MENU_SLEEP_BUTTONS = frozenset({dlg.BUTTON_WAKE_UP})
 _MENU_FOCUS_BUTTONS = frozenset({dlg.BUTTON_FOCUS, dlg.BUTTON_UNFOCUS})
 
 
@@ -203,6 +209,8 @@ def _button_map(actions: dict[str, Handler]) -> Handler:
 
 def _handle_menu(app, response: str) -> None:
     """Handle right-click menu button selections."""
+    if getattr(app, "paused", False) and response not in _MENU_SLEEP_BUTTONS:
+        return
     if getattr(app, "_focus_mode", False) and response not in _MENU_FOCUS_BUTTONS:
         return
     actions = {

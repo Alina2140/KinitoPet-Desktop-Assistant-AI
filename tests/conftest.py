@@ -9,6 +9,7 @@ def mock_app():
     app._running = True
     app._browser_active = False
     app._focus_mode = False
+    app.paused = False
     app.talking = False
     app._awaiting_response = False
     app.speak = MagicMock()

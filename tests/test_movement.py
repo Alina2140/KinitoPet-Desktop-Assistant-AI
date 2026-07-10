@@ -50,6 +50,10 @@ def test_on_mouse_down_stops_moving_and_plays_bomp(movement):
     movement.moving = True
     movement.stop_background_music = MagicMock()
     movement._stop_audio_for_drag = MagicMock()
+    movement._start_drag_tracking = MagicMock()
+    movement._sync_kinito_screen_position = MagicMock()
+    movement.x = 100
+    movement.y = 200
     event = MagicMock(x_root=50, y_root=60, widget=movement.panel)
     movement.on_mouse_down(event)
     assert movement.is_dragging is True
@@ -82,15 +86,39 @@ def test_stop_audio_for_drag_stops_speech_accompaniment(movement):
 def test_setup_mouse_bindings_drags_sprite_only(movement):
     movement.panel = MagicMock()
     movement.root = MagicMock()
+    movement.root.winfo_rootx.return_value = 100
+    movement.root.winfo_rooty.return_value = 200
     movement.setup_mouse_bindings()
     movement.panel.bind.assert_called_once_with("<Button-1>", movement.on_mouse_down)
-    movement.root.bind.assert_any_call("<B1-Motion>", movement.on_mouse_move)
-    movement.root.bind.assert_any_call("<ButtonRelease-1>", movement.on_mouse_up)
+    movement.root.bind.assert_called_once_with("<Configure>", movement._on_root_moved)
+    assert movement.x == 100
+    assert movement.y == 200
+
+
+def test_on_mouse_down_starts_global_drag_tracking(movement):
+    movement._start_drag_tracking = MagicMock()
+    movement._sync_kinito_screen_position = MagicMock()
+    movement.x = 100
+    movement.y = 200
+    event = MagicMock(x_root=50, y_root=60, widget=movement.panel)
+    movement.on_mouse_down(event)
+    movement._start_drag_tracking.assert_called_once()
+
+
+def test_on_mouse_up_stops_global_drag_tracking(movement):
+    movement.is_dragging = True
+    movement._drag_moved = False
+    movement._stop_drag_tracking = MagicMock()
+    movement._follow_speech_bubble_to_kinito = MagicMock()
+    movement.on_mouse_up(MagicMock())
+    movement._stop_drag_tracking.assert_called_once()
 
 
 def test_on_mouse_up_plays_bomp_after_drag(movement):
     movement.is_dragging = True
     movement._drag_moved = True
+    movement._stop_drag_tracking = MagicMock()
+    movement._follow_speech_bubble_to_kinito = MagicMock()
     movement.on_mouse_up(MagicMock())
     assert movement.is_dragging is False
     movement.play_sfx.assert_called_once()
@@ -99,6 +127,8 @@ def test_on_mouse_up_plays_bomp_after_drag(movement):
 def test_on_mouse_up_skips_bomp_without_drag(movement):
     movement.is_dragging = True
     movement._drag_moved = False
+    movement._stop_drag_tracking = MagicMock()
+    movement._follow_speech_bubble_to_kinito = MagicMock()
     movement.on_mouse_up(MagicMock())
     movement.play_sfx.assert_not_called()
 
@@ -111,6 +141,54 @@ def test_on_mouse_move_clamps_position(movement):
     movement.on_mouse_move(event)
     movement.clamp_position.assert_called_once()
     movement.root.geometry.assert_called()
+
+
+def test_on_mouse_move_repositions_speech_bubble(movement):
+    movement.is_dragging = True
+    movement.mouse_click_offset_x = 0
+    movement.mouse_click_offset_y = 0
+    movement._follow_speech_bubble_to_kinito = MagicMock()
+    movement.on_mouse_move(MagicMock(x_root=300, y_root=400))
+    movement._follow_speech_bubble_to_kinito.assert_called_once_with(300, 400)
+
+
+def test_on_mouse_down_captures_bubble_offset(movement):
+    movement._start_drag_tracking = MagicMock()
+    movement._sync_kinito_screen_position = MagicMock()
+    movement._capture_speech_bubble_drag_offset = MagicMock()
+    movement.x = 100
+    movement.y = 200
+    movement.on_mouse_down(MagicMock(x_root=50, y_root=60, widget=movement.panel))
+    movement._capture_speech_bubble_drag_offset.assert_called_once()
+
+
+def test_on_root_moved_follows_speech_bubble(movement):
+    movement.x = 100
+    movement.y = 200
+
+    def sync():
+        movement.x = 150
+        movement.y = 250
+
+    movement._sync_kinito_screen_position = sync
+    movement._follow_speech_bubble_to_kinito = MagicMock()
+    movement._on_root_moved(MagicMock(widget=movement.root))
+    movement._follow_speech_bubble_to_kinito.assert_called_once_with(150, 250)
+
+
+def test_on_root_moved_ignores_surf_bobbing(movement):
+    movement.moving = True
+    movement._sync_kinito_screen_position = MagicMock()
+    movement._follow_speech_bubble_to_kinito = MagicMock()
+    movement._on_root_moved(MagicMock(widget=movement.root))
+    movement._sync_kinito_screen_position.assert_not_called()
+    movement._follow_speech_bubble_to_kinito.assert_not_called()
+
+
+def test_apply_surf_geometry_repositions_speech_bubble(movement):
+    movement._follow_speech_bubble_to_kinito = MagicMock()
+    movement._apply_surf_geometry(120, 200, math.pi / 2)
+    movement._follow_speech_bubble_to_kinito.assert_not_called()
 
 
 def test_change_sprite_skipped_while_dragging(movement):
