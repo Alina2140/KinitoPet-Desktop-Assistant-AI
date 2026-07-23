@@ -31,7 +31,6 @@ A free, open-source desktop companion inspired by **KinitoPET**. Kinito lives on
 | **AI chat (Ollama)** | Free-form chat via local Ollama model; optional AI idle lines |
 | **Right-click menu** | Reminders, time, sleep mode, poems, facts, chat, browser, music, hug, goodbye |
 | **Safe browser** | Opens whitelisted HTTPS sites in a small window (or your default browser) |
-| **Pictures & videos** | Shows images from `GameAssets/UserMedia/` and videos from folder or whitelist |
 | **Camera** | Optional webcam view (requires OpenCV) |
 | **Music player** | Play MP3s from your PC |
 | **Hug** | Hug sprites + sweet lines |
@@ -101,7 +100,6 @@ For a **full beginner walkthrough** (screenshots-level detail), see **[docs/INST
 - **Fun Fact** — random fact
 - **Chat** — free-form conversation with a local Ollama model (see below)
 - **Visit a Website** — pick a category (Animals, Knowledge, Games, Horror, Surprise Me)
-- **Show Picture or Video** — open a user image or allow-listed video in a window
 - **Play Music** — pick an MP3 or play a random one from your Music/Downloads folders
 - **Play a Game** — mini-games (quick games and board games)
 - **Hug** — hug pose sprites + hug line
@@ -129,14 +127,6 @@ Some choices trigger **KinitoPET-style surprises** — not bugs:
 
 Kinito only opens URLs from a **manual whitelist** in `content/allowed_sites.py`. Navigation to other HTTPS sites is blocked inside the built-in browser window.
 
-### User media (pictures & videos)
-
-- **Images:** drop files into `GameAssets/UserMedia/` (PNG, JPG, WEBP, GIF, BMP)
-- **Local videos:** drop files into `GameAssets/UserMedia/videos/` (MP4, WEBM, MOV, MKV, AVI)
-- **Online videos:** curated whitelist in `content/allowed_videos.py` (same safety model as websites)
-
-Kinito only opens media from these folders or the video whitelist — never arbitrary paths on your PC.
-
 ---
 
 ## Project structure
@@ -158,10 +148,8 @@ KinitoPET-Python-Virtual-Assistant/
 │   ├── dialog_registry.py   # Links questions → UI → actions
 │   ├── questions.py         # Pool of random questions
 │   ├── allowed_sites.py     # Browser whitelist
-│   ├── allowed_videos.py    # Online video whitelist
 │   ├── facts.py, poems.py, stories.py, ...
-│   ├── site_validator.py    # URL safety checks
-│   └── media_validator.py   # User media path & video URL checks
+│   └── site_validator.py    # URL safety checks
 ├── GameAssets/              # Sprites, MP3s, balcon.exe (required)
 ├── tests/                   # Automated tests (800+)
 ├── docs/                    # Detailed guides
@@ -216,6 +204,25 @@ If Ollama is offline, Kinito falls back to the existing scripted dialogue in `co
 
 **What stays scripted:** menu prompts, yes/no questions with buttons, game pickers, credits, reminders input prompts, and other interactive dialog flows (so buttons still work).
 
+### Memory (persistent user facts)
+
+Kinito can remember personal facts across sessions — no database required.
+
+- **Dialog answers** (name, favorite color, food, hobby, etc.) are saved automatically and those questions are not asked again.
+- **Chat notes** are extracted in the background when Ollama is available (stable facts the user clearly stated).
+- Files live in `GameAssets/UserMedia/`:
+  - `memory.json` — structured facts and notes (auto-managed)
+  - `notes.txt` — human-readable mirror of chat notes
+
+These files are local only (listed in `.gitignore`) and are not uploaded to Git. You do **not** need to create them manually — Kinito creates `memory.json` and `notes.txt` automatically the first time something is saved (e.g. when you answer a name question or a memory follow-up). After cloning the repo, the `UserMedia/` folder already exists; your personal memory starts empty until you use the app.
+
+Right-click Kinito → **What do you remember?** to hear a summary.  
+Right-click Kinito → **Forget everything** to clear saved memory.
+
+Dialog-based memory works without Ollama. Chat note extraction requires Ollama.
+
+**Memory questions:** Kinito can ask personalized follow-up questions (textbox or Yes/No) during idle roaming or as scripted follow-ups when it already knows facts about you. Answers are saved to `memory.json`. With Ollama running, new questions can be AI-planned; otherwise template follow-ups are used.
+
 ### GameAssets folder
 
 The app expects a `GameAssets` folder next to `Kinito.py`:
@@ -226,9 +233,10 @@ GameAssets/
 ├── Timer.mp3, Woosh.mp3, StartTalking.mp3, ...       # Sounds
 ├── Programs/balcon.exe                               # Windows TTS (optional fallback: pyttsx3)
 ├── SecretImages/                                     # Optional images for easter egg
-└── UserMedia/                                        # Your pictures & local videos
-    └── videos/                                       # Local video files (MP4, etc.)
+└── UserMedia/                                        # Personal memory files (gitignored)
 ```
+
+The `UserMedia/` directory is created when Kinito starts. Memory files (`memory.json`, `notes.txt`) appear automatically when you first save a fact — nothing to copy or create by hand after `git clone`.
 
 If a sprite is missing, Kinito falls back to `KinitoNormal.png`.
 
@@ -339,6 +347,7 @@ This project is released under the **[MIT License](LICENSE)** — free to use, m
 |------|-------------|
 | **Kinito & KinitoPET** | [KinitoPET on Steam](https://store.steampowered.com/app/2075070/KinitoPET/) by **troy_en** |
 | **Python template** | [TimTamCoder/KinitoPET-Python-Virtual-Assistant](https://github.com/TimTamCoder/KinitoPET-Python-Virtual-Assistant) by **TimTamCoder** |
+| **AI-assisted development** | Parts of this codebase were written and refactored with **[Cursor](https://cursor.com)** (AI-assisted IDE) |
 
 This is a **fan-made** desktop assistant. It is not an official KinitoPET product and is not affiliated with the game's developers or publishers.
 

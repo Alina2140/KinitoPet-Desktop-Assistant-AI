@@ -402,32 +402,6 @@ BROWSER_ERROR_LINES = [
     "Browser error! Even the web gets scared sometimes.",
 ]
 
-# User media — pictures from GameAssets/UserMedia/, videos from folder or whitelist
-MEDIA_TYPE_MARKER = "picture or a video"
-MEDIA_TYPE_QUESTION = "Nice! Do you want a picture or a video?"
-MEDIA_NO_IMAGES_LINES = [
-    "I don't have any pictures yet! Drop some images into GameAssets/UserMedia/.",
-    "My picture folder is empty. Add some images to GameAssets/UserMedia/ first!",
-]
-MEDIA_NO_VIDEOS_LINES = [
-    "I don't have any videos right now. Add files to GameAssets/UserMedia/videos/ "
-    "or check content/allowed_videos.py.",
-    "No videos available yet! Put MP4s in GameAssets/UserMedia/videos/ for local clips.",
-]
-MEDIA_CLOSE_LINES = [
-    "All done! Hope you enjoyed that.",
-    "Window's closed! That was fun.",
-    "Media time over. See you next time!",
-]
-MEDIA_BLOCKED_LINES = [
-    "I can't play that — it isn't on my video list!",
-    "Nope! I only open videos I know are safe.",
-]
-MEDIA_ERROR_LINES = [
-    "Hmm, I couldn't open that. Maybe try another one?",
-    "Something went wrong loading the media. Sorry about that!",
-]
-
 # Music player (MP3 files on the PC)
 MUSIC_PLAYER_QUESTION_MARKER = "play music from your computer"
 MUSIC_PLAYER_QUESTIONS = [
@@ -520,9 +494,22 @@ STORY_DECLINED_LINES = [
 MENU_PROMPT = "What would you like me to do?"
 
 CHAT_GREETING = "Hey! I'm all ears — what's on your mind?"
+CHAT_GREETING_WITH_NAME = "Hey {user_name}! I'm all ears — what's on your mind?"
 CHAT_UNAVAILABLE = (
     "I'd love to chat, but I can't reach my brain right now."
 )
+MEMORY_FORGOTTEN_LINE = (
+    "Okay. I've cleared what I remembered about you. We can start fresh."
+)
+MEMORY_EMPTY_LINE = (
+    "I don't have anything saved about you yet. Tell me about yourself!"
+)
+MEMORY_ANSWER_ACK_LINES = [
+    "Got it! I'll keep that in mind.",
+    "Noted! I'll remember that.",
+    "Thanks for telling me — I'll remember.",
+    "I'll tuck that away in my memory.",
+]
 
 SCREEN_EFFECTS_ON_LINES = [
     "Screen effects enabled. If the picture hiccups, that might be me.",
@@ -550,10 +537,36 @@ FOCUS_OFF_LINES = [
     "Focus mode disabled. I missed our conversations. Let's talk!",
 ]
 
+FOCUS_TIMER_SET_LINES = [
+    "Focus timer set! I'll leave you alone until then.",
+    "Got it! Focus mode will end when the timer runs out.",
+    "Quiet countdown started. I'll check in when time's up.",
+    "Focus locked in for that long. I'll stay quiet until then.",
+]
+FOCUS_TIMER_CANCELLED_LINES = [
+    "Focus timer cancelled. I'll stay in focus until you unfocus me.",
+    "Okay, no more focus countdown. Quiet mode continues.",
+    "Timer cleared! Focus mode stays on until you say otherwise.",
+]
+FOCUS_TIMER_ADJUSTED_LINES = [
+    "Focus timer updated! New quiet window starts now.",
+    "Got it! Focus countdown reset to your new time.",
+    "All set! Focus mode will end after the new duration.",
+]
+FOCUS_TIMER_DONE_LINES = [
+    "Focus timer done! I'm talkative again.",
+    "Quiet time's over — your focus timer just finished.",
+    "Ding! Focus mode off. Ready whenever you are.",
+    "Timer's up! Focus mode ended. Miss me?",
+]
+
 # Interactive prompts
 REMINDER_MINUTES_PROMPT = "How many minutes until I should remind you?"
 REMINDER_MANAGE_PROMPT = "Your timer is still running. What would you like to do?"
 REMINDER_ADJUST_PROMPT = "How many minutes from now should I remind you?"
+FOCUS_TIMER_MINUTES_PROMPT = "How many minutes should focus mode last?"
+FOCUS_TIMER_MANAGE_PROMPT = "Your focus timer is still running. What would you like to do?"
+FOCUS_TIMER_ADJUST_PROMPT = "How many minutes from now should focus mode end?"
 
 # Sleep / wake
 PAUSE_LINES = [
@@ -1010,15 +1023,17 @@ BUTTON_SLEEP = "Sleep"
 BUTTON_WAKE_UP = "Wake up"
 BUTTON_FOCUS = "Focus"
 BUTTON_UNFOCUS = "Unfocus"
+BUTTON_SET_FOCUS_TIMER = "Focus Timer"
+BUTTON_CANCEL_FOCUS_TIMER = "End timer"
+BUTTON_ADJUST_FOCUS_TIMER = "Adjust focus time"
 BUTTON_SCREEN_EFFECTS_ON = "Screen Effects on"
 BUTTON_SCREEN_EFFECTS_OFF = "Screen Effects off"
 BUTTON_SING_SONG = "Sing"
 BUTTON_FUN_FACT = "Fun Fact"
 BUTTON_CHAT = "Chat"
+BUTTON_REMEMBER = "What do you remember?"
+BUTTON_FORGET = "Forget everything"
 BUTTON_VISIT_WEBSITE = "Visit a Website"
-BUTTON_SHOW_MEDIA = "Show Picture or Video"
-BUTTON_SHOW_PICTURE = "A Picture"
-BUTTON_SHOW_VIDEO = "A Video"
 BUTTON_PLAY_MUSIC = "Play Music"
 BUTTON_STOP_MUSIC = "Stop music"
 BUTTON_CHANGE_SONG = "Pick another song"

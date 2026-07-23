@@ -46,6 +46,13 @@ def test_is_busy_when_awaiting_response(speech):
     assert speech._is_busy_with_speech() is True
 
 
+def test_is_busy_when_memory_question_pending(speech):
+    from kinito.memory.questions import MemoryQuestion
+
+    speech._pending_memory_question = MemoryQuestion("Tea or coffee?", "textbox", "drink")
+    assert speech._is_busy_with_speech() is True
+
+
 def test_load_available_voices_empty_without_balcon(speech):
     with pytest.MonkeyPatch.context() as mp:
         mp.setattr("kinito.speech.os.path.isfile", lambda p: False)

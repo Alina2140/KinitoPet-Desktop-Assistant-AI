@@ -120,13 +120,14 @@ def test_append_chat_message_styles_speaker_labels(chat_app):
     chat_app._chat_log_widget = log
     chat_app._configure_chat_log_tags(log)
 
+    chat_app.chat_user_label = MagicMock(return_value="Alex")
     chat_app.append_chat_message("Kinito", "Hello there!")
-    chat_app.append_chat_message("Alina", "hi :)")
+    chat_app.append_chat_message("Alex", "hi :)")
 
     content = log.get("1.0", tk.END)
     assert "Kinito: Hello there!" in content
-    assert "Alina: hi :)" in content
+    assert "Alex: hi :)" in content
     assert "chat_kinito" in log.tag_names("1.0")
-    alina_index = log.search("Alina:", "1.0", tk.END)
-    assert alina_index
-    assert "chat_alina" in log.tag_names(alina_index)
+    user_index = log.search("Alex:", "1.0", tk.END)
+    assert user_index
+    assert "chat_user" in log.tag_names(user_index)

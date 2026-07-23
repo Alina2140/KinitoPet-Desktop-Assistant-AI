@@ -74,13 +74,15 @@ def test_stop_audio_for_drag_keeps_user_music(movement):
     movement.stop_speech_accompaniment_music.assert_not_called()
 
 
-def test_stop_audio_for_drag_stops_speech_accompaniment(movement):
+def test_stop_audio_for_drag_keeps_speech_accompaniment(movement):
     movement._speech_accompaniment_active = True
     movement.stop_speech_accompaniment_music = MagicMock()
+    movement.stop_background_music = MagicMock()
 
     movement._stop_audio_for_drag()
 
-    movement.stop_speech_accompaniment_music.assert_called_once()
+    movement.stop_speech_accompaniment_music.assert_not_called()
+    movement.stop_background_music.assert_not_called()
 
 
 def test_setup_mouse_bindings_drags_sprite_only(movement):
@@ -365,19 +367,22 @@ def test_smooth_movement_calls_ai_idle_line(movement):
     movement._startup_complete = True
     movement._allow_random_questions = True
     movement._focus_mode = False
+    movement._is_game_active = MagicMock(return_value=False)
     movement._should_use_ai_idle_line = MagicMock(return_value=True)
     movement.speak_ai_idle_line = MagicMock(side_effect=lambda: setattr(movement, "_running", False))
+    movement.speak_memory_question_idle = MagicMock()
     movement.perform_random_menu_action = MagicMock()
     movement.speak_random_question = MagicMock()
     movement._idle_wait_before_next_action = MagicMock(return_value=0)
 
     with (
-        patch("kinito.movement.random.random", side_effect=[0.1, 0.5]),
+        patch("kinito.movement.random.random", side_effect=[0.1, 0.5, 0.9]),
         patch("kinito.movement.time.sleep"),
     ):
         movement.smooth_movement()
 
     movement.speak_ai_idle_line.assert_called_once()
+    movement.speak_memory_question_idle.assert_not_called()
     movement.speak_random_question.assert_not_called()
 
 
@@ -457,3 +462,42 @@ def test_maybe_play_reading_page_turn_plays_when_active(movement):
         movement._maybe_play_reading_page_turn(1)
 
     movement.play_sfx.assert_called_once()
+
+
+def test_run_reading_idle_can_use_glasses_sprites(movement):
+    movement.tk_img_idle = "idle"
+    movement.tk_img_idle_2 = "idle2"
+    movement._reading_sprites = ("idle", "idle2")
+    movement._reading_glasses_sprites = ("glasses", "glasses2")
+    movement.change_sprite = MagicMock()
+    movement._is_reading_idle_active = MagicMock(return_value=False)
+    movement.offer_random_story = MagicMock()
+    movement.say_random_wisdom = MagicMock()
+
+    with (
+        patch("kinito.movement.random.random", side_effect=[0.0, 1.0, 1.0]),
+        patch("kinito.movement.random.randint", return_value=1),
+        patch("kinito.movement.time.sleep"),
+    ):
+        movement._run_reading_idle()
+
+    movement.change_sprite.assert_called_with("glasses")
+
+
+def test_run_reading_idle_uses_normal_sprites_when_glasses_miss(movement):
+    movement.tk_img_idle = "idle"
+    movement._reading_sprites = ("idle", "idle2")
+    movement._reading_glasses_sprites = ("glasses", "glasses2")
+    movement.change_sprite = MagicMock()
+    movement._is_reading_idle_active = MagicMock(return_value=False)
+    movement.offer_random_story = MagicMock()
+    movement.say_random_wisdom = MagicMock()
+
+    with (
+        patch("kinito.movement.random.random", side_effect=[0.99, 1.0, 1.0]),
+        patch("kinito.movement.random.randint", return_value=1),
+        patch("kinito.movement.time.sleep"),
+    ):
+        movement._run_reading_idle()
+
+    movement.change_sprite.assert_called_with("idle")

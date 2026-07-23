@@ -40,6 +40,25 @@ class ProgramsMixin:
             command=self._open_reminder_controls,
         )
 
+    def setup_focus_timer_countdown_button(self):
+        """Create the on-screen focus-timer button (hidden until a focus countdown runs)."""
+        self._focus_timer_end_at = None
+        self._focus_timer_tick_timer = None
+        self._focus_timer_id = 0
+        self._focus_timer_countdown_btn = tk.Button(
+            self.root,
+            text="0:00",
+            font=("Arial", 9, "bold"),
+            relief=tk.RIDGE,
+            bd=1,
+            padx=4,
+            pady=1,
+            bg="#c8d9ef",
+            activebackground="#c8d9ef",
+            highlightthickness=0,
+            command=self.open_focus_timer_controls,
+        )
+
     @staticmethod
     def _parse_reminder_minutes(minutes_text: str) -> int | None:
         """Return whole minutes parsed from *minutes_text*, or None if invalid."""
@@ -107,12 +126,16 @@ class ProgramsMixin:
             return 22
 
     def _assistant_controls_active(self) -> bool:
-        """Return True while reminder or user-music controls should be visible."""
+        """Return True while reminder, focus-timer, or user-music controls should be visible."""
         music_active = (
             hasattr(self, "_user_music_controls_visible")
             and self._user_music_controls_visible()
         )
-        return self._reminder_is_active() or music_active
+        return (
+            self._reminder_is_active()
+            or self._focus_timer_is_active()
+            or music_active
+        )
 
     def _assistant_controls_window_height(self) -> int:
         """Return the assistant window height needed for sprite + control buttons."""
@@ -120,36 +143,39 @@ class ProgramsMixin:
         gap = self._REMINDER_COUNTDOWN_GAP
         margin = self._REMINDER_COUNTDOWN_BOTTOM_MARGIN
         reminder_btn = getattr(self, "_reminder_countdown_btn", None)
+        focus_btn = getattr(self, "_focus_timer_countdown_btn", None)
         music_btn = getattr(self, "_music_control_btn", None)
         if self._reminder_is_active():
             height += gap + self._control_button_height(reminder_btn)
+        if self._focus_timer_is_active():
+            height += gap + self._control_button_height(focus_btn)
         if hasattr(self, "_user_music_controls_visible") and self._user_music_controls_visible():
             height += gap + self._control_button_height(music_btn)
         return height + margin
 
     def _sync_assistant_controls_layout(self):
-        """Resize the window and place reminder/music buttons under the sprite."""
+        """Resize the window and place reminder/focus/music buttons under the sprite."""
         reminder_btn = getattr(self, "_reminder_countdown_btn", None)
+        focus_btn = getattr(self, "_focus_timer_countdown_btn", None)
         music_btn = getattr(self, "_music_control_btn", None)
         reminder_active = self._reminder_is_active()
+        focus_active = self._focus_timer_is_active()
         music_active = (
             hasattr(self, "_user_music_controls_visible")
             and self._user_music_controls_visible()
         )
 
-        if not reminder_active and reminder_btn is not None:
-            try:
-                if reminder_btn.winfo_ismapped():
-                    reminder_btn.place_forget()
-            except tk.TclError:
-                pass
-
-        if not music_active and music_btn is not None:
-            try:
-                if music_btn.winfo_ismapped():
-                    music_btn.place_forget()
-            except tk.TclError:
-                pass
+        for active, button in (
+            (reminder_active, reminder_btn),
+            (focus_active, focus_btn),
+            (music_active, music_btn),
+        ):
+            if not active and button is not None:
+                try:
+                    if button.winfo_ismapped():
+                        button.place_forget()
+                except tk.TclError:
+                    pass
 
         if not self._assistant_controls_active():
             self._restore_window_after_assistant_controls()
@@ -171,6 +197,10 @@ class ProgramsMixin:
                 self._update_reminder_countdown_button()
                 reminder_btn.place(relx=0.5, y=y, anchor="n")
                 y += self._control_button_height(reminder_btn) + self._REMINDER_COUNTDOWN_GAP
+            if focus_active and focus_btn is not None:
+                self._update_focus_timer_countdown_button()
+                focus_btn.place(relx=0.5, y=y, anchor="n")
+                y += self._control_button_height(focus_btn) + self._REMINDER_COUNTDOWN_GAP
             if music_active and music_btn is not None:
                 self._update_music_control_button()
                 music_btn.place(relx=0.5, y=y, anchor="n")
@@ -273,6 +303,148 @@ class ProgramsMixin:
             return
         self._clear_reminder()
         self.speak(dlg.pick_line(dlg.REMINDER_CANCELLED_LINES))
+
+    def _focus_timer_seconds_left(self) -> int:
+        end_at = getattr(self, "_focus_timer_end_at", None)
+        if end_at is None:
+            return 0
+        return max(0, int(end_at - time.monotonic()))
+
+    def _focus_timer_is_active(self) -> bool:
+        return self._focus_timer_seconds_left() > 0
+
+    def _update_focus_timer_countdown_button(self):
+        """Refresh focus-timer label text from the remaining time."""
+        button = getattr(self, "_focus_timer_countdown_btn", None)
+        if button is None:
+            return
+        try:
+            button.config(text=self.format_reminder_countdown(self._focus_timer_seconds_left()))
+        except tk.TclError:
+            pass
+
+    def _clear_focus_timer(self):
+        """Stop the active focus timer and hide the countdown button."""
+        if getattr(self, "_focus_timer_end_at", None) is not None:
+            self._focus_timer_id = getattr(self, "_focus_timer_id", 0) + 1
+        self._focus_timer_end_at = None
+        cancel_after(self.root, self, "_focus_timer_tick_timer")
+        self._sync_assistant_controls_layout()
+
+    def _start_focus_timer(self, total_seconds: int):
+        """Begin or replace a focus countdown for *total_seconds*."""
+        self._focus_timer_id = getattr(self, "_focus_timer_id", 0) + 1
+        self._focus_timer_end_at = time.monotonic() + total_seconds
+        self._sync_assistant_controls_layout()
+        self._schedule_focus_timer_tick()
+
+    def _schedule_focus_timer_tick(self):
+        """Update the focus countdown once per second until it ends."""
+        cancel_after(self.root, self, "_focus_timer_tick_timer")
+        if not getattr(self, "_running", True):
+            return
+        if self._focus_timer_end_at is None:
+            return
+        try:
+            if not self.root.winfo_exists():
+                return
+        except tk.TclError:
+            return
+
+        remaining = self._focus_timer_seconds_left()
+        if remaining <= 0:
+            self._focus_timer_end_at = None
+            self._sync_assistant_controls_layout()
+            self._fire_focus_timer()
+            return
+
+        self._update_focus_timer_countdown_button()
+        schedule_after(
+            self.root,
+            self,
+            "_focus_timer_tick_timer",
+            1000,
+            self._focus_timer_tick,
+        )
+
+    def _focus_timer_tick(self):
+        """Single focus-countdown tick; reschedule while time remains."""
+        self._focus_timer_tick_timer = None
+        self._schedule_focus_timer_tick()
+
+    def open_focus_timer_controls(self):
+        """Open set/manage options for the focus timer."""
+        if not getattr(self, "_focus_mode", False):
+            return
+        if self._focus_timer_is_active():
+            self.speak(dlg.FOCUS_TIMER_MANAGE_PROMPT, 45, True, allow_in_focus=True)
+            return
+        self.speak(dlg.FOCUS_TIMER_MINUTES_PROMPT, 45, True, allow_in_focus=True)
+
+    def set_focus_timer(self, minutes):
+        """Start a focus-mode countdown for the given number of minutes."""
+        if not getattr(self, "_focus_mode", False):
+            return
+        parsed = self._parse_reminder_minutes(minutes)
+        if parsed is None:
+            self.speak(
+                dlg.pick_line(dlg.REMINDER_INVALID_LINES),
+                45,
+                True,
+                allow_in_focus=True,
+            )
+            return
+
+        self._start_focus_timer(parsed * 60)
+        self.speak(
+            dlg.pick_line(dlg.FOCUS_TIMER_SET_LINES),
+            show_bubble=False,
+            allow_in_focus=True,
+            skip_ai=True,
+        )
+
+    def adjust_focus_timer(self, minutes):
+        """Replace the running focus timer with a new duration in minutes."""
+        if not getattr(self, "_focus_mode", False):
+            return
+        parsed = self._parse_reminder_minutes(minutes)
+        if parsed is None:
+            self.speak(
+                dlg.pick_line(dlg.REMINDER_INVALID_LINES),
+                45,
+                True,
+                allow_in_focus=True,
+            )
+            return
+
+        self._start_focus_timer(parsed * 60)
+        self.speak(
+            dlg.pick_line(dlg.FOCUS_TIMER_ADJUSTED_LINES),
+            show_bubble=False,
+            allow_in_focus=True,
+            skip_ai=True,
+        )
+
+    def cancel_focus_timer(self):
+        """Cancel the running focus timer without leaving focus mode."""
+        if getattr(self, "_focus_timer_end_at", None) is None:
+            return
+        self._clear_focus_timer()
+        self.speak(
+            dlg.pick_line(dlg.FOCUS_TIMER_CANCELLED_LINES),
+            allow_in_focus=True,
+            skip_ai=True,
+        )
+
+    def _fire_focus_timer(self):
+        """End focus mode when the focus countdown finishes."""
+        if not self._running:
+            return
+        if not getattr(self, "_focus_mode", False):
+            return
+        self._focus_mode = False
+        self.play_sfx(timer_file_path)
+        self.speak(dlg.pick_line(dlg.FOCUS_TIMER_DONE_LINES), skip_ai=True)
 
     def _launch_shortcut(self, shortcut_path):
         """Open a Windows .lnk shortcut; return True on success."""

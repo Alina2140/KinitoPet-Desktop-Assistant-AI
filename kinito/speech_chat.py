@@ -16,7 +16,7 @@ class SpeechChatMixin:
     CHAT_LOG_HEIGHT_PX = 120
     CHAT_LOG_WIDTH_PX = 360
     CHAT_KINITO_COLOR = "#cd77d1"
-    CHAT_ALINA_COLOR = "#6A25EB"
+    CHAT_USER_COLOR = "#6A25EB"
 
     def _init_chat_state(self) -> None:
         """Initialize chat-related instance attributes (call from app __init__)."""
@@ -92,6 +92,7 @@ class SpeechChatMixin:
         entry.bind("<Return>", self._handle_chat_entry_submit)
         self._chat_entry_widget = entry
         self._speech_bubble_entry = entry
+        self._bind_entry_focus_on_click(entry)
 
         close_button = self._create_bubble_button(
             input_frame,
@@ -101,7 +102,7 @@ class SpeechChatMixin:
             padx=4,
         )
         close_button.pack(side=tk.LEFT, padx=(5, 0))
-        entry.focus_set()
+        self._focus_bubble_entry(force=True)
 
     def _handle_chat_entry_submit(self, event=None):
         """Submit the chat entry to the LLM handler."""
@@ -127,17 +128,24 @@ class SpeechChatMixin:
             underline=True,
         )
         log.tag_configure(
-            "chat_alina",
-            foreground=self.CHAT_ALINA_COLOR,
+            "chat_user",
+            foreground=self.CHAT_USER_COLOR,
             underline=True,
         )
+
+    def _resolve_chat_user_label(self) -> str:
+        """Return the chat log label for the user (from memory when available)."""
+        label = getattr(self, "chat_user_label", None)
+        if callable(label):
+            return label()
+        return prompts.CHAT_USER_LABEL_FALLBACK
 
     def _chat_role_tag(self, role: str) -> str | None:
         """Return the text tag for a chat speaker label, if any."""
         if role == prompts.CHAT_ASSISTANT_LABEL:
             return "chat_kinito"
-        if role == prompts.CHAT_USER_LABEL:
-            return "chat_alina"
+        if role == self._resolve_chat_user_label():
+            return "chat_user"
         return None
 
     def append_chat_message(self, role: str, text: str) -> None:
@@ -167,7 +175,7 @@ class SpeechChatMixin:
             if entry.winfo_exists():
                 entry.configure(state=tk.NORMAL if enabled else tk.DISABLED)
                 if enabled:
-                    entry.focus_set()
+                    self._focus_bubble_entry(force=True)
         except tk.TclError:
             pass
 

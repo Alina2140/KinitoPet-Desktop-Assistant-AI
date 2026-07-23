@@ -22,6 +22,7 @@ from kinito.bubble_ui import (
     outline_canvas_pad,
 )
 from kinito.tk_timers import schedule_after
+from kinito.tts_text import normalize_text_for_tts
 
 
 class SpeechMixin:
@@ -75,6 +76,21 @@ class SpeechMixin:
     POEM_READ_MS_MIN = 5000
     POEM_READ_MS_MAX = 45000
     POEM_READ_MS_PER_CHAR = 40
+
+    def _has_protected_interactive_state(self) -> bool:
+        """Return True while a memory question or other response dialog must stay open."""
+        return (
+            getattr(self, "_pending_memory_question", None) is not None
+            or self._awaiting_response
+            or getattr(self, "_planning_memory_question", False)
+        )
+
+    def _may_start_speech(self, text) -> bool:
+        """Return False when *text* would replace a protected interactive bubble."""
+        pending = getattr(self, "_pending_memory_question", None)
+        if pending is not None and str(text) == pending.question:
+            return True
+        return not self._has_protected_interactive_state()
 
     def get_max_bubble_width(self):
         """Return the maximum width of a speech bubble in pixels."""
@@ -235,7 +251,6 @@ class SpeechMixin:
             )
             canvas.tag_lower("bubble")
             canvas.lift(body_window)
-            self._focus_bubble_entry()
         except tk.TclError:
             pass
 
@@ -250,14 +265,31 @@ class SpeechMixin:
             return body
         return None
 
-    def _focus_bubble_entry(self):
-        """Move keyboard focus to the active bubble text field, if any."""
+    def _bind_entry_focus_on_click(self, entry):
+        """Ensure clicking the entry always restores keyboard focus."""
+
+        def _focus_entry(_event=None):
+            try:
+                if entry.winfo_exists() and entry.cget("state") == tk.NORMAL:
+                    entry.focus_set()
+            except tk.TclError:
+                pass
+
+        entry.bind("<Button-1>", _focus_entry, add="+")
+
+    def _focus_bubble_entry(self, *, force=False):
+        """Move keyboard focus to the active bubble text field when appropriate."""
         entry = getattr(self, "_speech_bubble_entry", None)
         if entry is None:
             return
         try:
-            if entry.winfo_exists():
-                entry.focus_set()
+            if not entry.winfo_exists():
+                return
+            if entry.cget("state") != tk.NORMAL:
+                return
+            if not force and entry.focus_get() == entry:
+                return
+            entry.focus_set()
         except tk.TclError:
             pass
 
@@ -461,6 +493,8 @@ class SpeechMixin:
             or self._awaiting_response
             or self._has_active_speech_bubble()
             or getattr(self, "_ai_generating", False)
+            or getattr(self, "_pending_memory_question", None) is not None
+            or getattr(self, "_planning_memory_question", False)
         )
 
     def _is_background_music_playing(self):
@@ -626,6 +660,7 @@ class SpeechMixin:
 
     def _run_tts(self, text, pitch=45, voice_candidates=None, speech_epoch=None):
         """Run TTS via balcon (preferred) or pyttsx3 fallback."""
+        text = normalize_text_for_tts(text)
         if voice_candidates is None:
             voice_candidates = self.VOICE_NORMAL_CANDIDATES
 
@@ -676,6 +711,8 @@ class SpeechMixin:
         del ai_hint, skip_ai  # handled by LLMMixin when present in the MRO
         if getattr(self, "_focus_mode", False) and not allow_in_focus:
             return
+        if not self._may_start_speech(text):
+            return
         self.interrupt_speech()
         if hasattr(self, "_stop_roaming"):
             self._stop_roaming()
@@ -722,6 +759,8 @@ class SpeechMixin:
         Do not use for normal dialog lines — use ``speak()`` so Kinito actually says them.
         """
         if getattr(self, "_focus_mode", False) and not allow_in_focus:
+            return
+        if not self._may_start_speech(text):
             return
         if display_ms is None:
             display_ms = self.BRIEF_ACK_DISPLAY_MS
@@ -776,8 +815,15 @@ class SpeechMixin:
         self._speech_bubble_label = label
 
         spec = find_dialog_spec(text)
+        pending = getattr(self, "_pending_memory_question", None)
         needs_response = spec is not None
-        if spec:
+        if pending is not None and pending.question == text:
+            if pending.ui == "yes_no":
+                self.show_response_buttons([dlg.BUTTON_YES, dlg.BUTTON_NO])
+            else:
+                self.show_response_textbox(pending.question)
+            needs_response = True
+        elif spec:
             apply_dialog_ui(self, spec)
 
         self._fit_speech_bubble_to_content()
@@ -920,6 +966,7 @@ class SpeechMixin:
         entry.pack(side=tk.LEFT, ipady=2)
         entry.bind("<Return>", lambda event: self.handle_response(entry.get()))
         self._speech_bubble_entry = entry
+        self._bind_entry_focus_on_click(entry)
 
         close_button = self._create_bubble_button(
             input_frame,
@@ -930,7 +977,7 @@ class SpeechMixin:
         )
         close_button.pack(side=tk.LEFT, padx=(5, 0))
 
-        entry.focus_set()
+        self._focus_bubble_entry(force=True)
         return entry
 
     def show_response_textbox(self, prompt):
@@ -941,7 +988,10 @@ class SpeechMixin:
             self._fit_speech_bubble_to_content()
             self._schedule_speech_bubble_position()
             delay = self._speech_bubble_reveal_delay_ms()
-            self.root.after(delay + delay + 50, self._focus_bubble_entry)
+            self.root.after(
+                delay + delay + 50,
+                lambda: self._focus_bubble_entry(force=True),
+            )
         else:
             self.speech_bubble = self._new_speech_bubble_toplevel(prompt)
             bubble_body = self._create_bubble_shell(self.speech_bubble)
@@ -953,10 +1003,19 @@ class SpeechMixin:
             self._fit_speech_bubble_to_content()
             self._schedule_speech_bubble_position()
             delay = self._speech_bubble_reveal_delay_ms()
-            self.root.after(delay + delay + 50, self._focus_bubble_entry)
+            self.root.after(
+                delay + delay + 50,
+                lambda: self._focus_bubble_entry(force=True),
+            )
 
     def handle_response(self, response):
         """Route a button or textbox answer to the matching dialog handler."""
+        if getattr(self, "_pending_memory_question", None) is not None:
+            self.interrupt_speech()
+            self._close_speech_bubble_impl(stop_tts=False, clear_pending=False)
+            self._handle_memory_question_response(response)
+            return
+
         current_question = self._speech_bubble_title()
         self.interrupt_speech()
         self.close_speech_bubble()
@@ -972,12 +1031,14 @@ class SpeechMixin:
             return
         self._close_speech_bubble_impl()
 
-    def _close_speech_bubble_impl(self):
+    def _close_speech_bubble_impl(self, *, stop_tts: bool = True, clear_pending: bool = True):
         """Destroy the speech bubble without chat-mode teardown."""
         self._cancel_bubble_close_timer()
         self._response_timeout_generation = getattr(self, "_response_timeout_generation", 0) + 1
         self._cancel_response_timeout_timer()
         self._awaiting_response = False
+        if clear_pending and hasattr(self, "_pending_memory_question"):
+            self._pending_memory_question = None
         self._preserve_sprite = False
         self._talk_sprite_mode = "talking"
         self._speech_bubble_last_pos = None
@@ -990,7 +1051,8 @@ class SpeechMixin:
         self._speech_bubble_canvas = None
         self._speech_bubble_body_window = None
         self._speech_bubble_outer = None
-        self._stop_active_tts()
+        if stop_tts:
+            self._stop_active_tts()
         if self._has_active_speech_bubble():
             self.speech_bubble.destroy()
             self.play_sfx(stoptalk_file_path)
@@ -1033,6 +1095,7 @@ class SpeechMixin:
         self.speech_bubble.update_idletasks()
         self._speech_bubble_last_pos = None
         self.position_speech_bubble()
+        self._focus_bubble_entry(force=True)
 
     def _schedule_speech_bubble_position(self):
         """Position and reveal the bubble after layout has settled."""

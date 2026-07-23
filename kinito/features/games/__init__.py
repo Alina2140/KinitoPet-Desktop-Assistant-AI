@@ -33,6 +33,27 @@ class GamesMixin:
         """Speak a game comment with TTS and show Kinito's speech bubble."""
         self.speak(line, show_bubble=show_bubble, skip_ai=True)
 
+    def _is_game_active(self) -> bool:
+        """Return True while any mini-game is in progress."""
+        window = getattr(self, "_game_window", None)
+        if window is not None:
+            try:
+                if window.winfo_exists():
+                    return True
+                self._game_window = None
+            except Exception:
+                self._game_window = None
+
+        if getattr(self, "_number_guess_target", None) is not None:
+            return True
+
+        if getattr(self, "_trivia_current", None) is not None:
+            return True
+
+        trivia_round = getattr(self, "_trivia_round", 0)
+        trivia_used = getattr(self, "_trivia_used", None)
+        return trivia_round < ROUND_SIZE and trivia_used and len(trivia_used) > 0
+
     def _ensure_single_game_window(self):
         """Close any open game window so only one game runs at a time."""
         window = getattr(self, "_game_window", None)
@@ -87,7 +108,7 @@ class GamesMixin:
         self._trivia_used.add(question)
         self._trivia_current = question
         prompt = f"True or false: {question.statement}"
-        self.speak(prompt, 45, True)
+        self.speak(prompt, 45, True, skip_ai=True)
 
     def start_battleships(self):
         """Open a mini battleships game window."""

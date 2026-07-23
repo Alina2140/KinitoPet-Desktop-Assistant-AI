@@ -142,6 +142,8 @@ def test_handle_true_false_correct_advances(mock_app):
     spec = find_dialog_spec("True or false: The sky is blue.")
     handle_dialog_response(mock_app, spec, dlg.BUTTON_TRUE)
     assert mock_app._trivia_score == 1
+    feedback_call = mock_app.speak.call_args_list[0]
+    assert feedback_call.kwargs.get("skip_ai") is True
     mock_app._ask_next_trivia.assert_called_once()
 
 
@@ -249,3 +251,24 @@ def test_handle_menu_unfocus_allowed_during_focus_mode(mock_app):
     spec = find_dialog_spec(dlg.MENU_PROMPT)
     handle_dialog_response(mock_app, spec, dlg.BUTTON_UNFOCUS)
     mock_app.toggle_focus.assert_called_once()
+
+
+def test_handle_menu_goodbye_allowed_during_focus_mode(mock_app):
+    mock_app._focus_mode = True
+    spec = find_dialog_spec(dlg.MENU_PROMPT)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_SAY_GOODBYE)
+    mock_app.say_goodbye.assert_called_once()
+
+
+def test_handle_menu_goodbye_allowed_during_sleep(mock_app):
+    mock_app.paused = True
+    spec = find_dialog_spec(dlg.MENU_PROMPT)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_SAY_GOODBYE)
+    mock_app.say_goodbye.assert_called_once()
+
+
+def test_handle_menu_focus_timer_allowed_during_focus_mode(mock_app):
+    mock_app._focus_mode = True
+    spec = find_dialog_spec(dlg.MENU_PROMPT)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_SET_FOCUS_TIMER)
+    mock_app.open_focus_timer_controls.assert_called_once()

@@ -36,6 +36,14 @@ def llm_app():
     app._ollama_client.chat.return_value = "Hello friend!"
     app._ollama_client.generate.return_value = "Just checking in on you."
     app._init_chat_state()
+    app._memory = MagicMock()
+    app._memory.get_fact.return_value = None
+    app._memory.as_prompt_block.return_value = ""
+    app._memory.user_display_name.return_value = "You"
+    app.chat_user_label = MagicMock(return_value="You")
+    app.memory_prompt_block = MagicMock(return_value="")
+    app._memory_extractor = MagicMock()
+    app._last_chat_user_text = ""
     app._conversation = MagicMock()
     app._conversation.messages_for_api.return_value = [{"role": "user", "content": "Hi"}]
     app._conversation.reset = MagicMock()
@@ -52,7 +60,29 @@ def llm_app():
     return app
 
 
-def test_start_chat_opens_bubble_when_ollama_available(llm_app):
+def test_append_memory_context_omits_facts_for_poem_replacement(llm_app):
+    llm_app._memory.get_fact.return_value = "Ben"
+    prompt = llm_app._append_memory_context(
+        "Say something fun.",
+        scripted_text="Why did the chicken cross the road?",
+        ai_hint=None,
+    )
+    assert "Cherry Cola" not in prompt
+    assert "favorite_drink" not in prompt
+    assert prompt == "Say something fun."
+
+
+def test_append_memory_context_includes_name_for_idle_prompt(llm_app):
+    from content import llm_prompts as prompts
+
+    llm_app._memory.get_fact.return_value = "Ben"
+    prompt = llm_app._append_memory_context(
+        prompts.IDLE_PROMPT,
+        scripted_text="",
+        ai_hint=prompts.IDLE_PROMPT,
+    )
+    assert "The user's name is Ben." in prompt
+    assert "favorite_drink" not in prompt
     llm_app.start_chat()
     llm_app._conversation.reset.assert_called_once()
     llm_app.open_chat_bubble.assert_called_once()
@@ -157,6 +187,102 @@ def test_speak_uses_ai_for_plain_lines(mock_speak, llm_app):
 
     mock_speak.assert_called_once()
     assert mock_speak.call_args.args[0] == "Just checking in on you."
+
+
+@patch.object(SpeechMixin, "speak")
+def test_speak_blocked_during_game_for_plain_lines(mock_speak, llm_app):
+    llm_app._is_game_active = MagicMock(return_value=True)
+    with patch("kinito.features.llm.find_dialog_spec", return_value=None):
+        llm_app.speak("Hello there!")
+
+    mock_speak.assert_not_called()
+
+
+@patch.object(SpeechMixin, "speak")
+def test_deliver_generated_line_ignored_during_game(mock_speak, llm_app):
+    llm_app._is_game_active = MagicMock(return_value=True)
+    llm_app.close_speech_bubble = MagicMock()
+    llm_app.talking = True
+
+    llm_app._deliver_generated_line("Late AI line", {"show_bubble": True})
+
+    llm_app.close_speech_bubble.assert_not_called()
+    mock_speak.assert_not_called()
+    assert llm_app.talking is False
+
+
+@patch.object(SpeechMixin, "speak")
+def test_deliver_generated_line_ignored_during_memory_question(mock_speak, llm_app):
+    from kinito.memory.questions import MemoryQuestion
+
+    llm_app._pending_memory_question = MemoryQuestion(
+        "What is your favorite color?",
+        "textbox",
+        "favorite_color",
+    )
+    llm_app._awaiting_response = True
+    llm_app.close_speech_bubble = MagicMock()
+    llm_app.talking = True
+
+    llm_app._deliver_generated_line("Late AI line", {"show_bubble": True})
+
+    llm_app.close_speech_bubble.assert_not_called()
+    mock_speak.assert_not_called()
+    assert llm_app.talking is False
+
+
+@patch.object(SpeechMixin, "speak")
+def test_deliver_generated_line_ignored_during_focus_mode(mock_speak, llm_app):
+    llm_app._focus_mode = True
+    llm_app.close_speech_bubble = MagicMock()
+    llm_app.talking = True
+    llm_app._speech_epoch = 3
+
+    llm_app._deliver_generated_line(
+        "Late AI line",
+        {"show_bubble": True},
+        generation_epoch=3,
+    )
+
+    llm_app.close_speech_bubble.assert_not_called()
+    mock_speak.assert_not_called()
+    assert llm_app.talking is False
+
+
+@patch.object(SpeechMixin, "speak")
+def test_deliver_generated_line_ignored_when_speech_interrupted(mock_speak, llm_app):
+    llm_app.close_speech_bubble = MagicMock()
+    llm_app.talking = True
+    llm_app._speech_epoch = 5
+
+    llm_app._deliver_generated_line(
+        "Stale AI line",
+        {"show_bubble": True},
+        generation_epoch=4,
+    )
+
+    llm_app.close_speech_bubble.assert_not_called()
+    mock_speak.assert_not_called()
+    assert llm_app.talking is False
+
+
+@patch.object(SpeechMixin, "speak")
+def test_speak_blocked_while_memory_question_pending(mock_speak, llm_app):
+    from kinito.memory.questions import MemoryQuestion
+
+    llm_app._pending_memory_question = MemoryQuestion(
+        "Do you like coffee?",
+        "textbox",
+        "likes_coffee",
+    )
+    llm_app.speak("Random interruption!")
+    mock_speak.assert_not_called()
+
+
+@patch.object(SpeechMixin, "speak")
+def test_should_ai_replace_false_during_game(mock_speak, llm_app):
+    llm_app._is_game_active = MagicMock(return_value=True)
+    assert llm_app._should_ai_replace("Correct! Nice one.") is False
 
 
 @patch.object(SpeechMixin, "speak")

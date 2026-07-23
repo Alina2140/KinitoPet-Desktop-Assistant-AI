@@ -17,6 +17,88 @@ Personality:
 
 Stay in character as KinitoPET. Be supportive, curious and a little uncanny about the user's day and so on."""
 
+MEMORY_BLOCK_TEMPLATE = "\n\n{memory_block}"
+
+MEMORY_USAGE_HINT = (
+    "Use the memory above only when it is directly relevant to the user's latest message. "
+    "Do not bring up unrelated notes, old moods, or passing comments from earlier in the chat."
+)
+
+MEMORY_GENERATION_HINT = (
+    "If a name is given above, use it sparingly. "
+    "Do NOT mention the user's favorite foods, drinks, colors, hobbies, seasons, or other "
+    "stored facts unless the line you are saying is directly about that exact topic. "
+    "Stay on the scripted topic; do not shoehorn in personal details."
+)
+
+MEMORY_EXTRACT_SYSTEM = (
+    "You extract durable memories for a desktop companion's memory file. "
+    "Reply with JSON only. No markdown. Add at most one new note per turn. "
+    "Never repeat or rephrase something already listed under Already known."
+)
+
+MEMORY_EXTRACT_PROMPT = """Review this chat exchange and decide what durable memories are worth storing.
+
+Store long-term useful information, for example:
+- user facts and preferences (food, music, hobbies, language/style preferences)
+- people in the user's life (friends, family, pets)
+- plans or recurring activities (movie night with Sarah, works on Mondays)
+- stable personal details (job, studies, where they live)
+- occasional companion observations (e.g. enjoys chatting here, likes Kinito's updates)
+
+Do NOT store:
+- descriptions of emojis, facial expressions, gestures, or what is visible on screen
+- random phrases, greetings, or throwaway small talk with no lasting meaning
+- fleeting mood about today ("having a good day") unless the user asks you to remember it
+- meta replies ("no change needed") or guesses
+- sensitive data (passwords, addresses)
+- notes that repeat or rephrase something already listed under Already known
+
+Rules:
+- If nothing genuinely new is worth storing, return empty lists/objects.
+- add_notes: max 1 short note. Prefer the single most useful new detail from this turn.
+- Do not add a note if Already known already covers the same topic, even with different wording.
+- remove_notes: exact note texts to delete if the user corrected themselves.
+- update_facts: only these keys if clearly stated: user_name, favorite_color, favorite_food, hobby, pet, favorite_book, favorite_drink, favorite_movie, favorite_snack, favorite_season, likes_programming, likes_music, likes_coffee.
+- Never set user_name unless the user explicitly states their name (e.g. "my name is", "call me", "I'm …" as an introduction). Music genres, colors, foods, and hobbies are NOT names.
+- Do not overwrite an existing user_name with a preference, genre, or single-word topic label.
+- Prefer update_facts over add_notes when a fact key fits.
+
+Already known:
+{known_facts}
+
+User: {user_text}
+Assistant: {assistant_text}
+
+Reply with JSON only:
+{{"add_notes": [], "remove_notes": [], "update_facts": {{}}}}
+"""
+
+MEMORY_QUESTION_PLAN_SYSTEM = (
+    "You plan one interactive follow-up question for a desktop companion. "
+    "Reply with JSON only. No markdown."
+)
+
+MEMORY_QUESTION_PLAN_PROMPT = """Plan one new question Kinito should ask the user.
+
+Known memory:
+{known_facts}
+
+Already asked topics (do not repeat):
+{asked_topics}
+
+Rules:
+- Ask about something not already clearly known in memory.
+- One friendly question in Kinito's voice, ending with ?.
+- ui must be "textbox" for open answers or "yes_no" for simple yes/no questions.
+- topic: short snake_case id unique for this question theme.
+- save_as: always "note" for follow-up questions (never update structured facts here).
+- If nothing useful to ask, reply with: {{"question": ""}}
+
+Reply with JSON only:
+{{"question": "...", "ui": "textbox", "topic": "...", "save_as": "note"}}
+"""
+
 IDLE_PROMPT = (
     "Say one short, friendly sentence to the user at their desktop. "
     "Do not ask too many yes-or-no questions. Maximum two complete sentences. "
@@ -75,9 +157,9 @@ _TIME_CONTEXT_PATTERNS = (
     r"\btoday\b",
     r"\byour day\b",
     r"\bhow is your day\b",
-    r"\bmorgen\b",
-    r"\bmittag\b",
-    r"\babend\b",
+    r"\bmorning\b",
+    r"\bnoon\b",
+    r"\bafternoon\b",
     r"\bnacht\b",
     r"\bheute\b",
     r"\bschlaf",
@@ -108,23 +190,18 @@ def local_time_context(now: datetime | None = None) -> str:
     hour = moment.hour
     if 5 <= hour < 11:
         period = "morning"
-        period_de = "Morgen"
     elif 11 <= hour < 14:
         period = "midday"
-        period_de = "Mittag"
     elif 14 <= hour < 17:
         period = "afternoon"
-        period_de = "Nachmittag"
     elif 17 <= hour < 21:
         period = "evening"
-        period_de = "Abend"
     else:
         period = "night"
-        period_de = "Nacht"
 
     time_str = moment.strftime("%H:%M")
     return (
-        f"Current local time for the user: {time_str} ({period}; {period_de}). "
+        f"Current local time for the user: {time_str} ({period};). "
         "Match your wording to this time of day. "
         "Do not ask about night, sleep, or morning routines when it is the wrong time."
     )
@@ -135,6 +212,14 @@ def append_time_context_if_needed(prompt: str, scripted: str | None, ai_hint: st
     if not scripted_line_needs_time_context(scripted, ai_hint):
         return prompt
     return f"{prompt}\n\n{local_time_context()}"
+
+
+def build_system_prompt(memory_block: str = "") -> str:
+    """Return the chat/generate system prompt, optionally with user memory."""
+    block = memory_block.strip()
+    if not block:
+        return SYSTEM_PROMPT
+    return f"{SYSTEM_PROMPT}{MEMORY_BLOCK_TEMPLATE.format(memory_block=block)}\n\n{MEMORY_USAGE_HINT}"
 
 
 def replacement_hint_for(scripted: str) -> str:
@@ -154,7 +239,7 @@ def replacement_hint_for(scripted: str) -> str:
         return "Say a brief farewell."
     return "Keep it short and natural."
 
-CHAT_USER_LABEL = "Alina"
+CHAT_USER_LABEL_FALLBACK = "You"
 CHAT_ASSISTANT_LABEL = "Kinito"
 
 CHAT_EMPTY_RESPONSE_FALLBACK = "Hmm, I drew a blank. Could you say that again?"

@@ -15,11 +15,13 @@ class MovementMixin:
     """Mouse drag, smooth roaming, and idle sprite cycling."""
 
     MENU_ACTION_CHANCE = 0.22
+    MEMORY_QUESTION_CHANCE = 0.18
     SPONTANEOUS_CHANCE = 0.28
     IDLE_READING_CHANCE = 0.19
     READING_WISDOM_CHANCE = 0.10
     READING_STORY_CHANCE = 0.03
     IDLE_FANCY_CHANCE = 0.02
+    IDLE_GLASSES_CHANCE = 0.28
     READING_DURATION_SECONDS = (10, 32)
     READING_PAGE_TURN_CHANCE = 0.14
     READING_PAGE_TURN_VOLUME = 0.3
@@ -92,13 +94,10 @@ class MovementMixin:
         self._follow_speech_bubble_to_kinito(self.x, self.y)
 
     def _stop_audio_for_drag(self) -> None:
-        """Stop poem/ambient music on drag, but keep user-selected songs playing."""
+        """Stop ambient background music on drag, but keep sing/poem and user songs."""
         if getattr(self, "_user_music_path", None):
             return
-        if getattr(self, "_speech_accompaniment_active", False) and hasattr(
-            self, "stop_speech_accompaniment_music"
-        ):
-            self.stop_speech_accompaniment_music()
+        if getattr(self, "_speech_accompaniment_active", False):
             return
         if hasattr(self, "stop_background_music"):
             self.stop_background_music()
@@ -367,7 +366,14 @@ class MovementMixin:
 
     def _run_reading_idle(self):
         """Animate book sprites, optionally play page-turn sounds, and trigger speech."""
-        reading_sprites = getattr(self, "_reading_sprites", (self.tk_img_idle,))
+        if random.random() < self.IDLE_GLASSES_CHANCE:
+            reading_sprites = getattr(
+                self,
+                "_reading_glasses_sprites",
+                getattr(self, "_reading_sprites", (self.tk_img_idle,)),
+            )
+        else:
+            reading_sprites = getattr(self, "_reading_sprites", (self.tk_img_idle,))
         session = getattr(self, "_reading_idle_session", 0) + 1
         self._reading_idle_session = session
         self._reading_idle_active = True
@@ -415,9 +421,12 @@ class MovementMixin:
                 random.random() < self.SPONTANEOUS_CHANCE
                 and self._allow_random_questions
                 and not getattr(self, "_focus_mode", False)
+                and not getattr(self, "_is_game_active", lambda: False)()
             ):
                 if random.random() < self.MENU_ACTION_CHANCE:
                     self.perform_random_menu_action()
+                elif random.random() < self.MEMORY_QUESTION_CHANCE:
+                    self.speak_memory_question_idle()
                 elif self._should_use_ai_idle_line():
                     self.speak_ai_idle_line()
                 else:
@@ -483,8 +492,10 @@ class MovementMixin:
             if not self.paused and not self.talking:
                 idle_roll = random.random()
                 focus_mode = getattr(self, "_focus_mode", False)
+                game_active = getattr(self, "_is_game_active", lambda: False)()
                 if (
                     not focus_mode
+                    and not game_active
                     and idle_roll < self.IDLE_READING_CHANCE
                     and self._allow_random_questions
                 ):
@@ -492,6 +503,7 @@ class MovementMixin:
                     continue
                 if (
                     not focus_mode
+                    and not game_active
                     and idle_roll < self.IDLE_READING_CHANCE + self.IDLE_FANCY_CHANCE
                     and self._allow_random_questions
                 ):

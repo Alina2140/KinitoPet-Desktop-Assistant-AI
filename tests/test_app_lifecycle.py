@@ -74,6 +74,21 @@ def test_can_initiate_spontaneous_speech_blocks_while_moving(app_stub):
     assert FloatingAssistant._can_initiate_spontaneous_speech(app) is False
 
 
+def test_can_initiate_spontaneous_speech_blocks_during_game(app_stub):
+    app = FloatingAssistant.__new__(FloatingAssistant)
+    app._startup_complete = True
+    app._allow_random_questions = True
+    app.moving = False
+    app.talking = False
+    app._awaiting_response = False
+    app._game_window = MagicMock()
+    app._game_window.winfo_exists.return_value = True
+    app._number_guess_target = None
+    app._trivia_round = 0
+    app._trivia_used = set()
+    assert FloatingAssistant._can_initiate_spontaneous_speech(app) is False
+
+
 def test_say_goodbye_shuts_down_and_schedules_quit(goodbye_app):
     goodbye_app._bubble_close_delay_after_tts = SpeechMixin._bubble_close_delay_after_tts.__get__(
         goodbye_app, FloatingAssistant
@@ -91,7 +106,12 @@ def test_say_goodbye_shuts_down_and_schedules_quit(goodbye_app):
     goodbye_app.close_camera.assert_called_once()
     goodbye_app.close_browser.assert_called_once()
     goodbye_app.end_hug.assert_called_once()
-    goodbye_app.speak.assert_called_once_with(GOODBYE_LINES[0], show_bubble=True, wait_for_tts=True)
+    goodbye_app.speak.assert_called_once_with(
+            GOODBYE_LINES[0],
+            show_bubble=True,
+            wait_for_tts=True,
+            allow_in_focus=True,
+        )
     goodbye_app.root.after.assert_called_once()
     delay = goodbye_app.root.after.call_args[0][0]
     assert delay >= 3000

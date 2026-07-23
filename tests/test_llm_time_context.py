@@ -8,7 +8,11 @@ from kinito.features.llm import LLMMixin
 
 
 class LLMStub(LLMMixin):
-    pass
+    def __init__(self):
+        from unittest.mock import MagicMock
+
+        self._memory = MagicMock()
+        self._memory.as_prompt_block.return_value = ""
 
 
 def test_scripted_line_needs_time_context_for_sleep_question():
@@ -27,14 +31,12 @@ def test_local_time_context_describes_midday():
     context = prompts.local_time_context(datetime(2026, 7, 7, 12, 30))
     assert "12:30" in context
     assert "midday" in context
-    assert "Mittag" in context
 
 
 def test_local_time_context_describes_night():
     context = prompts.local_time_context(datetime(2026, 7, 7, 23, 15))
     assert "23:15" in context
     assert "night" in context
-    assert "Nacht" in context
 
 
 def test_append_time_context_only_when_needed():

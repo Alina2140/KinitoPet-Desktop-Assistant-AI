@@ -21,6 +21,8 @@ from kinito.assets import (
     sprite_path_hug2,
     sprite_path_idle,
     sprite_path_idle_2,
+    sprite_path_idle_glasses,
+    sprite_path_idle_glasses_2,
     sprite_path_normal,
     sprite_path_normal_2,
     sprite_path_sleep,
@@ -42,7 +44,6 @@ from kinito.features.games import GamesMixin
 from kinito.features.glitch import GlitchMixin
 from kinito.features.hug import HugMixin
 from kinito.features.llm import LLMMixin
-from kinito.features.media import MediaMixin
 from kinito.features.music import MusicMixin
 from kinito.features.programs import ProgramsMixin
 from kinito.movement import MovementMixin
@@ -75,7 +76,6 @@ class FloatingAssistant(
     ProgramsMixin,
     CameraMixin,
     BrowserMixin,
-    MediaMixin,
     AdsMixin,
 ):
     """Borderless desktop friend that combines speech, movement, and feature mixins."""
@@ -102,6 +102,8 @@ class FloatingAssistant(
         self.img_normal_2 = _open_sprite(sprite_path_normal_2, fallback)
         self.img_idle = _open_sprite(sprite_path_idle, fallback)
         self.img_idle_2 = _open_sprite(sprite_path_idle_2, fallback)
+        self.img_idle_glasses = _open_sprite(sprite_path_idle_glasses, fallback)
+        self.img_idle_glasses_2 = _open_sprite(sprite_path_idle_glasses_2, fallback)
         self.img_fancy = _open_sprite(sprite_path_fancy, fallback)
         self.img_fancy_2 = _open_sprite(sprite_path_fancy_1, fallback)
         self.img_surf_left = _open_sprite(sprite_path_surf_left, fallback)
@@ -120,9 +122,15 @@ class FloatingAssistant(
         self.tk_img_normal_2 = ImageTk.PhotoImage(self.img_normal_2)
         self.tk_img_idle = ImageTk.PhotoImage(self.img_idle)
         self.tk_img_idle_2 = ImageTk.PhotoImage(self.img_idle_2)
+        self.tk_img_idle_glasses = ImageTk.PhotoImage(self.img_idle_glasses)
+        self.tk_img_idle_glasses_2 = ImageTk.PhotoImage(self.img_idle_glasses_2)
         self.tk_img_fancy = ImageTk.PhotoImage(self.img_fancy)
         self.tk_img_fancy_2 = ImageTk.PhotoImage(self.img_fancy_2)
         self._reading_sprites = (self.tk_img_idle, self.tk_img_idle_2)
+        self._reading_glasses_sprites = (
+            self.tk_img_idle_glasses,
+            self.tk_img_idle_glasses_2,
+        )
         self._magician_sprites = (self.tk_img_fancy, self.tk_img_fancy_2)
         self._magician_frame = 0
         self.tk_img_surf_left = ImageTk.PhotoImage(
@@ -148,6 +156,7 @@ class FloatingAssistant(
         self.panel.pack(side="top", anchor="n")
         self.change_sprite(self.tk_img_normal)
         self.setup_reminder_countdown_button()
+        self.setup_focus_timer_countdown_button()
         self.setup_music_control_button()
         self._assistant_controls_extended = False
 
@@ -184,14 +193,6 @@ class FloatingAssistant(
         self._browser_active = False
         self._browser_process = None
         self._browser_category = None
-        self._media_active = False
-        self._media_process = None
-        self._media_window = None
-        self._media_label = None
-        self._media_video_cap = None
-        self._media_frame_timer = None
-        self._media_last_frame = None
-        self._media_window_size = None
         self._hug_timer = None
         self._bubble_close_timer = None
         self._speech_epoch = 0
@@ -272,6 +273,7 @@ class FloatingAssistant(
             self._startup_complete
             and self._allow_random_questions
             and not getattr(self, "_focus_mode", False)
+            and not self._is_game_active()
             and not self.moving
             and not self._is_busy_with_speech()
         )
@@ -280,7 +282,9 @@ class FloatingAssistant(
         """Toggle quiet focus mode: roam and animate only, no speech or features."""
         if self._focus_mode:
             self._focus_mode = False
-            self.speak(dlg.pick_line(dlg.FOCUS_OFF_LINES))
+            if hasattr(self, "_clear_focus_timer"):
+                self._clear_focus_timer()
+            self.speak(dlg.pick_line(dlg.FOCUS_OFF_LINES), skip_ai=True)
             return
 
         self.interrupt_speech()
@@ -292,9 +296,12 @@ class FloatingAssistant(
             self._ensure_single_game_window()
         self.close_camera()
         self.close_browser()
-        self.close_media()
-        self.speak(dlg.pick_line(dlg.FOCUS_ON_LINES))
         self._focus_mode = True
+        self.speak(
+            dlg.pick_line(dlg.FOCUS_ON_LINES),
+            skip_ai=True,
+            allow_in_focus=True,
+        )
 
     @staticmethod
     def _windows_virtual_screen_rect():
@@ -415,6 +422,7 @@ class FloatingAssistant(
             "_camera_frame_timer",
             "_camera_comment_timer",
             "_reminder_tick_timer",
+            "_focus_timer_tick_timer",
         ):
             cancel_after(self.root, self, attr)
 
@@ -538,11 +546,12 @@ class FloatingAssistant(
         self._cancel_auto_wake_timer()
         if hasattr(self, "_clear_reminder"):
             self._clear_reminder()
+        if hasattr(self, "_clear_focus_timer"):
+            self._clear_focus_timer()
         if hasattr(self, "stop_background_music"):
             self.stop_background_music()
         self.close_camera()
         self.close_browser()
-        self.close_media()
         self._ensure_single_game_window()
         self.end_hug()
         self.hide_screen_glitch()
@@ -550,7 +559,7 @@ class FloatingAssistant(
         line = random.choice(GOODBYE_LINES)
 
         def run_goodbye():
-            self.speak(line, show_bubble=True, wait_for_tts=True)
+            self.speak(line, show_bubble=True, wait_for_tts=True, allow_in_focus=True)
             delay = self._bubble_close_delay_after_tts(line) + self.GOODBYE_QUIT_EXTRA_MS
             self.root.after(delay, self._quit_app)
 
@@ -576,11 +585,12 @@ class FloatingAssistant(
             self._cancel_bubble_close_timer()
         if hasattr(self, "_clear_reminder"):
             self._clear_reminder()
+        if hasattr(self, "_clear_focus_timer"):
+            self._clear_focus_timer()
         if hasattr(self, "stop_background_music"):
             self.stop_background_music()
         self.close_camera()
         self.close_browser()
-        self.close_media()
         self._ensure_single_game_window()
         self.end_hug()
         self.hide_screen_glitch()

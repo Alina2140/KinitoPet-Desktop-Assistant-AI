@@ -16,6 +16,8 @@ def programs():
     stub.speak_random_question = MagicMock()
     stub._running = True
     stub._reminder_id = 0
+    stub._focus_mode = False
+    stub._focus_timer_id = 0
     stub.root = MagicMock()
     stub.root.winfo_exists.return_value = True
     stub.play_mp3 = MagicMock()
@@ -23,6 +25,9 @@ def programs():
     stub._reminder_countdown_btn = MagicMock()
     stub._reminder_countdown_btn.winfo_ismapped.return_value = False
     stub._reminder_end_at = None
+    stub._focus_timer_countdown_btn = MagicMock()
+    stub._focus_timer_countdown_btn.winfo_ismapped.return_value = False
+    stub._focus_timer_end_at = None
     return stub
 
 
@@ -91,3 +96,65 @@ def test_minimize_current_window_swallows_failsafe(programs):
         "kinito.features.programs.pyautogui.hotkey", side_effect=pyautogui.FailSafeException
     ):
         programs.minimize_current_window()
+
+
+def test_set_focus_timer_requires_focus_mode(programs):
+    programs._focus_mode = False
+    with patch.object(programs, "_start_focus_timer") as start:
+        programs.set_focus_timer("5")
+    start.assert_not_called()
+
+
+def test_set_focus_timer_starts_countdown(programs):
+    programs._focus_mode = True
+    with patch.object(programs, "_start_focus_timer") as start:
+        programs.set_focus_timer("about 5 minutes please")
+    start.assert_called_once_with(5 * 60)
+    programs.speak.assert_called_once()
+    assert programs.speak.call_args.kwargs.get("allow_in_focus") is True
+
+
+def test_cancel_focus_timer_clears_timer(programs):
+    programs._focus_mode = True
+    programs._focus_timer_end_at = 999999.0
+    with patch.object(programs, "_clear_focus_timer") as clear:
+        programs.cancel_focus_timer()
+    clear.assert_called_once()
+    programs.speak.assert_called_once()
+
+
+def test_fire_focus_timer_exits_focus_mode(programs):
+    programs._focus_mode = True
+    programs._fire_focus_timer()
+    assert programs._focus_mode is False
+    programs.play_sfx.assert_called_once()
+    programs.speak.assert_called_once()
+
+
+def test_open_focus_timer_controls_prompts_to_set(programs):
+    from content import dialogue as dlg
+
+    programs._focus_mode = True
+    programs.open_focus_timer_controls()
+    programs.speak.assert_called_once_with(
+        dlg.FOCUS_TIMER_MINUTES_PROMPT,
+        45,
+        True,
+        allow_in_focus=True,
+    )
+
+
+def test_open_focus_timer_controls_opens_manage_when_active(programs):
+    import time
+
+    from content import dialogue as dlg
+
+    programs._focus_mode = True
+    programs._focus_timer_end_at = time.monotonic() + 120
+    programs.open_focus_timer_controls()
+    programs.speak.assert_called_once_with(
+        dlg.FOCUS_TIMER_MANAGE_PROMPT,
+        45,
+        True,
+        allow_in_focus=True,
+    )

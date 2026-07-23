@@ -134,6 +134,26 @@ def test_handle_reminder_adjust_passes_minutes(mock_app):
     mock_app.adjust_reminder.assert_called_once_with("20")
 
 
+def test_handle_focus_timer_passes_minutes(mock_app):
+    spec = find_dialog_spec(dlg.FOCUS_TIMER_MINUTES_PROMPT)
+    handle_dialog_response(mock_app, spec, "25")
+    mock_app.set_focus_timer.assert_called_once_with("25")
+
+
+def test_handle_focus_timer_manage_cancel(mock_app):
+    spec = find_dialog_spec(dlg.FOCUS_TIMER_MANAGE_PROMPT)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_CANCEL_FOCUS_TIMER)
+    mock_app.cancel_focus_timer.assert_called_once()
+
+
+def test_handle_focus_timer_manage_adjust(mock_app):
+    spec = find_dialog_spec(dlg.FOCUS_TIMER_MANAGE_PROMPT)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_ADJUST_FOCUS_TIMER)
+    mock_app.speak.assert_called_once_with(
+        dlg.FOCUS_TIMER_ADJUST_PROMPT, 45, True, allow_in_focus=True
+    )
+
+
 @pytest.mark.parametrize("question", dlg.GAME_QUESTIONS)
 def test_all_game_questions_match_registry(question):
     spec = find_dialog_spec(question)

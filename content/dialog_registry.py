@@ -86,14 +86,17 @@ def menu_options_for(app) -> list[str]:
         dlg.BUTTON_SING_SONG,
         dlg.BUTTON_FUN_FACT,
         dlg.BUTTON_CHAT,
+        dlg.BUTTON_REMEMBER,
+        dlg.BUTTON_FORGET,
         dlg.BUTTON_VISIT_WEBSITE,
-        dlg.BUTTON_SHOW_MEDIA,
         dlg.BUTTON_PLAY_MUSIC,
         dlg.BUTTON_PLAY_GAME,
         dlg.BUTTON_GIVE_HUG,
         dlg.BUTTON_SHOW_CREDITS,
         dlg.BUTTON_SAY_GOODBYE,
     ]
+    if getattr(app, "_focus_mode", False) and not getattr(app, "paused", False):
+        options.insert(options.index(focus_label) + 1, dlg.BUTTON_SET_FOCUS_TIMER)
     allowed: set[str] = set()
     if getattr(app, "paused", False):
         allowed |= _MENU_SLEEP_BUTTONS
@@ -104,8 +107,15 @@ def menu_options_for(app) -> list[str]:
     return options
 
 
-_MENU_SLEEP_BUTTONS = frozenset({dlg.BUTTON_WAKE_UP})
-_MENU_FOCUS_BUTTONS = frozenset({dlg.BUTTON_FOCUS, dlg.BUTTON_UNFOCUS})
+_MENU_SLEEP_BUTTONS = frozenset({dlg.BUTTON_WAKE_UP, dlg.BUTTON_SAY_GOODBYE})
+_MENU_FOCUS_BUTTONS = frozenset(
+    {
+        dlg.BUTTON_FOCUS,
+        dlg.BUTTON_UNFOCUS,
+        dlg.BUTTON_SET_FOCUS_TIMER,
+        dlg.BUTTON_SAY_GOODBYE,
+    }
+)
 
 
 def handle_dialog_response(app, spec: DialogSpec, response: str) -> None:
@@ -178,6 +188,41 @@ def _text_format(response_lines) -> Handler:
     return handler
 
 
+def _persist_dialog_answer(app, marker: str, fact_key: str, value: str) -> None:
+    """Save a dialog answer to the user's memory store."""
+    memory = getattr(app, "_memory", None)
+    if memory is None:
+        return
+    trimmed = value.strip()
+    if trimmed:
+        memory.set_fact(fact_key, trimmed)
+    memory.mark_answered(marker)
+
+
+def _text_format_with_memory(marker: str, fact_key: str, response_lines) -> Handler:
+    """Like _text_format, but persist the user's text answer first."""
+
+    def handler(app, response: str) -> None:
+        _persist_dialog_answer(app, marker, fact_key, response)
+        app.speak(dlg.pick_line(response_lines).format(response=response))
+
+    return handler
+
+
+def _yes_no_lines_with_memory(marker: str, fact_key: str, yes_lines, no_lines) -> Handler:
+    """Like _yes_no_lines, but persist yes/no as a fact."""
+
+    def handler(app, response: str) -> None:
+        if response == dlg.BUTTON_YES:
+            _persist_dialog_answer(app, marker, fact_key, "yes")
+            app.speak(dlg.pick_line(yes_lines))
+        elif response == dlg.BUTTON_NO:
+            _persist_dialog_answer(app, marker, fact_key, "no")
+            app.speak(dlg.pick_declined_line(no_lines))
+
+    return handler
+
+
 def _okay_not_now(
     yes_fn: Handler, declined_lines, *, minimize_count: int = 0, speak_pitch: int = 45
 ) -> Handler:
@@ -220,13 +265,15 @@ def _handle_menu(app, response: str) -> None:
         dlg.BUTTON_WAKE_UP: lambda a: a.toggle_pause(),
         dlg.BUTTON_FOCUS: lambda a: a.toggle_focus(),
         dlg.BUTTON_UNFOCUS: lambda a: a.toggle_focus(),
+        dlg.BUTTON_SET_FOCUS_TIMER: lambda a: a.open_focus_timer_controls(),
         dlg.BUTTON_SCREEN_EFFECTS_ON: lambda a: a.toggle_screen_effects(),
         dlg.BUTTON_SCREEN_EFFECTS_OFF: lambda a: a.toggle_screen_effects(),
         dlg.BUTTON_SING_SONG: lambda a: a.say_random_poem(),
         dlg.BUTTON_FUN_FACT: lambda a: a.say_random_fact(),
         dlg.BUTTON_CHAT: lambda a: a.start_chat(),
+        dlg.BUTTON_REMEMBER: lambda a: a.show_memory_summary(),
+        dlg.BUTTON_FORGET: lambda a: a.forget_memory(),
         dlg.BUTTON_VISIT_WEBSITE: lambda a: a.ask_browser_category(),
-        dlg.BUTTON_SHOW_MEDIA: lambda a: a.ask_media_type(),
         dlg.BUTTON_PLAY_MUSIC: lambda a: a.ask_music_player_pick(),
         dlg.BUTTON_PLAY_GAME: lambda a: a.offer_game_picker(),
         dlg.BUTTON_GIVE_HUG: lambda a: a.give_hug(),
@@ -268,6 +315,24 @@ def _handle_reminder_manage(app, response: str) -> None:
         app.speak(dlg.REMINDER_ADJUST_PROMPT, 45, True)
 
 
+def _handle_focus_timer(app, response: str) -> None:
+    """Parse minutes from the focus-timer textbox and start the countdown."""
+    app.set_focus_timer(f"{response}")
+
+
+def _handle_focus_timer_adjust(app, response: str) -> None:
+    """Parse minutes from the adjust dialog and restart the focus timer."""
+    app.adjust_focus_timer(f"{response}")
+
+
+def _handle_focus_timer_manage(app, response: str) -> None:
+    """Cancel or open the adjust flow for the active focus timer."""
+    if response == dlg.BUTTON_CANCEL_FOCUS_TIMER:
+        app.cancel_focus_timer()
+    elif response == dlg.BUTTON_ADJUST_FOCUS_TIMER:
+        app.speak(dlg.FOCUS_TIMER_ADJUST_PROMPT, 45, True, allow_in_focus=True)
+
+
 def _handle_story(app, response: str) -> None:
     """Accept or decline a pending short-story offer."""
     if response == dlg.BUTTON_SURE:
@@ -291,14 +356,6 @@ def _handle_browser_category(app, response: str) -> None:
         category = category_map.get(response)
     if category:
         app.open_allowed_site(category)
-
-
-def _handle_media_type(app, response: str) -> None:
-    """Map picture/video buttons to the matching media action."""
-    if response == dlg.BUTTON_SHOW_PICTURE:
-        app.show_allowed_image()
-    elif response == dlg.BUTTON_SHOW_VIDEO:
-        app.show_allowed_video()
 
 
 def _handle_music_pick(app, response: str) -> None:
@@ -473,7 +530,7 @@ def _handle_true_false(app, response: str) -> None:
         _offer_play_again(app, line, lambda a: a.start_true_false())
         return
 
-    app.speak(feedback, 45, False)
+    app.speak(feedback, 45, False, skip_ai=True)
     app._ask_next_trivia()
 
 
@@ -651,6 +708,24 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
         _handle_number_guess,
     ),
     DialogSpec(
+        dlg.FOCUS_TIMER_MINUTES_PROMPT,
+        DialogUI("textbox", textbox_prompt=dlg.FOCUS_TIMER_MINUTES_PROMPT),
+        _handle_focus_timer,
+    ),
+    DialogSpec(
+        dlg.FOCUS_TIMER_MANAGE_PROMPT,
+        DialogUI(
+            "buttons",
+            buttons=(dlg.BUTTON_ADJUST_FOCUS_TIMER, dlg.BUTTON_CANCEL_FOCUS_TIMER),
+        ),
+        _handle_focus_timer_manage,
+    ),
+    DialogSpec(
+        dlg.FOCUS_TIMER_ADJUST_PROMPT,
+        DialogUI("textbox", textbox_prompt=dlg.FOCUS_TIMER_ADJUST_PROMPT),
+        _handle_focus_timer_adjust,
+    ),
+    DialogSpec(
         dlg.REMINDER_MINUTES_PROMPT,
         DialogUI("textbox", textbox_prompt=dlg.REMINDER_MINUTES_PROMPT),
         _handle_reminder,
@@ -682,14 +757,6 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
             ),
         ),
         _handle_browser_category,
-    ),
-    DialogSpec(
-        dlg.MEDIA_TYPE_MARKER,
-        DialogUI(
-            "buttons",
-            buttons=(dlg.BUTTON_SHOW_PICTURE, dlg.BUTTON_SHOW_VIDEO),
-        ),
-        _handle_media_type,
     ),
     DialogSpec(
         dlg.MUSIC_PLAYER_PICK_MARKER,
@@ -724,17 +791,22 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
     DialogSpec(
         dlg.COLOR_QUESTION,
         DialogUI("textbox", textbox_prompt=dlg.COLOR_QUESTION),
-        _text_format(dlg.COLOR_RESPONSES),
+        _text_format_with_memory(dlg.COLOR_QUESTION, "favorite_color", dlg.COLOR_RESPONSES),
     ),
     DialogSpec(
         dlg.PROGRAMMING_QUESTION,
         DialogUI("buttons", buttons=(dlg.BUTTON_YES, dlg.BUTTON_NO)),
-        _yes_no_lines(dlg.PROGRAMMING_YES_LINES, dlg.PROGRAMMING_NO_LINES),
+        _yes_no_lines_with_memory(
+            dlg.PROGRAMMING_QUESTION,
+            "likes_programming",
+            dlg.PROGRAMMING_YES_LINES,
+            dlg.PROGRAMMING_NO_LINES,
+        ),
     ),
     DialogSpec(
         dlg.HOBBY_QUESTION,
         DialogUI("textbox", textbox_prompt=dlg.HOBBY_QUESTION),
-        _text_format(dlg.HOBBY_RESPONSES),
+        _text_format_with_memory(dlg.HOBBY_QUESTION, "hobby", dlg.HOBBY_RESPONSES),
     ),
     DialogSpec(
         dlg.GAME_QUESTION,
@@ -754,7 +826,7 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
     DialogSpec(
         dlg.FOOD_QUESTION,
         DialogUI("textbox", textbox_prompt=dlg.FOOD_QUESTION),
-        _text_format(dlg.FOOD_RESPONSES),
+        _text_format_with_memory(dlg.FOOD_QUESTION, "favorite_food", dlg.FOOD_RESPONSES),
     ),
     DialogSpec(
         dlg.POEM_QUESTION,
@@ -794,12 +866,12 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
     DialogSpec(
         dlg.SEASON_QUESTION,
         DialogUI("textbox", textbox_prompt=dlg.SEASON_QUESTION),
-        _text_format(dlg.SEASON_RESPONSES),
+        _text_format_with_memory(dlg.SEASON_QUESTION, "favorite_season", dlg.SEASON_RESPONSES),
     ),
     DialogSpec(
         dlg.PET_QUESTION,
         DialogUI("textbox", textbox_prompt=dlg.PET_QUESTION),
-        _text_format(dlg.PET_RESPONSES),
+        _text_format_with_memory(dlg.PET_QUESTION, "pet", dlg.PET_RESPONSES),
     ),
     DialogSpec(
         dlg.SLEEP_QUESTION,
@@ -809,7 +881,7 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
     DialogSpec(
         dlg.NAME_QUESTION,
         DialogUI("textbox", textbox_prompt=dlg.NAME_QUESTION),
-        _text_format(dlg.NAME_RESPONSES),
+        _text_format_with_memory(dlg.NAME_QUESTION, "user_name", dlg.NAME_RESPONSES),
     ),
     DialogSpec(
         dlg.BORED_QUESTION,
@@ -819,22 +891,32 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
     DialogSpec(
         dlg.MUSIC_QUESTION,
         DialogUI("buttons", buttons=(dlg.BUTTON_YES, dlg.BUTTON_NO)),
-        _yes_no_lines(dlg.MUSIC_YES_LINES, dlg.MUSIC_NO_LINES),
+        _yes_no_lines_with_memory(
+            dlg.MUSIC_QUESTION,
+            "likes_music",
+            dlg.MUSIC_YES_LINES,
+            dlg.MUSIC_NO_LINES,
+        ),
     ),
     DialogSpec(
         dlg.BOOK_QUESTION,
         DialogUI("textbox", textbox_prompt=dlg.BOOK_QUESTION),
-        _text_format(dlg.BOOK_RESPONSES),
+        _text_format_with_memory(dlg.BOOK_QUESTION, "favorite_book", dlg.BOOK_RESPONSES),
     ),
     DialogSpec(
         dlg.COFFEE_QUESTION,
         DialogUI("buttons", buttons=(dlg.BUTTON_YES, dlg.BUTTON_NO)),
-        _yes_no_lines(dlg.COFFEE_YES_LINES, dlg.COFFEE_NO_LINES),
+        _yes_no_lines_with_memory(
+            dlg.COFFEE_QUESTION,
+            "likes_coffee",
+            dlg.COFFEE_YES_LINES,
+            dlg.COFFEE_NO_LINES,
+        ),
     ),
     DialogSpec(
         dlg.DRINK_QUESTION,
         DialogUI("textbox", textbox_prompt=dlg.DRINK_QUESTION),
-        _text_format(dlg.DRINK_RESPONSES),
+        _text_format_with_memory(dlg.DRINK_QUESTION, "favorite_drink", dlg.DRINK_RESPONSES),
     ),
     DialogSpec(
         dlg.JOKE_QUESTION,
@@ -844,12 +926,12 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
     DialogSpec(
         dlg.MOVIE_QUESTION,
         DialogUI("textbox", textbox_prompt=dlg.MOVIE_QUESTION),
-        _text_format(dlg.MOVIE_RESPONSES),
+        _text_format_with_memory(dlg.MOVIE_QUESTION, "favorite_movie", dlg.MOVIE_RESPONSES),
     ),
     DialogSpec(
         dlg.SNACK_QUESTION,
         DialogUI("textbox", textbox_prompt=dlg.SNACK_QUESTION),
-        _text_format(dlg.SNACK_RESPONSES),
+        _text_format_with_memory(dlg.SNACK_QUESTION, "favorite_snack", dlg.SNACK_RESPONSES),
     ),
     DialogSpec(
         dlg.WEATHER_QUESTION,

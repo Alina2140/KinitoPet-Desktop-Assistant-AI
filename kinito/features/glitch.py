@@ -13,10 +13,10 @@ from kinito.assets import crash_image_path
 class GlitchMixin:
     """Brief screen static/distortion flashes during autonomous movement."""
 
-    GLITCH_CHANCE = 1 / 5000
+    GLITCH_CHANCE = 1 / 2500
     GLITCH_DURATION_MS = 250
     GLITCH_NOISE_SCALE = 6
-    BLUE_SCREEN_CHANCE = 1 / 5000
+    BLUE_SCREEN_CHANCE = 1 / 2500
     BLUE_SCREEN_DURATION_MS = 250
 
     def maybe_trigger_screen_glitch(self) -> bool:
@@ -24,6 +24,8 @@ class GlitchMixin:
         if not getattr(self, "_screen_effects_enabled", True):
             return False
         if getattr(self, "_focus_mode", False):
+            return False
+        if getattr(self, "_is_game_active", lambda: False)():
             return False
         if self.paused or self.is_dragging or self._camera_active or self._browser_active:
             return False
@@ -37,6 +39,8 @@ class GlitchMixin:
         if not getattr(self, "_screen_effects_enabled", True):
             return False
         if getattr(self, "_focus_mode", False):
+            return False
+        if getattr(self, "_is_game_active", lambda: False)():
             return False
         if self.paused or self.is_dragging or self._camera_active or self._browser_active:
             return False

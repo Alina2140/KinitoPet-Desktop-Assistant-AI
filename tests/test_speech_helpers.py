@@ -4,11 +4,13 @@ import pytest
 
 from content import dialogue as dlg
 from kinito.speech import SpeechMixin
+from kinito.tts_text import normalize_text_for_tts
 
 
 class SpeechStub(SpeechMixin):
     def __init__(self):
         self._speech_epoch = 0
+        self._awaiting_response = False
 
 
 @pytest.fixture
@@ -204,7 +206,7 @@ def test_run_tts_uses_balcon_when_available(speech):
         command = popen.call_args.args[0]
         assert "-i" in command
         assert "-t" not in command
-        assert process.communicate.call_args.kwargs["input"] == "Hello"
+        assert process.communicate.call_args.kwargs["input"] == normalize_text_for_tts("Hello")
 
 
 def test_run_tts_passes_quoted_text_via_stdin(speech):
@@ -217,7 +219,7 @@ def test_run_tts_passes_quoted_text_via_stdin(speech):
         patch("kinito.speech.subprocess.Popen", return_value=process),
     ):
         assert speech._run_tts(quoted) is True
-    assert process.communicate.call_args.kwargs["input"] == quoted
+    assert process.communicate.call_args.kwargs["input"] == normalize_text_for_tts(quoted)
 
 
 def test_run_tts_falls_back_to_pyttsx3(speech):
@@ -227,7 +229,7 @@ def test_run_tts_falls_back_to_pyttsx3(speech):
         patch.object(speech, "_run_pyttsx3_fallback", return_value=True) as fallback,
     ):
         assert speech._run_tts("Hello") is True
-        fallback.assert_called_once_with("Hello")
+        fallback.assert_called_once_with(normalize_text_for_tts("Hello"))
 
 
 def test_run_tts_aborts_after_interrupt_without_next_voice(speech):

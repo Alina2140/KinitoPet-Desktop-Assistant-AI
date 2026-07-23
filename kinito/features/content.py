@@ -20,17 +20,32 @@ class ContentMixin:
     """Read-aloud content and random idle interactions."""
 
     POEM_BACKGROUND_MUSIC_VOLUME = 0.6
+    MEMORY_FOLLOWUP_CHANCE = 0.25
 
     def speak_random_question(self):
         """Ask a random question from the question pool."""
         if not self._can_initiate_spontaneous_speech():
             return
+        memory = getattr(self, "_memory", None)
+        if (
+            memory is not None
+            and memory.has_any_memory()
+            and random.random() < self.MEMORY_FOLLOWUP_CHANCE
+            and hasattr(self, "_memory_question_planner")
+        ):
+            spec = self._memory_question_planner.plan_template()
+            if spec is not None:
+                self.ask_memory_question(spec)
+                return
         pool = self._available_spontaneous_questions()
         self.speak(random.choice(pool), 45, True)
 
     def _available_spontaneous_questions(self):
         """Return question pool entries that fit the current app state."""
         pool = list(QUESTIONS)
+        memory = getattr(self, "_memory", None)
+        if memory is not None:
+            pool = [q for q in pool if not memory.is_question_answered(q)]
         if getattr(self, "_camera_active", False):
             marker = dlg.CAMERA_QUESTION_MARKER.lower()
             pool = [q for q in pool if marker not in q.lower()]
@@ -46,7 +61,6 @@ class ContentMixin:
             self.say_random_poem,
             self.say_random_fact,
             self.offer_browser_visit,
-            self.show_random_media,
             self.offer_random_music,
             self.offer_game_picker,
             self.give_hug,

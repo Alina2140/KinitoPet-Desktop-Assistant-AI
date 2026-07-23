@@ -33,7 +33,6 @@ def content():
     for name in (
         "print_current_datetime",
         "offer_browser_visit",
-        "show_random_media",
         "offer_random_music",
         "offer_game_picker",
         "give_hug",
@@ -67,6 +66,25 @@ def test_speak_random_question_speaks_from_pool(content):
     with patch("kinito.features.content.random.choice", return_value=dlg.DAY_QUESTIONS[0]):
         content.speak_random_question()
     content.speak.assert_called_once_with(dlg.DAY_QUESTIONS[0], 45, True)
+
+
+def test_speak_random_question_can_use_memory_followup(content):
+    memory = MagicMock()
+    memory.has_any_memory.return_value = True
+    content._memory = memory
+    planner = MagicMock()
+    planner.plan_template.return_value = MagicMock(
+        question="Alex, got any plans?",
+        ui="textbox",
+        topic="weekend_plans",
+        save_as="note",
+    )
+    content._memory_question_planner = planner
+    content.ask_memory_question = MagicMock()
+    with patch("kinito.features.content.random.random", return_value=0.0):
+        content.speak_random_question()
+    content.ask_memory_question.assert_called_once()
+    content.speak.assert_not_called()
 
 
 def test_available_questions_skip_camera_while_active(content):

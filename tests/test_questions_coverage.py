@@ -55,24 +55,28 @@ def test_menu_options_default_toggle_labels():
 
 def test_menu_options_reflect_active_states():
     opts = menu_options_for(_menu_app(paused=True, screen_effects_enabled=False))
-    assert opts == [dlg.BUTTON_WAKE_UP]
+    assert opts == [dlg.BUTTON_WAKE_UP, dlg.BUTTON_SAY_GOODBYE]
 
 
 def test_menu_options_hide_blocked_actions_when_sleeping():
     opts = menu_options_for(_menu_app(paused=True))
-    assert opts == [dlg.BUTTON_WAKE_UP]
+    assert opts == [dlg.BUTTON_WAKE_UP, dlg.BUTTON_SAY_GOODBYE]
     assert dlg.BUTTON_SET_REMINDER not in opts
     assert dlg.BUTTON_SING_SONG not in opts
 
 
 def test_menu_options_show_wake_up_and_unfocus_when_sleeping_in_focus_mode():
     opts = menu_options_for(_menu_app(paused=True, focus_mode=True))
-    assert opts == [dlg.BUTTON_WAKE_UP, dlg.BUTTON_UNFOCUS]
+    assert opts == [dlg.BUTTON_WAKE_UP, dlg.BUTTON_UNFOCUS, dlg.BUTTON_SAY_GOODBYE]
 
 
 def test_menu_options_hide_blocked_actions_in_focus_mode():
     opts = menu_options_for(_menu_app(focus_mode=True))
-    assert opts == [dlg.BUTTON_UNFOCUS]
+    assert opts == [
+        dlg.BUTTON_UNFOCUS,
+        dlg.BUTTON_SET_FOCUS_TIMER,
+        dlg.BUTTON_SAY_GOODBYE,
+    ]
     assert dlg.BUTTON_SET_REMINDER not in opts
     assert dlg.BUTTON_SING_SONG not in opts
 
@@ -85,8 +89,9 @@ def test_menu_options_include_all_actions():
         dlg.BUTTON_SING_SONG,
         dlg.BUTTON_FUN_FACT,
         dlg.BUTTON_CHAT,
+        dlg.BUTTON_REMEMBER,
+        dlg.BUTTON_FORGET,
         dlg.BUTTON_VISIT_WEBSITE,
-        dlg.BUTTON_SHOW_MEDIA,
         dlg.BUTTON_PLAY_MUSIC,
         dlg.BUTTON_PLAY_GAME,
         dlg.BUTTON_GIVE_HUG,
@@ -94,7 +99,7 @@ def test_menu_options_include_all_actions():
         dlg.BUTTON_SAY_GOODBYE,
     }
     assert expected.issubset(set(opts))
-    assert len(opts) == 15
+    assert len(opts) == 16
 
 
 def test_static_questions_match_expected_markers():

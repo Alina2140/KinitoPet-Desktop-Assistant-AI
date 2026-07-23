@@ -253,3 +253,46 @@ def test_game_window_close_shows_speech_bubble():
     after_callback = app.root.after.call_args.args[1]
     after_callback()
     app.speak_game_line.assert_called_once()
+
+
+def test_is_game_active_with_open_window():
+    from unittest.mock import MagicMock
+
+    from kinito.features.games import GamesMixin
+
+    app = GamesMixin()
+    window = MagicMock()
+    window.winfo_exists.return_value = True
+    app._game_window = window
+    assert app._is_game_active() is True
+
+
+def test_is_game_active_with_number_guess():
+    from kinito.features.games import GamesMixin
+
+    app = GamesMixin()
+    app._game_window = None
+    app._number_guess_target = 42
+    assert app._is_game_active() is True
+
+
+def test_is_game_active_with_trivia_round():
+    from kinito.features.games import GamesMixin
+
+    app = GamesMixin()
+    app._game_window = None
+    app._number_guess_target = None
+    app._trivia_round = 2
+    app._trivia_used = {TRIVIA_QUESTIONS[0]}
+    assert app._is_game_active() is True
+
+
+def test_is_game_active_false_when_idle():
+    from kinito.features.games import GamesMixin
+
+    app = GamesMixin()
+    app._game_window = None
+    app._number_guess_target = None
+    app._trivia_round = ROUND_SIZE
+    app._trivia_used = set(TRIVIA_QUESTIONS[:ROUND_SIZE])
+    assert app._is_game_active() is False
