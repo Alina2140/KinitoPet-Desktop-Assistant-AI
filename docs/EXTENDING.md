@@ -184,32 +184,29 @@ When adding variants, always include the marker text.
 
 ## 5. Add a right-click menu item
 
+Most actions live under **Modes**, **Settings**, or **Actions** submenus (same pattern as **Play Game**).
+
 ### Step A — Button label in `dialogue.py`
 
 ```python
-MENU_OPTIONS = [
-    # ... existing options ...
-    "Tell Me a Secret",
-]
-
 BUTTON_TELL_SECRET = "Tell Me a Secret"
 ```
 
-Keep `MENU_OPTIONS` and `BUTTON_*` constants in sync.
+### Step B — Place it in a submenu in `dialog_registry.py`
 
-### Step B — Handler in `dialog_registry.py`
-
-In `_handle_menu`:
+Add the label to `settings_options_for()` / `actions_options_for()` / `modes_options_for()`, and map it in `_menu_action_handlers()`:
 
 ```python
-def _handle_menu(app, response: str) -> None:
-    actions = {
+def _menu_action_handlers() -> dict[str, Handler]:
+    return {
         # ... existing actions ...
-        dlg.BUTTON_TELL_SECRET: lambda a: a.speak("I hid a secret in the code. You'll never find it. ...Or will you?"),
+        dlg.BUTTON_TELL_SECRET: lambda a: a.speak(
+            "I hid a secret in the code. You'll never find it. ...Or will you?"
+        ),
     }
 ```
 
-The menu `DialogSpec` already exists — it uses `MENU_PROMPT` and `MENU_OPTIONS`.
+Top-level entries (**Modes** / **Settings** / **Actions** / **Chat** / **Goodbye**) are built by `menu_options_for()`.
 
 ### Step C — Implement a method (optional)
 

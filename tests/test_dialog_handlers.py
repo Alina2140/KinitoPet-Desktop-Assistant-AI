@@ -62,9 +62,29 @@ def test_handle_game_okay_opens_game_picker(mock_app):
 
 
 def test_handle_menu_play_game(mock_app):
-    spec = find_dialog_spec(dlg.MENU_PROMPT)
+    spec = find_dialog_spec(dlg.ACTIONS_MENU_QUESTION)
     handle_dialog_response(mock_app, spec, dlg.BUTTON_PLAY_GAME)
     mock_app.offer_game_picker.assert_called_once()
+
+
+def test_handle_menu_opens_modes_submenu(mock_app):
+    spec = find_dialog_spec(dlg.MENU_PROMPT)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_MODES)
+    mock_app.speak.assert_called_once_with(
+        dlg.MODES_MENU_QUESTION, 45, True, allow_in_focus=True
+    )
+
+
+def test_handle_menu_opens_settings_submenu(mock_app):
+    spec = find_dialog_spec(dlg.MENU_PROMPT)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_SETTINGS)
+    mock_app.speak.assert_called_once_with(dlg.SETTINGS_MENU_QUESTION, 45, True)
+
+
+def test_handle_menu_opens_actions_submenu(mock_app):
+    spec = find_dialog_spec(dlg.MENU_PROMPT)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_ACTIONS)
+    mock_app.speak.assert_called_once_with(dlg.ACTIONS_MENU_QUESTION, 45, True)
 
 
 def test_handle_game_picker_opens_quick_games(mock_app):
@@ -196,38 +216,38 @@ def test_handle_joke_sure(mock_app):
 
 
 def test_handle_menu_tell_time(mock_app):
-    spec = find_dialog_spec(dlg.MENU_PROMPT)
+    spec = find_dialog_spec(dlg.ACTIONS_MENU_QUESTION)
     handle_dialog_response(mock_app, spec, dlg.BUTTON_TELL_TIME)
     mock_app.print_current_datetime.assert_called_once()
 
 
 def test_handle_menu_toggle_screen_effects(mock_app):
-    spec = find_dialog_spec(dlg.MENU_PROMPT)
-    handle_dialog_response(mock_app, spec, dlg.BUTTON_SCREEN_EFFECTS_OFF)
+    spec = find_dialog_spec(dlg.SETTINGS_MENU_QUESTION)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_SCREEN_EFFECTS)
     mock_app.toggle_screen_effects.assert_called_once()
 
 
 def test_handle_menu_toggle_focus(mock_app):
-    spec = find_dialog_spec(dlg.MENU_PROMPT)
+    spec = find_dialog_spec(dlg.MODES_MENU_QUESTION)
     handle_dialog_response(mock_app, spec, dlg.BUTTON_FOCUS)
     mock_app.toggle_focus.assert_called_once()
 
 
 def test_handle_menu_wake_up(mock_app):
-    spec = find_dialog_spec(dlg.MENU_PROMPT)
+    spec = find_dialog_spec(dlg.MODES_MENU_QUESTION)
     handle_dialog_response(mock_app, spec, dlg.BUTTON_WAKE_UP)
     mock_app.toggle_pause.assert_called_once()
 
 
 def test_handle_menu_wake_up_allowed_during_sleep(mock_app):
     mock_app.paused = True
-    spec = find_dialog_spec(dlg.MENU_PROMPT)
+    spec = find_dialog_spec(dlg.MODES_MENU_QUESTION)
     handle_dialog_response(mock_app, spec, dlg.BUTTON_WAKE_UP)
     mock_app.toggle_pause.assert_called_once()
 
 
 def test_handle_menu_unfocus(mock_app):
-    spec = find_dialog_spec(dlg.MENU_PROMPT)
+    spec = find_dialog_spec(dlg.MODES_MENU_QUESTION)
     handle_dialog_response(mock_app, spec, dlg.BUTTON_UNFOCUS)
     mock_app.toggle_focus.assert_called_once()
 
@@ -235,20 +255,20 @@ def test_handle_menu_unfocus(mock_app):
 def test_handle_menu_blocked_during_focus_mode(mock_app):
     mock_app._focus_mode = True
     spec = find_dialog_spec(dlg.MENU_PROMPT)
-    handle_dialog_response(mock_app, spec, dlg.BUTTON_FUN_FACT)
-    mock_app.say_random_fact.assert_not_called()
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_ACTIONS)
+    mock_app.speak.assert_not_called()
 
 
 def test_handle_menu_blocked_during_sleep(mock_app):
     mock_app.paused = True
     spec = find_dialog_spec(dlg.MENU_PROMPT)
-    handle_dialog_response(mock_app, spec, dlg.BUTTON_FUN_FACT)
-    mock_app.say_random_fact.assert_not_called()
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_SETTINGS)
+    mock_app.speak.assert_not_called()
 
 
 def test_handle_menu_unfocus_allowed_during_focus_mode(mock_app):
     mock_app._focus_mode = True
-    spec = find_dialog_spec(dlg.MENU_PROMPT)
+    spec = find_dialog_spec(dlg.MODES_MENU_QUESTION)
     handle_dialog_response(mock_app, spec, dlg.BUTTON_UNFOCUS)
     mock_app.toggle_focus.assert_called_once()
 
@@ -269,6 +289,23 @@ def test_handle_menu_goodbye_allowed_during_sleep(mock_app):
 
 def test_handle_menu_focus_timer_allowed_during_focus_mode(mock_app):
     mock_app._focus_mode = True
-    spec = find_dialog_spec(dlg.MENU_PROMPT)
+    spec = find_dialog_spec(dlg.MODES_MENU_QUESTION)
     handle_dialog_response(mock_app, spec, dlg.BUTTON_SET_FOCUS_TIMER)
     mock_app.open_focus_timer_controls.assert_called_once()
+
+
+def test_handle_submenu_back_reopens_main_menu(mock_app):
+    spec = find_dialog_spec(dlg.SETTINGS_MENU_QUESTION)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_BACK)
+    mock_app.speak.assert_called_once_with(
+        dlg.MENU_PROMPT, 45, True, allow_in_focus=True
+    )
+
+
+def test_handle_modes_allowed_during_focus_mode(mock_app):
+    mock_app._focus_mode = True
+    spec = find_dialog_spec(dlg.MENU_PROMPT)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_MODES)
+    mock_app.speak.assert_called_once_with(
+        dlg.MODES_MENU_QUESTION, 45, True, allow_in_focus=True
+    )

@@ -62,41 +62,30 @@ def find_dialog_spec(text: str) -> DialogSpec | None:
 def apply_dialog_ui(app, spec: DialogSpec) -> None:
     """Attach buttons or a textbox to the active speech bubble."""
     if spec.ui.kind == "buttons":
-        buttons = menu_options_for(app) if spec.marker == dlg.MENU_PROMPT else list(spec.ui.buttons)
+        if spec.marker == dlg.MENU_PROMPT:
+            buttons = menu_options_for(app)
+        elif spec.marker == dlg.MODES_MENU_MARKER:
+            buttons = modes_options_for(app)
+        elif spec.marker == dlg.SETTINGS_MENU_MARKER:
+            buttons = settings_options_for(app)
+        elif spec.marker == dlg.ACTIONS_MENU_MARKER:
+            buttons = actions_options_for(app)
+        else:
+            buttons = list(spec.ui.buttons)
         app.show_response_buttons(buttons)
     elif spec.ui.kind == "textbox":
         app.show_response_textbox(spec.ui.textbox_prompt or spec.marker)
 
 
 def menu_options_for(app) -> list[str]:
-    """Return right-click menu labels with state-aware toggle names."""
-    sleep_label = dlg.BUTTON_WAKE_UP if getattr(app, "paused", False) else dlg.BUTTON_SLEEP
-    focus_label = dlg.BUTTON_UNFOCUS if getattr(app, "_focus_mode", False) else dlg.BUTTON_FOCUS
-    effects_label = (
-        dlg.BUTTON_SCREEN_EFFECTS_OFF
-        if getattr(app, "_screen_effects_enabled", True)
-        else dlg.BUTTON_SCREEN_EFFECTS_ON
-    )
+    """Return top-level right-click menu labels."""
     options = [
-        dlg.BUTTON_SET_REMINDER,
-        dlg.BUTTON_TELL_TIME,
-        sleep_label,
-        focus_label,
-        effects_label,
-        dlg.BUTTON_SING_SONG,
-        dlg.BUTTON_FUN_FACT,
+        dlg.BUTTON_MODES,
+        dlg.BUTTON_SETTINGS,
+        dlg.BUTTON_ACTIONS,
         dlg.BUTTON_CHAT,
-        dlg.BUTTON_REMEMBER,
-        dlg.BUTTON_FORGET,
-        dlg.BUTTON_VISIT_WEBSITE,
-        dlg.BUTTON_PLAY_MUSIC,
-        dlg.BUTTON_PLAY_GAME,
-        dlg.BUTTON_GIVE_HUG,
-        dlg.BUTTON_SHOW_CREDITS,
         dlg.BUTTON_SAY_GOODBYE,
     ]
-    if getattr(app, "_focus_mode", False) and not getattr(app, "paused", False):
-        options.insert(options.index(focus_label) + 1, dlg.BUTTON_SET_FOCUS_TIMER)
     allowed: set[str] = set()
     if getattr(app, "paused", False):
         allowed |= _MENU_SLEEP_BUTTONS
@@ -107,15 +96,86 @@ def menu_options_for(app) -> list[str]:
     return options
 
 
-_MENU_SLEEP_BUTTONS = frozenset({dlg.BUTTON_WAKE_UP, dlg.BUTTON_SAY_GOODBYE})
-_MENU_FOCUS_BUTTONS = frozenset(
+def modes_options_for(app) -> list[str]:
+    """Return Modes submenu labels with sleep/focus toggle names."""
+    sleep_label = dlg.BUTTON_WAKE_UP if getattr(app, "paused", False) else dlg.BUTTON_SLEEP
+    focus_label = dlg.BUTTON_UNFOCUS if getattr(app, "_focus_mode", False) else dlg.BUTTON_FOCUS
+    options = [sleep_label, focus_label]
+    if getattr(app, "_focus_mode", False) and not getattr(app, "paused", False):
+        options.append(dlg.BUTTON_SET_FOCUS_TIMER)
+    options.append(dlg.BUTTON_BACK)
+
+    allowed: set[str] = set()
+    if getattr(app, "paused", False):
+        allowed |= _MODES_SLEEP_BUTTONS
+    if getattr(app, "_focus_mode", False):
+        allowed |= _MODES_FOCUS_BUTTONS
+    if allowed:
+        return [option for option in options if option in allowed]
+    return options
+
+
+def settings_options_for(app) -> list[str]:
+    """Return Settings submenu labels."""
+    del app  # reserved for future state-aware settings labels
+    return [
+        dlg.BUTTON_SCREEN_EFFECTS,
+        dlg.BUTTON_REMEMBER,
+        dlg.BUTTON_FORGET,
+        dlg.BUTTON_SHOW_CREDITS,
+        dlg.BUTTON_BACK,
+    ]
+
+
+def actions_options_for(app) -> list[str]:
+    """Return Actions submenu labels."""
+    del app
+    return [
+        dlg.BUTTON_SET_REMINDER,
+        dlg.BUTTON_TELL_TIME,
+        dlg.BUTTON_SING_SONG,
+        dlg.BUTTON_FUN_FACT,
+        dlg.BUTTON_VISIT_WEBSITE,
+        dlg.BUTTON_PLAY_MUSIC,
+        dlg.BUTTON_PLAY_GAME,
+        dlg.BUTTON_GIVE_HUG,
+        dlg.BUTTON_BACK,
+    ]
+
+
+_MENU_SLEEP_BUTTONS = frozenset({dlg.BUTTON_MODES, dlg.BUTTON_SAY_GOODBYE})
+_MENU_FOCUS_BUTTONS = frozenset({dlg.BUTTON_MODES, dlg.BUTTON_SAY_GOODBYE})
+_MODES_SLEEP_BUTTONS = frozenset(
+    {dlg.BUTTON_WAKE_UP, dlg.BUTTON_UNFOCUS, dlg.BUTTON_BACK}
+)
+_MODES_FOCUS_BUTTONS = frozenset(
     {
-        dlg.BUTTON_FOCUS,
+        dlg.BUTTON_WAKE_UP,
         dlg.BUTTON_UNFOCUS,
         dlg.BUTTON_SET_FOCUS_TIMER,
-        dlg.BUTTON_SAY_GOODBYE,
+        dlg.BUTTON_BACK,
     }
 )
+
+
+def _open_main_menu(app) -> None:
+    """Re-open the top-level right-click menu."""
+    app.speak(dlg.MENU_PROMPT, 45, True, allow_in_focus=True)
+
+
+def _open_modes_menu(app) -> None:
+    """Open the Modes submenu."""
+    app.speak(dlg.MODES_MENU_QUESTION, 45, True, allow_in_focus=True)
+
+
+def _open_settings_menu(app) -> None:
+    """Open the Settings submenu."""
+    app.speak(dlg.SETTINGS_MENU_QUESTION, 45, True)
+
+
+def _open_actions_menu(app) -> None:
+    """Open the Actions submenu."""
+    app.speak(dlg.ACTIONS_MENU_QUESTION, 45, True)
 
 
 def handle_dialog_response(app, spec: DialogSpec, response: str) -> None:
@@ -260,17 +320,31 @@ def _handle_menu(app, response: str) -> None:
     if getattr(app, "_focus_mode", False) and response not in _MENU_FOCUS_BUTTONS:
         return
     actions = {
+        dlg.BUTTON_MODES: _open_modes_menu,
+        dlg.BUTTON_SETTINGS: _open_settings_menu,
+        dlg.BUTTON_ACTIONS: _open_actions_menu,
+        dlg.BUTTON_CHAT: lambda a: a.start_chat(),
+        dlg.BUTTON_SAY_GOODBYE: lambda a: a.say_goodbye(),
+    }
+    action = actions.get(response)
+    if action:
+        action(app)
+
+
+def _menu_action_handlers() -> dict[str, Handler]:
+    """Shared action map for top-level leftovers and submenu items."""
+    return {
         dlg.BUTTON_SET_REMINDER: lambda a: a.speak(dlg.REMINDER_MINUTES_PROMPT, 45, True),
         dlg.BUTTON_SLEEP: lambda a: a.toggle_pause(),
         dlg.BUTTON_WAKE_UP: lambda a: a.toggle_pause(),
         dlg.BUTTON_FOCUS: lambda a: a.toggle_focus(),
         dlg.BUTTON_UNFOCUS: lambda a: a.toggle_focus(),
         dlg.BUTTON_SET_FOCUS_TIMER: lambda a: a.open_focus_timer_controls(),
+        dlg.BUTTON_SCREEN_EFFECTS: lambda a: a.toggle_screen_effects(),
         dlg.BUTTON_SCREEN_EFFECTS_ON: lambda a: a.toggle_screen_effects(),
         dlg.BUTTON_SCREEN_EFFECTS_OFF: lambda a: a.toggle_screen_effects(),
         dlg.BUTTON_SING_SONG: lambda a: a.say_random_poem(),
         dlg.BUTTON_FUN_FACT: lambda a: a.say_random_fact(),
-        dlg.BUTTON_CHAT: lambda a: a.start_chat(),
         dlg.BUTTON_REMEMBER: lambda a: a.show_memory_summary(),
         dlg.BUTTON_FORGET: lambda a: a.forget_memory(),
         dlg.BUTTON_VISIT_WEBSITE: lambda a: a.ask_browser_category(),
@@ -279,9 +353,35 @@ def _handle_menu(app, response: str) -> None:
         dlg.BUTTON_GIVE_HUG: lambda a: a.give_hug(),
         dlg.BUTTON_TELL_TIME: lambda a: a.print_current_datetime(),
         dlg.BUTTON_SHOW_CREDITS: lambda a: a.show_credits(),
-        dlg.BUTTON_SAY_GOODBYE: lambda a: a.say_goodbye(),
+        dlg.BUTTON_BACK: _open_main_menu,
     }
-    action = actions.get(response)
+
+
+def _handle_modes_menu(app, response: str) -> None:
+    """Handle Modes submenu selections."""
+    if getattr(app, "paused", False) and response not in _MODES_SLEEP_BUTTONS:
+        return
+    if getattr(app, "_focus_mode", False) and response not in _MODES_FOCUS_BUTTONS:
+        return
+    action = _menu_action_handlers().get(response)
+    if action:
+        action(app)
+
+
+def _handle_settings_menu(app, response: str) -> None:
+    """Handle Settings submenu selections."""
+    if getattr(app, "paused", False) or getattr(app, "_focus_mode", False):
+        return
+    action = _menu_action_handlers().get(response)
+    if action:
+        action(app)
+
+
+def _handle_actions_menu(app, response: str) -> None:
+    """Handle Actions submenu selections."""
+    if getattr(app, "paused", False) or getattr(app, "_focus_mode", False):
+        return
+    action = _menu_action_handlers().get(response)
     if action:
         action(app)
 
@@ -598,6 +698,21 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
         dlg.MENU_PROMPT,
         DialogUI("buttons"),
         _handle_menu,
+    ),
+    DialogSpec(
+        dlg.MODES_MENU_MARKER,
+        DialogUI("buttons"),
+        _handle_modes_menu,
+    ),
+    DialogSpec(
+        dlg.SETTINGS_MENU_MARKER,
+        DialogUI("buttons"),
+        _handle_settings_menu,
+    ),
+    DialogSpec(
+        dlg.ACTIONS_MENU_MARKER,
+        DialogUI("buttons"),
+        _handle_actions_menu,
     ),
     DialogSpec(
         credits.CREDITS_MARKER,

@@ -29,14 +29,14 @@ A free, open-source desktop companion inspired by **KinitoPET**. Kinito lives on
 | **Speech bubbles** | Interactive buttons and text boxes for replies |
 | **Random questions** | 30+ conversation topics while idle |
 | **AI chat (Ollama)** | Free-form chat via local Ollama model; optional AI idle lines |
-| **Right-click menu** | Reminders, time, sleep mode, poems, facts, chat, browser, music, hug, goodbye |
+| **Right-click menu** | Grouped Modes / Settings / Actions, plus chat and goodbye |
 | **Safe browser** | Opens whitelisted HTTPS sites in a small window (or your default browser) |
 | **Camera** | Optional webcam view (requires OpenCV) |
 | **Music player** | Play MP3s from your PC |
 | **Hug** | Hug sprites + sweet lines |
 | **Idle animations** | Blinking, reading, fancy hat mode, sleep sprites |
 | **Reminders** | Timer with sound after X minutes |
-| **Mini-games** | Tic-tac-toe, memory, battleships, RPS, trivia, and more (right-click → **Play a Game**) |
+| **Mini-games** | Tic-tac-toe, memory, battleships, RPS, trivia, and more (right-click → **Actions** → **Play Game**) |
 
 ---
 
@@ -91,19 +91,31 @@ For a **full beginner walkthrough** (screenshots-level detail), see **[docs/INST
 
 ### Right-click menu
 
-- **Set Reminder** — type minutes (e.g. `15`); Kinito reminds you with sound + speech
-- **Tell the Time** — speaks the current time
-- **Sleep** / **Wake up** — nap mode (sleep animations); label switches while sleeping
-- **Focus** / **Unfocus** — quiet mode; label switches while active
-- **Screen Effects on** / **Screen Effects off** — rare glitch effects; label shows current state
-- **Sing** — recites a random poem (some include background music)
-- **Fun Fact** — random fact
+Top level:
+
+- **Modes** — Sleep / Wake up, Focus / Unfocus, Focus Timer
+- **Settings** — Screen Effects, Memories, Forget, Credits
+- **Actions** — Reminder, Tell Time, Sing, Fun Fact, Visit Website, Play Music, Play Game, Hug
 - **Chat** — free-form conversation with a local Ollama model (see below)
-- **Visit a Website** — pick a category (Animals, Knowledge, Games, Horror, Surprise Me)
-- **Play Music** — pick an MP3 or play a random one from your Music/Downloads folders
-- **Play a Game** — mini-games (quick games and board games)
-- **Hug** — hug pose sprites + hug line
 - **Goodbye** — farewell line, then closes the app
+
+Submenus (same pattern as **Play Game**):
+
+- **Modes → Sleep / Wake up** — nap mode (sleep animations); label switches while sleeping
+- **Modes → Focus / Unfocus** — quiet mode; label switches while active
+- **Modes → Focus Timer** — set / adjust / end a focus countdown (focus mode only)
+- **Settings → Screen Effects** — toggle rare glitch effects
+- **Settings → Memories** — hear a summary of saved memory
+- **Settings → Forget** — clear saved memory
+- **Settings → Credits** — attribution links
+- **Actions → Set Reminder** — type minutes (e.g. `15`); Kinito reminds you with sound + speech
+- **Actions → Tell Time** — speaks the current time
+- **Actions → Sing** — recites a random poem (some include background music)
+- **Actions → Fun Fact** — random fact
+- **Actions → Visit Website** — pick a category (Animals, Knowledge, Games, Horror, Surprise Me)
+- **Actions → Play Music** — pick an MP3 or play a random one from your Music/Downloads folders
+- **Actions → Play Game** — mini-games (quick games and board games)
+- **Actions → Hug** — hug pose sprites + hug line
 
 ### Spontaneous speech
 
@@ -216,8 +228,8 @@ Kinito can remember personal facts across sessions — no database required.
 
 These files are local only (listed in `.gitignore`) and are not uploaded to Git. You do **not** need to create them manually — Kinito creates `memory.json` and `notes.txt` automatically the first time something is saved (e.g. when you answer a name question or a memory follow-up). After cloning the repo, the `UserMedia/` folder already exists; your personal memory starts empty until you use the app.
 
-Right-click Kinito → **What do you remember?** to hear a summary.  
-Right-click Kinito → **Forget everything** to clear saved memory.
+Right-click Kinito → **Settings** → **Memories** to hear a summary.  
+Right-click Kinito → **Settings** → **Forget** to clear saved memory.
 
 Dialog-based memory works without Ollama. Chat note extraction requires Ollama.
 

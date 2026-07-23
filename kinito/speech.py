@@ -1162,11 +1162,15 @@ class SpeechMixin:
 
     def ask_what_todo(self, event):
         """Right-click handler: open or close the action menu speech bubble."""
-        if (
-            hasattr(self, "speech_bubble")
-            and self.speech_bubble.winfo_exists()
-            and dlg.MENU_PROMPT in self.speech_bubble.wm_title()
-        ):
-            self.close_speech_bubble()
-            return
+        if hasattr(self, "speech_bubble") and self.speech_bubble.winfo_exists():
+            title = self.speech_bubble.wm_title() or ""
+            menu_titles = (
+                dlg.MENU_PROMPT,
+                dlg.MODES_MENU_QUESTION,
+                dlg.SETTINGS_MENU_QUESTION,
+                dlg.ACTIONS_MENU_QUESTION,
+            )
+            if any(prompt in title for prompt in menu_titles):
+                self.close_speech_bubble()
+                return
         self.speak(dlg.MENU_PROMPT, 45, True, allow_in_focus=True)
