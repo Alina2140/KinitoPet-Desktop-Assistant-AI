@@ -56,25 +56,31 @@ def test_menu_options_default_toggle_labels():
 
 def test_menu_options_reflect_active_states():
     opts = menu_options_for(_menu_app(paused=True, screen_effects_enabled=False))
-    assert opts == [dlg.BUTTON_MODES, dlg.BUTTON_SAY_GOODBYE]
+    assert opts == [dlg.BUTTON_WAKE_UP, dlg.BUTTON_SAY_GOODBYE]
 
 
 def test_menu_options_hide_blocked_actions_when_sleeping():
     opts = menu_options_for(_menu_app(paused=True))
-    assert opts == [dlg.BUTTON_MODES, dlg.BUTTON_SAY_GOODBYE]
+    assert opts == [dlg.BUTTON_WAKE_UP, dlg.BUTTON_SAY_GOODBYE]
+    assert dlg.BUTTON_MODES not in opts
     assert dlg.BUTTON_SETTINGS not in opts
     assert dlg.BUTTON_ACTIONS not in opts
     assert dlg.BUTTON_CHAT not in opts
 
 
-def test_menu_options_show_modes_and_goodbye_when_sleeping_in_focus_mode():
+def test_menu_options_show_wake_up_and_unfocus_when_sleeping_in_focus_mode():
     opts = menu_options_for(_menu_app(paused=True, focus_mode=True))
-    assert opts == [dlg.BUTTON_MODES, dlg.BUTTON_SAY_GOODBYE]
+    assert opts == [dlg.BUTTON_WAKE_UP, dlg.BUTTON_UNFOCUS, dlg.BUTTON_SAY_GOODBYE]
 
 
 def test_menu_options_hide_blocked_actions_in_focus_mode():
     opts = menu_options_for(_menu_app(focus_mode=True))
-    assert opts == [dlg.BUTTON_MODES, dlg.BUTTON_SAY_GOODBYE]
+    assert opts == [
+        dlg.BUTTON_UNFOCUS,
+        dlg.BUTTON_SET_FOCUS_TIMER,
+        dlg.BUTTON_SAY_GOODBYE,
+    ]
+    assert dlg.BUTTON_MODES not in opts
     assert dlg.BUTTON_SETTINGS not in opts
     assert dlg.BUTTON_ACTIONS not in opts
     assert dlg.BUTTON_CHAT not in opts

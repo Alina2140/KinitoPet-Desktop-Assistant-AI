@@ -99,6 +99,8 @@ Top level:
 - **Chat** — free-form conversation with a local Ollama model (see below)
 - **Goodbye** — farewell line, then closes the app
 
+While sleeping or in focus mode, the top menu shows exit controls directly (**Wake up** / **Unfocus**, plus **Focus Timer** in focus mode) instead of the full Modes / Settings / Actions list.
+
 Submenus (same pattern as **Play Game**):
 
 - **Modes → Sleep / Wake up** — nap mode (sleep animations); label switches while sleeping

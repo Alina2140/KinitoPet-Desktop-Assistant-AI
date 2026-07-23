@@ -74,10 +74,9 @@ class BrowserMixin:
         surprise = self._roll_browser_surprise()
         if surprise == "kinitopet":
             site = {"title": "KinitoPET — Official Site", "url": kinito_pet_url}
-            intro = f"{browse_line} I'm opening {site['title']}!"
             threading.Thread(
                 target=self._launch_browser,
-                args=(site["url"], x, y, intro),
+                args=(site["url"], x, y, browse_line),
                 daemon=True,
             ).start()
             return
@@ -93,10 +92,9 @@ class BrowserMixin:
                 ).start()
                 return
 
-        intro = f"{browse_line} I'm opening {site['title']}!"
         threading.Thread(
             target=self._launch_browser,
-            args=(site["url"], x, y, intro),
+            args=(site["url"], x, y, browse_line),
             daemon=True,
         ).start()
 

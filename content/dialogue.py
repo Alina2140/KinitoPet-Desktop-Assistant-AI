@@ -493,14 +493,14 @@ STORY_DECLINED_LINES = [
 # Right-click menu
 MENU_PROMPT = "What would you like me to do?"
 
-MODES_MENU_MARKER = "modes menu"
-MODES_MENU_QUESTION = "Modes menu! Sleep or focus?"
+MODES_MENU_MARKER = "modes!"
+MODES_MENU_QUESTION = "Modes! Sleep or focus?"
 
-SETTINGS_MENU_MARKER = "settings menu"
-SETTINGS_MENU_QUESTION = "Settings menu! What should we change?"
+SETTINGS_MENU_MARKER = "settings!"
+SETTINGS_MENU_QUESTION = "Settings! What should we change?"
 
-ACTIONS_MENU_MARKER = "actions menu"
-ACTIONS_MENU_QUESTION = "Actions menu! What should I do?"
+ACTIONS_MENU_MARKER = "actions!"
+ACTIONS_MENU_QUESTION = "Actions! What should I do?"
 
 CHAT_GREETING = "Hey! I'm all ears — what's on your mind?"
 CHAT_GREETING_WITH_NAME = "Hey {user_name}! I'm all ears — what's on your mind?"

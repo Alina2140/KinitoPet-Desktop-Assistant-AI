@@ -79,21 +79,26 @@ def apply_dialog_ui(app, spec: DialogSpec) -> None:
 
 def menu_options_for(app) -> list[str]:
     """Return top-level right-click menu labels."""
-    options = [
+    paused = getattr(app, "paused", False)
+    focus_mode = getattr(app, "_focus_mode", False)
+    if paused or focus_mode:
+        options: list[str] = []
+        if paused:
+            options.append(dlg.BUTTON_WAKE_UP)
+        if focus_mode:
+            options.append(dlg.BUTTON_UNFOCUS)
+            if not paused:
+                options.append(dlg.BUTTON_SET_FOCUS_TIMER)
+        options.append(dlg.BUTTON_SAY_GOODBYE)
+        return options
+
+    return [
         dlg.BUTTON_MODES,
         dlg.BUTTON_SETTINGS,
         dlg.BUTTON_ACTIONS,
         dlg.BUTTON_CHAT,
         dlg.BUTTON_SAY_GOODBYE,
     ]
-    allowed: set[str] = set()
-    if getattr(app, "paused", False):
-        allowed |= _MENU_SLEEP_BUTTONS
-    if getattr(app, "_focus_mode", False):
-        allowed |= _MENU_FOCUS_BUTTONS
-    if allowed:
-        return [option for option in options if option in allowed]
-    return options
 
 
 def modes_options_for(app) -> list[str]:
@@ -143,8 +148,17 @@ def actions_options_for(app) -> list[str]:
     ]
 
 
-_MENU_SLEEP_BUTTONS = frozenset({dlg.BUTTON_MODES, dlg.BUTTON_SAY_GOODBYE})
-_MENU_FOCUS_BUTTONS = frozenset({dlg.BUTTON_MODES, dlg.BUTTON_SAY_GOODBYE})
+_MENU_SLEEP_BUTTONS = frozenset(
+    {dlg.BUTTON_WAKE_UP, dlg.BUTTON_UNFOCUS, dlg.BUTTON_SAY_GOODBYE}
+)
+_MENU_FOCUS_BUTTONS = frozenset(
+    {
+        dlg.BUTTON_WAKE_UP,
+        dlg.BUTTON_UNFOCUS,
+        dlg.BUTTON_SET_FOCUS_TIMER,
+        dlg.BUTTON_SAY_GOODBYE,
+    }
+)
 _MODES_SLEEP_BUTTONS = frozenset(
     {dlg.BUTTON_WAKE_UP, dlg.BUTTON_UNFOCUS, dlg.BUTTON_BACK}
 )
@@ -324,6 +338,9 @@ def _handle_menu(app, response: str) -> None:
         dlg.BUTTON_SETTINGS: _open_settings_menu,
         dlg.BUTTON_ACTIONS: _open_actions_menu,
         dlg.BUTTON_CHAT: lambda a: a.start_chat(),
+        dlg.BUTTON_WAKE_UP: lambda a: a.toggle_pause(),
+        dlg.BUTTON_UNFOCUS: lambda a: a.toggle_focus(),
+        dlg.BUTTON_SET_FOCUS_TIMER: lambda a: a.open_focus_timer_controls(),
         dlg.BUTTON_SAY_GOODBYE: lambda a: a.say_goodbye(),
     }
     action = actions.get(response)
