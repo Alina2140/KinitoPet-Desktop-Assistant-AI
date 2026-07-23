@@ -22,6 +22,8 @@ class MovementMixin:
     READING_STORY_CHANCE = 0.03
     IDLE_FANCY_CHANCE = 0.02
     IDLE_GLASSES_CHANCE = 0.28
+    NORMAL_DEFAULT_LOOK_CHANCE = 0.82
+    LOOK_AROUND_COOLDOWN_SECONDS = 10.0
     READING_DURATION_SECONDS = (10, 32)
     READING_PAGE_TURN_CHANCE = 0.14
     READING_PAGE_TURN_VOLUME = 0.3
@@ -315,6 +317,30 @@ class MovementMixin:
             return random.randint(*self.IDLE_WAIT_NORMAL)
         return random.randint(*self.IDLE_WAIT_LONG)
 
+    def _pick_normal_idle_sprite(self, *, crouch: bool = False):
+        """Pick standing or crouch idle sprite; look-arounds are rare and cooled down."""
+        if crouch:
+            default = getattr(self, "tk_img_normal_2", None)
+            variants = getattr(self, "_standing2_look_sprites", ())
+        else:
+            default = getattr(self, "tk_img_normal", None)
+            variants = getattr(self, "_standing_look_sprites", ())
+
+        if default is None:
+            return None
+
+        ready_at = getattr(self, "_look_around_ready_at", 0.0)
+        on_cooldown = time.monotonic() < ready_at
+        if (
+            on_cooldown
+            or not variants
+            or random.random() < self.NORMAL_DEFAULT_LOOK_CHANCE
+        ):
+            return default
+
+        self._look_around_ready_at = time.monotonic() + self.LOOK_AROUND_COOLDOWN_SECONDS
+        return random.choice(variants)
+
     def maybe_trigger_screen_glitch(self) -> bool:
         """No-op unless GlitchMixin is mixed in."""
         return False
@@ -509,11 +535,11 @@ class MovementMixin:
                 ):
                     self._run_fancy_idle()
                     continue
-                self.change_sprite(self.tk_img_normal)
+                self.change_sprite(self._pick_normal_idle_sprite(crouch=False))
                 time.sleep(1)
                 if not self._running:
                     break
-                self.change_sprite(self.tk_img_normal_2)
+                self.change_sprite(self._pick_normal_idle_sprite(crouch=True))
                 time.sleep(1)
             elif self.paused and not self.talking:
                 for sprite in (

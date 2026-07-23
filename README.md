@@ -241,7 +241,16 @@ The app expects a `GameAssets` folder next to `Kinito.py`:
 
 ```
 GameAssets/
-├── Kinito.png, KinitoNormal.png, KinitoHug.png, Thinking.png, ...   # Sprites
+├── sprites/
+│   ├── Standing/      # KinitoNormal.png + look-around variants
+│   ├── Standing2/     # crouch pose + look-around variants
+│   ├── Reading/       # Idle / IdleGlasses
+│   ├── Magic/         # Fancy hat
+│   ├── Surfing/       # movement sprites
+│   ├── Sleeping/
+│   ├── Talking/
+│   ├── Thinking/
+│   └── Hugging/
 ├── Timer.mp3, Woosh.mp3, StartTalking.mp3, ...       # Sounds
 ├── Programs/balcon.exe                               # Windows TTS (optional fallback: pyttsx3)
 ├── SecretImages/                                     # Optional images for easter egg
@@ -250,7 +259,7 @@ GameAssets/
 
 The `UserMedia/` directory is created when Kinito starts. Memory files (`memory.json`, `notes.txt`) appear automatically when you first save a fact — nothing to copy or create by hand after `git clone`.
 
-If a sprite is missing, Kinito falls back to `KinitoNormal.png`.
+If a sprite is missing, Kinito falls back to `Standing/KinitoNormal.png`.
 
 ---
 

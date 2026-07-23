@@ -15,6 +15,7 @@ from content.startup import STARTUP_LINES
 from kinito.assets import (
     balconexe_directory,
     ensure_user_media_directories,
+    list_standing_sprite_paths,
     sprite_path_fancy,
     sprite_path_fancy_1,
     sprite_path_hug,
@@ -62,6 +63,17 @@ def _open_sprite(path, fallback_path):
     if path != fallback_path:
         print(f"Warning: missing sprite {path}, using fallback.", flush=True)
     return Image.open(fallback_path)
+
+
+def _load_look_around_sprites(paths, *, default_path, fallback):
+    """Load non-default look-around sprites for a standing pose."""
+    look_sprites = []
+    for path in paths:
+        if path == default_path:
+            continue
+        img = _open_sprite(path, fallback)
+        look_sprites.append(ImageTk.PhotoImage(img))
+    return tuple(look_sprites)
 
 
 class FloatingAssistant(
@@ -120,6 +132,16 @@ class FloatingAssistant(
         self.img_hug2 = _open_sprite(sprite_path_hug2, fallback)
         self.tk_img_normal = ImageTk.PhotoImage(self.img_normal)
         self.tk_img_normal_2 = ImageTk.PhotoImage(self.img_normal_2)
+        self._standing_look_sprites = _load_look_around_sprites(
+            list_standing_sprite_paths(crouch=False),
+            default_path=sprite_path_normal,
+            fallback=fallback,
+        )
+        self._standing2_look_sprites = _load_look_around_sprites(
+            list_standing_sprite_paths(crouch=True),
+            default_path=sprite_path_normal_2,
+            fallback=fallback,
+        )
         self.tk_img_idle = ImageTk.PhotoImage(self.img_idle)
         self.tk_img_idle_2 = ImageTk.PhotoImage(self.img_idle_2)
         self.tk_img_idle_glasses = ImageTk.PhotoImage(self.img_idle_glasses)

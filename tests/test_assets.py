@@ -33,25 +33,27 @@ def test_asset_subdirectories(directory_attr, relative_path):
 @pytest.mark.parametrize(
     "path_attr,filename,parent_attr",
     [
-        ("sprite_path_normal", "KinitoNormal.png", "sprites_directory"),
-        ("sprite_path_normal_2", "KinitoNormal2.png", "sprites_directory"),
-        ("sprite_path_idle", "Idle.png", "sprites_directory"),
-        ("sprite_path_idle_2", "Idle2.png", "sprites_directory"),
-        ("sprite_path_fancy", "Fancy.png", "sprites_directory"),
-        ("sprite_path_fancy_1", "Fancy1.png", "sprites_directory"),
-        ("sprite_path_surf_left", "KinitoSurfLeft.png", "sprites_directory"),
-        ("sprite_path_surf_right", "KinitoSurfRight.png", "sprites_directory"),
-        ("sprite_path_moving", "KinitoSurfRight.png", "sprites_directory"),
-        ("sprite_path_sleep", "Sleep.png", "sprites_directory"),
-        ("sprite_path_sleep1", "Sleep1.png", "sprites_directory"),
-        ("sprite_path_sleep2", "Sleep2.png", "sprites_directory"),
-        ("sprite_path_sleep3", "Sleep3.png", "sprites_directory"),
-        ("sprite_path_talking", "Talking.png", "sprites_directory"),
-        ("sprite_path_talking2", "Talking2.png", "sprites_directory"),
-        ("sprite_path_thinking", "Thinking.png", "sprites_directory"),
-        ("sprite_path_thinking2", "Thinking2.png", "sprites_directory"),
-        ("sprite_path_hug", "KinitoHug.png", "sprites_directory"),
-        ("sprite_path_hug2", "KinitoHug2.png", "sprites_directory"),
+        ("sprite_path_normal", "KinitoNormal.png", "sprites_standing_directory"),
+        ("sprite_path_normal_2", "KinitoNormal2.png", "sprites_standing2_directory"),
+        ("sprite_path_idle", "Idle.png", "sprites_reading_directory"),
+        ("sprite_path_idle_2", "Idle2.png", "sprites_reading_directory"),
+        ("sprite_path_idle_glasses", "IdleGlasses.png", "sprites_reading_directory"),
+        ("sprite_path_idle_glasses_2", "IdleGlasses2.png", "sprites_reading_directory"),
+        ("sprite_path_fancy", "Fancy.png", "sprites_magic_directory"),
+        ("sprite_path_fancy_1", "Fancy1.png", "sprites_magic_directory"),
+        ("sprite_path_surf_left", "KinitoSurfLeft.png", "sprites_surfing_directory"),
+        ("sprite_path_surf_right", "KinitoSurfRight.png", "sprites_surfing_directory"),
+        ("sprite_path_moving", "KinitoSurfRight.png", "sprites_surfing_directory"),
+        ("sprite_path_sleep", "Sleep.png", "sprites_sleeping_directory"),
+        ("sprite_path_sleep1", "Sleep1.png", "sprites_sleeping_directory"),
+        ("sprite_path_sleep2", "Sleep2.png", "sprites_sleeping_directory"),
+        ("sprite_path_sleep3", "Sleep3.png", "sprites_sleeping_directory"),
+        ("sprite_path_talking", "Talking.png", "sprites_talking_directory"),
+        ("sprite_path_talking2", "Talking2.png", "sprites_talking_directory"),
+        ("sprite_path_thinking", "Thinking.png", "sprites_thinking_directory"),
+        ("sprite_path_thinking2", "Thinking2.png", "sprites_thinking_directory"),
+        ("sprite_path_hug", "KinitoHug.png", "sprites_hugging_directory"),
+        ("sprite_path_hug2", "KinitoHug2.png", "sprites_hugging_directory"),
         ("crash_image_path", "blueScreen.png", "crash_directory"),
         ("page_turn_file_path", "PageTurn.mp3", "sounds_directory"),
         ("icon_path", "Icon.ico", "icons_directory"),
@@ -140,13 +142,32 @@ def test_list_image_files_returns_sorted_paths(tmp_path):
 
 
 @pytest.mark.skipif(
+    not os.path.isdir(assets.sprites_standing_directory),
+    reason="Standing sprites folder is not present in this checkout",
+)
+def test_list_standing_sprite_paths_puts_default_first():
+    paths = assets.list_standing_sprite_paths(crouch=False)
+    assert paths
+    assert paths[0] == assets.sprite_path_normal
+    assert len(paths) >= 2
+
+    crouch_paths = assets.list_standing_sprite_paths(crouch=True)
+    assert crouch_paths
+    assert crouch_paths[0] == assets.sprite_path_normal_2
+    assert len(crouch_paths) >= 2
+
+
+@pytest.mark.skipif(
     not os.path.isdir(assets.assets_directory),
     reason="GameAssets folder is not present in this checkout",
 )
 def test_packaged_asset_files_exist_on_disk():
     expected_files = [
+        assets.sprite_path_normal,
+        assets.sprite_path_normal_2,
         assets.sprite_path_idle,
         assets.sprite_path_idle_2,
+        assets.sprite_path_idle_glasses,
         assets.sprite_path_fancy_1,
         assets.crash_image_path,
         assets.page_turn_file_path,

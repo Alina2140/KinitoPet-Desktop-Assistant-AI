@@ -263,22 +263,25 @@ To add a **new category**:
 
 ### Sprites (PNG)
 
-Place files in `GameAssets/`. Paths are defined in `kinito/assets.py`:
+Place files under `GameAssets/sprites/` in pose folders. Paths are defined in `kinito/assets.py`:
 
 | Constant | Default file |
 |----------|--------------|
-| `sprite_path_normal` | `KinitoNormal.png` |
-| `sprite_path_moving` | `Kinito.png` |
-| `sprite_path_thinking` | `Thinking.png` |
-| `sprite_path_hug` | `KinitoHug.png` |
-| `sprite_path_hug2` | `KinitoHug2.png` |
-| `sprite_path_sleep` | `Sleep.png` |
+| `sprite_path_normal` | `Standing/KinitoNormal.png` |
+| `sprite_path_normal_2` | `Standing2/KinitoNormal2.png` |
+| `sprite_path_moving` | `Surfing/KinitoSurfRight.png` |
+| `sprite_path_thinking` | `Thinking/Thinking.png` |
+| `sprite_path_hug` | `Hugging/KinitoHug.png` |
+| `sprite_path_hug2` | `Hugging/KinitoHug2.png` |
+| `sprite_path_sleep` | `Sleeping/Sleep.png` |
+
+Extra PNGs in `Standing/` and `Standing2/` (look-around eyes) are loaded automatically; the default centered look is preferred during idle.
 
 Replace a PNG with the **same filename**, or change the path in `assets.py`.
 
 Recommended: keep transparent backgrounds (white is treated as transparent in the app).
 
-If a file is missing, Kinito falls back to `KinitoNormal.png`.
+If a file is missing, Kinito falls back to `Standing/KinitoNormal.png`.
 
 ### Sound effects (MP3)
 

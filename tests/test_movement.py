@@ -464,6 +464,48 @@ def test_maybe_play_reading_page_turn_plays_when_active(movement):
     movement.play_sfx.assert_called_once()
 
 
+def test_pick_normal_idle_sprite_prefers_default(movement):
+    movement.tk_img_normal = "default"
+    movement._standing_look_sprites = ("left", "right")
+    movement._look_around_ready_at = 0.0
+    with patch("kinito.movement.random.random", return_value=0.1):
+        assert movement._pick_normal_idle_sprite(crouch=False) == "default"
+
+
+def test_pick_normal_idle_sprite_can_look_around(movement):
+    movement.tk_img_normal = "default"
+    movement._standing_look_sprites = ("left", "right")
+    movement._look_around_ready_at = 0.0
+    with (
+        patch("kinito.movement.time.monotonic", return_value=100.0),
+        patch("kinito.movement.random.random", return_value=0.9),
+        patch("kinito.movement.random.choice", return_value="left") as choose,
+    ):
+        assert movement._pick_normal_idle_sprite(crouch=False) == "left"
+    choose.assert_called_once_with(("left", "right"))
+    assert movement._look_around_ready_at == 100.0 + movement.LOOK_AROUND_COOLDOWN_SECONDS
+
+
+def test_pick_normal_idle_sprite_respects_look_around_cooldown(movement):
+    movement.tk_img_normal = "default"
+    movement._standing_look_sprites = ("left", "right")
+    movement._look_around_ready_at = 200.0
+    with (
+        patch("kinito.movement.time.monotonic", return_value=150.0),
+        patch("kinito.movement.random.random", return_value=0.99) as roll,
+    ):
+        assert movement._pick_normal_idle_sprite(crouch=False) == "default"
+    roll.assert_not_called()
+
+
+def test_pick_normal_idle_sprite_crouch_uses_standing2_pool(movement):
+    movement.tk_img_normal_2 = "crouch-default"
+    movement._standing2_look_sprites = ("crouch-left",)
+    movement._look_around_ready_at = 0.0
+    with patch("kinito.movement.random.random", return_value=0.1):
+        assert movement._pick_normal_idle_sprite(crouch=True) == "crouch-default"
+
+
 def test_run_reading_idle_can_use_glasses_sprites(movement):
     movement.tk_img_idle = "idle"
     movement.tk_img_idle_2 = "idle2"

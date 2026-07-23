@@ -12,6 +12,15 @@ except Exception:
 script_directory = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 assets_directory = os.path.join(script_directory, "GameAssets")
 sprites_directory = os.path.join(assets_directory, "sprites")
+sprites_standing_directory = os.path.join(sprites_directory, "Standing")
+sprites_standing2_directory = os.path.join(sprites_directory, "Standing2")
+sprites_reading_directory = os.path.join(sprites_directory, "Reading")
+sprites_magic_directory = os.path.join(sprites_directory, "Magic")
+sprites_surfing_directory = os.path.join(sprites_directory, "Surfing")
+sprites_sleeping_directory = os.path.join(sprites_directory, "Sleeping")
+sprites_talking_directory = os.path.join(sprites_directory, "Talking")
+sprites_thinking_directory = os.path.join(sprites_directory, "Thinking")
+sprites_hugging_directory = os.path.join(sprites_directory, "Hugging")
 icons_directory = os.path.join(assets_directory, "icons")
 sounds_directory = os.path.join(assets_directory, "sounds")
 secret_images_directory = os.path.join(assets_directory, "SecretImages")
@@ -22,27 +31,30 @@ user_media_directory = os.path.join(assets_directory, "UserMedia")
 crash_directory = os.path.join(assets_directory, "crash")
 balconexe_directory = os.path.join(programs_directory, "balcon.exe")
 
-sprite_path_normal = os.path.join(sprites_directory, "KinitoNormal.png")
-sprite_path_normal_2 = os.path.join(sprites_directory, "KinitoNormal2.png")
-sprite_path_idle = os.path.join(sprites_directory, "Idle.png")
-sprite_path_idle_2 = os.path.join(sprites_directory, "Idle2.png")
-sprite_path_idle_glasses = os.path.join(sprites_directory, "IdleGlasses.png")
-sprite_path_idle_glasses_2 = os.path.join(sprites_directory, "IdleGlasses2.png")
-sprite_path_fancy = os.path.join(sprites_directory, "Fancy.png")
-sprite_path_fancy_1 = os.path.join(sprites_directory, "Fancy1.png")
-sprite_path_surf_left = os.path.join(sprites_directory, "KinitoSurfLeft.png")
-sprite_path_surf_right = os.path.join(sprites_directory, "KinitoSurfRight.png")
+SPRITE_NORMAL_DEFAULT = "KinitoNormal.png"
+SPRITE_NORMAL2_DEFAULT = "KinitoNormal2.png"
+
+sprite_path_normal = os.path.join(sprites_standing_directory, SPRITE_NORMAL_DEFAULT)
+sprite_path_normal_2 = os.path.join(sprites_standing2_directory, SPRITE_NORMAL2_DEFAULT)
+sprite_path_idle = os.path.join(sprites_reading_directory, "Idle.png")
+sprite_path_idle_2 = os.path.join(sprites_reading_directory, "Idle2.png")
+sprite_path_idle_glasses = os.path.join(sprites_reading_directory, "IdleGlasses.png")
+sprite_path_idle_glasses_2 = os.path.join(sprites_reading_directory, "IdleGlasses2.png")
+sprite_path_fancy = os.path.join(sprites_magic_directory, "Fancy.png")
+sprite_path_fancy_1 = os.path.join(sprites_magic_directory, "Fancy1.png")
+sprite_path_surf_left = os.path.join(sprites_surfing_directory, "KinitoSurfLeft.png")
+sprite_path_surf_right = os.path.join(sprites_surfing_directory, "KinitoSurfRight.png")
 sprite_path_moving = sprite_path_surf_right
-sprite_path_sleep = os.path.join(sprites_directory, "Sleep.png")
-sprite_path_sleep1 = os.path.join(sprites_directory, "Sleep1.png")
-sprite_path_sleep2 = os.path.join(sprites_directory, "Sleep2.png")
-sprite_path_sleep3 = os.path.join(sprites_directory, "Sleep3.png")
-sprite_path_talking = os.path.join(sprites_directory, "Talking.png")
-sprite_path_talking2 = os.path.join(sprites_directory, "Talking2.png")
-sprite_path_thinking = os.path.join(sprites_directory, "Thinking.png")
-sprite_path_thinking2 = os.path.join(sprites_directory, "Thinking2.png")
-sprite_path_hug = os.path.join(sprites_directory, "KinitoHug.png")
-sprite_path_hug2 = os.path.join(sprites_directory, "KinitoHug2.png")
+sprite_path_sleep = os.path.join(sprites_sleeping_directory, "Sleep.png")
+sprite_path_sleep1 = os.path.join(sprites_sleeping_directory, "Sleep1.png")
+sprite_path_sleep2 = os.path.join(sprites_sleeping_directory, "Sleep2.png")
+sprite_path_sleep3 = os.path.join(sprites_sleeping_directory, "Sleep3.png")
+sprite_path_talking = os.path.join(sprites_talking_directory, "Talking.png")
+sprite_path_talking2 = os.path.join(sprites_talking_directory, "Talking2.png")
+sprite_path_thinking = os.path.join(sprites_thinking_directory, "Thinking.png")
+sprite_path_thinking2 = os.path.join(sprites_thinking_directory, "Thinking2.png")
+sprite_path_hug = os.path.join(sprites_hugging_directory, "KinitoHug.png")
+sprite_path_hug2 = os.path.join(sprites_hugging_directory, "KinitoHug2.png")
 
 icon_path = os.path.join(icons_directory, "Icon.ico")
 favicon_path = os.path.join(icons_directory, "Favicon.png")
@@ -77,3 +89,26 @@ def list_image_files(directory):
         if name.lower().endswith(_IMAGE_EXTENSIONS):
             files.append(os.path.join(directory, name))
     return sorted(files)
+
+
+def list_standing_sprite_paths(*, crouch: bool = False) -> list[str]:
+    """Return standing (or crouch) sprite paths with the default variant first."""
+    if crouch:
+        directory = sprites_standing2_directory
+        default_name = SPRITE_NORMAL2_DEFAULT
+    else:
+        directory = sprites_standing_directory
+        default_name = SPRITE_NORMAL_DEFAULT
+
+    paths = list_image_files(directory)
+    if not paths:
+        return []
+
+    default_path = os.path.join(directory, default_name)
+    ordered = []
+    if default_path in paths:
+        ordered.append(default_path)
+    for path in paths:
+        if path != default_path:
+            ordered.append(path)
+    return ordered
