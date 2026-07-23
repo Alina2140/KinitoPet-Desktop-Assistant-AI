@@ -427,8 +427,55 @@ class FloatingAssistant(
             return
         try:
             self.root.deiconify()
-            self.root.wm_attributes("-topmost", True)
+            self._keep_assistant_on_top()
         except tk.TclError:
+            pass
+
+    def _keep_assistant_on_top(self):
+        """Re-assert always-on-top so Kinito stays above other windows."""
+        if not getattr(self, "_running", True):
+            return
+        try:
+            if not self.root.winfo_exists():
+                return
+            self.root.wm_attributes("-topmost", True)
+            self.root.lift()
+            self._force_window_topmost(self.root)
+            if self._has_active_speech_bubble():
+                bubble = getattr(self, "speech_bubble", None)
+                if bubble is not None and bubble.winfo_exists():
+                    bubble.wm_attributes("-topmost", True)
+                    bubble.lift()
+                    self._force_window_topmost(bubble)
+        except tk.TclError:
+            pass
+
+    @staticmethod
+    def _force_window_topmost(window) -> None:
+        """On Windows, restack *window* as TOPMOST without stealing focus."""
+        if sys.platform != "win32":
+            return
+        try:
+            import ctypes
+
+            hwnd = int(window.winfo_id())
+            parent = ctypes.windll.user32.GetParent(hwnd)
+            if parent:
+                hwnd = parent
+            hwnd_topmost = -1
+            swp_nomove = 0x0002
+            swp_nosize = 0x0001
+            swp_noactivate = 0x0010
+            ctypes.windll.user32.SetWindowPos(
+                hwnd,
+                hwnd_topmost,
+                0,
+                0,
+                0,
+                0,
+                swp_nomove | swp_nosize | swp_noactivate,
+            )
+        except (OSError, AttributeError, ValueError, TypeError, tk.TclError):
             pass
 
     def clamp_position(self, x, y):
@@ -479,7 +526,7 @@ class FloatingAssistant(
             self.position_speech_bubble()
 
     def _watch_screen_geometry(self):
-        """Keep Kinito on-screen when monitors are added, removed, or resized."""
+        """Keep Kinito on-screen and on top when the desktop layout changes."""
         self._screen_bounds_timer = None
         if not getattr(self, "_running", True):
             return
@@ -492,6 +539,7 @@ class FloatingAssistant(
             current = self._query_virtual_screen_rect()
             self._last_virtual_screen_rect = current
             self.ensure_on_screen()
+            self._keep_assistant_on_top()
         except tk.TclError:
             pass
         schedule_after(

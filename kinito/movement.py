@@ -121,6 +121,8 @@ class MovementMixin:
         self._start_drag_tracking()
         if hasattr(self, "_capture_speech_bubble_drag_offset"):
             self._capture_speech_bubble_drag_offset()
+        if hasattr(self, "_keep_assistant_on_top"):
+            self._keep_assistant_on_top()
 
     def on_mouse_move(self, event):
         """Move the window while dragging and keep speech/love bubbles aligned."""
@@ -148,6 +150,8 @@ class MovementMixin:
         self._follow_speech_bubble_to_kinito()
         if hasattr(self, "ensure_on_screen"):
             self.root.after(0, self.ensure_on_screen)
+        if hasattr(self, "_keep_assistant_on_top"):
+            self.root.after(0, self._keep_assistant_on_top)
 
     def change_sprite(self, new_sprite):
         """Swap the visible sprite unless the user is currently dragging."""
@@ -468,6 +472,8 @@ class MovementMixin:
                 self.moving = False
                 self._finish_surf_movement()
                 self.root.after(0, self.ensure_on_screen)
+                if hasattr(self, "_keep_assistant_on_top"):
+                    self.root.after(0, self._keep_assistant_on_top)
             time.sleep(self._idle_wait_before_next_action())
             if self._startup_complete:
                 self._allow_random_questions = True

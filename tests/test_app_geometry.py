@@ -100,6 +100,18 @@ def test_ensure_on_screen_skips_when_already_visible(geometry_app):
     geometry_app.root.geometry.assert_not_called()
 
 
+def test_keep_assistant_on_top_reasserts_topmost(geometry_app):
+    geometry_app.root.winfo_exists.return_value = True
+    geometry_app._has_active_speech_bubble = MagicMock(return_value=False)
+    geometry_app._force_window_topmost = MagicMock()
+
+    geometry_app._keep_assistant_on_top()
+
+    geometry_app.root.wm_attributes.assert_called_with("-topmost", True)
+    geometry_app.root.lift.assert_called_once()
+    geometry_app._force_window_topmost.assert_called_once_with(geometry_app.root)
+
+
 def test_query_virtual_screen_rect_prefers_windows_metrics(geometry_app):
     with patch.object(
         FloatingAssistant,
