@@ -62,6 +62,64 @@ def test_handle_memory_question_response_saves_fact(app):
     assert app._memory.get_fact("favorite_snack") == "chips"
 
 
+def test_verify_yes_keeps_fact(app):
+    from kinito.memory.questions import save_as_verify
+
+    app._memory.set_fact("favorite_color", "black")
+    spec = MemoryQuestion(
+        "Is your favorite color still black?",
+        "yes_no",
+        "verify_favorite_color",
+        save_as=save_as_verify("favorite_color"),
+    )
+    app._pending_memory_question = spec
+    app._handle_memory_question_response(dlg.BUTTON_YES)
+    assert app._memory.get_fact("favorite_color") == "black"
+    assert app._memory.is_topic_asked("verify_favorite_color")
+    assert app._pending_memory_question is None
+
+
+def test_verify_no_asks_for_updated_value(app):
+    from kinito.memory.questions import save_as_verify
+
+    app._memory.set_fact("favorite_color", "black")
+    spec = MemoryQuestion(
+        "Is your favorite color still black?",
+        "yes_no",
+        "verify_favorite_color",
+        save_as=save_as_verify("favorite_color"),
+    )
+    app._pending_memory_question = spec
+    app._handle_memory_question_response(dlg.BUTTON_NO)
+
+    assert app._memory.get_fact("favorite_color") == "black"
+    assert app._pending_memory_question is not None
+    assert app._pending_memory_question.save_as == "favorite_color"
+    assert "favorite color" in app._pending_memory_question.question.lower()
+
+    app._handle_memory_question_response("blue")
+    assert app._memory.get_fact("favorite_color") == "blue"
+    assert app._pending_memory_question is None
+
+
+def test_verify_no_updates_likes_fact_in_place(app):
+    from kinito.memory.questions import save_as_verify
+
+    app._memory.set_fact("likes_programming", "yes")
+    spec = MemoryQuestion(
+        "Do you still like programming?",
+        "yes_no",
+        "verify_likes_programming",
+        save_as=save_as_verify("likes_programming"),
+    )
+    app._pending_memory_question = spec
+    app._handle_memory_question_response(dlg.BUTTON_NO)
+
+    assert app._memory.get_fact("likes_programming") == "no"
+    assert "likes_programming" in app._memory.facts_dict()
+    assert app._pending_memory_question is None
+
+
 def test_show_speech_bubble_attaches_memory_question_ui(app):
     spec = MemoryQuestion("Weekend plans?", "textbox", "weekend_plans")
     app._pending_memory_question = spec

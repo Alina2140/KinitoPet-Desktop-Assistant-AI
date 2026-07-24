@@ -88,6 +88,31 @@ def test_append_memory_context_includes_name_for_idle_prompt(llm_app):
     llm_app.open_chat_bubble.assert_called_once()
 
 
+def test_append_memory_context_omits_name_for_random_question(llm_app):
+    from content import llm_prompts as prompts
+
+    llm_app._memory.get_fact.return_value = "Alina"
+    prompt = llm_app._append_memory_context(
+        prompts.RANDOM_QUESTION_PROMPT,
+        scripted_text="",
+        ai_hint=prompts.RANDOM_QUESTION_PROMPT,
+    )
+    assert "Alina" not in prompt
+    assert prompt == prompts.RANDOM_QUESTION_PROMPT
+
+
+def test_generation_system_prompt_omits_memory_for_idle_hints(llm_app):
+    from content import llm_prompts as prompts
+
+    llm_app.memory_prompt_block.return_value = "Known facts about the user:\n- user name: Alina"
+    idle_system = llm_app._generation_system_prompt(prompts.RANDOM_QUESTION_PROMPT)
+    assert "Alina" not in idle_system
+    assert idle_system == prompts.SYSTEM_PROMPT
+
+    chat_system = llm_app._generation_system_prompt(prompts.POEM_PROMPT)
+    assert "Alina" in chat_system
+
+
 @patch.object(SpeechMixin, "speak")
 def test_start_chat_fallback_when_unavailable(mock_speak, llm_app):
     llm_app._ollama_client.is_available.return_value = False

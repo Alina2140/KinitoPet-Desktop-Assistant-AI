@@ -6,7 +6,7 @@ import random
 from dataclasses import dataclass
 from typing import Literal
 
-from kinito.memory.questions import SAVE_AS_NOTE, MemoryQuestion
+from kinito.memory.questions import SAVE_AS_NOTE, MemoryQuestion, save_as_verify, verify_fact_key
 from kinito.memory.store import MemoryStore
 
 UIKind = Literal["textbox", "yes_no"]
@@ -78,7 +78,131 @@ MEMORY_FOLLOWUPS: tuple[MemoryFollowup, ...] = (
         ),
         "yes_no",
     ),
+    # Confirm whether stored facts are still accurate (update on "no", never delete).
+    MemoryFollowup(
+        "favorite_color",
+        "verify_favorite_color",
+        (
+            "Is your favorite color still {favorite_color}?",
+            "Just checking — do you still like {favorite_color} best?",
+        ),
+        "yes_no",
+        save_as=save_as_verify("favorite_color"),
+    ),
+    MemoryFollowup(
+        "favorite_food",
+        "verify_favorite_food",
+        (
+            "Is {favorite_food} still your favorite food?",
+            "Quick check: do you still love {favorite_food}?",
+        ),
+        "yes_no",
+        save_as=save_as_verify("favorite_food"),
+    ),
+    MemoryFollowup(
+        "hobby",
+        "verify_hobby",
+        (
+            "Are you still into {hobby}?",
+            "Just curious — is {hobby} still your thing?",
+        ),
+        "yes_no",
+        save_as=save_as_verify("hobby"),
+    ),
+    MemoryFollowup(
+        "favorite_drink",
+        "verify_favorite_drink",
+        (
+            "Is {favorite_drink} still your favorite drink?",
+            "Do you still like {favorite_drink} best?",
+        ),
+        "yes_no",
+        save_as=save_as_verify("favorite_drink"),
+    ),
+    MemoryFollowup(
+        "favorite_movie",
+        "verify_favorite_movie",
+        (
+            "Is {favorite_movie} still your favorite movie?",
+            "Still a fan of {favorite_movie}?",
+        ),
+        "yes_no",
+        save_as=save_as_verify("favorite_movie"),
+    ),
+    MemoryFollowup(
+        "favorite_snack",
+        "verify_favorite_snack",
+        (
+            "Is {favorite_snack} still your go-to snack?",
+            "Do you still love {favorite_snack}?",
+        ),
+        "yes_no",
+        save_as=save_as_verify("favorite_snack"),
+    ),
+    MemoryFollowup(
+        "favorite_season",
+        "verify_favorite_season",
+        (
+            "Is {favorite_season} still your favorite season?",
+            "Still partial to {favorite_season}?",
+        ),
+        "yes_no",
+        save_as=save_as_verify("favorite_season"),
+    ),
+    MemoryFollowup(
+        "pet",
+        "verify_pet",
+        (
+            "Do you still have {pet}?",
+            "Is {pet} still part of your life?",
+        ),
+        "yes_no",
+        save_as=save_as_verify("pet"),
+    ),
+    MemoryFollowup(
+        "likes_programming",
+        "verify_likes_programming",
+        (
+            "Do you still like programming?",
+            "Is programming still something you enjoy?",
+        ),
+        "yes_no",
+        save_as=save_as_verify("likes_programming"),
+    ),
+    MemoryFollowup(
+        "likes_music",
+        "verify_likes_music",
+        (
+            "Do you still listen to music while you work?",
+            "Still into music while working?",
+        ),
+        "yes_no",
+        save_as=save_as_verify("likes_music"),
+    ),
+    MemoryFollowup(
+        "likes_coffee",
+        "verify_likes_coffee",
+        (
+            "Are you still a coffee person?",
+            "Still into coffee these days?",
+        ),
+        "yes_no",
+        save_as=save_as_verify("likes_coffee"),
+    ),
 )
+
+# Human-readable prompts when a verification "no" needs a replacement value.
+FACT_UPDATE_PROMPTS: dict[str, str] = {
+    "favorite_color": "Got it! What's your favorite color now?",
+    "favorite_food": "Okay! What's your favorite food now?",
+    "hobby": "Fair enough! What hobby are you into these days?",
+    "favorite_drink": "Noted! What's your favorite drink now?",
+    "favorite_movie": "Alright! What's your favorite movie now?",
+    "favorite_snack": "Okay! What's your favorite snack now?",
+    "favorite_season": "Got it! What's your favorite season now?",
+    "favorite_book": "Okay! What's a favorite book of yours now?",
+    "pet": "Got it! Do you have a pet now? If so, tell me about them.",
+}
 
 
 def pick_template_followup(memory: MemoryStore) -> MemoryQuestion | None:
@@ -91,6 +215,13 @@ def pick_template_followup(memory: MemoryStore) -> MemoryQuestion | None:
             continue
         value = facts.get(followup.requires_fact)
         if not value:
+            continue
+        # Skip verifying likes_* facts that are already "no" — nothing to confirm.
+        if (
+            verify_fact_key(followup.save_as)
+            and followup.requires_fact.startswith("likes_")
+            and value.strip().lower() in {"no", "n", "false", "0"}
+        ):
             continue
         template = random.choice(followup.templates)
         try:

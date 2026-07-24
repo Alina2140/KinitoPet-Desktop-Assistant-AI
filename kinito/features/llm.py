@@ -176,7 +176,10 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
     @staticmethod
     def _should_personalize_generated_line(scripted_text: str, ai_hint: str | None) -> bool:
         """Return True only when a generated idle line may use the user's name."""
-        if ai_hint in (prompts.IDLE_PROMPT, prompts.RANDOM_QUESTION_PROMPT):
+        # Random questions must stay generic; injecting the name often produces nonsense.
+        if ai_hint == prompts.RANDOM_QUESTION_PROMPT:
+            return False
+        if ai_hint == prompts.IDLE_PROMPT:
             return True
         blob = f"{scripted_text} {ai_hint or ''}".lower()
         return any(token in blob for token in ("hey", "hello", "hi ", "good morning", "good evening"))
@@ -207,6 +210,12 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
         """Build the system prompt including persistent memory."""
         return prompts.build_system_prompt(self.memory_prompt_block())
 
+    def _generation_system_prompt(self, ai_hint: str | None) -> str:
+        """System prompt for short line generation; idle lines omit memory facts."""
+        if ai_hint in prompts.IDLE_GENERATION_HINTS:
+            return prompts.SYSTEM_PROMPT
+        return self._system_prompt()
+
     def _generate_and_speak(self, scripted_text: str, *, ai_hint=None, max_tokens=None, **speak_kwargs):
         """Generate a line in the background, then speak it or fall back to scripted text."""
         if getattr(self, "_is_game_active", lambda: False)():
@@ -224,12 +233,13 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
         self._show_ai_thinking_sprite()
         generation_epoch = getattr(self, "_speech_epoch", 0)
         prompt = self._build_generation_prompt(scripted_text, ai_hint)
+        system = self._generation_system_prompt(ai_hint)
 
         def worker():
             try:
                 line = self._ollama_client.generate(
                     prompt,
-                    system=self._system_prompt(),
+                    system=system,
                     max_tokens=max_tokens,
                 )
                 spoken = line.strip() or scripted_text.strip()

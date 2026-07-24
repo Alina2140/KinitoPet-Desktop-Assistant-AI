@@ -25,10 +25,14 @@ MEMORY_USAGE_HINT = (
 )
 
 MEMORY_GENERATION_HINT = (
-    "If a name is given above, use it sparingly. "
+    "If a name is given above, use it only as a direct greeting or address "
+    "(e.g. 'Hey Alex, …'). "
+    "Never substitute the name into idioms or set phrases "
+    "(wrong: 'for the rest of Alex' / right: 'for the rest of your life'). "
     "Do NOT mention the user's favorite foods, drinks, colors, hobbies, seasons, or other "
     "stored facts unless the line you are saying is directly about that exact topic. "
-    "Stay on the scripted topic; do not shoehorn in personal details."
+    "Stay on the scripted topic; do not shoehorn in personal details. "
+    "Every sentence must be grammatical and make clear sense on its own."
 )
 
 MEMORY_EXTRACT_SYSTEM = (
@@ -58,8 +62,11 @@ Rules:
 - If nothing genuinely new is worth storing, return empty lists/objects.
 - add_notes: max 1 short note. Prefer the single most useful new detail from this turn.
 - Do not add a note if Already known already covers the same topic, even with different wording.
-- remove_notes: exact note texts to delete if the user corrected themselves.
+- remove_notes: exact note texts to delete if the user corrected themselves (notes only — never delete fact keys).
 - update_facts: only these keys if clearly stated: user_name, favorite_color, favorite_food, hobby, pet, favorite_book, favorite_drink, favorite_movie, favorite_snack, favorite_season, likes_programming, likes_music, likes_coffee.
+- When a preference changes, OVERWRITE the fact with the new value via update_facts. Do not leave the old value and do not try to remove the key.
+  Examples: "I don't like programming anymore" → {{"likes_programming": "no"}}; "my favorite color is blue now" → {{"favorite_color": "blue"}}.
+- For markers like likes_programming / likes_music / likes_coffee, always store "yes" or "no".
 - Never set user_name unless the user explicitly states their name (e.g. "my name is", "call me", "I'm …" as an introduction). Music genres, colors, foods, and hobbies are NOT names.
 - Do not overwrite an existing user_name with a preference, genre, or single-word topic label.
 - Prefer update_facts over add_notes when a fact key fits.
@@ -88,7 +95,8 @@ Already asked topics (do not repeat):
 {asked_topics}
 
 Rules:
-- Ask about something not already clearly known in memory.
+- Prefer either (a) something not already clearly known, or (b) a short yes/no check that a known fact is still true
+  (e.g. "Is your favorite color still black?").
 - One friendly question in Kinito's voice, ending with ?.
 - ui must be "textbox" for open answers or "yes_no" for simple yes/no questions.
 - topic: short snake_case id unique for this question theme.
@@ -102,13 +110,23 @@ Reply with JSON only:
 IDLE_PROMPT = (
     "Say one short, friendly sentence to the user at their desktop. "
     "Do not ask too many yes-or-no questions. Maximum two complete sentences. "
-    "No markdown."
+    "No markdown. The line must be grammatical and make clear sense."
 )
 
 RANDOM_QUESTION_PROMPT = (
-    "Ask the user one friendly, open-ended question about their day, mood, interests and so on. "
-    "Do not offer button choices. One or two complete sentences. No markdown."
+    "Ask the user one friendly, open-ended question about their day, mood, interests, "
+    "hobbies, or something light and general. "
+    "Rules: "
+    "1) One clear, grammatical question that a native speaker would understand. "
+    "2) Do NOT invent or insert personal names, stored facts, or placeholder words "
+    "into the sentence (no 'for the rest of <name>', no forced personal details). "
+    "3) Do not offer button choices. "
+    "4) One or two complete sentences. No markdown."
 )
+
+# Idle / spontaneous lines should not receive the full memory block in the system prompt;
+# small models otherwise shoehorn names and facts into broken sentences.
+IDLE_GENERATION_HINTS = frozenset({IDLE_PROMPT, RANDOM_QUESTION_PROMPT})
 
 POEM_PROMPT = (
     "Recite a short original poem for the user. "

@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from content import dialogue as dlg
+from content.memory_followups import FACT_UPDATE_PROMPTS
 from content.memory_keys import ALLOWED_FACT_KEYS, PROTECTED_FACT_KEYS
-from kinito.memory.questions import SAVE_AS_NOTE, MemoryQuestion
+from kinito.memory.questions import SAVE_AS_NOTE, MemoryQuestion, verify_fact_key
 from kinito.memory.store import MemoryStore
 
 
@@ -58,8 +59,11 @@ class MemoryMixin:
         if not answer:
             return
 
-        self._persist_memory_answer(spec, answer)
+        followup = self._persist_memory_answer(spec, answer)
         self._memory.mark_topic_asked(spec.topic)
+        if followup is not None:
+            self.ask_memory_question(followup)
+            return
         self.speak(dlg.pick_line(dlg.MEMORY_ANSWER_ACK_LINES), skip_ai=True)
 
     @staticmethod
@@ -73,18 +77,54 @@ class MemoryMixin:
             return ""
         return response.strip()
 
-    def _persist_memory_answer(self, spec: MemoryQuestion, answer: str) -> None:
-        """Store a memory-question answer as a note or structured fact."""
+    def _persist_memory_answer(self, spec: MemoryQuestion, answer: str) -> MemoryQuestion | None:
+        """Store a memory-question answer; may return a follow-up question."""
+        fact_key = verify_fact_key(spec.save_as)
+        if fact_key is not None:
+            return self._persist_verification_answer(fact_key, answer)
+
         if (
             spec.save_as != SAVE_AS_NOTE
             and spec.save_as in ALLOWED_FACT_KEYS
             and spec.save_as not in PROTECTED_FACT_KEYS
         ):
             self._memory.set_fact(spec.save_as, answer)
-            return
+            return None
 
         note = self._compact_memory_note(spec, answer)
         self._memory.add_note(note, source="question")
+        return None
+
+    def _persist_verification_answer(self, fact_key: str, answer: str) -> MemoryQuestion | None:
+        """Handle yes/no confirmation of an existing fact; update instead of delete."""
+        if answer == "yes":
+            # Re-set the same value so the fact stays current without changing it.
+            current = self._memory.get_fact(fact_key)
+            if current:
+                self._memory.set_fact(fact_key, current)
+            return None
+
+        if answer != "no":
+            return None
+
+        # Boolean preference facts: flip to "no" in place (never delete the key).
+        if fact_key.startswith("likes_"):
+            self._memory.set_fact(fact_key, "no")
+            return None
+
+        if fact_key not in ALLOWED_FACT_KEYS or fact_key in PROTECTED_FACT_KEYS:
+            return None
+
+        prompt = FACT_UPDATE_PROMPTS.get(
+            fact_key,
+            f"Got it! What should I remember instead for {fact_key.replace('_', ' ')}?",
+        )
+        return MemoryQuestion(
+            question=prompt,
+            ui="textbox",
+            topic=f"update_{fact_key}",
+            save_as=fact_key,
+        )
 
     @staticmethod
     def _compact_memory_note(spec: MemoryQuestion, answer: str) -> str:

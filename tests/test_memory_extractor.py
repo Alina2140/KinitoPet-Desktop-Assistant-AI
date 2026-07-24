@@ -35,6 +35,19 @@ def test_normalize_extraction_rejects_unknown_fact_keys():
     assert normalized["update_facts"] == {"hobby": "chess"}
 
 
+def test_normalize_extraction_allows_preference_flip():
+    payload = {
+        "add_notes": [],
+        "remove_notes": [],
+        "update_facts": {"likes_programming": "no", "favorite_color": "blue"},
+    }
+    normalized = normalize_extraction(payload)
+    assert normalized["update_facts"] == {
+        "likes_programming": "no",
+        "favorite_color": "blue",
+    }
+
+
 def test_normalize_extraction_filters_junk_notes():
     payload = {
         "add_notes": [
