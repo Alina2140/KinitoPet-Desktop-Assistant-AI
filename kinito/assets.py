@@ -1,5 +1,6 @@
 """Paths to sprites, sounds, and the optional TTS engine (balcon / pyttsx3)."""
 
+import math
 import os
 
 try:
@@ -33,6 +34,32 @@ balconexe_directory = os.path.join(programs_directory, "balcon.exe")
 
 SPRITE_NORMAL_DEFAULT = "KinitoNormal.png"
 SPRITE_NORMAL2_DEFAULT = "KinitoNormal2.png"
+
+# 8-way look directions derived from standing sprite filenames.
+LOOK_DIRECTION_CENTER = "center"
+LOOK_DIRECTIONS = (
+    LOOK_DIRECTION_CENTER,
+    "left",
+    "right",
+    "top",
+    "bottom",
+    "top_left",
+    "top_right",
+    "bottom_left",
+    "bottom_right",
+)
+
+_STANDING_DIRECTION_SUFFIXES: dict[str, str] = {
+    "": LOOK_DIRECTION_CENTER,
+    "Left": "left",
+    "Right": "right",
+    "Top": "top",
+    "Bottom": "bottom",
+    "TopLeft": "top_left",
+    "TopRight": "top_right",
+    "BottomLeft": "bottom_left",
+    "BottomRight": "bottom_right",
+}
 
 sprite_path_normal = os.path.join(sprites_standing_directory, SPRITE_NORMAL_DEFAULT)
 sprite_path_normal_2 = os.path.join(sprites_standing2_directory, SPRITE_NORMAL2_DEFAULT)
@@ -120,3 +147,36 @@ def list_standing_sprite_paths(*, crouch: bool = False) -> list[str]:
         if path != default_path:
             ordered.append(path)
     return ordered
+
+
+def standing_direction_from_path(path: str) -> str | None:
+    """Return a look-direction id from a standing/crouch sprite filename, or None."""
+    stem = os.path.splitext(os.path.basename(path))[0]
+    for prefix in ("KinitoNormal2", "KinitoNormal"):
+        if stem.startswith(prefix):
+            suffix = stem[len(prefix) :]
+            return _STANDING_DIRECTION_SUFFIXES.get(suffix)
+    return None
+
+
+def look_direction_from_delta(dx: float, dy: float, *, deadzone_px: float) -> str:
+    """Map a screen-space delta (y down) to an 8-way look direction."""
+    if math.hypot(dx, dy) <= deadzone_px:
+        return LOOK_DIRECTION_CENTER
+    # atan2: 0=right, +90=down, ±180=left, -90=up (screen coordinates).
+    degrees = math.degrees(math.atan2(dy, dx))
+    if -22.5 <= degrees < 22.5:
+        return "right"
+    if 22.5 <= degrees < 67.5:
+        return "bottom_right"
+    if 67.5 <= degrees < 112.5:
+        return "bottom"
+    if 112.5 <= degrees < 157.5:
+        return "bottom_left"
+    if degrees >= 157.5 or degrees < -157.5:
+        return "left"
+    if -157.5 <= degrees < -112.5:
+        return "top_left"
+    if -112.5 <= degrees < -67.5:
+        return "top"
+    return "top_right"

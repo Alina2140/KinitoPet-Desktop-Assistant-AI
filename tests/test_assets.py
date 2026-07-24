@@ -169,6 +169,48 @@ def test_list_standing_sprite_paths_puts_default_first():
     assert len(crouch_paths) >= 2
 
 
+@pytest.mark.parametrize(
+    "filename,direction",
+    [
+        ("KinitoNormal.png", "center"),
+        ("KinitoNormalLeft.png", "left"),
+        ("KinitoNormalRight.png", "right"),
+        ("KinitoNormalTop.png", "top"),
+        ("KinitoNormalBottom.png", "bottom"),
+        ("KinitoNormalTopLeft.png", "top_left"),
+        ("KinitoNormalTopRight.png", "top_right"),
+        ("KinitoNormalBottomLeft.png", "bottom_left"),
+        ("KinitoNormalBottomRight.png", "bottom_right"),
+        ("KinitoNormal2.png", "center"),
+        ("KinitoNormal2Left.png", "left"),
+        ("KinitoNormal2TopRight.png", "top_right"),
+    ],
+)
+def test_standing_direction_from_path(filename, direction):
+    assert assets.standing_direction_from_path(f"/sprites/{filename}") == direction
+
+
+def test_standing_direction_from_path_rejects_unknown():
+    assert assets.standing_direction_from_path("/sprites/Fancy.png") is None
+
+
+@pytest.mark.parametrize(
+    "dx,dy,expected",
+    [
+        (0, 0, "center"),
+        (10, 0, "center"),  # inside deadzone
+        (100, 0, "right"),
+        (-100, 0, "left"),
+        (0, -100, "top"),
+        (0, 100, "bottom"),
+        (100, -100, "top_right"),
+        (-100, 100, "bottom_left"),
+    ],
+)
+def test_look_direction_from_delta(dx, dy, expected):
+    assert assets.look_direction_from_delta(dx, dy, deadzone_px=40) == expected
+
+
 @pytest.mark.skipif(
     not os.path.isdir(assets.assets_directory),
     reason="GameAssets folder is not present in this checkout",

@@ -40,6 +40,7 @@ from kinito.assets import (
     sprite_path_talking2,
     sprite_path_thinking,
     sprite_path_thinking2,
+    standing_direction_from_path,
 )
 from kinito.features.ads import AdsMixin
 from kinito.features.browser import BrowserMixin
@@ -78,6 +79,18 @@ def _load_look_around_sprites(paths, *, default_path, fallback):
         img = _open_sprite(path, fallback)
         look_sprites.append(ImageTk.PhotoImage(img))
     return tuple(look_sprites)
+
+
+def _load_direction_sprites(paths, *, fallback, center_image):
+    """Map look-direction ids to PhotoImages from standing sprite filenames."""
+    direction_sprites = {"center": ImageTk.PhotoImage(center_image)}
+    for path in paths:
+        direction = standing_direction_from_path(path)
+        if direction is None or direction == "center":
+            continue
+        img = _open_sprite(path, fallback)
+        direction_sprites[direction] = ImageTk.PhotoImage(img)
+    return direction_sprites
 
 
 class FloatingAssistant(
@@ -151,6 +164,16 @@ class FloatingAssistant(
             list_standing_sprite_paths(crouch=True),
             default_path=sprite_path_normal_2,
             fallback=fallback,
+        )
+        self._standing_dir_sprites = _load_direction_sprites(
+            list_standing_sprite_paths(crouch=False),
+            fallback=fallback,
+            center_image=self.img_normal,
+        )
+        self._standing2_dir_sprites = _load_direction_sprites(
+            list_standing_sprite_paths(crouch=True),
+            fallback=fallback,
+            center_image=self.img_normal_2,
         )
         self.tk_img_idle = ImageTk.PhotoImage(self.img_idle)
         self.tk_img_idle_2 = ImageTk.PhotoImage(self.img_idle_2)
@@ -266,6 +289,12 @@ class FloatingAssistant(
         self._available_voices = self._load_available_voices()
         self._init_llm()
         self._ai_generating = False
+        self._mouse_look_active = False
+        self._mouse_follow_state = "idle"
+        self._mouse_follow_ready_at = 0.0
+        self._mouse_attention_timer = None
+        self._mouse_think_timer = None
+        self._mouse_look_direction = "center"
         self.root.wm_attributes("-topmost", True)
 
         self._log_optional_deps()
@@ -278,6 +307,7 @@ class FloatingAssistant(
         self.mouse_click_offset_x = 0
         self.mouse_click_offset_y = 0
         self.setup_mouse_bindings()
+        self._start_mouse_attention()
         self.root.after(300, self._schedule_startup_line)
 
     def _log_optional_deps(self):
@@ -515,6 +545,8 @@ class FloatingAssistant(
             "_focus_timer_tick_timer",
         ):
             cancel_after(self.root, self, attr)
+        if hasattr(self, "_stop_mouse_attention"):
+            self._stop_mouse_attention()
 
     def ensure_on_screen(self):
         """Reposition the assistant (and bubbles) if it drifted off-screen."""

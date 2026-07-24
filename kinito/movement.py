@@ -8,7 +8,13 @@ import tkinter as tk
 
 from PIL import Image, ImageTk
 
-from kinito.assets import bomp_file_path, page_turn_file_path, surf_file_path
+from kinito.assets import (
+    bomp_file_path,
+    look_direction_from_delta,
+    page_turn_file_path,
+    surf_file_path,
+)
+from kinito.tk_timers import cancel_after, schedule_after
 
 
 class MovementMixin:
@@ -41,6 +47,14 @@ class MovementMixin:
     SURF_TILT_QUANTUM = 0.5
     SURF_MOVE_SPEED = 5
     SURF_MOVE_FRAME_DELAY = 0.022
+    MOUSE_LOOK_RADIUS_PX = 230
+    MOUSE_FOLLOW_RADIUS_PX = 180
+    MOUSE_LOOK_DEADZONE_PX = 40
+    MOUSE_LOOK_POLL_MS = 80
+    MOUSE_FOLLOW_CHANCE = 0.35
+    MOUSE_THINK_SECONDS = (0.6, 1.2)
+    MOUSE_FOLLOW_MAX_PX = 160
+    MOUSE_FOLLOW_COOLDOWN_SECONDS = (15, 35)
 
     def setup_mouse_bindings(self):
         """Bind drag to the sprite only so control buttons stay clickable."""
@@ -164,6 +178,269 @@ class MovementMixin:
                 self.panel.config(image=new_sprite)
         except tk.TclError:
             pass
+
+    def _start_mouse_attention(self) -> None:
+        """Begin polling the cursor for look-at / occasional follow behavior."""
+        if getattr(self, "_mouse_attention_timer", None) is not None:
+            return
+        self._schedule_mouse_attention_poll()
+
+    def _schedule_mouse_attention_poll(self) -> None:
+        """Schedule the next mouse-attention tick on the Tk thread."""
+        if not getattr(self, "_running", True):
+            return
+        schedule_after(
+            self.root,
+            self,
+            "_mouse_attention_timer",
+            self.MOUSE_LOOK_POLL_MS,
+            self._update_mouse_attention,
+        )
+
+    def _stop_mouse_attention(self) -> None:
+        """Cancel mouse-attention timers (e.g. on window destroy)."""
+        cancel_after(self.root, self, "_mouse_attention_timer")
+        cancel_after(self.root, self, "_mouse_think_timer")
+        self._mouse_look_active = False
+        if getattr(self, "_mouse_follow_state", "idle") == "thinking":
+            self._mouse_follow_state = "idle"
+
+    def _buddy_center(self) -> tuple[float, float]:
+        """Return the screen-space center of Kinito's window."""
+        width, height = 1, 1
+        if hasattr(self, "_window_screen_size"):
+            width, height = self._window_screen_size()
+        else:
+            try:
+                width = max(int(self.root.winfo_width()), 1)
+                height = max(int(self.root.winfo_height()), 1)
+            except tk.TclError:
+                pass
+        x = float(getattr(self, "x", 0))
+        y = float(getattr(self, "y", 0))
+        return x + width / 2.0, y + height / 2.0
+
+    def _cursor_screen_pos(self) -> tuple[float, float] | None:
+        """Return the current pointer position in screen coordinates."""
+        try:
+            return float(self.root.winfo_pointerx()), float(self.root.winfo_pointery())
+        except tk.TclError:
+            return None
+
+    def _can_look_at_mouse(self) -> bool:
+        """Return True when mouse look may change the standing sprite."""
+        if not getattr(self, "_running", True):
+            return False
+        if not getattr(self, "_startup_complete", False):
+            return False
+        if getattr(self, "paused", False) or getattr(self, "is_dragging", False):
+            return False
+        if getattr(self, "moving", False):
+            return False
+        if getattr(self, "_fancy_mode", False):
+            return False
+        if getattr(self, "_reading_idle_active", False):
+            return False
+        if getattr(self, "_hug_mode", False):
+            return False
+        if getattr(self, "_preserve_sprite", False):
+            return False
+        if getattr(self, "_ai_generating", False):
+            return False
+        if getattr(self, "_focus_mode", False):
+            return False
+        if getattr(self, "_is_game_active", lambda: False)():
+            return False
+        # Chat may look; other interactive speech/dialogs must not be interrupted.
+        if getattr(self, "_chat_mode", False):
+            return True
+        if getattr(self, "talking", False):
+            return False
+        if getattr(self, "_awaiting_response", False):
+            return False
+        return not (hasattr(self, "_is_busy_with_speech") and self._is_busy_with_speech())
+
+    def _can_follow_mouse(self) -> bool:
+        """Return True when Kinito may start a think-then-maybe-follow attempt."""
+        if not self._can_look_at_mouse():
+            return False
+        if getattr(self, "_chat_mode", False):
+            return False
+        if getattr(self, "talking", False):
+            return False
+        if getattr(self, "_awaiting_response", False):
+            return False
+        if getattr(self, "_mouse_follow_state", "idle") != "idle":
+            return False
+        return time.monotonic() >= float(getattr(self, "_mouse_follow_ready_at", 0.0))
+
+    def _mouse_attention_owns_sprite(self) -> bool:
+        """Return True when idle animation must not overwrite mouse-driven sprites."""
+        if getattr(self, "_mouse_look_active", False):
+            return True
+        return getattr(self, "_mouse_follow_state", "idle") in {"thinking", "chasing"}
+
+    def _sprite_for_look_direction(self, direction: str, *, crouch: bool = False):
+        """Return the PhotoImage for *direction*, falling back to center/front."""
+        mapping = getattr(
+            self,
+            "_standing2_dir_sprites" if crouch else "_standing_dir_sprites",
+            {},
+        )
+        if not isinstance(mapping, dict) or not mapping:
+            return getattr(self, "tk_img_normal_2" if crouch else "tk_img_normal", None)
+        return mapping.get(direction) or mapping.get("center") or getattr(
+            self, "tk_img_normal_2" if crouch else "tk_img_normal", None
+        )
+
+    def _apply_mouse_look_sprite(self, direction: str) -> None:
+        """Show the standing sprite facing *direction*."""
+        sprite = self._sprite_for_look_direction(direction, crouch=False)
+        if sprite is None:
+            return
+        self._mouse_look_direction = direction
+        self.change_sprite(sprite)
+
+    def _begin_mouse_follow_cooldown(self) -> None:
+        """Start the post-attempt cooldown so follow stays occasional."""
+        low, high = self.MOUSE_FOLLOW_COOLDOWN_SECONDS
+        self._mouse_follow_ready_at = time.monotonic() + random.uniform(low, high)
+        self._mouse_follow_state = "idle"
+        cancel_after(self.root, self, "_mouse_think_timer")
+
+    def _mouse_follow_target(self, cursor_x: float, cursor_y: float) -> tuple[float, float]:
+        """Return a short window target toward the cursor (not a full chase)."""
+        center_x, center_y = self._buddy_center()
+        dx = cursor_x - center_x
+        dy = cursor_y - center_y
+        distance = math.hypot(dx, dy)
+        max_dist = float(self.MOUSE_FOLLOW_MAX_PX)
+        if distance > max_dist and distance > 0:
+            scale = max_dist / distance
+            dx *= scale
+            dy *= scale
+        return float(getattr(self, "x", 0)) + dx, float(getattr(self, "y", 0)) + dy
+
+    def _start_mouse_think(self, cursor_x: float, cursor_y: float) -> None:
+        """Enter a brief pause before deciding whether to follow (keep looking)."""
+        self._mouse_follow_state = "thinking"
+        # Keep the current look sprite — no Thinking pose for a maybe-no decision.
+        self._mouse_look_active = True
+        delay_ms = int(random.uniform(*self.MOUSE_THINK_SECONDS) * 1000)
+        schedule_after(
+            self.root,
+            self,
+            "_mouse_think_timer",
+            delay_ms,
+            lambda: self._finish_mouse_think(cursor_x, cursor_y),
+        )
+
+    def _finish_mouse_think(self, cursor_x: float, cursor_y: float) -> None:
+        """Roll the follow chance after thinking; chase briefly or cool down."""
+        if getattr(self, "_mouse_follow_state", "idle") != "thinking":
+            return
+        if getattr(self, "_chat_mode", False) or getattr(self, "talking", False):
+            self._begin_mouse_follow_cooldown()
+            return
+        if getattr(self, "paused", False) or getattr(self, "is_dragging", False):
+            self._mouse_follow_state = "idle"
+            return
+        if getattr(self, "_fancy_mode", False) or getattr(self, "_reading_idle_active", False):
+            self._mouse_follow_state = "idle"
+            return
+        if getattr(self, "_hug_mode", False) or getattr(self, "_preserve_sprite", False):
+            self._mouse_follow_state = "idle"
+            return
+        if getattr(self, "_ai_generating", False) or getattr(self, "_focus_mode", False):
+            self._mouse_follow_state = "idle"
+            return
+        if getattr(self, "_is_game_active", lambda: False)():
+            self._mouse_follow_state = "idle"
+            return
+
+        if random.random() >= self.MOUSE_FOLLOW_CHANCE:
+            self._begin_mouse_follow_cooldown()
+            return
+
+        target_x, target_y = self._mouse_follow_target(cursor_x, cursor_y)
+        self._mouse_follow_state = "chasing"
+        self.moving = True
+
+        def worker():
+            try:
+                self.play_sfx(surf_file_path)
+                self.move_towards(target_x, target_y)
+            finally:
+                self.moving = False
+                self._finish_surf_movement()
+                self.root.after(0, self._on_mouse_chase_finished)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _on_mouse_chase_finished(self) -> None:
+        """Return to idle/look after a short mouse follow."""
+        self._begin_mouse_follow_cooldown()
+        if hasattr(self, "ensure_on_screen"):
+            self.ensure_on_screen()
+        if hasattr(self, "_keep_assistant_on_top"):
+            self._keep_assistant_on_top()
+
+    def _update_mouse_attention(self) -> None:
+        """Poll cursor proximity and update look / follow state."""
+        try:
+            if not getattr(self, "_running", True):
+                return
+
+            follow_state = getattr(self, "_mouse_follow_state", "idle")
+            if follow_state == "chasing":
+                self._schedule_mouse_attention_poll()
+                return
+
+            if not self._can_look_at_mouse():
+                self._mouse_look_active = False
+                self._schedule_mouse_attention_poll()
+                return
+
+            cursor = self._cursor_screen_pos()
+            if cursor is None:
+                self._mouse_look_active = False
+                self._schedule_mouse_attention_poll()
+                return
+
+            cursor_x, cursor_y = cursor
+            center_x, center_y = self._buddy_center()
+            dx = cursor_x - center_x
+            dy = cursor_y - center_y
+            distance = math.hypot(dx, dy)
+
+            if distance > self.MOUSE_LOOK_RADIUS_PX:
+                self._mouse_look_active = False
+                self._schedule_mouse_attention_poll()
+                return
+
+            direction = look_direction_from_delta(
+                dx,
+                dy,
+                deadzone_px=self.MOUSE_LOOK_DEADZONE_PX,
+            )
+            self._mouse_look_active = True
+            self._apply_mouse_look_sprite(direction)
+
+            # Already deciding whether to follow — keep looking, don't re-trigger.
+            if follow_state == "thinking":
+                self._schedule_mouse_attention_poll()
+                return
+
+            if distance <= self.MOUSE_FOLLOW_RADIUS_PX and self._can_follow_mouse():
+                self._start_mouse_think(cursor_x, cursor_y)
+
+            self._schedule_mouse_attention_poll()
+        except Exception:
+            # Never let mouse polling crash the assistant; reschedule next tick.
+            try:
+                self._schedule_mouse_attention_poll()
+            except Exception:
+                pass
 
     def _update_surf_facing(self, dx: float) -> None:
         """Remember whether Kinito is surfing left or right."""
@@ -469,6 +746,7 @@ class MovementMixin:
                 or self._is_busy_with_speech()
                 or self._is_background_music_playing()
                 or getattr(self, "_reading_idle_active", False)
+                or getattr(self, "_mouse_follow_state", "idle") in {"thinking", "chasing"}
             ):
                 time.sleep(0.1)
                 continue
@@ -550,6 +828,9 @@ class MovementMixin:
                 time.sleep(0.1)
                 continue
             if not self.paused and not self.talking:
+                if self._mouse_attention_owns_sprite():
+                    time.sleep(0.25)
+                    continue
                 idle_roll = random.random()
                 focus_mode = getattr(self, "_focus_mode", False)
                 game_active = getattr(self, "_is_game_active", lambda: False)()
@@ -573,6 +854,8 @@ class MovementMixin:
                 time.sleep(1)
                 if not self._running:
                     break
+                if self._mouse_attention_owns_sprite():
+                    continue
                 self.change_sprite(self._pick_normal_idle_sprite(crouch=True))
                 time.sleep(1)
             elif self.paused and not self.talking:

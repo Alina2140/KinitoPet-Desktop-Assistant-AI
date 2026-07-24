@@ -575,3 +575,137 @@ def test_run_reading_idle_uses_normal_sprites_when_glasses_miss(movement):
         movement._run_reading_idle()
 
     movement.change_sprite.assert_called_with("idle")
+
+
+def _configure_mouse_attention(movement):
+    movement._startup_complete = True
+    movement._running = True
+    movement.paused = False
+    movement.is_dragging = False
+    movement.moving = False
+    movement.talking = False
+    movement._fancy_mode = False
+    movement._reading_idle_active = False
+    movement._hug_mode = False
+    movement._preserve_sprite = False
+    movement._ai_generating = False
+    movement._focus_mode = False
+    movement._chat_mode = False
+    movement._awaiting_response = False
+    movement._mouse_look_active = False
+    movement._mouse_follow_state = "idle"
+    movement._mouse_follow_ready_at = 0.0
+    movement._mouse_look_direction = "center"
+    movement.x = 100
+    movement.y = 200
+    movement._window_screen_size = MagicMock(return_value=(40, 80))
+    movement._standing_dir_sprites = {
+        "center": "look_center",
+        "left": "look_left",
+        "right": "look_right",
+        "top": "look_top",
+        "bottom": "look_bottom",
+        "top_left": "look_top_left",
+        "top_right": "look_top_right",
+        "bottom_left": "look_bottom_left",
+        "bottom_right": "look_bottom_right",
+    }
+    movement.change_sprite = MagicMock()
+    movement._schedule_mouse_attention_poll = MagicMock()
+    movement._is_busy_with_speech = MagicMock(return_value=False)
+    movement._is_game_active = MagicMock(return_value=False)
+
+
+def test_can_look_at_mouse_blocked_during_fancy(movement):
+    _configure_mouse_attention(movement)
+    movement._fancy_mode = True
+    assert movement._can_look_at_mouse() is False
+
+
+def test_can_look_at_mouse_blocked_during_reading(movement):
+    _configure_mouse_attention(movement)
+    movement._reading_idle_active = True
+    assert movement._can_look_at_mouse() is False
+
+
+def test_can_look_at_mouse_allowed_in_chat(movement):
+    _configure_mouse_attention(movement)
+    movement._chat_mode = True
+    movement.talking = True
+    assert movement._can_look_at_mouse() is True
+    assert movement._can_follow_mouse() is False
+
+
+def test_update_mouse_attention_looks_right(movement):
+    _configure_mouse_attention(movement)
+    # Outside follow radius (180) but inside look radius (280).
+    movement.root.winfo_pointerx.return_value = 340
+    movement.root.winfo_pointery.return_value = 240
+    movement._update_mouse_attention()
+    assert movement._mouse_look_active is True
+    assert movement._mouse_look_direction == "right"
+    movement.change_sprite.assert_called_with("look_right")
+    assert movement._mouse_follow_state == "idle"
+
+
+def test_update_mouse_attention_skips_busy_modes(movement):
+    _configure_mouse_attention(movement)
+    movement._fancy_mode = True
+    movement.root.winfo_pointerx.return_value = 120
+    movement.root.winfo_pointery.return_value = 240
+    movement._update_mouse_attention()
+    assert movement._mouse_look_active is False
+    movement.change_sprite.assert_not_called()
+
+
+def test_finish_mouse_think_declines_follow(movement):
+    _configure_mouse_attention(movement)
+    movement._mouse_follow_state = "thinking"
+    with (
+        patch("kinito.movement.random.random", return_value=0.99),
+        patch("kinito.movement.random.uniform", return_value=20.0),
+    ):
+        movement._finish_mouse_think(150, 240)
+    assert movement._mouse_follow_state == "idle"
+    assert movement._mouse_follow_ready_at > 0
+    movement.play_sfx.assert_not_called()
+
+
+def test_finish_mouse_think_starts_chase(movement):
+    _configure_mouse_attention(movement)
+    movement._mouse_follow_state = "thinking"
+    movement.move_towards = MagicMock()
+    movement._finish_surf_movement = MagicMock()
+    movement._on_mouse_chase_finished = MagicMock()
+
+    with (
+        patch("kinito.movement.random.random", return_value=0.0),
+        patch("kinito.movement.threading.Thread") as mock_thread,
+    ):
+        mock_thread.return_value = MagicMock()
+        movement._finish_mouse_think(250, 240)
+
+    assert movement._mouse_follow_state == "chasing"
+    assert movement.moving is True
+    mock_thread.assert_called_once()
+    worker = mock_thread.call_args.kwargs["target"]
+    worker()
+    movement.move_towards.assert_called_once()
+    movement.play_sfx.assert_called_once()
+
+
+def test_idle_skips_sprite_when_mouse_look_active(movement):
+    _configure_mouse_attention(movement)
+    movement._mouse_look_active = True
+    movement._running = True
+    calls = {"n": 0}
+
+    def stop_after_one_sleep(_seconds):
+        calls["n"] += 1
+        if calls["n"] >= 1:
+            movement._running = False
+
+    with patch("kinito.movement.time.sleep", side_effect=stop_after_one_sleep):
+        movement.idle_animation()
+
+    movement.change_sprite.assert_not_called()
