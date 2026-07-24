@@ -209,6 +209,48 @@ def test_run_tts_uses_balcon_when_available(speech):
         assert process.communicate.call_args.kwargs["input"] == normalize_text_for_tts("Hello")
 
 
+def test_run_tts_accepts_nonzero_returncode_after_playback(speech):
+    """Don't cascade to another voice just because balcon returned non-zero."""
+    speech._available_voices = {"Eddie", "Microsoft Zira Desktop"}
+    process = MagicMock(returncode=1)
+    process.communicate.return_value = ("", "")
+    with (
+        patch("kinito.speech.os.path.isfile", return_value=True),
+        patch("kinito.speech.subprocess.Popen", return_value=process) as popen,
+    ):
+        assert speech._run_tts("Hello") is True
+    popen.assert_called_once()
+    assert popen.call_args.args[0][2] == "Eddie"
+
+
+def test_run_tts_tries_next_voice_when_voice_missing(speech):
+    speech._available_voices = {"Eddie", "Peter"}
+    missing = MagicMock(returncode=1)
+    missing.communicate.return_value = ("", "Error: voice not selected")
+    ok = MagicMock(returncode=0)
+    ok.communicate.return_value = ("", "")
+    with (
+        patch("kinito.speech.os.path.isfile", return_value=True),
+        patch("kinito.speech.subprocess.Popen", side_effect=[missing, ok]) as popen,
+    ):
+        assert speech._run_tts("Hello") is True
+    assert popen.call_count == 2
+    assert popen.call_args_list[0].args[0][2] == "Eddie"
+    assert popen.call_args_list[1].args[0][2] == "Peter"
+
+
+def test_run_tts_system_fallback_only_without_truvoice(speech):
+    speech._available_voices = {"Microsoft Zira Desktop"}
+    process = MagicMock(returncode=0)
+    process.communicate.return_value = ("", "")
+    with (
+        patch("kinito.speech.os.path.isfile", return_value=True),
+        patch("kinito.speech.subprocess.Popen", return_value=process) as popen,
+    ):
+        assert speech._run_tts("Hello") is True
+    assert popen.call_args.args[0][2] == "Microsoft Zira Desktop"
+
+
 def test_run_tts_passes_quoted_text_via_stdin(speech):
     speech._available_voices = {"Eddie"}
     process = MagicMock(returncode=0)

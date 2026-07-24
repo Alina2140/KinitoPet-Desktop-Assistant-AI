@@ -13,10 +13,10 @@ from kinito.assets import crash_image_path
 class GlitchMixin:
     """Brief screen static/distortion flashes during autonomous movement."""
 
-    GLITCH_CHANCE = 1 / 2500
+    GLITCH_CHANCE = 1 / 1500
     GLITCH_DURATION_MS = 250
     GLITCH_NOISE_SCALE = 6
-    BLUE_SCREEN_CHANCE = 1 / 2500
+    BLUE_SCREEN_CHANCE = 1 / 1500
     BLUE_SCREEN_DURATION_MS = 250
 
     def maybe_trigger_screen_glitch(self) -> bool:

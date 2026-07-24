@@ -87,6 +87,13 @@ def test_speak_starts_accompaniment_after_interrupt(speech):
     speech._start_speech_accompaniment = MagicMock()
     speech.interrupt_speech = MagicMock()
     speech._focus_mode = False
+    scheduled = []
+
+    def capture_after(delay, callback):
+        scheduled.append((delay, callback))
+        return delay
+
+    speech.root.after = MagicMock(side_effect=capture_after)
 
     speech.speak(
         "poem line",
@@ -97,6 +104,10 @@ def test_speak_starts_accompaniment_after_interrupt(speech):
     )
 
     speech.interrupt_speech.assert_called_once()
+    assert scheduled
+    delay, callback = scheduled[0]
+    assert delay == 350
+    callback()
     speech._start_speech_accompaniment.assert_called_once_with("poem.mp3", 0.6)
 
 

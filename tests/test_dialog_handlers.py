@@ -227,6 +227,12 @@ def test_handle_menu_toggle_screen_effects(mock_app):
     mock_app.toggle_screen_effects.assert_called_once()
 
 
+def test_handle_menu_toggle_ambient_reminders(mock_app):
+    spec = find_dialog_spec(dlg.SETTINGS_MENU_QUESTION)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_REMINDERS_OFF)
+    mock_app.toggle_ambient_reminders.assert_called_once()
+
+
 def test_handle_menu_toggle_focus(mock_app):
     spec = find_dialog_spec(dlg.MODES_MENU_QUESTION)
     handle_dialog_response(mock_app, spec, dlg.BUTTON_FOCUS)

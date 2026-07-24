@@ -53,19 +53,26 @@ class SpeechMixin:
         }
     )
     VOICE_DEFAULT = "Eddie"
+    # TruVoice-only: Microsoft SAPI5 voices sound like a generic Windows narrator.
     VOICE_NORMAL_CANDIDATES = [
         "Eddie",
         "Peter",
         "Douglas",
-        "Microsoft Zira Desktop",
-        "Microsoft Hedda Desktop",
+        "Sidney",
+        "Melvin",
     ]
     VOICE_WHISPER_CANDIDATES = [
         "Female Whisper",
+        "Eddie",
+        "Peter",
+        "Douglas",
         "Julia",
         "Wanda",
+    ]
+    # Last-resort system voices only when no TruVoice engine is installed.
+    VOICE_SYSTEM_FALLBACK_CANDIDATES = [
+        "Microsoft Zira Desktop",
         "Microsoft Hedda Desktop",
-        "Eddie",
     ]
 
     BUBBLE_CLOSE_BUFFER_MS = 1500
@@ -646,7 +653,7 @@ class SpeechMixin:
         self._tts_process = process
         try:
             try:
-                process.communicate(input=text, timeout=120)
+                _stdout, stderr = process.communicate(input=text, timeout=120)
             except subprocess.TimeoutExpired:
                 process.kill()
                 process.communicate()
@@ -656,7 +663,29 @@ class SpeechMixin:
 
         if self._tts_interrupted(speech_epoch):
             return False
-        return process.returncode == 0
+        err = (stderr or "").lower()
+        if "voice not selected" in err or "voice not found" in err:
+            return False
+        # Some engines return non-zero even after audible playback; don't cascade
+        # into a different character voice because of that.
+        return True
+
+    def _voice_candidate_queue(self, voice_candidates):
+        """Yield preferred voices first, then system fallbacks only if needed."""
+        preferred = list(voice_candidates or self.VOICE_NORMAL_CANDIDATES)
+        seen = set()
+        for voice in preferred:
+            if voice in seen:
+                continue
+            seen.add(voice)
+            yield voice
+        if any(voice in self._available_voices for voice in preferred):
+            return
+        for voice in self.VOICE_SYSTEM_FALLBACK_CANDIDATES:
+            if voice in seen:
+                continue
+            seen.add(voice)
+            yield voice
 
     def _run_tts(self, text, pitch=45, voice_candidates=None, speech_epoch=None):
         """Run TTS via balcon (preferred) or pyttsx3 fallback."""
@@ -667,7 +696,7 @@ class SpeechMixin:
         self._tts_process = None
 
         if os.path.isfile(balconexe_directory):
-            for voice in voice_candidates:
+            for voice in self._voice_candidate_queue(voice_candidates):
                 if voice not in self._available_voices:
                     continue
                 if self._run_balcon_tts(voice, text, pitch, speech_epoch=speech_epoch):
@@ -716,12 +745,13 @@ class SpeechMixin:
         self.interrupt_speech()
         if hasattr(self, "_stop_roaming"):
             self._stop_roaming()
-        self._start_speech_accompaniment(speech_accompaniment_path, speech_accompaniment_volume)
         epoch = self._speech_epoch
         self._tts_cancelled = False
         self.talking = True
         self._preserve_sprite = preserve_sprite
         self._talk_sprite_mode = self._infer_talk_sprite_mode(text, question=question)
+        accompaniment_path = speech_accompaniment_path
+        accompaniment_volume = speech_accompaniment_volume
 
         def run_speech():
             with self._speech_lock:
@@ -734,6 +764,20 @@ class SpeechMixin:
                             speech_epoch=epoch,
                         ),
                     )
+                # Start poem music after TTS begins so SAPI4 keeps Eddie's voice.
+                music_started = {"value": False}
+
+                def start_music_soon():
+                    if music_started["value"] or epoch != self._speech_epoch:
+                        return
+                    if accompaniment_path:
+                        music_started["value"] = True
+                        self._start_speech_accompaniment(
+                            accompaniment_path, accompaniment_volume
+                        )
+
+                if accompaniment_path:
+                    self.root.after(350, start_music_soon)
                 self._run_tts(text, pitch, voice_candidates, speech_epoch=epoch)
                 if epoch != self._speech_epoch:
                     return

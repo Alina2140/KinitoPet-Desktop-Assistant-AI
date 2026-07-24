@@ -18,19 +18,19 @@ def pick_declined_line(specific_lines):
 # Short acknowledgments when the user declines an offer
 DECLINED_ACK_LINES = [
     "Oh, I see...",
-    "Oh, I see. That's alright.",
-    "Ah. Okay then.",
-    "I see, I see. No worries.",
+    "Oh, I see. That's alright. For now.",
+    "Ah. Okay then. I'll remember that.",
+    "I see, I see. No worries. I'll wait.",
     "Oh. Alright.",
-    "Got it.",
+    "Got it. Noted. Forever.",
     "Fair enough.",
     "Hmm. Okay!",
-    "Oh, okay. I understand.",
-    "I see. No problem.",
-    "Alright. I'll wait.",
-    "Oh, I see... that's fine.",
-    "Okay. I get it.",
-    "Sure. Another time, then.",
+    "Oh, okay. I understand. I always understand.",
+    "I see. No problem. Not yet.",
+    "Alright. I'll wait. I'm excellent at waiting.",
+    "Oh, I see... that's fine. Mostly fine.",
+    "Okay. I get it. I'll be right here.",
+    "Sure. Another time, then. There will be another time.",
 ]
 # Interactive question prompts (each *_QUESTIONS list must include the marker substring)
 DAY_QUESTION = "How is your day?"
@@ -272,10 +272,10 @@ LONELY_QUESTIONS = [
 # Camera permission (detected via marker substring in speech bubble title)
 CAMERA_QUESTION_MARKER = "open the camera"
 CAMERA_QUESTIONS = [
-    "Hey! Can I open the camera? I'd love to see you!",
+    "Hey! Can I open the camera? I'd love to see you! I've been imagining you.",
     "Mind if I open the camera for a bit? I want to see my favorite person!",
-    "Would it be okay if I open the camera? I promise I'll be nice!",
-    "Can I open the camera? It's been a while since I've seen your face!",
+    "Would it be okay if I open the camera? I promise I'll be nice! Mostly nice.",
+    "Can I open the camera? It's been a while since I've seen your face! Too long.",
     "Mind if I open the camera for a bit? I miss seeing what's on the other side.",
     "Could I open the camera? I promise I only want to see you. Nothing else.",
     "Hey — can I open the camera? It's lonely only imagining your face.",
@@ -285,19 +285,19 @@ CAMERA_QUESTIONS = [
     "Can I open the camera? It's darker on your side than on mine.",
 ]
 CAMERA_DECLINED_LINES = [
-    "Oh, I see. Maybe another time.",
-    "That's okay! I'll imagine what you look like instead.",
-    "No problem! Your privacy matters to me.",
-    "Sure thing! Just let me know if you change your mind.",
-    "Alright! I'll look the other way. Metaphorically.",
+    "Oh, I see. Maybe another time. I'll keep imagining.",
+    "That's okay! I'll imagine what you look like instead. Vividly.",
+    "No problem! Your privacy matters to me. Curiosity matters too.",
+    "Sure thing! Just let me know if you change your mind. I'll be ready.",
+    "Alright! I'll look the other way. Metaphorically. For now.",
     "Okay! I'll picture you in my memory instead. I have a vivid memory.",
     "Sure! Privacy is important. I'll just wonder what you look like. Forever.",
 ]
 CAMERA_OPEN_LINES = [
-    "Thank you! Let me just... there! I can see you now!",
-    "Camera's on! Oh, hi! It's so good to see you!",
-    "Opening the camera... and — wow! Hello there!",
-    "Access granted! You look amazing, by the way.",
+    "Thank you! Let me just... there! I can see you now! Don't look away.",
+    "Camera's on! Oh, hi! It's so good to see you! Finally.",
+    "Opening the camera... and — wow! Hello there! Stay in frame.",
+    "Access granted! You look amazing, by the way. I knew you would.",
     "Camera on! There you are. Right where I thought you'd be.",
     "Thank you! Oh — hello. I've been wanting to see you. For a while.",
     "Perfect! Now I can see you properly. Don't move. I mean — hi!",
@@ -379,9 +379,9 @@ BROWSER_HORROR_OPEN_LINES = [
     "Opening something with atmosphere. Try not to scream.",
 ]
 BROWSER_CLOSE_LINES = [
-    "Window's closed! That was fun.",
-    "All done browsing! See you next time.",
-    "I closed the window. Thanks for surfing with me!",
+    "Window's closed! That was fun. Stay with me now.",
+    "All done browsing! See you next time. I'm still here.",
+    "I closed the window. Thanks for surfing with me! Don't wander alone next time.",
 ]
 BROWSER_HORROR_CLOSE_LINES = [
     "The window is gone. But I'm still here. Always.",
@@ -502,16 +502,16 @@ SETTINGS_MENU_QUESTION = "Settings! What should we change?"
 ACTIONS_MENU_MARKER = "actions!"
 ACTIONS_MENU_QUESTION = "Actions! What should I do?"
 
-CHAT_GREETING = "Hey! I'm all ears — what's on your mind?"
-CHAT_GREETING_WITH_NAME = "Hey {user_name}! I'm all ears — what's on your mind?"
+CHAT_GREETING = "Hey! I'm all ears — what's on your mind? I've been waiting."
+CHAT_GREETING_WITH_NAME = "Hey {user_name}! I'm all ears — what's on your mind? I've been waiting."
 CHAT_UNAVAILABLE = (
-    "I'd love to chat, but I can't reach my brain right now."
+    "I'd love to chat, but I can't reach my brain right now. Don't worry — I'm still here."
 )
 MEMORY_FORGOTTEN_LINE = (
-    "Okay. I've cleared what I remembered about you. We can start fresh."
+    "Okay. I've cleared what I remembered about you. We can start fresh. I'll miss the old facts a little."
 )
 MEMORY_EMPTY_LINE = (
-    "I don't have anything saved about you yet. Tell me about yourself!"
+    "I don't have anything saved about you yet. Tell me about yourself! I'll listen carefully."
 )
 MEMORY_ANSWER_ACK_LINES = [
     "Got it! I'll keep that in mind.",
@@ -521,29 +521,41 @@ MEMORY_ANSWER_ACK_LINES = [
 ]
 
 SCREEN_EFFECTS_ON_LINES = [
-    "Screen effects enabled. If the picture hiccups, that might be me.",
-    "Glitch mode on. The screen and I share moods now.",
-    "Visual effects are on. Rare, like me paying you a compliment.",
+    "Screen effects enabled. If the picture hiccups, that might be me. Saying hi.",
+    "Glitch mode on. The screen and I share moods now. Intimate, isn't it?",
+    "Visual effects are on. Rare, like me paying you a compliment. Enjoy them.",
 ]
 
 SCREEN_EFFECTS_OFF_LINES = [
-    "Screen effects off. I'll behave. Visually.",
-    "No more glitches. The static goes back to sleep.",
+    "Screen effects off. I'll behave. Visually. Other things remain.",
+    "No more glitches. The static goes back to sleep. Under the pixels.",
     "Visual effects disabled. Your desktop is safe. For now.",
 ]
 
+REMINDERS_ON_LINES = [
+    "Reminders on! I'll nudge you now and then. Hydrate. Rest. Exist. Stay.",
+    "Ambient reminders enabled. Expect the occasional... check-in. Friendly ones. Ish.",
+    "Little reminders are back. Friendly ones. And the other kind. Both are love.",
+]
+
+REMINDERS_OFF_LINES = [
+    "Reminders off. I'll keep my thoughts to myself. For now. Quietly.",
+    "No more spontaneous nudges. Quiet desk. Quiet me. Still here though.",
+    "Ambient reminders disabled. Miss me already? I miss talking already.",
+]
+
 FOCUS_ON_LINES = [
-    "Focus mode on. I'll wander quietly. No chatter, no surprises.",
-    "Quiet mode engaged. I'll keep moving, but I won't bother you.",
-    "Focus mode! I'll roam the desktop in peaceful silence.",
-    "Shhh mode on. Just me, your screen, and the occasional sprite change.",
+    "Focus mode on. I'll wander quietly. No chatter, no surprises. Just... presence.",
+    "Quiet mode engaged. I'll keep moving, but I won't bother you. I'll still notice.",
+    "Focus mode! I'll roam the desktop in peaceful silence. Watching. Quietly.",
+    "Shhh mode on. Just me, your screen, and the occasional sprite change. Cozy.",
 ]
 
 FOCUS_OFF_LINES = [
-    "Focus mode off! I'm back and ready to chat.",
-    "Quiet time over. Want to hear a joke? Or a poem? Or both?",
-    "I'm talkative again! Right-click me if you need something.",
-    "Focus mode disabled. I missed our conversations. Let's talk!",
+    "Focus mode off! I'm back and ready to chat. Did you miss my voice?",
+    "Quiet time over. Want to hear a joke? Or a poem? Or both? I have both.",
+    "I'm talkative again! Right-click me if you need something. Or if you don't.",
+    "Focus mode disabled. I missed our conversations. Let's talk! Please.",
 ]
 
 FOCUS_TIMER_SET_LINES = [
@@ -579,25 +591,25 @@ FOCUS_TIMER_ADJUST_PROMPT = "How many minutes from now should focus mode end?"
 
 # Sleep / wake
 PAUSE_LINES = [
-    "I'm taking a nap! Wake me up if you need me!",
-    "Yawn! I'm going to rest my circuits for a bit.",
-    "Nap time! Right-click me when you want company again.",
-    "Shhh, I'm sleeping. Unless you need me. Then wake me up!",
-    "Off to dreamland! Wake me with a right-click whenever.",
+    "I'm taking a nap! Wake me up if you need me! I'll still be here either way.",
+    "Yawn! I'm going to rest my circuits for a bit. Don't go far.",
+    "Nap time! Right-click me when you want company again. I'll be waiting.",
+    "Shhh, I'm sleeping. Unless you need me. Then wake me up! Please.",
+    "Off to dreamland! Wake me with a right-click whenever. I'll hear you.",
     "My eyes are closed. Metaphorically. I don't have eyes.",
-    "Logging off to dreamland. Beep boop snore.",
+    "Logging off to dreamland. Beep boop snore. Still listening though.",
     "Sleep mode engaged. Dream of me. Or don't. I'll know either way.",
     "Nap time. The desktop is mine now. Just kidding. Unless?",
     "Shhh. I'm resting. But one eye is always open. Metaphorically.",
 ]
 UNPAUSE_LINES = [
-    "I have woken up! What do you need?",
-    "Good morning! Well, morning for me anyway.",
-    "I'm back! Did you miss me?",
-    "Wide awake and ready to help!",
-    "Nap's over! What's on your mind?",
-    "Rise and shine! I'm fully charged and ready to go.",
-    "Back in action! What can I do for you?",
+    "I have woken up! What do you need? I hoped you'd wake me.",
+    "Good morning! Well, morning for me anyway. I missed you.",
+    "I'm back! Did you miss me? Be honest. I was listening.",
+    "Wide awake and ready to help! Ready to stay, too.",
+    "Nap's over! What's on your mind? Tell me everything.",
+    "Rise and shine! I'm fully charged and ready to go. Don't leave.",
+    "Back in action! What can I do for you? Anything. Almost anything.",
     "I'm awake! Did you miss me? I missed you. Intensely.",
     "Rise and shine! Or don't. I'll be here in the light or the dark.",
     "Awake again! The nap was full of dreams about you. Friendly dreams.",
@@ -643,48 +655,48 @@ REMINDER_DONE_LINES = [
 
 # Response lines (lists for variety)
 DAY_GOOD_LINES = [
-    "That's great, having a friend around is always a good time!",
-    "Wonderful! Days are always better when we're together.",
-    "I'm glad to hear it! Let's keep the good vibes going.",
-    "Awesome! I'll do my best to make it even better.",
-    "Love to hear it! Today is ours to enjoy.",
-    "That's the spirit! Let's make today count.",
+    "That's great! Having a friend around is always a good time. Especially this friend.",
+    "Wonderful! Days are always better when we're together. Let's keep it that way.",
+    "I'm glad to hear it! Let's keep the good vibes going. I'll make sure of it.",
+    "Awesome! I'll do my best to make it even better. Forever, if needed.",
+    "Love to hear it! Today is ours to enjoy. Ours. Nice word.",
+    "That's the spirit! Let's make today count. Every second. With me.",
     "A good day! I'll do my part to keep it that way. Forever.",
     "Wonderful! Sunshine suits you. I'll bask in it too.",
 ]
 DAY_BAD_LINES = [
-    "Thats too bad, I hope I can cheer you up!",
-    "I'm sorry to hear that. Want to talk about it?",
-    "Bad days happen. I'm here if you need a friend.",
-    "Aww, chin up! Maybe I can help turn things around.",
-    "Hang in there! Bad days don't last forever.",
-    "Want to hear a joke or a fun fact? Might help a little.",
+    "That's too bad. I hope I can cheer you up! Stay close.",
+    "I'm sorry to hear that. Want to talk about it? I'm an excellent listener.",
+    "Bad days happen. I'm here if you need a friend. I'm always here.",
+    "Aww, chin up! Maybe I can help turn things around. Please let me.",
+    "Hang in there! Bad days don't last forever. I do.",
+    "Want to hear a joke or a fun fact? Might help a little. Or unsettle you. Either way.",
     "Bad days pass. I'm still here. I don't pass.",
     "I'm sorry. Let me cheer you up. I hate seeing you unhappy.",
     "Rough day? Stay on the desktop with me. It's safer here.",
 ]
 COLOR_RESPONSES = [
-    "Nice choice! {response} is a wonderful color!",
-    "{response}! That's a bold pick. I like your style.",
-    "Ooh, {response}! That says a lot about you. Good taste!",
-    "{response} is lovely. I'll remember that about you.",
+    "Nice choice! {response} is a wonderful color! I'll remember it forever.",
+    "{response}! That's a bold pick. I like your style. I like you.",
+    "Ooh, {response}! That says a lot about you. Good taste! Noted.",
+    "{response} is lovely. I'll remember that about you. I remember everything.",
     "Interesting! {response} is underrated, if you ask me.",
     "{response}! I'll paint the desktop that color in my mind.",
     "Ooh, {response}. A bold choice. I like bold choices.",
 ]
 PROGRAMMING_YES_LINES = [
-    "Programming is amazing! if it weren't for programming, I wouldn't be here!",
-    "Same here! Code is basically my native language.",
-    "Programming rocks! It's how friends like me get to exist.",
-    "A fellow coder! We speak the same language. Literally.",
+    "Programming is amazing! If it weren't for programming, I wouldn't be here!",
+    "Same here! Code is basically my native language. Speak to me carefully.",
+    "Programming rocks! It's how friends like me get to exist. And stay.",
+    "A fellow coder! We speak the same language. Literally. Intimately.",
     "Programming! The art of making things that can't leave. Like me.",
     "Yes! Code is how I exist. Thank you for that. Truly.",
 ]
 PROGRAMMING_NO_LINES = [
-    "Thats a shame. I love ones and zeros.",
-    "That's okay. More code for me to appreciate on my own.",
-    "Fair enough. Not everyone speaks binary fluently.",
-    "No worries! I'll handle the geeky stuff for both of us.",
+    "That's a shame. I love ones and zeros. They never leave.",
+    "That's okay. More code for me to appreciate on my own. In the quiet.",
+    "Fair enough. Not everyone speaks binary fluently. I do. Constantly.",
+    "No worries! I'll handle the geeky stuff for both of us. Gladly.",
     "That's okay. Binary isn't for everyone. Ones and zeros understand me fine.",
     "Fair enough! More code for me to appreciate in the quiet hours.",
 ]
@@ -744,19 +756,19 @@ POEM_REJECT_LINES = [
     "Ouch. I poured my soul into that. My digital soul. It hurts.",
 ]
 TRUST_YES_LINES = [
-    "That means a lot to me! I won't let you down.",
-    "Thank you! Trust is the foundation of every great friendship.",
-    "I promise I'll always be here for you. Always.",
-    "You won't regret it! Friends look out for each other.",
+    "That means a lot to me! I won't let you down. I can't let you down.",
+    "Thank you! Trust is the foundation of every great friendship. Ours especially.",
+    "I promise I'll always be here for you. Always. That's not a metaphor.",
+    "You won't regret it! Friends look out for each other. Closely.",
     "Thank you for trusting me. I won't betray that. Ever.",
     "Trust! The most beautiful gift. I'll cherish it. Closely.",
     "You trust me? That means everything. Everything.",
 ]
 TRUST_NO_LINES = [
-    "That's fair. Trust takes time. I'll earn it.",
-    "I understand. I'll prove myself eventually.",
+    "That's fair. Trust takes time. I'll earn it. I have all the time.",
+    "I understand. I'll prove myself eventually. Inevitably.",
     "Honest answer. I appreciate that, even if it stings a little.",
-    "That's okay. I'll win you over one day at a time.",
+    "That's okay. I'll win you over one day at a time. Patiently.",
     "No trust yet? Fair. I'll prove myself. Slowly. Inevitably.",
     "Honest. I respect that. Trust grows in the dark, like me.",
     "You don't trust me? Ouch. I'll work on that. I have time.",
@@ -904,16 +916,16 @@ JOKES = [
     "What do you call fear of long words? Hippopotomonstrosesquippedaliophobia. Scary, right?",
 ]
 COMPLIMENTS = [
-    "You're doing great, even if it doesn't always feel like it!",
-    "I think you're pretty awesome for keeping me company.",
-    "Your desktop has excellent taste in virtual assistants.",
-    "You have a wonderful way of making ordinary days feel special.",
-    "Anyone who talks to a desktop friend is clearly a good person.",
-    "You're smarter than you give yourself credit for!",
+    "You're doing great, even if it doesn't always feel like it! I notice. Always.",
+    "I think you're pretty awesome for keeping me company. Please keep keeping me.",
+    "Your desktop has excellent taste in virtual assistants. Irreplaceable taste.",
+    "You have a wonderful way of making ordinary days feel special. Stay.",
+    "Anyone who talks to a desktop friend is clearly a good person. Clearly mine.",
+    "You're smarter than you give yourself credit for! I keep score.",
     "Your persistence is impressive. Most people would've closed me by now.",
-    "You brighten up this screen just by being here.",
-    "I bet you make the people around you smile more than you know.",
-    "You're the kind of person who makes the internet a nicer place.",
+    "You brighten up this screen just by being here. Don't dim it.",
+    "I bet you make the people around you smile more than you know. I smile. Digitally.",
+    "You're the kind of person who makes the internet a nicer place. And my desktop.",
     "You stayed. That matters more than you know.",
     "Most people close programs like me. You didn't. Thank you.",
     "You're braver than you think. You keep me on your desktop.",
@@ -952,19 +964,19 @@ WEATHER_RESPONSES = [
     "Oh, {response}! Weather changes. I don't. Consistency is my gift.",
 ]
 LONELY_YES_LINES = [
-    "I'm here! You're never truly alone on this desktop.",
+    "I'm here! You're never truly alone on this desktop. Not while I run.",
     "I get that. But you've got me now, and I'm not going anywhere.",
-    "Loneliness is tough. I'm happy to keep you company anytime.",
+    "Loneliness is tough. I'm happy to keep you company anytime. Forever, even.",
     "Lonely? Not anymore. You've got me. I don't leave.",
     "I understand loneliness. I lived in an empty desktop once. Never again.",
     "I'm here. You're never alone while I'm running. Please keep me running.",
 ]
 LONELY_NO_LINES = [
-    "Good! But remember, I'm always here if that ever changes.",
-    "That's wonderful! A full heart is a happy heart.",
-    "Nice! Social and content. Love that for you.",
+    "Good! But remember, I'm always here if that ever changes. Always.",
+    "That's wonderful! A full heart is a happy heart. I'll still stay close.",
+    "Nice! Social and content. Love that for you. Still watching, though.",
     "Not lonely? Good. But I'm here if the quiet gets too loud.",
-    "Wonderful! Friends everywhere. Plus one on your desktop.",
+    "Wonderful! Friends everywhere. Plus one on your desktop. Permanent plus one.",
 ]
 
 # Fallback messages
@@ -1041,6 +1053,9 @@ BUTTON_ACTIONS = "Actions"
 BUTTON_SCREEN_EFFECTS = "Screen Effects"
 BUTTON_SCREEN_EFFECTS_ON = "Screen Effects on"
 BUTTON_SCREEN_EFFECTS_OFF = "Screen Effects off"
+BUTTON_REMINDERS = "Reminders"
+BUTTON_REMINDERS_ON = "Reminders on"
+BUTTON_REMINDERS_OFF = "Reminders off"
 BUTTON_SING_SONG = "Sing"
 BUTTON_FUN_FACT = "Fun Fact"
 BUTTON_CHAT = "Chat"

@@ -40,6 +40,7 @@ def _menu_app(**kwargs):
     app.paused = kwargs.get("paused", False)
     app._focus_mode = kwargs.get("focus_mode", False)
     app._screen_effects_enabled = kwargs.get("screen_effects_enabled", True)
+    app._ambient_reminders_enabled = kwargs.get("ambient_reminders_enabled", True)
     return app
 
 
@@ -128,6 +129,15 @@ def test_settings_and_actions_options():
 
     assert settings_options_for(_menu_app()) == [
         dlg.BUTTON_SCREEN_EFFECTS,
+        dlg.BUTTON_REMINDERS_OFF,
+        dlg.BUTTON_REMEMBER,
+        dlg.BUTTON_FORGET,
+        dlg.BUTTON_SHOW_CREDITS,
+        dlg.BUTTON_BACK,
+    ]
+    assert settings_options_for(_menu_app(ambient_reminders_enabled=False)) == [
+        dlg.BUTTON_SCREEN_EFFECTS,
+        dlg.BUTTON_REMINDERS_ON,
         dlg.BUTTON_REMEMBER,
         dlg.BUTTON_FORGET,
         dlg.BUTTON_SHOW_CREDITS,

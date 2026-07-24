@@ -593,6 +593,8 @@ def _configure_mouse_attention(movement):
     movement._chat_mode = False
     movement._awaiting_response = False
     movement._mouse_look_active = False
+    movement._mouse_look_crouch = False
+    movement._mouse_look_stance_until = 0.0
     movement._mouse_follow_state = "idle"
     movement._mouse_follow_ready_at = 0.0
     movement._mouse_look_direction = "center"
@@ -609,6 +611,17 @@ def _configure_mouse_attention(movement):
         "top_right": "look_top_right",
         "bottom_left": "look_bottom_left",
         "bottom_right": "look_bottom_right",
+    }
+    movement._standing2_dir_sprites = {
+        "center": "crouch_center",
+        "left": "crouch_left",
+        "right": "crouch_right",
+        "top": "crouch_top",
+        "bottom": "crouch_bottom",
+        "top_left": "crouch_top_left",
+        "top_right": "crouch_top_right",
+        "bottom_left": "crouch_bottom_left",
+        "bottom_right": "crouch_bottom_right",
     }
     movement.change_sprite = MagicMock()
     movement._schedule_mouse_attention_poll = MagicMock()
@@ -628,11 +641,11 @@ def test_can_look_at_mouse_blocked_during_reading(movement):
     assert movement._can_look_at_mouse() is False
 
 
-def test_can_look_at_mouse_allowed_in_chat(movement):
+def test_can_look_at_mouse_blocked_during_chat(movement):
     _configure_mouse_attention(movement)
     movement._chat_mode = True
     movement.talking = True
-    assert movement._can_look_at_mouse() is True
+    assert movement._can_look_at_mouse() is False
     assert movement._can_follow_mouse() is False
 
 
@@ -644,8 +657,33 @@ def test_update_mouse_attention_looks_right(movement):
     movement._update_mouse_attention()
     assert movement._mouse_look_active is True
     assert movement._mouse_look_direction == "right"
+    assert movement._mouse_look_crouch is False
     movement.change_sprite.assert_called_with("look_right")
     assert movement._mouse_follow_state == "idle"
+
+
+def test_update_mouse_attention_alternates_to_crouch(movement):
+    _configure_mouse_attention(movement)
+    movement.root.winfo_pointerx.return_value = 340
+    movement.root.winfo_pointery.return_value = 240
+    movement._update_mouse_attention()
+    assert movement._mouse_look_crouch is False
+    movement.change_sprite.reset_mock()
+
+    # Stance timer expired → flip to crouch like idle (~1s).
+    movement._mouse_look_stance_until = 0.0
+    movement._update_mouse_attention()
+    assert movement._mouse_look_crouch is True
+    assert movement._mouse_look_direction == "right"
+    movement.change_sprite.assert_called_with("crouch_right")
+
+
+def test_apply_mouse_look_sprite_uses_crouch_pool(movement):
+    _configure_mouse_attention(movement)
+    movement._mouse_look_crouch = True
+    movement._apply_mouse_look_sprite("left")
+    movement.change_sprite.assert_called_once_with("crouch_left")
+    assert movement._mouse_look_direction == "left"
 
 
 def test_update_mouse_attention_skips_busy_modes(movement):

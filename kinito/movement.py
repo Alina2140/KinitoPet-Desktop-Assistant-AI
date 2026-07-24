@@ -55,6 +55,7 @@ class MovementMixin:
     MOUSE_THINK_SECONDS = (0.6, 1.2)
     MOUSE_FOLLOW_MAX_PX = 160
     MOUSE_FOLLOW_COOLDOWN_SECONDS = (15, 35)
+    MOUSE_LOOK_STANCE_SECONDS = 1.0
 
     def setup_mouse_bindings(self):
         """Bind drag to the sprite only so control buttons stay clickable."""
@@ -251,9 +252,8 @@ class MovementMixin:
             return False
         if getattr(self, "_is_game_active", lambda: False)():
             return False
-        # Chat may look; other interactive speech/dialogs must not be interrupted.
         if getattr(self, "_chat_mode", False):
-            return True
+            return False
         if getattr(self, "talking", False):
             return False
         if getattr(self, "_awaiting_response", False):
@@ -263,8 +263,6 @@ class MovementMixin:
     def _can_follow_mouse(self) -> bool:
         """Return True when Kinito may start a think-then-maybe-follow attempt."""
         if not self._can_look_at_mouse():
-            return False
-        if getattr(self, "_chat_mode", False):
             return False
         if getattr(self, "talking", False):
             return False
@@ -293,9 +291,22 @@ class MovementMixin:
             self, "tk_img_normal_2" if crouch else "tk_img_normal", None
         )
 
+    def _refresh_mouse_look_stance(self, *, force: bool = False) -> None:
+        """Alternate standing and crouch about once per second while looking."""
+        now = time.monotonic()
+        until = float(getattr(self, "_mouse_look_stance_until", 0.0))
+        if not force and now < until:
+            return
+        if force:
+            self._mouse_look_crouch = False
+        else:
+            self._mouse_look_crouch = not bool(getattr(self, "_mouse_look_crouch", False))
+        self._mouse_look_stance_until = now + float(self.MOUSE_LOOK_STANCE_SECONDS)
+
     def _apply_mouse_look_sprite(self, direction: str) -> None:
-        """Show the standing sprite facing *direction*."""
-        sprite = self._sprite_for_look_direction(direction, crouch=False)
+        """Show the standing or crouch sprite facing *direction*."""
+        crouch = bool(getattr(self, "_mouse_look_crouch", False))
+        sprite = self._sprite_for_look_direction(direction, crouch=crouch)
         if sprite is None:
             return
         self._mouse_look_direction = direction
@@ -398,12 +409,16 @@ class MovementMixin:
 
             if not self._can_look_at_mouse():
                 self._mouse_look_active = False
+                self._mouse_look_crouch = False
+                self._mouse_look_stance_until = 0.0
                 self._schedule_mouse_attention_poll()
                 return
 
             cursor = self._cursor_screen_pos()
             if cursor is None:
                 self._mouse_look_active = False
+                self._mouse_look_crouch = False
+                self._mouse_look_stance_until = 0.0
                 self._schedule_mouse_attention_poll()
                 return
 
@@ -414,7 +429,11 @@ class MovementMixin:
             distance = math.hypot(dx, dy)
 
             if distance > self.MOUSE_LOOK_RADIUS_PX:
+                was_looking = getattr(self, "_mouse_look_active", False)
                 self._mouse_look_active = False
+                if was_looking:
+                    self._mouse_look_crouch = False
+                    self._mouse_look_stance_until = 0.0
                 self._schedule_mouse_attention_poll()
                 return
 
@@ -423,7 +442,9 @@ class MovementMixin:
                 dy,
                 deadzone_px=self.MOUSE_LOOK_DEADZONE_PX,
             )
+            was_looking = getattr(self, "_mouse_look_active", False)
             self._mouse_look_active = True
+            self._refresh_mouse_look_stance(force=not was_looking)
             self._apply_mouse_look_sprite(direction)
 
             # Already deciding whether to follow — keep looking, don't re-trigger.
@@ -636,6 +657,10 @@ class MovementMixin:
         """No-op unless AdsMixin is mixed in."""
         return False
 
+    def maybe_trigger_ambient_reminder(self) -> bool:
+        """No-op unless NudgesMixin is mixed in."""
+        return False
+
     def _is_reading_idle_active(self) -> bool:
         """Return True while Kinito is uninterrupted in the book-idle animation."""
         return (
@@ -753,6 +778,7 @@ class MovementMixin:
             self.maybe_trigger_screen_glitch()
             self.maybe_trigger_blue_screen()
             self.maybe_trigger_random_ad()
+            self.maybe_trigger_ambient_reminder()
             if (
                 random.random() < self.SPONTANEOUS_CHANCE
                 and self._allow_random_questions

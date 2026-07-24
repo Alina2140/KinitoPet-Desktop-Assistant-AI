@@ -51,6 +51,7 @@ from kinito.features.glitch import GlitchMixin
 from kinito.features.hug import HugMixin
 from kinito.features.llm import LLMMixin
 from kinito.features.music import MusicMixin
+from kinito.features.nudges import NudgesMixin
 from kinito.features.programs import ProgramsMixin
 from kinito.movement import MovementMixin
 from kinito.speech import SpeechMixin
@@ -106,6 +107,7 @@ class FloatingAssistant(
     CameraMixin,
     BrowserMixin,
     AdsMixin,
+    NudgesMixin,
 ):
     """Borderless desktop friend that combines speech, movement, and feature mixins."""
 
@@ -268,6 +270,8 @@ class FloatingAssistant(
         self._startup_complete = False
         self._allow_random_questions = False
         self._screen_effects_enabled = True
+        self._ambient_reminders_enabled = True
+        self._last_nudge_at = 0.0
         self._focus_mode = False
         self._preserve_sprite = False
         self._talk_sprite_mode = "talking"
@@ -290,6 +294,8 @@ class FloatingAssistant(
         self._init_llm()
         self._ai_generating = False
         self._mouse_look_active = False
+        self._mouse_look_crouch = False
+        self._mouse_look_stance_until = 0.0
         self._mouse_follow_state = "idle"
         self._mouse_follow_ready_at = 0.0
         self._mouse_attention_timer = None
