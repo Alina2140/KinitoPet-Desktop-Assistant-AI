@@ -27,6 +27,8 @@ class MovementMixin:
     READING_DURATION_SECONDS = (10, 32)
     READING_PAGE_TURN_CHANCE = 0.14
     READING_PAGE_TURN_VOLUME = 0.3
+    READING_PAGE_TURN_SOUND_LEAD_SECONDS = 2.00
+    READING_PAGE_TURN_FRAME_SECONDS = 0.2
     READING_SPRITE_SWAP_SECONDS = 2.4
     IDLE_WAIT_SHORT = (20, 40)
     IDLE_WAIT_NORMAL = (40, 80)
@@ -384,26 +386,47 @@ class MovementMixin:
             and not getattr(self, "_fancy_mode", False)
         )
 
-    def _maybe_play_reading_page_turn(self, session: int) -> None:
-        """Play a page-turn sound only during an active, uninterrupted reading idle."""
+    def _maybe_play_reading_page_turn(self, session: int, *, page_sprites=(), restore_sprite=None) -> bool:
+        """Play a page-turn sound/animation during an active, uninterrupted reading idle."""
         if not self._can_play_reading_page_turn(session):
-            return
+            return False
         if random.random() >= self.READING_PAGE_TURN_CHANCE:
-            return
+            return False
         if not self._can_play_reading_page_turn(session):
-            return
+            return False
+
+        frames = tuple(page_sprites) if page_sprites else ()
+        if frames:
+            self.play_sfx(page_turn_file_path, volume=self.READING_PAGE_TURN_VOLUME)
+            # Give pygame a moment to start audio before the visual flip.
+            time.sleep(self.READING_PAGE_TURN_SOUND_LEAD_SECONDS)
+            if not self._can_play_reading_page_turn(session):
+                return True
+            for sprite in frames:
+                if not self._can_play_reading_page_turn(session):
+                    return True
+                self.change_sprite(sprite)
+                time.sleep(self.READING_PAGE_TURN_FRAME_SECONDS)
+            if restore_sprite is not None and self._is_reading_idle_active():
+                self.change_sprite(restore_sprite)
+            return True
+
         self.play_sfx(page_turn_file_path, volume=self.READING_PAGE_TURN_VOLUME)
+        return True
 
     def _run_reading_idle(self):
         """Animate book sprites, optionally play page-turn sounds, and trigger speech."""
-        if random.random() < self.IDLE_GLASSES_CHANCE:
+        use_glasses = random.random() < self.IDLE_GLASSES_CHANCE
+        if use_glasses:
             reading_sprites = getattr(
                 self,
                 "_reading_glasses_sprites",
                 getattr(self, "_reading_sprites", (self.tk_img_idle,)),
             )
+            page_sprites = getattr(self, "_reading_glasses_page_sprites", ())
         else:
             reading_sprites = getattr(self, "_reading_sprites", (self.tk_img_idle,))
+            page_sprites = getattr(self, "_reading_page_sprites", ())
         session = getattr(self, "_reading_idle_session", 0) + 1
         self._reading_idle_session = session
         self._reading_idle_active = True
@@ -425,8 +448,13 @@ class MovementMixin:
                 if not self._is_reading_idle_active():
                     break
                 frame += 1
-                self.change_sprite(reading_sprites[frame % len(reading_sprites)])
-                self._maybe_play_reading_page_turn(session)
+                current = reading_sprites[frame % len(reading_sprites)]
+                self.change_sprite(current)
+                self._maybe_play_reading_page_turn(
+                    session,
+                    page_sprites=page_sprites,
+                    restore_sprite=current,
+                )
         finally:
             if getattr(self, "_reading_idle_session", None) == session:
                 self._reading_idle_active = False

@@ -38,8 +38,16 @@ sprite_path_normal = os.path.join(sprites_standing_directory, SPRITE_NORMAL_DEFA
 sprite_path_normal_2 = os.path.join(sprites_standing2_directory, SPRITE_NORMAL2_DEFAULT)
 sprite_path_idle = os.path.join(sprites_reading_directory, "Idle.png")
 sprite_path_idle_2 = os.path.join(sprites_reading_directory, "Idle2.png")
+sprite_path_idle_2_page = os.path.join(sprites_reading_directory, "Idle2Page.png")
+sprite_path_idle_2_page_2 = os.path.join(sprites_reading_directory, "Idle2Page2.png")
 sprite_path_idle_glasses = os.path.join(sprites_reading_directory, "IdleGlasses.png")
 sprite_path_idle_glasses_2 = os.path.join(sprites_reading_directory, "IdleGlasses2.png")
+sprite_path_idle_glasses_2_page = os.path.join(
+    sprites_reading_directory, "IdleGlasses2Page.png"
+)
+sprite_path_idle_glasses_2_page_2 = os.path.join(
+    sprites_reading_directory, "IdleGlasses2Page2.png"
+)
 sprite_path_fancy = os.path.join(sprites_magic_directory, "Fancy.png")
 sprite_path_fancy_1 = os.path.join(sprites_magic_directory, "Fancy1.png")
 sprite_path_surf_left = os.path.join(sprites_surfing_directory, "KinitoSurfLeft.png")

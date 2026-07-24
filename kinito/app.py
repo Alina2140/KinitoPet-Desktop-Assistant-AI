@@ -22,8 +22,12 @@ from kinito.assets import (
     sprite_path_hug2,
     sprite_path_idle,
     sprite_path_idle_2,
+    sprite_path_idle_2_page,
+    sprite_path_idle_2_page_2,
     sprite_path_idle_glasses,
     sprite_path_idle_glasses_2,
+    sprite_path_idle_glasses_2_page,
+    sprite_path_idle_glasses_2_page_2,
     sprite_path_normal,
     sprite_path_normal_2,
     sprite_path_sleep,
@@ -114,8 +118,14 @@ class FloatingAssistant(
         self.img_normal_2 = _open_sprite(sprite_path_normal_2, fallback)
         self.img_idle = _open_sprite(sprite_path_idle, fallback)
         self.img_idle_2 = _open_sprite(sprite_path_idle_2, fallback)
+        self.img_idle_2_page = _open_sprite(sprite_path_idle_2_page, fallback)
+        self.img_idle_2_page_2 = _open_sprite(sprite_path_idle_2_page_2, fallback)
         self.img_idle_glasses = _open_sprite(sprite_path_idle_glasses, fallback)
         self.img_idle_glasses_2 = _open_sprite(sprite_path_idle_glasses_2, fallback)
+        self.img_idle_glasses_2_page = _open_sprite(sprite_path_idle_glasses_2_page, fallback)
+        self.img_idle_glasses_2_page_2 = _open_sprite(
+            sprite_path_idle_glasses_2_page_2, fallback
+        )
         self.img_fancy = _open_sprite(sprite_path_fancy, fallback)
         self.img_fancy_2 = _open_sprite(sprite_path_fancy_1, fallback)
         self.img_surf_left = _open_sprite(sprite_path_surf_left, fallback)
@@ -144,14 +154,25 @@ class FloatingAssistant(
         )
         self.tk_img_idle = ImageTk.PhotoImage(self.img_idle)
         self.tk_img_idle_2 = ImageTk.PhotoImage(self.img_idle_2)
+        self.tk_img_idle_2_page = ImageTk.PhotoImage(self.img_idle_2_page)
+        self.tk_img_idle_2_page_2 = ImageTk.PhotoImage(self.img_idle_2_page_2)
         self.tk_img_idle_glasses = ImageTk.PhotoImage(self.img_idle_glasses)
         self.tk_img_idle_glasses_2 = ImageTk.PhotoImage(self.img_idle_glasses_2)
+        self.tk_img_idle_glasses_2_page = ImageTk.PhotoImage(self.img_idle_glasses_2_page)
+        self.tk_img_idle_glasses_2_page_2 = ImageTk.PhotoImage(
+            self.img_idle_glasses_2_page_2
+        )
         self.tk_img_fancy = ImageTk.PhotoImage(self.img_fancy)
         self.tk_img_fancy_2 = ImageTk.PhotoImage(self.img_fancy_2)
         self._reading_sprites = (self.tk_img_idle, self.tk_img_idle_2)
+        self._reading_page_sprites = (self.tk_img_idle_2_page, self.tk_img_idle_2_page_2)
         self._reading_glasses_sprites = (
             self.tk_img_idle_glasses,
             self.tk_img_idle_glasses_2,
+        )
+        self._reading_glasses_page_sprites = (
+            self.tk_img_idle_glasses_2_page,
+            self.tk_img_idle_glasses_2_page_2,
         )
         self._magician_sprites = (self.tk_img_fancy, self.tk_img_fancy_2)
         self._magician_frame = 0
