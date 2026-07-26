@@ -100,6 +100,14 @@ def test_ensure_on_screen_skips_when_already_visible(geometry_app):
     geometry_app.root.geometry.assert_not_called()
 
 
+def test_ensure_on_screen_skips_while_throwing(geometry_app):
+    geometry_app._throwing = True
+    geometry_app.root.winfo_rootx.return_value = -500
+    geometry_app.root.winfo_rooty.return_value = 5000
+    geometry_app.ensure_on_screen()
+    geometry_app.root.geometry.assert_not_called()
+
+
 def test_keep_assistant_on_top_reasserts_topmost(geometry_app):
     geometry_app.root.winfo_exists.return_value = True
     geometry_app._has_active_speech_bubble = MagicMock(return_value=False)

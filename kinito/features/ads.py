@@ -20,7 +20,7 @@ class AdsMixin:
             return False
         if getattr(self, "_is_game_active", lambda: False)():
             return False
-        if self.paused or self.is_dragging or self._camera_active or self._browser_active:
+        if self.paused or getattr(self, "_is_position_locked_by_user", lambda: self.is_dragging)() or self._camera_active or self._browser_active:
             return False
         if random.random() >= self.AD_POPUP_CHANCE:
             return False

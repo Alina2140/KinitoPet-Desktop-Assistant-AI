@@ -162,7 +162,11 @@ class SpeechMixin:
 
     def _kinito_screen_position(self):
         """Return Kinito's top-left corner in screen coordinates."""
-        if getattr(self, "is_dragging", False) or getattr(self, "moving", False):
+        if (
+            getattr(self, "is_dragging", False)
+            or getattr(self, "_throwing", False)
+            or getattr(self, "moving", False)
+        ):
             tracked_x = getattr(self, "x", None)
             tracked_y = getattr(self, "y", None)
             if tracked_x is not None and tracked_y is not None:
@@ -1166,7 +1170,11 @@ class SpeechMixin:
         bubble_y = max(min_y, min(bubble_y, max_y))
 
         new_pos = (bubble_x, bubble_y)
-        force_reposition = getattr(self, "is_dragging", False) or getattr(self, "moving", False)
+        force_reposition = (
+            getattr(self, "is_dragging", False)
+            or getattr(self, "_throwing", False)
+            or getattr(self, "moving", False)
+        )
         if force_reposition or getattr(self, "_speech_bubble_last_pos", None) != new_pos:
             self._speech_bubble_last_pos = new_pos
             self.speech_bubble.geometry(f"{bubble_w}x{bubble_h}+{bubble_x}+{bubble_y}")

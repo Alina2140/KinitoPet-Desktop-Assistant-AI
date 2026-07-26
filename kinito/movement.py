@@ -14,6 +14,7 @@ from kinito.assets import (
     page_turn_file_path,
     snoring_file_path,
     surf_file_path,
+    woosh_file_path,
 )
 from kinito.tk_timers import cancel_after, schedule_after
 
@@ -56,12 +57,25 @@ class MovementMixin:
     MOUSE_FOLLOW_OUTSIDE_CHANCE = 0.2
     MOUSE_THINK_SECONDS = (0.6, 1.2)
     MOUSE_FOLLOW_MAX_PX = 160
-    MOUSE_FOLLOW_OUTSIDE_MAX_PX = 1300
+    MOUSE_FOLLOW_OUTSIDE_MAX_PX = 900
     MOUSE_FOLLOW_COOLDOWN_SECONDS = (15, 35)
     MOUSE_LOOK_STANCE_SECONDS = 1.0
     SNORING_CHANCE = 0.38
     SNORING_VOLUME = 0.5
     SNORING_COOLDOWN_SECONDS = 5.0
+    THROW_SAMPLE_WINDOW_MS = 80
+    THROW_MIN_SPEED_PX_S = 900
+    THROW_MAX_SPEED_PX_S = 4500
+    THROW_VELOCITY_SCALE = 1.0
+    THROW_GRAVITY = 2800
+    THROW_AIR_DRAG = 0.55
+    THROW_BOUNCE_DAMPING = 0.38
+    THROW_FLOOR_FRICTION = 2.8
+    THROW_STOP_SPEED_PX_S = 220
+    THROW_MAX_BOUNCES = 3
+    THROW_FRAME_MS = 16
+    THROW_REACT_CHANCE = 0.85
+    THROW_MAX_DT = 0.05
 
     def setup_mouse_bindings(self):
         """Bind drag to the sprite only so control buttons stay clickable."""
@@ -100,7 +114,10 @@ class MovementMixin:
             return
         if kinito_x is None or kinito_y is None:
             kinito_x, kinito_y = getattr(self, "x", 0), getattr(self, "y", 0)
-        if getattr(self, "is_dragging", False) and hasattr(self, "_move_speech_bubble_with_kinito"):
+        coupled = self._is_position_locked_by_user() and hasattr(
+            self, "_move_speech_bubble_with_kinito"
+        )
+        if coupled and getattr(self, "_bubble_kinito_offset_x", None) is not None:
             self._move_speech_bubble_with_kinito(kinito_x, kinito_y)
         elif hasattr(self, "position_speech_bubble"):
             self.position_speech_bubble()
@@ -127,10 +144,68 @@ class MovementMixin:
         if hasattr(self, "stop_background_music"):
             self.stop_background_music()
 
+    def _is_position_locked_by_user(self) -> bool:
+        """Return True while the user is dragging or a throw is in flight."""
+        return bool(
+            getattr(self, "is_dragging", False) or getattr(self, "_throwing", False)
+        )
+
+    def _trim_drag_samples(self, now: float | None = None) -> None:
+        """Drop velocity samples older than the throw sample window."""
+        now = time.monotonic() if now is None else now
+        window = self.THROW_SAMPLE_WINDOW_MS / 1000.0
+        samples = getattr(self, "_drag_samples", None)
+        if not samples:
+            self._drag_samples = []
+            return
+        self._drag_samples = [(t, x, y) for t, x, y in samples if now - t <= window]
+
+    def _record_drag_sample(self, x: float, y: float) -> None:
+        """Append a drag position sample used for release-velocity."""
+        now = time.monotonic()
+        samples = getattr(self, "_drag_samples", None)
+        if samples is None:
+            self._drag_samples = []
+            samples = self._drag_samples
+        samples.append((now, float(x), float(y)))
+        self._trim_drag_samples(now)
+
+    @staticmethod
+    def _velocity_from_samples(samples, max_speed: float, scale: float):
+        """Return (vx, vy, speed) from first/last samples in the release window."""
+        if len(samples) < 2:
+            return 0.0, 0.0, 0.0
+        t0, x0, y0 = samples[0]
+        t1, x1, y1 = samples[-1]
+        dt = t1 - t0
+        if dt <= 1e-6:
+            return 0.0, 0.0, 0.0
+        vx = ((x1 - x0) / dt) * scale
+        vy = ((y1 - y0) / dt) * scale
+        speed = math.hypot(vx, vy)
+        if speed > max_speed > 0:
+            factor = max_speed / speed
+            vx *= factor
+            vy *= factor
+            speed = max_speed
+        return vx, vy, speed
+
+    def _compute_throw_velocity(self):
+        """Compute release velocity from the freshest drag samples only."""
+        self._trim_drag_samples()
+        return self._velocity_from_samples(
+            getattr(self, "_drag_samples", []) or [],
+            self.THROW_MAX_SPEED_PX_S,
+            self.THROW_VELOCITY_SCALE,
+        )
+
     def on_mouse_down(self, event):
         """Begin dragging, stop roam sounds, and play the bomp click sound."""
+        if getattr(self, "_throwing", False):
+            self._cancel_throw()
         self.is_dragging = True
         self._drag_moved = False
+        self._drag_samples = []
         self.moving = False
         self._stop_audio_for_drag()
         if not self._should_skip_drag_sounds():
@@ -141,6 +216,7 @@ class MovementMixin:
         root_y = self.y
         self.mouse_click_offset_x = root_x - event.x_root
         self.mouse_click_offset_y = root_y - event.y_root
+        self._record_drag_sample(root_x, root_y)
         self._start_drag_tracking()
         if hasattr(self, "_capture_speech_bubble_drag_offset"):
             self._capture_speech_bubble_drag_offset()
@@ -157,24 +233,194 @@ class MovementMixin:
         new_x, new_y = self.clamp_position(new_x, new_y)
         self.x, self.y = new_x, new_y
         self.root.geometry(f"+{new_x}+{new_y}")
+        self._record_drag_sample(new_x, new_y)
         self._follow_speech_bubble_to_kinito(new_x, new_y)
 
     def on_mouse_up(self, event):
-        """End dragging and play the drop sound after a real drag."""
+        """End dragging: place with bomp, or throw when release speed is high."""
         if not self.is_dragging:
             return
-        if self._drag_moved and not self._should_skip_drag_sounds():
-            self.play_sfx(bomp_file_path)
+        drag_moved = self._drag_moved
+        vx, vy, speed = self._compute_throw_velocity()
         self.is_dragging = False
         self._drag_moved = False
+        self._stop_drag_tracking()
+
+        if drag_moved and speed >= self.THROW_MIN_SPEED_PX_S:
+            self._start_throw(vx, vy)
+            return
+
+        if drag_moved and not self._should_skip_drag_sounds():
+            self.play_sfx(bomp_file_path)
         self._bubble_kinito_offset_x = None
         self._bubble_kinito_offset_y = None
-        self._stop_drag_tracking()
+        self._drag_samples = []
         self._follow_speech_bubble_to_kinito()
         if hasattr(self, "ensure_on_screen"):
             self.root.after(0, self.ensure_on_screen)
         if hasattr(self, "_keep_assistant_on_top"):
             self.root.after(0, self._keep_assistant_on_top)
+
+    def _maybe_speak_throw_reaction(self) -> None:
+        """Sometimes comment on being thrown (happy through annoyed)."""
+        if random.random() >= self.THROW_REACT_CHANCE:
+            return
+        if getattr(self, "_focus_mode", False):
+            return
+        if not getattr(self, "_startup_complete", True):
+            return
+        if hasattr(self, "_is_busy_with_speech") and self._is_busy_with_speech():
+            return
+        if not hasattr(self, "speak"):
+            return
+        from content.throw_lines import pick_throw_line
+
+        self.speak(pick_throw_line())
+
+    def _start_throw(self, vx: float, vy: float) -> None:
+        """Begin ballistic flight from the given release velocity."""
+        self._throwing = True
+        self.moving = True
+        self._throw_vx = float(vx)
+        self._throw_vy = float(vy)
+        self._throw_bounce_count = 0
+        self._throw_last_t = time.monotonic()
+        self._drag_samples = []
+        if not self._should_skip_drag_sounds():
+            self.play_sfx(woosh_file_path)
+        self._maybe_speak_throw_reaction()
+        if hasattr(self, "_keep_assistant_on_top"):
+            self.root.after(0, self._keep_assistant_on_top)
+        schedule_after(
+            self.root,
+            self,
+            "_throw_after_id",
+            self.THROW_FRAME_MS,
+            self._throw_tick,
+        )
+
+    def _throw_should_stop(self, speed: float, y: float, max_y: float) -> bool:
+        """Return True when throw momentum is spent."""
+        if getattr(self, "_throw_bounce_count", 0) >= self.THROW_MAX_BOUNCES:
+            return True
+        near_bottom = y >= max_y - 2
+        if near_bottom and speed < self.THROW_STOP_SPEED_PX_S:
+            return True
+        # Only kill mid-air motion when it is essentially dead.
+        return speed < 40.0
+
+    def _throw_tick(self) -> None:
+        """Advance one frame of throw physics on the Tk thread."""
+        self._throw_after_id = None
+        if not getattr(self, "_throwing", False):
+            return
+        if (
+            not getattr(self, "_running", True)
+            or getattr(self, "paused", False)
+            or getattr(self, "is_dragging", False)
+        ):
+            self._cancel_throw()
+            return
+
+        now = time.monotonic()
+        dt = min(max(now - getattr(self, "_throw_last_t", now), 0.0), self.THROW_MAX_DT)
+        self._throw_last_t = now
+
+        vx = float(getattr(self, "_throw_vx", 0.0))
+        vy = float(getattr(self, "_throw_vy", 0.0))
+        vy += self.THROW_GRAVITY * dt
+        drag = max(0.0, 1.0 - self.THROW_AIR_DRAG * dt)
+        vx *= drag
+        vy *= drag
+
+        x = float(getattr(self, "x", 0)) + vx * dt
+        y = float(getattr(self, "y", 0)) + vy * dt
+
+        min_x, min_y, max_x, max_y = self.get_screen_bounds()
+        bounced = False
+        hit_floor = False
+        if x < min_x:
+            x = float(min_x)
+            vx = -vx * self.THROW_BOUNCE_DAMPING
+            bounced = True
+        elif x > max_x:
+            x = float(max_x)
+            vx = -vx * self.THROW_BOUNCE_DAMPING
+            bounced = True
+        if y < min_y:
+            y = float(min_y)
+            vy = -vy * self.THROW_BOUNCE_DAMPING
+            bounced = True
+        elif y > max_y:
+            y = float(max_y)
+            vy = -vy * self.THROW_BOUNCE_DAMPING
+            vx *= max(0.0, 1.0 - self.THROW_FLOOR_FRICTION * dt)
+            bounced = True
+            hit_floor = True
+
+        if bounced:
+            self._throw_bounce_count = getattr(self, "_throw_bounce_count", 0) + 1
+
+        # Extra slide kill while resting on the floor between hops.
+        if hit_floor or y >= max_y - 2:
+            vx *= max(0.0, 1.0 - self.THROW_FLOOR_FRICTION * dt)
+
+        self._throw_vx = vx
+        self._throw_vy = vy
+        self.x, self.y = x, y
+        try:
+            self.root.geometry(f"+{int(x)}+{int(y)}")
+        except tk.TclError:
+            self._cancel_throw()
+            return
+        self._follow_speech_bubble_to_kinito(x, y)
+
+        speed = math.hypot(vx, vy)
+        if bounced and speed < self.THROW_STOP_SPEED_PX_S:
+            self._finish_throw()
+            return
+        if self._throw_should_stop(speed, y, max_y):
+            self._finish_throw()
+            return
+
+        schedule_after(
+            self.root,
+            self,
+            "_throw_after_id",
+            self.THROW_FRAME_MS,
+            self._throw_tick,
+        )
+
+    def _finish_throw(self, *, play_sound: bool = True) -> None:
+        """End a throw after landing and optionally play the drop bomp."""
+        cancel_after(self.root, self, "_throw_after_id")
+        was_throwing = getattr(self, "_throwing", False)
+        self._throwing = False
+        self.moving = False
+        self._throw_vx = 0.0
+        self._throw_vy = 0.0
+        self._throw_bounce_count = 0
+        self._bubble_kinito_offset_x = None
+        self._bubble_kinito_offset_y = None
+        if hasattr(self, "clamp_position"):
+            self.x, self.y = self.clamp_position(self.x, self.y)
+            try:
+                self.root.geometry(f"+{int(self.x)}+{int(self.y)}")
+            except tk.TclError:
+                pass
+        if play_sound and was_throwing and not self._should_skip_drag_sounds():
+            self.play_sfx(bomp_file_path)
+        self._follow_speech_bubble_to_kinito()
+        if hasattr(self, "ensure_on_screen"):
+            self.root.after(0, self.ensure_on_screen)
+        if hasattr(self, "_keep_assistant_on_top"):
+            self.root.after(0, self._keep_assistant_on_top)
+
+    def _cancel_throw(self) -> None:
+        """Abort an in-flight throw without a landing sound."""
+        if not getattr(self, "_throwing", False) and getattr(self, "_throw_after_id", None) is None:
+            return
+        self._finish_throw(play_sound=False)
 
     def change_sprite(self, new_sprite):
         """Swap the visible sprite unless the user is currently dragging."""
@@ -240,7 +486,7 @@ class MovementMixin:
             return False
         if not getattr(self, "_startup_complete", False):
             return False
-        if getattr(self, "paused", False) or getattr(self, "is_dragging", False):
+        if getattr(self, "paused", False) or self._is_position_locked_by_user():
             return False
         if getattr(self, "moving", False):
             return False
@@ -363,7 +609,7 @@ class MovementMixin:
         if getattr(self, "_chat_mode", False) or getattr(self, "talking", False):
             self._begin_mouse_follow_cooldown()
             return
-        if getattr(self, "paused", False) or getattr(self, "is_dragging", False):
+        if getattr(self, "paused", False) or self._is_position_locked_by_user():
             self._mouse_follow_state = "idle"
             return
         if getattr(self, "_fancy_mode", False) or getattr(self, "_reading_idle_active", False):
@@ -601,7 +847,7 @@ class MovementMixin:
 
     def _render_surf_sprite(self, dx: float, wave_phase: float) -> None:
         """Show a surf sprite tilted with the current wave slope."""
-        if self.is_dragging:
+        if self._is_position_locked_by_user():
             return
         self._update_surf_facing(dx)
         tilt = round(
@@ -719,7 +965,7 @@ class MovementMixin:
             and self._running
             and not self.paused
             and not self.moving
-            and not self.is_dragging
+            and not self._is_position_locked_by_user()
             and not getattr(self, "_focus_mode", False)
             and not getattr(self, "_fancy_mode", False)
             and (not self.talking or getattr(self, "_preserve_sprite", False))
@@ -733,7 +979,7 @@ class MovementMixin:
             and self._running
             and not self.paused
             and not self.moving
-            and not self.is_dragging
+            and not self._is_position_locked_by_user()
             and not self.talking
             and not getattr(self, "_focus_mode", False)
             and not getattr(self, "_fancy_mode", False)
@@ -817,7 +1063,7 @@ class MovementMixin:
         while self._running:
             if (
                 self.paused
-                or self.is_dragging
+                or self._is_position_locked_by_user()
                 or not self._startup_complete
                 or self._is_busy_with_speech()
                 or self._is_background_music_playing()
@@ -876,7 +1122,7 @@ class MovementMixin:
         target_x, target_y = self.clamp_position(target_x, target_y)
         wave_phase = 0.0
         while self._running:
-            if self.paused or self.is_dragging or self._is_busy_with_speech():
+            if self.paused or self._is_position_locked_by_user() or self._is_busy_with_speech():
                 self._finish_surf_movement()
                 self._realign_speech_bubble_after_move()
                 return

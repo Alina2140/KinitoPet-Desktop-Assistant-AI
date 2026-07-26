@@ -322,6 +322,13 @@ class FloatingAssistant(
 
         self.is_dragging = False
         self._drag_moved = False
+        self._throwing = False
+        self._drag_samples = []
+        self._throw_after_id = None
+        self._throw_vx = 0.0
+        self._throw_vy = 0.0
+        self._throw_bounce_count = 0
+        self._throw_last_t = 0.0
         self.mouse_click_offset_x = 0
         self.mouse_click_offset_y = 0
         self.setup_mouse_bindings()
@@ -579,6 +586,7 @@ class FloatingAssistant(
             "_camera_comment_timer",
             "_reminder_tick_timer",
             "_focus_timer_tick_timer",
+            "_throw_after_id",
         ):
             cancel_after(self.root, self, attr)
         if hasattr(self, "_stop_mouse_attention"):
@@ -586,7 +594,7 @@ class FloatingAssistant(
 
     def ensure_on_screen(self):
         """Reposition the assistant (and bubbles) if it drifted off-screen."""
-        if not self._running or self.is_dragging:
+        if not self._running or self.is_dragging or getattr(self, "_throwing", False):
             return
 
         self.root.update_idletasks()
