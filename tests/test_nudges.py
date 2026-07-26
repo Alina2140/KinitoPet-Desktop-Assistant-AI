@@ -81,7 +81,7 @@ def test_maybe_trigger_ambient_reminder_skips_on_miss(nudges):
 
 def test_present_ambient_nudge_uses_bubble(nudges):
     with (
-        patch("kinito.features.nudges.pick_nudge_line", return_value="Drink water!"),
+        patch.object(nudges, "_pick_ambient_nudge_text", return_value="Drink water!"),
         patch("kinito.features.nudges.random.random", return_value=0.9),
     ):
         nudges._present_ambient_nudge()
@@ -91,7 +91,7 @@ def test_present_ambient_nudge_uses_bubble(nudges):
 
 def test_present_ambient_nudge_uses_popup(nudges):
     with (
-        patch("kinito.features.nudges.pick_nudge_line", return_value="I am watching."),
+        patch.object(nudges, "_pick_ambient_nudge_text", return_value="I am watching."),
         patch("kinito.features.nudges.random.random", return_value=0.1),
     ):
         # Restore real show_popup_text path via MagicMock already on stub
@@ -99,6 +99,25 @@ def test_present_ambient_nudge_uses_popup(nudges):
         nudges._present_ambient_nudge()
     nudges.show_popup_text.assert_called_once_with("I am watching.", title="KinitoPET")
     nudges.speak.assert_not_called()
+
+
+def test_pick_ambient_nudge_text_can_use_app_awareness(nudges):
+    from kinito.app_context import AppSnapshot
+
+    nudges.get_app_snapshot = MagicMock(
+        return_value=AppSnapshot("Chrome", ("Chrome",))
+    )
+    with (
+        patch("kinito.features.nudges.maybe_pick_app_aware_nudge_line", return_value="Still in Chrome?"),
+        patch("kinito.features.nudges.pick_nudge_line", return_value="Drink water!"),
+    ):
+        assert nudges._pick_ambient_nudge_text() == "Still in Chrome?"
+
+
+def test_pick_ambient_nudge_text_falls_back_without_apps(nudges):
+    nudges.get_app_snapshot = MagicMock(return_value=None)
+    with patch("kinito.features.nudges.pick_nudge_line", return_value="Drink water!"):
+        assert nudges._pick_ambient_nudge_text() == "Drink water!"
 
 
 def test_toggle_ambient_reminders_disables(nudges):

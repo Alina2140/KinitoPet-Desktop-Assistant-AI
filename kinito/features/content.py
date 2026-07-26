@@ -63,7 +63,7 @@ class ContentMixin:
             self.offer_browser_visit,
             self.offer_random_music,
             self.offer_game_picker,
-            self.give_hug,
+            self.ask_for_hug,
             self.spontaneous_nap,
         ]
         random.choice(actions)()

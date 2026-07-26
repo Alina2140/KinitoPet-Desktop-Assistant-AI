@@ -40,8 +40,14 @@ class HugMixin:
         self.change_sprite(self.tk_img_hug)
         self._schedule_hug_end()
 
+    def ask_for_hug(self):
+        """Ask the user for a hug (yes/no); do not play thank-you hug lines alone."""
+        from content import dialogue as dlg
+
+        self.speak(dlg.pick_line(dlg.HUG_QUESTIONS), 45, True)
+
     def give_hug(self):
-        """Show hug sprites and speak a hug line."""
+        """Show hug sprites and speak a hug line after the user accepts a hug."""
         from content import llm_prompts as prompts
 
         self._begin_hug_after_speech = True

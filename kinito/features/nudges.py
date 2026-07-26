@@ -5,6 +5,7 @@ import time
 import tkinter as tk
 from tkinter import Label, Toplevel
 
+from content.app_lines import maybe_pick_app_aware_nudge_line
 from content.nudge_lines import pick_nudge_line
 from kinito.window_icon import apply_window_icon
 
@@ -18,6 +19,7 @@ class NudgesMixin:
     NUDGE_POPUP_WIDTH = 320
     NUDGE_POPUP_HEIGHT = 140
     NUDGE_POPUP_AUTO_CLOSE_MS = 8000
+    APP_AWARE_NUDGE_CHANCE = 0.35
 
     def maybe_trigger_ambient_reminder(self) -> bool:
         """Roll for an ambient nudge; schedule on the Tk main thread if it hits."""
@@ -47,12 +49,27 @@ class NudgesMixin:
         self._ambient_reminders_enabled = not getattr(
             self, "_ambient_reminders_enabled", True
         )
+        if hasattr(self, "_persist_settings"):
+            self._persist_settings()
         lines = (
             dlg.REMINDERS_ON_LINES
             if self._ambient_reminders_enabled
             else dlg.REMINDERS_OFF_LINES
         )
-        self.speak(dlg.pick_line(lines))
+        self.speak(dlg.pick_line(lines), skip_ai=True)
+
+    def _pick_ambient_nudge_text(self) -> str:
+        """Pick a wellness/creepy nudge, sometimes referencing open apps."""
+        snapshot = None
+        get_snapshot = getattr(self, "get_app_snapshot", None)
+        if callable(get_snapshot):
+            snapshot = get_snapshot()
+        app_line = maybe_pick_app_aware_nudge_line(
+            snapshot, chance=self.APP_AWARE_NUDGE_CHANCE
+        )
+        if app_line:
+            return app_line
+        return pick_nudge_line()
 
     def _present_ambient_nudge(self):
         """Show one nudge line as a bubble or a text popup."""
@@ -60,7 +77,7 @@ class NudgesMixin:
             return
         if not getattr(self, "_ambient_reminders_enabled", True):
             return
-        text = pick_nudge_line()
+        text = self._pick_ambient_nudge_text()
         if random.random() < self.NUDGE_POPUP_CHANCE:
             self.show_popup_text(text, title="KinitoPET")
         else:

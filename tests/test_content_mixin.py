@@ -35,7 +35,7 @@ def content():
         "offer_browser_visit",
         "offer_random_music",
         "offer_game_picker",
-        "give_hug",
+        "ask_for_hug",
         "spontaneous_nap",
     ):
         setattr(stub, name, MagicMock())

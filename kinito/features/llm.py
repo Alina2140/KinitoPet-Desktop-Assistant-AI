@@ -197,7 +197,15 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
                 hint=hint,
             )
         prompt = prompts.append_time_context_if_needed(prompt, scripted_text, ai_hint)
+        prompt = prompts.append_app_context(prompt, self._prompt_app_snapshot())
         return self._append_memory_context(prompt, scripted_text=scripted_text, ai_hint=ai_hint)
+
+    def _prompt_app_snapshot(self):
+        """Return a live app snapshot for prompts when awareness is enabled."""
+        getter = getattr(self, "get_app_snapshot", None)
+        if not callable(getter):
+            return None
+        return getter()
 
     def _chat_greeting(self) -> str:
         """Return a chat greeting, personalizing when the user's name is known."""
@@ -207,13 +215,16 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
         return dlg.CHAT_GREETING
 
     def _system_prompt(self) -> str:
-        """Build the system prompt including persistent memory."""
-        return prompts.build_system_prompt(self.memory_prompt_block())
+        """Build the system prompt including persistent memory and live app context."""
+        base = prompts.build_system_prompt(self.memory_prompt_block())
+        return prompts.append_app_context(base, self._prompt_app_snapshot())
 
     def _generation_system_prompt(self, ai_hint: str | None) -> str:
         """System prompt for short line generation; idle lines omit memory facts."""
         if ai_hint in prompts.IDLE_GENERATION_HINTS:
-            return prompts.SYSTEM_PROMPT
+            return prompts.append_app_context(
+                prompts.SYSTEM_PROMPT, self._prompt_app_snapshot()
+            )
         return self._system_prompt()
 
     def _generate_and_speak(self, scripted_text: str, *, ai_hint=None, max_tokens=None, **speak_kwargs):
@@ -350,7 +361,13 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
         """Speak a short AI-generated idle line, with scripted fallback."""
         if not self._can_initiate_spontaneous_speech():
             return
-        fallback = random.choice(prompts.IDLE_ERROR_FALLBACK_LINES)
+        snapshot = self._prompt_app_snapshot()
+        if snapshot is not None and snapshot.has_apps and random.random() < 0.4:
+            from content.app_lines import pick_app_aware_idle_line
+
+            fallback = pick_app_aware_idle_line(snapshot)
+        else:
+            fallback = random.choice(prompts.IDLE_ERROR_FALLBACK_LINES)
         prompt = random.choice([prompts.IDLE_PROMPT, prompts.RANDOM_QUESTION_PROMPT])
         self._generate_and_speak(
             fallback,

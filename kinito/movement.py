@@ -12,6 +12,7 @@ from kinito.assets import (
     bomp_file_path,
     look_direction_from_delta,
     page_turn_file_path,
+    snoring_file_path,
     surf_file_path,
 )
 from kinito.tk_timers import cancel_after, schedule_after
@@ -52,10 +53,15 @@ class MovementMixin:
     MOUSE_LOOK_DEADZONE_PX = 40
     MOUSE_LOOK_POLL_MS = 80
     MOUSE_FOLLOW_CHANCE = 0.35
+    MOUSE_FOLLOW_OUTSIDE_CHANCE = 0.2
     MOUSE_THINK_SECONDS = (0.6, 1.2)
     MOUSE_FOLLOW_MAX_PX = 160
+    MOUSE_FOLLOW_OUTSIDE_MAX_PX = 1300
     MOUSE_FOLLOW_COOLDOWN_SECONDS = (15, 35)
     MOUSE_LOOK_STANCE_SECONDS = 1.0
+    SNORING_CHANCE = 0.38
+    SNORING_VOLUME = 0.5
+    SNORING_COOLDOWN_SECONDS = 5.0
 
     def setup_mouse_bindings(self):
         """Bind drag to the sprite only so control buttons stay clickable."""
@@ -317,15 +323,19 @@ class MovementMixin:
         low, high = self.MOUSE_FOLLOW_COOLDOWN_SECONDS
         self._mouse_follow_ready_at = time.monotonic() + random.uniform(low, high)
         self._mouse_follow_state = "idle"
+        self._mouse_follow_long_range = False
         cancel_after(self.root, self, "_mouse_think_timer")
 
     def _mouse_follow_target(self, cursor_x: float, cursor_y: float) -> tuple[float, float]:
-        """Return a short window target toward the cursor (not a full chase)."""
+        """Return a window target toward the cursor (short hop, or longer when far)."""
         center_x, center_y = self._buddy_center()
         dx = cursor_x - center_x
         dy = cursor_y - center_y
         distance = math.hypot(dx, dy)
-        max_dist = float(self.MOUSE_FOLLOW_MAX_PX)
+        if getattr(self, "_mouse_follow_long_range", False):
+            max_dist = float(self.MOUSE_FOLLOW_OUTSIDE_MAX_PX)
+        else:
+            max_dist = float(self.MOUSE_FOLLOW_MAX_PX)
         if distance > max_dist and distance > 0:
             scale = max_dist / distance
             dx *= scale
@@ -434,6 +444,14 @@ class MovementMixin:
                 if was_looking:
                     self._mouse_look_crouch = False
                     self._mouse_look_stance_until = 0.0
+                # Occasional surf toward the cursor even when it is outside the look radius.
+                if (
+                    follow_state != "thinking"
+                    and self._can_follow_mouse()
+                    and random.random() < self.MOUSE_FOLLOW_OUTSIDE_CHANCE
+                ):
+                    self._mouse_follow_long_range = True
+                    self._start_mouse_think(cursor_x, cursor_y)
                 self._schedule_mouse_attention_poll()
                 return
 
@@ -453,6 +471,7 @@ class MovementMixin:
                 return
 
             if distance <= self.MOUSE_FOLLOW_RADIUS_PX and self._can_follow_mouse():
+                self._mouse_follow_long_range = False
                 self._start_mouse_think(cursor_x, cursor_y)
 
             self._schedule_mouse_attention_poll()
@@ -462,6 +481,38 @@ class MovementMixin:
                 self._schedule_mouse_attention_poll()
             except Exception:
                 pass
+
+    def _maybe_play_snoring(self) -> None:
+        """Occasionally play a quiet snore while Kinito is asleep."""
+        if not getattr(self, "_snoring_enabled", True):
+            return
+        if not getattr(self, "paused", False):
+            return
+        if getattr(self, "talking", False):
+            return
+        last_at = float(getattr(self, "_last_snore_at", 0.0))
+        if time.monotonic() - last_at < self.SNORING_COOLDOWN_SECONDS:
+            return
+        if random.random() >= self.SNORING_CHANCE:
+            return
+        self._last_snore_at = time.monotonic()
+        play_sfx = getattr(self, "play_sfx", None)
+        if callable(play_sfx):
+            play_sfx(snoring_file_path, volume=self.SNORING_VOLUME)
+
+    def toggle_snoring(self):
+        """Enable or disable snoring sounds while asleep."""
+        from content import dialogue as dlg
+
+        self._snoring_enabled = not getattr(self, "_snoring_enabled", True)
+        if hasattr(self, "_persist_settings"):
+            self._persist_settings()
+        lines = (
+            dlg.SNORING_ON_LINES
+            if self._snoring_enabled
+            else dlg.SNORING_OFF_LINES
+        )
+        self.speak(dlg.pick_line(lines), skip_ai=True)
 
     def _update_surf_facing(self, dx: float) -> None:
         """Remember whether Kinito is surfing left or right."""
@@ -885,6 +936,7 @@ class MovementMixin:
                 self.change_sprite(self._pick_normal_idle_sprite(crouch=True))
                 time.sleep(1)
             elif self.paused and not self.talking:
+                self._maybe_play_snoring()
                 for sprite in (
                     self.tk_img_sleep,
                     self.tk_img_sleep1,

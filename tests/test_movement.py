@@ -596,8 +596,10 @@ def _configure_mouse_attention(movement):
     movement._mouse_look_crouch = False
     movement._mouse_look_stance_until = 0.0
     movement._mouse_follow_state = "idle"
+    movement._mouse_follow_long_range = False
     movement._mouse_follow_ready_at = 0.0
     movement._mouse_look_direction = "center"
+    movement._last_snore_at = 0.0
     movement.x = 100
     movement.y = 200
     movement._window_screen_size = MagicMock(return_value=(40, 80))
@@ -730,6 +732,79 @@ def test_finish_mouse_think_starts_chase(movement):
     worker()
     movement.move_towards.assert_called_once()
     movement.play_sfx.assert_called_once()
+
+
+def test_update_mouse_attention_can_follow_outside_look_radius(movement):
+    _configure_mouse_attention(movement)
+    # Far outside look radius (230): center at (120, 240), cursor at (900, 240).
+    movement.root.winfo_pointerx.return_value = 900
+    movement.root.winfo_pointery.return_value = 240
+    with patch("kinito.movement.random.random", return_value=0.0):
+        movement._update_mouse_attention()
+    assert movement._mouse_follow_long_range is True
+    assert movement._mouse_follow_state == "thinking"
+    # Think keeps sprite ownership (same as near-cursor follow).
+    assert movement._mouse_attention_owns_sprite() is True
+
+
+def test_update_mouse_attention_outside_skips_when_chance_misses(movement):
+    _configure_mouse_attention(movement)
+    movement.root.winfo_pointerx.return_value = 900
+    movement.root.winfo_pointery.return_value = 240
+    with patch("kinito.movement.random.random", return_value=0.99):
+        movement._update_mouse_attention()
+    assert movement._mouse_follow_state == "idle"
+    assert movement._mouse_follow_long_range is False
+
+
+def test_mouse_follow_target_uses_longer_range_when_flagged(movement):
+    _configure_mouse_attention(movement)
+    movement._mouse_follow_long_range = True
+    target_x, target_y = movement._mouse_follow_target(900, 240)
+    # Center starts at 120; full dx would be 780, capped at OUTSIDE_MAX (900) so full hop.
+    assert target_x == pytest.approx(100 + (900 - 120))
+    assert target_y == pytest.approx(200)
+
+
+def test_maybe_play_snoring_respects_volume_and_chance(movement):
+    _configure_mouse_attention(movement)
+    movement.paused = True
+    movement.talking = False
+    movement._snoring_enabled = True
+    movement._last_snore_at = 0.0
+    movement.play_sfx = MagicMock()
+    with patch("kinito.movement.random.random", return_value=0.0):
+        movement._maybe_play_snoring()
+    movement.play_sfx.assert_called_once()
+    args, kwargs = movement.play_sfx.call_args
+    assert args[0].endswith("snoring.mp3")
+    assert kwargs.get("volume", args[1] if len(args) > 1 else None) == movement.SNORING_VOLUME
+
+
+def test_maybe_play_snoring_respects_disabled(movement):
+    _configure_mouse_attention(movement)
+    movement.paused = True
+    movement.talking = False
+    movement._snoring_enabled = False
+    movement._last_snore_at = 0.0
+    movement.play_sfx = MagicMock()
+    with patch("kinito.movement.random.random", return_value=0.0):
+        movement._maybe_play_snoring()
+    movement.play_sfx.assert_not_called()
+
+
+def test_toggle_snoring_disables_and_enables(movement):
+    from content import dialogue as dlg
+
+    _configure_mouse_attention(movement)
+    movement._snoring_enabled = True
+    movement.speak = MagicMock()
+    movement.toggle_snoring()
+    assert movement._snoring_enabled is False
+    assert movement.speak.call_args[0][0] in dlg.SNORING_OFF_LINES
+    movement.toggle_snoring()
+    assert movement._snoring_enabled is True
+    assert movement.speak.call_args[0][0] in dlg.SNORING_ON_LINES
 
 
 def test_idle_skips_sprite_when_mouse_look_active(movement):

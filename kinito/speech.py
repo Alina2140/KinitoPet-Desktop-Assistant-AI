@@ -664,11 +664,9 @@ class SpeechMixin:
         if self._tts_interrupted(speech_epoch):
             return False
         err = (stderr or "").lower()
-        if "voice not selected" in err or "voice not found" in err:
-            return False
         # Some engines return non-zero even after audible playback; don't cascade
         # into a different character voice because of that.
-        return True
+        return not ("voice not selected" in err or "voice not found" in err)
 
     def _voice_candidate_queue(self, voice_candidates):
         """Yield preferred voices first, then system fallbacks only if needed."""

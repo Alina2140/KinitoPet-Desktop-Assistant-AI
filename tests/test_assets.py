@@ -68,6 +68,7 @@ def test_asset_subdirectories(directory_attr, relative_path):
         ("sprite_path_hug2", "KinitoHug2.png", "sprites_hugging_directory"),
         ("crash_image_path", "blueScreen.png", "crash_directory"),
         ("page_turn_file_path", "PageTurn.mp3", "sounds_directory"),
+        ("snoring_file_path", "snoring.mp3", "sounds_directory"),
         ("icon_path", "Icon.ico", "icons_directory"),
         ("favicon_path", "Favicon.png", "icons_directory"),
         ("timer_file_path", "Timer.mp3", "sounds_directory"),
@@ -137,6 +138,7 @@ def test_icon_paths_stay_under_icons_directory(path_attr):
         "tune_file_path",
         "newbeginnings_file_path",
         "page_turn_file_path",
+        "snoring_file_path",
     ],
 )
 def test_sound_paths_stay_under_sounds_directory(path_attr):

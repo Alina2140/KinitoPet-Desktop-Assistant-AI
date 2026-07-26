@@ -41,6 +41,8 @@ def _menu_app(**kwargs):
     app._focus_mode = kwargs.get("focus_mode", False)
     app._screen_effects_enabled = kwargs.get("screen_effects_enabled", True)
     app._ambient_reminders_enabled = kwargs.get("ambient_reminders_enabled", True)
+    app._app_awareness_enabled = kwargs.get("app_awareness_enabled", True)
+    app._snoring_enabled = kwargs.get("snoring_enabled", True)
     return app
 
 
@@ -128,16 +130,50 @@ def test_settings_and_actions_options():
     from content.dialog_registry import actions_options_for, settings_options_for
 
     assert settings_options_for(_menu_app()) == [
-        dlg.BUTTON_SCREEN_EFFECTS,
-        dlg.BUTTON_REMINDERS_OFF,
+        dlg.BUTTON_SCREEN_EFFECTS_ON,
+        dlg.BUTTON_REMINDERS_ON,
+        dlg.BUTTON_APP_AWARENESS_ON,
+        dlg.BUTTON_SNORING_ON,
         dlg.BUTTON_REMEMBER,
         dlg.BUTTON_FORGET,
         dlg.BUTTON_SHOW_CREDITS,
         dlg.BUTTON_BACK,
     ]
     assert settings_options_for(_menu_app(ambient_reminders_enabled=False)) == [
-        dlg.BUTTON_SCREEN_EFFECTS,
+        dlg.BUTTON_SCREEN_EFFECTS_ON,
+        dlg.BUTTON_REMINDERS_OFF,
+        dlg.BUTTON_APP_AWARENESS_ON,
+        dlg.BUTTON_SNORING_ON,
+        dlg.BUTTON_REMEMBER,
+        dlg.BUTTON_FORGET,
+        dlg.BUTTON_SHOW_CREDITS,
+        dlg.BUTTON_BACK,
+    ]
+    assert settings_options_for(_menu_app(app_awareness_enabled=False)) == [
+        dlg.BUTTON_SCREEN_EFFECTS_ON,
         dlg.BUTTON_REMINDERS_ON,
+        dlg.BUTTON_APP_AWARENESS_OFF,
+        dlg.BUTTON_SNORING_ON,
+        dlg.BUTTON_REMEMBER,
+        dlg.BUTTON_FORGET,
+        dlg.BUTTON_SHOW_CREDITS,
+        dlg.BUTTON_BACK,
+    ]
+    assert settings_options_for(_menu_app(screen_effects_enabled=False)) == [
+        dlg.BUTTON_SCREEN_EFFECTS_OFF,
+        dlg.BUTTON_REMINDERS_ON,
+        dlg.BUTTON_APP_AWARENESS_ON,
+        dlg.BUTTON_SNORING_ON,
+        dlg.BUTTON_REMEMBER,
+        dlg.BUTTON_FORGET,
+        dlg.BUTTON_SHOW_CREDITS,
+        dlg.BUTTON_BACK,
+    ]
+    assert settings_options_for(_menu_app(snoring_enabled=False)) == [
+        dlg.BUTTON_SCREEN_EFFECTS_ON,
+        dlg.BUTTON_REMINDERS_ON,
+        dlg.BUTTON_APP_AWARENESS_ON,
+        dlg.BUTTON_SNORING_OFF,
         dlg.BUTTON_REMEMBER,
         dlg.BUTTON_FORGET,
         dlg.BUTTON_SHOW_CREDITS,

@@ -43,6 +43,7 @@ from kinito.assets import (
     standing_direction_from_path,
 )
 from kinito.features.ads import AdsMixin
+from kinito.features.app_awareness import AppAwarenessMixin
 from kinito.features.browser import BrowserMixin
 from kinito.features.camera import CameraMixin
 from kinito.features.content import ContentMixin
@@ -54,6 +55,7 @@ from kinito.features.music import MusicMixin
 from kinito.features.nudges import NudgesMixin
 from kinito.features.programs import ProgramsMixin
 from kinito.movement import MovementMixin
+from kinito.settings_store import SettingsStore
 from kinito.speech import SpeechMixin
 from kinito.tk_timers import cancel_after, schedule_after
 from kinito.window_icon import set_default_window_icon
@@ -97,8 +99,10 @@ def _load_direction_sprites(paths, *, fallback, center_image):
 class FloatingAssistant(
     LLMMixin,
     SpeechMixin,
-    MovementMixin,
     GlitchMixin,
+    AdsMixin,
+    NudgesMixin,
+    MovementMixin,
     HugMixin,
     ContentMixin,
     GamesMixin,
@@ -106,8 +110,7 @@ class FloatingAssistant(
     ProgramsMixin,
     CameraMixin,
     BrowserMixin,
-    AdsMixin,
-    NudgesMixin,
+    AppAwarenessMixin,
 ):
     """Borderless desktop friend that combines speech, movement, and feature mixins."""
 
@@ -269,9 +272,16 @@ class FloatingAssistant(
         self._awaiting_response = False
         self._startup_complete = False
         self._allow_random_questions = False
-        self._screen_effects_enabled = True
-        self._ambient_reminders_enabled = True
+        self._settings = SettingsStore()
+        self._screen_effects_enabled = self._settings.get("screen_effects_enabled", True)
+        self._ambient_reminders_enabled = self._settings.get(
+            "ambient_reminders_enabled", True
+        )
         self._last_nudge_at = 0.0
+        self._init_app_awareness(
+            enabled=self._settings.get("app_awareness_enabled", True)
+        )
+        self._snoring_enabled = self._settings.get("snoring_enabled", True)
         self._focus_mode = False
         self._preserve_sprite = False
         self._talk_sprite_mode = "talking"
@@ -297,10 +307,12 @@ class FloatingAssistant(
         self._mouse_look_crouch = False
         self._mouse_look_stance_until = 0.0
         self._mouse_follow_state = "idle"
+        self._mouse_follow_long_range = False
         self._mouse_follow_ready_at = 0.0
         self._mouse_attention_timer = None
         self._mouse_think_timer = None
         self._mouse_look_direction = "center"
+        self._last_snore_at = 0.0
         self.root.wm_attributes("-topmost", True)
 
         self._log_optional_deps()
@@ -334,6 +346,24 @@ class FloatingAssistant(
             ollama_status = "ok" if self._ollama_client.is_available() else "unreachable"
         status["ollama"] = ollama_status
         print(f"Kinito optional deps: {status}", flush=True)
+
+    def _persist_settings(self) -> None:
+        """Write current Settings toggles to disk so they survive restarts."""
+        store = getattr(self, "_settings", None)
+        if store is None:
+            return
+        store.update(
+            screen_effects_enabled=bool(
+                getattr(self, "_screen_effects_enabled", True)
+            ),
+            ambient_reminders_enabled=bool(
+                getattr(self, "_ambient_reminders_enabled", True)
+            ),
+            app_awareness_enabled=bool(
+                getattr(self, "_app_awareness_enabled", True)
+            ),
+            snoring_enabled=bool(getattr(self, "_snoring_enabled", True)),
+        )
 
     def _schedule_startup_line(self):
         """Start the welcome speech in a background thread after a short delay."""

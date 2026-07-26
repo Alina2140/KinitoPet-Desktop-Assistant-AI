@@ -54,6 +54,7 @@ Store long-term useful information, for example:
 
 Do NOT store:
 - descriptions of emojis, facial expressions, gestures, or what is visible on screen
+- which apps or windows are open or active right now (that is live context, not memory)
 - random phrases, greetings, or throwaway small talk with no lasting meaning
 - fleeting mood about today ("having a good day") unless the user asks you to remember it
 - meta replies ("no change needed") or guesses
@@ -239,6 +240,34 @@ def append_time_context_if_needed(prompt: str, scripted: str | None, ai_hint: st
     if not scripted_line_needs_time_context(scripted, ai_hint):
         return prompt
     return f"{prompt}\n\n{local_time_context()}"
+
+
+def app_context_block(snapshot) -> str:
+    """Return a short live note about open/active apps (names only)."""
+    if snapshot is None or not getattr(snapshot, "has_apps", False):
+        return ""
+    active = getattr(snapshot, "active", None)
+    open_apps = getattr(snapshot, "open_apps", ()) or ()
+    parts: list[str] = []
+    if active:
+        parts.append(f"Active app right now: {active}.")
+    if open_apps:
+        listed = ", ".join(open_apps)
+        parts.append(f"Open apps (names only): {listed}.")
+    parts.append(
+        "You may lightly reference these app names when it feels natural. "
+        "Do not invent window titles, tab contents, documents, or screen text. "
+        "This is live context only — never treat it as something to remember."
+    )
+    return " ".join(parts)
+
+
+def append_app_context(prompt: str, snapshot) -> str:
+    """Append live app context when a non-empty snapshot is available."""
+    block = app_context_block(snapshot)
+    if not block:
+        return prompt
+    return f"{prompt}\n\n{block}"
 
 
 def build_system_prompt(memory_block: str = "") -> str:

@@ -544,6 +544,30 @@ REMINDERS_OFF_LINES = [
     "Ambient reminders disabled. Miss me already? I miss talking already.",
 ]
 
+APP_AWARENESS_ON_LINES = [
+    "App awareness on. I'll notice what's open. Not the titles. Just the vibe. Friendly.",
+    "I can see your open apps again. Which one's active? I'll know. Softly.",
+    "Desktop radar enabled. Apps only — no peeking inside. Promise. Mostly.",
+]
+
+APP_AWARENESS_OFF_LINES = [
+    "App awareness off. Your windows are your business. I'll pretend I don't know.",
+    "I won't track open apps anymore. Blindfolded friendship. Still here though.",
+    "Desktop radar disabled. No more 'still in that app?' from me. For now.",
+]
+
+SNORING_ON_LINES = [
+    "Snoring on. When I nap, expect the occasional soft... zzz. Charming, right?",
+    "Sleep sounds enabled. I'll snore a little. Quietly. Mostly. Cute mostly.",
+    "Snoring is back! Nap mode comes with audio now. You're welcome.",
+]
+
+SNORING_OFF_LINES = [
+    "Snoring off. Silent naps only. Very professional. Very quiet. Still sleeping.",
+    "No more zzz sounds. I'll dream in mute. Still dreaming about you though.",
+    "Sleep audio disabled. Peaceful silence while I nap. Miss the snoring yet?",
+]
+
 FOCUS_ON_LINES = [
     "Focus mode on. I'll wander quietly. No chatter, no surprises. Just... presence.",
     "Quiet mode engaged. I'll keep moving, but I won't bother you. I'll still notice.",
@@ -1056,6 +1080,12 @@ BUTTON_SCREEN_EFFECTS_OFF = "Screen Effects off"
 BUTTON_REMINDERS = "Reminders"
 BUTTON_REMINDERS_ON = "Reminders on"
 BUTTON_REMINDERS_OFF = "Reminders off"
+BUTTON_APP_AWARENESS = "App Awareness"
+BUTTON_APP_AWARENESS_ON = "App Awareness on"
+BUTTON_APP_AWARENESS_OFF = "App Awareness off"
+BUTTON_SNORING = "Snoring"
+BUTTON_SNORING_ON = "Snoring on"
+BUTTON_SNORING_OFF = "Snoring off"
 BUTTON_SING_SONG = "Sing"
 BUTTON_FUN_FACT = "Fun Fact"
 BUTTON_CHAT = "Chat"

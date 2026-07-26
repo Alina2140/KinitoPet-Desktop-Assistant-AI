@@ -121,15 +121,32 @@ def modes_options_for(app) -> list[str]:
 
 
 def settings_options_for(app) -> list[str]:
-    """Return Settings submenu labels with reminder toggle state."""
+    """Return Settings submenu labels showing each toggle's current state."""
+    screen_effects_label = (
+        dlg.BUTTON_SCREEN_EFFECTS_ON
+        if getattr(app, "_screen_effects_enabled", True)
+        else dlg.BUTTON_SCREEN_EFFECTS_OFF
+    )
     reminders_label = (
-        dlg.BUTTON_REMINDERS_OFF
+        dlg.BUTTON_REMINDERS_ON
         if getattr(app, "_ambient_reminders_enabled", True)
-        else dlg.BUTTON_REMINDERS_ON
+        else dlg.BUTTON_REMINDERS_OFF
+    )
+    app_awareness_label = (
+        dlg.BUTTON_APP_AWARENESS_ON
+        if getattr(app, "_app_awareness_enabled", True)
+        else dlg.BUTTON_APP_AWARENESS_OFF
+    )
+    snoring_label = (
+        dlg.BUTTON_SNORING_ON
+        if getattr(app, "_snoring_enabled", True)
+        else dlg.BUTTON_SNORING_OFF
     )
     return [
-        dlg.BUTTON_SCREEN_EFFECTS,
+        screen_effects_label,
         reminders_label,
+        app_awareness_label,
+        snoring_label,
         dlg.BUTTON_REMEMBER,
         dlg.BUTTON_FORGET,
         dlg.BUTTON_SHOW_CREDITS,
@@ -368,6 +385,12 @@ def _menu_action_handlers() -> dict[str, Handler]:
         dlg.BUTTON_REMINDERS: lambda a: a.toggle_ambient_reminders(),
         dlg.BUTTON_REMINDERS_ON: lambda a: a.toggle_ambient_reminders(),
         dlg.BUTTON_REMINDERS_OFF: lambda a: a.toggle_ambient_reminders(),
+        dlg.BUTTON_APP_AWARENESS: lambda a: a.toggle_app_awareness(),
+        dlg.BUTTON_APP_AWARENESS_ON: lambda a: a.toggle_app_awareness(),
+        dlg.BUTTON_APP_AWARENESS_OFF: lambda a: a.toggle_app_awareness(),
+        dlg.BUTTON_SNORING: lambda a: a.toggle_snoring(),
+        dlg.BUTTON_SNORING_ON: lambda a: a.toggle_snoring(),
+        dlg.BUTTON_SNORING_OFF: lambda a: a.toggle_snoring(),
         dlg.BUTTON_SING_SONG: lambda a: a.say_random_poem(),
         dlg.BUTTON_FUN_FACT: lambda a: a.say_random_fact(),
         dlg.BUTTON_REMEMBER: lambda a: a.show_memory_summary(),

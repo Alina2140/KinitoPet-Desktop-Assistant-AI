@@ -26,6 +26,15 @@ def hug():
     return stub
 
 
+def test_ask_for_hug_asks_yes_no(hug):
+    from content import dialogue as dlg
+
+    with patch("content.dialogue.pick_line", return_value=dlg.HUG_QUESTIONS[0]):
+        hug.ask_for_hug()
+    hug.speak.assert_called_once_with(dlg.HUG_QUESTIONS[0], 45, True)
+    assert getattr(hug, "_begin_hug_after_speech", False) is False
+
+
 def test_give_hug_defers_pose_until_speech(hug):
     with patch("kinito.features.hug.random.choice", return_value=HUG_LINES[0]):
         hug.give_hug()

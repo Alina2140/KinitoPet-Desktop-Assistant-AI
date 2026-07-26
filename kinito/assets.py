@@ -106,6 +106,7 @@ woosh_file_path = os.path.join(sounds_directory, "Woosh.mp3")
 surf_file_path = os.path.join(sounds_directory, "Surf.mp3")
 bomp_file_path = os.path.join(sounds_directory, "Bomp.mp3")
 page_turn_file_path = os.path.join(sounds_directory, "PageTurn.mp3")
+snoring_file_path = os.path.join(sounds_directory, "snoring.mp3")
 
 _IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp")
 

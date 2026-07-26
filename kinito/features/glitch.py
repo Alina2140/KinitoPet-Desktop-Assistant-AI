@@ -13,11 +13,11 @@ from kinito.assets import crash_image_path
 class GlitchMixin:
     """Brief screen static/distortion flashes during autonomous movement."""
 
-    GLITCH_CHANCE = 1 / 1500
-    GLITCH_DURATION_MS = 250
+    GLITCH_CHANCE = 1 / 700
+    GLITCH_DURATION_MS = 2000
     GLITCH_NOISE_SCALE = 6
-    BLUE_SCREEN_CHANCE = 1 / 1500
-    BLUE_SCREEN_DURATION_MS = 250
+    BLUE_SCREEN_CHANCE = 1 / 700
+    BLUE_SCREEN_DURATION_MS = 2000
 
     def maybe_trigger_screen_glitch(self) -> bool:
         """Roll for a rare screen glitch; schedule on the Tk main thread if it hits."""
@@ -56,12 +56,14 @@ class GlitchMixin:
         from content import dialogue as dlg
 
         self._screen_effects_enabled = not self._screen_effects_enabled
+        if hasattr(self, "_persist_settings"):
+            self._persist_settings()
         lines = (
             dlg.SCREEN_EFFECTS_ON_LINES
             if self._screen_effects_enabled
             else dlg.SCREEN_EFFECTS_OFF_LINES
         )
-        self.speak(dlg.pick_line(lines))
+        self.speak(dlg.pick_line(lines), skip_ai=True)
 
     def _has_glitch_overlay(self) -> bool:
         window = getattr(self, "_glitch_window", None)

@@ -524,15 +524,17 @@ class ProgramsMixin:
         self,
         image_path,
         *,
-        width=360,
-        height=280,
+        width=None,
+        height=None,
         x=None,
         y=None,
         title="KinitoPET",
         on_close=None,
         modal=False,
+        max_width_ratio=0.7,
+        max_height_ratio=0.7,
     ):
-        """Show *image_path* in a compact popup window."""
+        """Show *image_path* in a topmost popup sized to the image (or a fixed box)."""
         try:
             img = Image.open(image_path)
         except OSError:
@@ -540,22 +542,41 @@ class ProgramsMixin:
                 on_close()
             return
 
+        self.root.update_idletasks()
+        vroot_x = self.root.winfo_vrootx()
+        vroot_y = self.root.winfo_vrooty()
+        vroot_w = self.root.winfo_vrootwidth()
+        vroot_h = self.root.winfo_vrootheight()
+
+        img_w, img_h = img.size
+        if width is None or height is None:
+            max_w = max(int(vroot_w * max_width_ratio), 1)
+            max_h = max(int(vroot_h * max_height_ratio), 1)
+            scale = min(1.0, max_w / max(img_w, 1), max_h / max(img_h, 1))
+            width = max(1, int(img_w * scale))
+            height = max(1, int(img_h * scale))
+            if scale < 1.0:
+                img = img.resize((width, height), Image.Resampling.LANCZOS)
+        elif img.size != (width, height):
+            # Keep the requested window size; fit the image inside without stretching.
+            scale = min(width / max(img_w, 1), height / max(img_h, 1))
+            fitted_w = max(1, int(img_w * scale))
+            fitted_h = max(1, int(img_h * scale))
+            if (fitted_w, fitted_h) != img.size:
+                img = img.resize((fitted_w, fitted_h), Image.Resampling.LANCZOS)
+
         popup = Toplevel(self.root)
         popup.title(title)
         apply_window_icon(popup)
-        popup.geometry(f"{width}x{height}")
         popup.wm_attributes("-topmost", True)
+        popup.configure(bg="black")
 
         tk_img = ImageTk.PhotoImage(img)
-        label = Label(popup, image=tk_img)
+        label = Label(popup, image=tk_img, bd=0, highlightthickness=0, bg="black")
         label.image = tk_img
         label.pack(fill="both", expand=True)
 
         if x is None or y is None:
-            vroot_x = self.root.winfo_vrootx()
-            vroot_y = self.root.winfo_vrooty()
-            vroot_w = self.root.winfo_vrootwidth()
-            vroot_h = self.root.winfo_vrootheight()
             x = vroot_x + (vroot_w - width) // 2
             y = vroot_y + (vroot_h - height) // 2
         popup.geometry(f"{width}x{height}+{int(x)}+{int(y)}")
