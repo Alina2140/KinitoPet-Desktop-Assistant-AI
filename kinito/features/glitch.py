@@ -79,6 +79,43 @@ class GlitchMixin:
         except tk.TclError:
             return False
 
+    def _has_screen_effect_overlay(self) -> bool:
+        """Return True while a glitch or blue-screen overlay is visible."""
+        return self._has_glitch_overlay() or self._has_blue_screen_overlay()
+
+    def _raise_screen_effect_overlays(self) -> None:
+        """Keep glitch/BSOD above Kinito among topmost sibling windows."""
+        for attr in ("_glitch_window", "_crash_window"):
+            window = getattr(self, attr, None)
+            if window is None:
+                continue
+            try:
+                if not window.winfo_exists():
+                    continue
+                window.wm_attributes("-topmost", True)
+                window.lift()
+                if hasattr(self, "_force_window_topmost"):
+                    self._force_window_topmost(window)
+            except tk.TclError:
+                pass
+
+    def _schedule_raise_screen_effect_overlays(self) -> None:
+        """Debounce overlay re-raise onto the Tk thread (safe during surf)."""
+        if not self._has_screen_effect_overlay():
+            return
+        if getattr(self, "_raise_overlay_pending", False):
+            return
+        self._raise_overlay_pending = True
+
+        def _do_raise():
+            self._raise_overlay_pending = False
+            self._raise_screen_effect_overlays()
+
+        try:
+            self.root.after(0, _do_raise)
+        except tk.TclError:
+            self._raise_overlay_pending = False
+
     def _cancel_glitch_hide_timer(self):
         timer = getattr(self, "_glitch_hide_timer", None)
         if timer is not None:
@@ -157,6 +194,7 @@ class GlitchMixin:
         )
         label.pack(fill="both", expand=True)
 
+        self._raise_screen_effect_overlays()
         self._glitch_hide_timer = self.root.after(
             self.GLITCH_DURATION_MS,
             self.hide_screen_glitch,
@@ -197,6 +235,7 @@ class GlitchMixin:
         )
         label.pack(fill="both", expand=True)
 
+        self._raise_screen_effect_overlays()
         self._crash_hide_timer = self.root.after(
             self.BLUE_SCREEN_DURATION_MS,
             self.hide_blue_screen,

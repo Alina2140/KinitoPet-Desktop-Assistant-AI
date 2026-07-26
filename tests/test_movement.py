@@ -763,18 +763,23 @@ def test_update_mouse_attention_outside_skips_when_chance_misses(movement):
     _configure_mouse_attention(movement)
     movement.root.winfo_pointerx.return_value = 900
     movement.root.winfo_pointery.return_value = 240
-    with patch("kinito.movement.random.random", return_value=0.99):
+    with (
+        patch("kinito.movement.random.random", return_value=0.99),
+        patch("kinito.movement.random.uniform", return_value=40.0),
+    ):
         movement._update_mouse_attention()
     assert movement._mouse_follow_state == "idle"
     assert movement._mouse_follow_long_range is False
+    assert movement._mouse_follow_ready_at > 0
 
 
 def test_mouse_follow_target_uses_longer_range_when_flagged(movement):
     _configure_mouse_attention(movement)
     movement._mouse_follow_long_range = True
     target_x, target_y = movement._mouse_follow_target(900, 240)
-    # Center starts at 120; full dx would be 780, capped at OUTSIDE_MAX (900) so full hop.
-    assert target_x == pytest.approx(100 + (900 - 120))
+    # Center starts at 120; full dx would be 780, capped at OUTSIDE_MAX.
+    capped = float(movement.MOUSE_FOLLOW_OUTSIDE_MAX_PX)
+    assert target_x == pytest.approx(100 + capped)
     assert target_y == pytest.approx(200)
 
 

@@ -37,6 +37,7 @@ class SpeechChatMixin:
 
         self.play_sfx(starttalk_file_path)
         self.speech_bubble = self._new_speech_bubble_toplevel(self.CHAT_TITLE)
+        self._speech_bubble_ready = False
         self._speech_bubble_label = None
         self._speech_bubble_text_frame = None
         self._speech_bubble_button_frame = None

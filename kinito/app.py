@@ -535,12 +535,18 @@ class FloatingAssistant(
             self.root.wm_attributes("-topmost", True)
             self.root.lift()
             self._force_window_topmost(self.root)
-            if self._has_active_speech_bubble():
+            if (
+                self._has_active_speech_bubble()
+                and getattr(self, "_speech_bubble_ready", False)
+            ):
                 bubble = getattr(self, "speech_bubble", None)
                 if bubble is not None and bubble.winfo_exists():
                     bubble.wm_attributes("-topmost", True)
                     bubble.lift()
                     self._force_window_topmost(bubble)
+            # Screen effects must stay above Kinito/bubble among topmost peers.
+            if hasattr(self, "_raise_screen_effect_overlays"):
+                self._raise_screen_effect_overlays()
         except tk.TclError:
             pass
 

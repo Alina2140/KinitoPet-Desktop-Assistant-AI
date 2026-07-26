@@ -85,3 +85,32 @@ def test_toggle_screen_effects_enables(glitch):
     glitch.toggle_screen_effects()
     assert glitch._screen_effects_enabled is True
     assert glitch.speak.call_args[0][0] in dlg.SCREEN_EFFECTS_ON_LINES
+
+
+def test_raise_screen_effect_overlays_lifts_active_windows(glitch):
+    overlay = MagicMock()
+    overlay.winfo_exists.return_value = True
+    glitch._glitch_window = overlay
+    glitch._crash_window = None
+    glitch._force_window_topmost = MagicMock()
+
+    glitch._raise_screen_effect_overlays()
+
+    overlay.wm_attributes.assert_called_with("-topmost", True)
+    overlay.lift.assert_called_once()
+    glitch._force_window_topmost.assert_called_once_with(overlay)
+
+
+def test_schedule_raise_screen_effect_overlays_debounces(glitch):
+    glitch._glitch_window = MagicMock()
+    glitch._glitch_window.winfo_exists.return_value = True
+    glitch._raise_screen_effect_overlays = MagicMock()
+
+    glitch._schedule_raise_screen_effect_overlays()
+    glitch._schedule_raise_screen_effect_overlays()
+
+    assert glitch.root.after.call_count == 1
+    callback = glitch.root.after.call_args[0][1]
+    callback()
+    glitch._raise_screen_effect_overlays.assert_called_once()
+    assert glitch._raise_overlay_pending is False

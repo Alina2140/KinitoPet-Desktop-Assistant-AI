@@ -99,6 +99,7 @@ def test_bubble_tail_aims_at_kinito_when_bubble_is_offset(speech):
 
 def test_position_speech_bubble_uses_tracked_kinito_coords_while_dragging(speech):
     speech.is_dragging = True
+    speech._speech_bubble_ready = True
     speech.root = MagicMock()
     speech.root.winfo_rootx.return_value = 50
     speech.root.winfo_rooty.return_value = 60
@@ -117,12 +118,13 @@ def test_position_speech_bubble_uses_tracked_kinito_coords_while_dragging(speech
 
     speech.position_speech_bubble()
 
-    speech.speech_bubble.geometry.assert_called_once_with("120x80+490+190")
+    speech.speech_bubble.geometry.assert_called_once_with("120x80+490+208")
 
 
 def test_position_speech_bubble_prefers_live_window_coords(speech):
     speech.is_dragging = False
     speech.moving = False
+    speech._speech_bubble_ready = True
     speech.root = MagicMock()
     speech.root.winfo_rootx.return_value = 800
     speech.root.winfo_rooty.return_value = 400
@@ -141,7 +143,7 @@ def test_position_speech_bubble_prefers_live_window_coords(speech):
 
     speech.position_speech_bubble()
 
-    speech.speech_bubble.geometry.assert_called_once_with("120x80+790+290")
+    speech.speech_bubble.geometry.assert_called_once_with("120x80+790+308")
 
 
 def test_fit_speech_bubble_to_content_preserves_screen_position(speech):
@@ -161,6 +163,7 @@ def test_fit_speech_bubble_to_content_preserves_screen_position(speech):
 
 
 def test_move_speech_bubble_with_kinito_uses_drag_offset(speech):
+    speech._speech_bubble_ready = True
     speech._bubble_kinito_offset_x = 10
     speech._bubble_kinito_offset_y = -200
     speech.speech_bubble = MagicMock()
@@ -500,3 +503,64 @@ def test_close_speech_bubble_cancels_response_timeout(speech):
 )
 def test_infer_talk_sprite_mode(speech, text, question, expected):
     assert speech._infer_talk_sprite_mode(text, question=question) == expected
+
+
+def test_bubble_screen_size_ignores_inflated_winfo(speech):
+    speech.speech_bubble = MagicMock()
+    speech.speech_bubble.winfo_reqwidth.return_value = 200
+    speech.speech_bubble.winfo_reqheight.return_value = 100
+    speech.speech_bubble.winfo_width.return_value = 900
+    speech.speech_bubble.winfo_height.return_value = 700
+
+    assert speech._bubble_screen_size() == (200, 100)
+
+
+def test_reveal_speech_bubble_prepaints_off_screen(speech):
+    speech._has_active_speech_bubble = MagicMock(return_value=True)
+    speech._speech_bubble_ready = False
+    speech._sync_kinito_screen_position = MagicMock()
+    speech._fit_speech_bubble_to_content = MagicMock()
+    speech._bubble_screen_size = MagicMock(return_value=(220, 140))
+    speech.position_speech_bubble = MagicMock()
+    speech._focus_bubble_entry = MagicMock()
+    speech._raise_screen_effect_overlays = MagicMock()
+    speech.root = MagicMock()
+    bubble = MagicMock()
+    speech.speech_bubble = bubble
+
+    speech._reveal_speech_bubble()
+
+    assert bubble.geometry.call_count >= 1
+    bubble.geometry.assert_any_call(f"220x140{speech.BUBBLE_OFF_SCREEN_GEOMETRY}")
+    bubble.deiconify.assert_called_once()
+    assert bubble.update.call_count >= 1
+    assert speech._speech_bubble_ready is True
+    assert speech._fit_speech_bubble_to_content.call_count >= 2
+    speech.position_speech_bubble.assert_called_once_with(force=True)
+    bubble.attributes.assert_any_call("-alpha", 0.0)
+    bubble.attributes.assert_any_call("-alpha", 1.0)
+    speech._raise_screen_effect_overlays.assert_called_once()
+    speech._focus_bubble_entry.assert_called_once_with(force=True)
+
+
+def test_reveal_speech_bubble_skips_offscreen_when_already_ready(speech):
+    speech._has_active_speech_bubble = MagicMock(return_value=True)
+    speech._speech_bubble_ready = True
+    speech.position_speech_bubble = MagicMock()
+    speech.speech_bubble = MagicMock()
+
+    speech._reveal_speech_bubble()
+
+    speech.speech_bubble.deiconify.assert_not_called()
+    speech.position_speech_bubble.assert_called_once_with(force=True)
+
+
+def test_position_speech_bubble_waits_until_ready(speech):
+    speech.speech_bubble = MagicMock()
+    speech.speech_bubble.winfo_exists.return_value = True
+    speech._speech_bubble_ready = False
+    speech.root = MagicMock()
+
+    speech.position_speech_bubble()
+
+    speech.speech_bubble.geometry.assert_not_called()

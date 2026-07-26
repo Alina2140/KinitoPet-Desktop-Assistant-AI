@@ -53,12 +53,12 @@ class MovementMixin:
     MOUSE_FOLLOW_RADIUS_PX = 180
     MOUSE_LOOK_DEADZONE_PX = 40
     MOUSE_LOOK_POLL_MS = 80
-    MOUSE_FOLLOW_CHANCE = 0.35
-    MOUSE_FOLLOW_OUTSIDE_CHANCE = 0.2
+    MOUSE_FOLLOW_CHANCE = 0.15
+    MOUSE_FOLLOW_OUTSIDE_CHANCE = 0.06
     MOUSE_THINK_SECONDS = (0.6, 1.2)
-    MOUSE_FOLLOW_MAX_PX = 160
-    MOUSE_FOLLOW_OUTSIDE_MAX_PX = 900
-    MOUSE_FOLLOW_COOLDOWN_SECONDS = (15, 35)
+    MOUSE_FOLLOW_MAX_PX = 110
+    MOUSE_FOLLOW_OUTSIDE_MAX_PX = 720
+    MOUSE_FOLLOW_COOLDOWN_SECONDS = (35, 70)
     MOUSE_LOOK_STANCE_SECONDS = 1.0
     SNORING_CHANCE = 0.38
     SNORING_VOLUME = 0.5
@@ -374,6 +374,8 @@ class MovementMixin:
             self._cancel_throw()
             return
         self._follow_speech_bubble_to_kinito(x, y)
+        if hasattr(self, "_schedule_raise_screen_effect_overlays"):
+            self._schedule_raise_screen_effect_overlays()
 
         speed = math.hypot(vx, vy)
         if bounced and speed < self.THROW_STOP_SPEED_PX_S:
@@ -691,13 +693,13 @@ class MovementMixin:
                     self._mouse_look_crouch = False
                     self._mouse_look_stance_until = 0.0
                 # Occasional surf toward the cursor even when it is outside the look radius.
-                if (
-                    follow_state != "thinking"
-                    and self._can_follow_mouse()
-                    and random.random() < self.MOUSE_FOLLOW_OUTSIDE_CHANCE
-                ):
-                    self._mouse_follow_long_range = True
-                    self._start_mouse_think(cursor_x, cursor_y)
+                if follow_state != "thinking" and self._can_follow_mouse():
+                    if random.random() < self.MOUSE_FOLLOW_OUTSIDE_CHANCE:
+                        self._mouse_follow_long_range = True
+                        self._start_mouse_think(cursor_x, cursor_y)
+                    else:
+                        # Miss still starts cooldown so we don't re-roll every poll tick.
+                        self._begin_mouse_follow_cooldown()
                 self._schedule_mouse_attention_poll()
                 return
 
@@ -902,6 +904,8 @@ class MovementMixin:
         clamped_x, clamped_y = self.clamp_position(x, display_y)
         self.x, self.y = x, y
         self.root.geometry(f"+{int(clamped_x)}+{int(clamped_y)}")
+        if hasattr(self, "_schedule_raise_screen_effect_overlays"):
+            self._schedule_raise_screen_effect_overlays()
 
     def _talking_sprite_pair(self):
         """Return the two-frame sprite pair for the current speech mode."""

@@ -195,8 +195,14 @@ class SpeechMixin:
         """Return the speech bubble's width and height for layout calculations."""
         bubble = self.speech_bubble
         bubble.update_idletasks()
-        bubble_w = max(bubble.winfo_width(), bubble.winfo_reqwidth(), 1)
-        bubble_h = max(bubble.winfo_height(), bubble.winfo_reqheight(), 1)
+        # Prefer requested content size. Realized winfo_* can stay inflated after
+        # off-screen reveal on Windows transparent windows and push the bubble up.
+        req_w = max(int(bubble.winfo_reqwidth()), 1)
+        req_h = max(int(bubble.winfo_reqheight()), 1)
+        win_w = int(bubble.winfo_width())
+        win_h = int(bubble.winfo_height())
+        bubble_w = win_w if 1 < win_w <= req_w + 8 else req_w
+        bubble_h = win_h if 1 < win_h <= req_h + 8 else req_h
         return bubble_w, bubble_h
 
     def _kinito_screen_center_x(self):
@@ -353,6 +359,8 @@ class SpeechMixin:
             return
         bubble = self.speech_bubble
         try:
+            # Redraw chrome first so req size includes chamfer + tail.
+            self._redraw_bubble_shell()
             bubble.update_idletasks()
             width = max(bubble.winfo_reqwidth(), 1)
             height = max(bubble.winfo_reqheight(), 1)
@@ -367,7 +375,6 @@ class SpeechMixin:
                     bubble.geometry(f"{width}x{height}")
                 else:
                     bubble.geometry(f"{width}x{height}+{bubble_x}+{bubble_y}")
-            self._redraw_bubble_shell()
         except tk.TclError:
             pass
 
@@ -389,6 +396,8 @@ class SpeechMixin:
 
     def _move_speech_bubble_with_kinito(self, kinito_x, kinito_y):
         """Move the speech bubble by the same delta as Kinito while dragging."""
+        if not getattr(self, "_speech_bubble_ready", False):
+            return
         offset_x = getattr(self, "_bubble_kinito_offset_x", None)
         offset_y = getattr(self, "_bubble_kinito_offset_y", None)
         if offset_x is None or offset_y is None:
@@ -408,6 +417,8 @@ class SpeechMixin:
         self.speech_bubble.lift()
         self.speech_bubble.wm_attributes("-topmost", True)
         self._update_bubble_tail()
+        if hasattr(self, "_raise_screen_effect_overlays"):
+            self._raise_screen_effect_overlays()
 
     def _cancel_bubble_close_timer(self):
         """Cancel any scheduled auto-close for the current speech bubble."""
@@ -845,6 +856,7 @@ class SpeechMixin:
 
         self.play_sfx(starttalk_file_path)
         self.speech_bubble = self._new_speech_bubble_toplevel(text)
+        self._speech_bubble_ready = False
         self._speech_bubble_label = None
         self._speech_bubble_text_frame = None
         self._speech_bubble_button_frame = None
@@ -857,7 +869,7 @@ class SpeechMixin:
         self._speech_bubble_text_frame = text_frame
 
         label = self.create_wrapped_label(text_frame, text)
-        label.pack(fill=tk.BOTH, expand=True, ipadx=self.BUBBLE_PAD_X, ipady=self.BUBBLE_PAD_Y, anchor="w")
+        label.pack(fill=tk.X, expand=False, ipadx=self.BUBBLE_PAD_X, ipady=self.BUBBLE_PAD_Y, anchor="w")
         self._speech_bubble_label = label
 
         spec = find_dialog_spec(text)
@@ -1040,6 +1052,7 @@ class SpeechMixin:
             )
         else:
             self.speech_bubble = self._new_speech_bubble_toplevel(prompt)
+            self._speech_bubble_ready = False
             bubble_body = self._create_bubble_shell(self.speech_bubble)
 
             label = self.create_wrapped_label(bubble_body, prompt)
@@ -1088,6 +1101,7 @@ class SpeechMixin:
         self._preserve_sprite = False
         self._talk_sprite_mode = "talking"
         self._speech_bubble_last_pos = None
+        self._speech_bubble_ready = False
         self._speech_bubble_label = None
         self._speech_bubble_text_frame = None
         self._speech_bubble_button_frame = None
@@ -1113,6 +1127,11 @@ class SpeechMixin:
         bubble.configure(bg=self.BUBBLE_TRANSPARENT_BG)
         bubble.overrideredirect(True)
         bubble.attributes("-transparentcolor", "white")
+        try:
+            # Stay invisible until the first full paint finishes.
+            bubble.attributes("-alpha", 0.0)
+        except tk.TclError:
+            pass
         bubble.wm_attributes("-topmost", True)
         bubble.wm_title(title)
         return bubble
@@ -1122,25 +1141,49 @@ class SpeechMixin:
         return getattr(self, "STARTUP_REVEAL_DELAY_MS", self.BUBBLE_REVEAL_DELAY_MS)
 
     def _reveal_speech_bubble(self):
-        """Measure layout, position beside Kinito, then show the bubble."""
+        """Measure layout, pre-paint invisibly, then show beside Kinito."""
         if not self._has_active_speech_bubble():
+            return
+        # Second scheduled reveal: only re-anchor; never yank off-screen again.
+        if getattr(self, "_speech_bubble_ready", False):
+            self.position_speech_bubble(force=True)
             return
         if hasattr(self, "_sync_kinito_screen_position"):
             self._sync_kinito_screen_position()
         self._fit_speech_bubble_to_content()
-        self.root.update_idletasks()
-        self.speech_bubble.update_idletasks()
-        self._speech_bubble_last_pos = None
-        self.position_speech_bubble()
+        bubble = self.speech_bubble
         try:
-            self.speech_bubble.deiconify()
-            self.speech_bubble.lift()
+            self.root.update_idletasks()
+            bubble.update_idletasks()
+            width, height = self._bubble_screen_size()
+            try:
+                bubble.attributes("-alpha", 0.0)
+            except tk.TclError:
+                pass
+            # First full paint happens off-screen / invisible so Windows
+            # transparentcolor windows do not flash black mid-throw.
+            bubble.geometry(f"{width}x{height}{self.BUBBLE_OFF_SCREEN_GEOMETRY}")
+            bubble.deiconify()
+            bubble.update()
+            # Re-measure after the first paint; realized sizes can settle then.
+            self._fit_speech_bubble_to_content()
+            width, height = self._bubble_screen_size()
+            bubble.geometry(f"{width}x{height}{self.BUBBLE_OFF_SCREEN_GEOMETRY}")
+            bubble.update_idletasks()
+            self._speech_bubble_ready = True
+            self._speech_bubble_last_pos = None
+            self.position_speech_bubble(force=True)
+            bubble.update_idletasks()
+            try:
+                bubble.attributes("-alpha", 1.0)
+            except tk.TclError:
+                pass
+            bubble.lift()
         except tk.TclError:
-            pass
-        self.root.update_idletasks()
-        self.speech_bubble.update_idletasks()
-        self._speech_bubble_last_pos = None
-        self.position_speech_bubble()
+            self._speech_bubble_ready = False
+            return
+        if hasattr(self, "_raise_screen_effect_overlays"):
+            self._raise_screen_effect_overlays()
         self._focus_bubble_entry(force=True)
 
     def _schedule_speech_bubble_position(self):
@@ -1149,9 +1192,11 @@ class SpeechMixin:
         self.root.after(delay, self._reveal_speech_bubble)
         self.root.after(delay + delay, self._reveal_speech_bubble)
 
-    def position_speech_bubble(self):
+    def position_speech_bubble(self, *, force: bool = False):
         """Place the bubble above Kinito, clamped to screen bounds."""
         if not hasattr(self, "speech_bubble") or not self.speech_bubble.winfo_exists():
+            return
+        if not force and not getattr(self, "_speech_bubble_ready", False):
             return
 
         self.root.update_idletasks()
@@ -1161,7 +1206,7 @@ class SpeechMixin:
         kinito_w = self._kinito_screen_width()
         bubble_w, bubble_h = self._bubble_screen_size()
 
-        gap = 30
+        gap = 12
         bubble_x = kinito_x + (kinito_w // 2) - (bubble_w // 2)
         bubble_y = kinito_y - bubble_h - gap
 
@@ -1171,7 +1216,8 @@ class SpeechMixin:
 
         new_pos = (bubble_x, bubble_y)
         force_reposition = (
-            getattr(self, "is_dragging", False)
+            force
+            or getattr(self, "is_dragging", False)
             or getattr(self, "_throwing", False)
             or getattr(self, "moving", False)
         )
