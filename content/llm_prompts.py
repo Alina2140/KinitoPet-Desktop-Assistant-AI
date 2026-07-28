@@ -214,7 +214,11 @@ def scripted_line_needs_time_context(scripted: str | None, ai_hint: str | None =
     return any(re.search(pattern, blob) for pattern in _TIME_CONTEXT_PATTERNS)
 
 
-def local_time_context(now: datetime | None = None) -> str:
+def local_time_context(
+    now: datetime | None = None,
+    *,
+    include_special_day: bool = False,
+) -> str:
     """Return a short local-time note for time-sensitive AI lines."""
     moment = now or datetime.now()
     hour = moment.hour
@@ -230,18 +234,32 @@ def local_time_context(now: datetime | None = None) -> str:
         period = "night"
 
     time_str = moment.strftime("%H:%M")
-    return (
-        f"Current local time for the user: {time_str} ({period};). "
-        "Match your wording to this time of day. "
-        "Do not ask about night, sleep, or morning routines when it is the wrong time."
-    )
+    date_str = moment.strftime("%A, %B %d, %Y").replace(" 0", " ")
+    parts = [
+        f"Current local time for the user: {time_str} ({period}) on {date_str}.",
+        "Match your wording to this time of day.",
+        "Do not ask about night, sleep, or morning routines when it is the wrong time.",
+    ]
+    if include_special_day:
+        from content.special_days import special_day_for
+
+        occasion = special_day_for(moment)
+        if occasion is not None:
+            parts.append(f"Today is {occasion.name}. You may mention it lightly if it fits.")
+    return " ".join(parts)
 
 
-def append_time_context_if_needed(prompt: str, scripted: str | None, ai_hint: str | None = None) -> str:
+def append_time_context_if_needed(
+    prompt: str,
+    scripted: str | None,
+    ai_hint: str | None = None,
+    *,
+    include_special_day: bool = False,
+) -> str:
     """Append local time context only when the line is time-sensitive."""
     if not scripted_line_needs_time_context(scripted, ai_hint):
         return prompt
-    return f"{prompt}\n\n{local_time_context()}"
+    return f"{prompt}\n\n{local_time_context(include_special_day=include_special_day)}"
 
 
 def app_context_block(snapshot) -> str:

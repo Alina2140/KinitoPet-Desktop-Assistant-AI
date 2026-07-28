@@ -10,6 +10,7 @@ from content.facts import get_random_fact
 from content.fancy_lines import FANCY_LINES
 from content.poems import POEMS
 from content.questions import QUESTIONS
+from content.special_days import pick_special_day_line, special_day_for
 from content.stories import STORIES
 from content.wisdom import get_random_wisdom
 from kinito.assets import newbeginnings_file_path, tune_file_path
@@ -65,8 +66,35 @@ class ContentMixin:
             self.offer_game_picker,
             self.ask_for_hug,
             self.spontaneous_nap,
+            self.maybe_announce_special_day,
         ]
         random.choice(actions)()
+
+    def toggle_special_days(self):
+        """Enable or disable special-day comments on startup and idle."""
+        self._special_days_enabled = not getattr(self, "_special_days_enabled", True)
+        if hasattr(self, "_persist_settings"):
+            self._persist_settings()
+        lines = (
+            dlg.SPECIAL_DAYS_ON_LINES
+            if self._special_days_enabled
+            else dlg.SPECIAL_DAYS_OFF_LINES
+        )
+        self.speak(dlg.pick_line(lines), skip_ai=True)
+
+    def maybe_announce_special_day(self) -> bool:
+        """Speak a special-day line when enabled and today matches; else no-op."""
+        if not getattr(self, "_special_days_enabled", True):
+            return False
+        if not self._can_initiate_spontaneous_speech():
+            return False
+        if special_day_for() is None:
+            return False
+        line = pick_special_day_line()
+        if not line:
+            return False
+        self.speak(line, skip_ai=True)
+        return True
 
     def say_random_poem(self):
         """Recite a random poem in Kinito's normal voice, optionally with background music."""

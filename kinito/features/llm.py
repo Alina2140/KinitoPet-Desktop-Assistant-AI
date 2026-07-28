@@ -196,7 +196,12 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
                 scripted=scripted_text.strip(),
                 hint=hint,
             )
-        prompt = prompts.append_time_context_if_needed(prompt, scripted_text, ai_hint)
+        prompt = prompts.append_time_context_if_needed(
+            prompt,
+            scripted_text,
+            ai_hint,
+            include_special_day=bool(getattr(self, "_special_days_enabled", True)),
+        )
         prompt = prompts.append_app_context(prompt, self._prompt_app_snapshot())
         return self._append_memory_context(prompt, scripted_text=scripted_text, ai_hint=ai_hint)
 

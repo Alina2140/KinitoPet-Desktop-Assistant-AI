@@ -118,6 +118,17 @@ MENU_VISIBILITY_SECTIONS: tuple[tuple[str, tuple[MenuEntry, ...]], ...] = (
                 frozenset({dlg.BUTTON_TTS, dlg.BUTTON_TTS_ON, dlg.BUTTON_TTS_OFF}),
             ),
             (
+                "settings.special_days",
+                "Special Days",
+                frozenset(
+                    {
+                        dlg.BUTTON_SPECIAL_DAYS,
+                        dlg.BUTTON_SPECIAL_DAYS_ON,
+                        dlg.BUTTON_SPECIAL_DAYS_OFF,
+                    }
+                ),
+            ),
+            (
                 "settings.menu_buttons",
                 "Menu Buttons",
                 frozenset({dlg.BUTTON_MENU_BUTTONS}),

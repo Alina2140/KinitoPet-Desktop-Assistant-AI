@@ -31,6 +31,23 @@ def test_local_time_context_describes_midday():
     context = prompts.local_time_context(datetime(2026, 7, 7, 12, 30))
     assert "12:30" in context
     assert "midday" in context
+    assert "Tuesday, July 7, 2026" in context
+
+
+def test_local_time_context_includes_special_day_when_requested():
+    context = prompts.local_time_context(
+        datetime(2026, 10, 31, 9, 0),
+        include_special_day=True,
+    )
+    assert "Halloween" in context
+
+
+def test_local_time_context_omits_special_day_when_disabled():
+    context = prompts.local_time_context(
+        datetime(2026, 10, 31, 9, 0),
+        include_special_day=False,
+    )
+    assert "Halloween" not in context
 
 
 def test_local_time_context_describes_night():

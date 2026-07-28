@@ -296,6 +296,7 @@ class FloatingAssistant(
         self._hand_window = None
         self._hand_photo_ref = None
         self._tts_enabled = self._settings.get("tts_enabled", True)
+        self._special_days_enabled = self._settings.get("special_days_enabled", True)
         self._hidden_menu_buttons = self._settings.get_hidden_menu_buttons()
         self._menu_settings_window = None
         self._init_app_awareness(
@@ -393,6 +394,7 @@ class FloatingAssistant(
             snoring_enabled=bool(getattr(self, "_snoring_enabled", True)),
             window_grab_enabled=bool(getattr(self, "_window_grab_enabled", True)),
             tts_enabled=bool(getattr(self, "_tts_enabled", True)),
+            special_days_enabled=bool(getattr(self, "_special_days_enabled", True)),
         )
         store.set_hidden_menu_buttons(getattr(self, "_hidden_menu_buttons", set()))
 
@@ -401,9 +403,16 @@ class FloatingAssistant(
         threading.Thread(target=self._play_startup_line, daemon=True).start()
 
     def _play_startup_line(self):
-        """Speak a random startup line and mark startup as complete."""
+        """Speak a welcome line; prefer a special-day line when enabled."""
         try:
-            self.speak(random.choice(STARTUP_LINES))
+            line = None
+            if getattr(self, "_special_days_enabled", True):
+                from content.special_days import pick_special_day_line
+
+                line = pick_special_day_line()
+            if not line:
+                line = random.choice(STARTUP_LINES)
+            self.speak(line)
         finally:
             self._startup_complete = True
 

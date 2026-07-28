@@ -96,7 +96,10 @@ def test_format_templates_accept_placeholders(template):
     if "{response}" in template:
         result = template.format(response="test")
     elif "{time}" in template:
-        result = template.format(time="12:34")
+        kwargs = {"time": "12:34"}
+        if "{date}" in template:
+            kwargs["date"] = "Tuesday, July 28"
+        result = template.format(**kwargs)
     else:
         pytest.fail(f"Unknown placeholder pattern: {template!r}")
     assert "test" in result or "12:34" in result

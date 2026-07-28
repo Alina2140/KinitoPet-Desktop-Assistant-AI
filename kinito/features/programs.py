@@ -659,7 +659,13 @@ class ProgramsMixin:
         self.speak(dlg.pick_line(dlg.REMINDER_DONE_LINES))
 
     def print_current_datetime(self):
-        """Speak the current local time."""
+        """Speak the current local date and time together."""
         current_datetime = datetime.now()
-        formatted_datetime = current_datetime.strftime("%H:%M")
-        self.speak(dlg.pick_line(dlg.TIME_RESPONSES).format(time=formatted_datetime))
+        formatted_time = current_datetime.strftime("%H:%M")
+        formatted_date = current_datetime.strftime("%A, %B %d").replace(" 0", " ")
+        self.speak(
+            dlg.pick_line(dlg.TIME_RESPONSES).format(
+                time=formatted_time,
+                date=formatted_date,
+            )
+        )

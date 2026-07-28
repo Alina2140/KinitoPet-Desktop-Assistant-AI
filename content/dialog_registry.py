@@ -162,6 +162,11 @@ def settings_options_for(app) -> list[str]:
         if getattr(app, "_tts_enabled", True)
         else dlg.BUTTON_TTS_OFF
     )
+    special_days_label = (
+        dlg.BUTTON_SPECIAL_DAYS_ON
+        if getattr(app, "_special_days_enabled", True)
+        else dlg.BUTTON_SPECIAL_DAYS_OFF
+    )
     return _visible_menu_buttons(
         app,
         [
@@ -171,6 +176,7 @@ def settings_options_for(app) -> list[str]:
             snoring_label,
             window_play_label,
             tts_label,
+            special_days_label,
             dlg.BUTTON_MENU_BUTTONS,
             dlg.BUTTON_REMEMBER,
             dlg.BUTTON_FORGET,
@@ -425,6 +431,9 @@ def _menu_action_handlers() -> dict[str, Handler]:
         dlg.BUTTON_TTS: lambda a: a.toggle_tts(),
         dlg.BUTTON_TTS_ON: lambda a: a.toggle_tts(),
         dlg.BUTTON_TTS_OFF: lambda a: a.toggle_tts(),
+        dlg.BUTTON_SPECIAL_DAYS: lambda a: a.toggle_special_days(),
+        dlg.BUTTON_SPECIAL_DAYS_ON: lambda a: a.toggle_special_days(),
+        dlg.BUTTON_SPECIAL_DAYS_OFF: lambda a: a.toggle_special_days(),
         dlg.BUTTON_MENU_BUTTONS: lambda a: a.open_menu_button_settings(),
         dlg.BUTTON_SING_SONG: lambda a: a.say_random_poem(),
         dlg.BUTTON_FUN_FACT: lambda a: a.say_random_fact(),

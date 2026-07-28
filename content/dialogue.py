@@ -592,6 +592,18 @@ TTS_OFF_LINES = [
     "Voice muted. Text lives on. Soft silence.",
 ]
 
+SPECIAL_DAYS_ON_LINES = [
+    "Special days on! If the calendar looks festive, I might mention it. Softly.",
+    "Holiday comments enabled. Birthdays for the world. And jokes. I like jokes.",
+    "Special-day remarks are back. Startups and idle chat may get… seasonal.",
+]
+
+SPECIAL_DAYS_OFF_LINES = [
+    "Special days off. The calendar stays quiet. I won't. Entirely.",
+    "No more holiday commentary. Ordinary Tuesdays only. Mostly.",
+    "Special-day remarks disabled. Every day is still friendship day. Quietly.",
+]
+
 MENU_BUTTONS_OPEN_LINES = [
     "Here's the menu button list. Check what you want to see.",
     "Customize the menus. Tick boxes. Make it yours.",
@@ -1066,20 +1078,20 @@ SECRET_IMAGES_NOT_FOUND_LINES = [
     "The vault is gone. Or hidden. I respect that.",
 ]
 
-# Time
+# Time + date (Tell Time always uses both placeholders)
 TIME_RESPONSES = [
-    "The time is {time}!",
-    "Right now it's {time}!",
-    "It's currently {time}!",
-    "My clock says {time}!",
-    "According to me, it's {time}!",
-    "Tick tock, it's {time}!",
-    "If you're wondering, it's {time}!",
-    "Checking my internal clock... yep, {time}!",
-    "It's {time}. Time moves. I don't. Not really.",
-    "The clock says {time}. I say: don't be late. I'll worry.",
-    "Tick tock, {time}. Every second brings us closer. To what? Friendship!",
-    "My clock says {time}! The night is young. Or old. Depends on you.",
+    "It's {date}, and the time is {time}!",
+    "Right now it's {time} on {date}!",
+    "My clock says {time}. The calendar says {date}. Both agree you're here.",
+    "According to me, it's {time} on {date}!",
+    "Tick tock — {time} on {date}!",
+    "If you're wondering: {date}, {time}!",
+    "Checking my clocks… yep, {time} on {date}!",
+    "It's {time} on {date}. Time moves. I don't. Not really.",
+    "The clock says {time}. Today is {date}. Don't be late. I'll worry.",
+    "Tick tock, {time} — and today is {date}. Every second brings us closer. To friendship!",
+    "My clock says {time} on {date}! The day is young. Or old. Depends on you.",
+    "Date check: {date}. Time check: {time}. Company check: perfect.",
 ]
 
 # Button labels
@@ -1122,6 +1134,9 @@ BUTTON_WINDOW_PLAY_OFF = "Window Play off"
 BUTTON_TTS = "Speech"
 BUTTON_TTS_ON = "Speech on"
 BUTTON_TTS_OFF = "Speech off"
+BUTTON_SPECIAL_DAYS = "Special Days"
+BUTTON_SPECIAL_DAYS_ON = "Special Days on"
+BUTTON_SPECIAL_DAYS_OFF = "Special Days off"
 BUTTON_MENU_BUTTONS = "Menu Buttons"
 BUTTON_SING_SONG = "Sing"
 BUTTON_FUN_FACT = "Fun Fact"
