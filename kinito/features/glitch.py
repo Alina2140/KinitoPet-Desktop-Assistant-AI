@@ -2,6 +2,7 @@
 
 import os
 import random
+import sys
 import tkinter as tk
 from tkinter import Toplevel
 
@@ -18,6 +19,46 @@ class GlitchMixin:
     GLITCH_NOISE_SCALE = 6
     BLUE_SCREEN_CHANCE = 1 / 1000
     BLUE_SCREEN_DURATION_MS = 2000
+
+    def _overlay_virtual_screen_rect(self):
+        """Return (x, y, width, height) covering the full virtual desktop."""
+        if hasattr(self, "_query_virtual_screen_rect"):
+            return self._query_virtual_screen_rect()
+        self.root.update_idletasks()
+        x = self.root.winfo_vrootx()
+        y = self.root.winfo_vrooty()
+        width = self.root.winfo_vrootwidth()
+        height = self.root.winfo_vrootheight()
+        return x, y, width, height
+
+    def _overlay_primary_screen_rect(self):
+        """Return (x, y, width, height) of the primary monitor.
+
+        On Windows the primary display origin is always (0, 0).
+        """
+        if sys.platform == "win32":
+            try:
+                import ctypes
+
+                user32 = ctypes.windll.user32
+                width = int(user32.GetSystemMetrics(0))  # SM_CXSCREEN
+                height = int(user32.GetSystemMetrics(1))  # SM_CYSCREEN
+                if width > 0 and height > 0:
+                    return 0, 0, width, height
+            except (OSError, AttributeError, ValueError):
+                pass
+
+        self.root.update_idletasks()
+        return 0, 0, self.root.winfo_screenwidth(), self.root.winfo_screenheight()
+
+    def _make_overlay_window(self, *, x, y, width, height, bg="black"):
+        """Create a borderless topmost overlay covering the given rectangle."""
+        window = Toplevel(self.root)
+        window.overrideredirect(True)
+        window.geometry(f"{width}x{height}+{x}+{y}")
+        window.configure(bg=bg)
+        window.wm_attributes("-topmost", True)
+        return window
 
     def maybe_trigger_screen_glitch(self) -> bool:
         """Roll for a rare screen glitch; schedule on the Tk main thread if it hits."""
@@ -85,7 +126,8 @@ class GlitchMixin:
 
     def _raise_screen_effect_overlays(self) -> None:
         """Keep glitch/BSOD above Kinito among topmost sibling windows."""
-        for attr in ("_glitch_window", "_crash_window"):
+        # Blackout first, then BSOD, so the crash image stays on the primary monitor.
+        for attr in ("_glitch_window", "_crash_blackout_window", "_crash_window"):
             window = getattr(self, attr, None)
             if window is None:
                 continue
@@ -149,13 +191,15 @@ class GlitchMixin:
     def hide_blue_screen(self):
         """Close the blue-screen overlay immediately."""
         self._cancel_blue_screen_hide_timer()
-        window = getattr(self, "_crash_window", None)
-        if window is not None:
+        for attr in ("_crash_window", "_crash_blackout_window"):
+            window = getattr(self, attr, None)
+            if window is None:
+                continue
             try:
                 window.destroy()
             except tk.TclError:
                 pass
-            self._crash_window = None
+            setattr(self, attr, None)
         self._crash_tk_image = None
 
     def _flash_screen_glitch(self):
@@ -165,11 +209,7 @@ class GlitchMixin:
         if self._has_glitch_overlay():
             return
 
-        self.root.update_idletasks()
-        x = self.root.winfo_vrootx()
-        y = self.root.winfo_vrooty()
-        width = self.root.winfo_vrootwidth()
-        height = self.root.winfo_vrootheight()
+        x, y, width, height = self._overlay_virtual_screen_rect()
         if width < 1 or height < 1:
             return
 
@@ -178,11 +218,7 @@ class GlitchMixin:
         noise = Image.effect_noise((noise_w, noise_h), random.randint(40, 70)).convert("RGB")
         noise = noise.resize((width, height), Image.NEAREST)
 
-        self._glitch_window = Toplevel(self.root)
-        self._glitch_window.overrideredirect(True)
-        self._glitch_window.geometry(f"{width}x{height}+{x}+{y}")
-        self._glitch_window.configure(bg="black")
-        self._glitch_window.wm_attributes("-topmost", True)
+        self._glitch_window = self._make_overlay_window(x=x, y=y, width=width, height=height)
         try:
             self._glitch_window.attributes("-alpha", 0.28)
         except tk.TclError:
@@ -201,7 +237,7 @@ class GlitchMixin:
         )
 
     def _flash_blue_screen(self):
-        """Cover the screen briefly with the blue-screen crash image."""
+        """Show the BSOD on the primary monitor; black out other screens briefly."""
         if not self._running or not getattr(self, "_screen_effects_enabled", True):
             return
         if self._has_blue_screen_overlay():
@@ -212,23 +248,20 @@ class GlitchMixin:
         except OSError:
             return
 
-        self.root.update_idletasks()
-        x = self.root.winfo_vrootx()
-        y = self.root.winfo_vrooty()
-        width = self.root.winfo_vrootwidth()
-        height = self.root.winfo_vrootheight()
-        if width < 1 or height < 1:
+        vx, vy, vw, vh = self._overlay_virtual_screen_rect()
+        px, py, pw, ph = self._overlay_primary_screen_rect()
+        if vw < 1 or vh < 1 or pw < 1 or ph < 1:
             return
 
-        if crash_img.size != (width, height):
-            crash_img = crash_img.resize((width, height), Image.Resampling.LANCZOS)
+        # Full virtual desktop goes black; BSOD sits on top of the primary only.
+        self._crash_blackout_window = self._make_overlay_window(
+            x=vx, y=vy, width=vw, height=vh
+        )
 
-        self._crash_window = Toplevel(self.root)
-        self._crash_window.overrideredirect(True)
-        self._crash_window.geometry(f"{width}x{height}+{x}+{y}")
-        self._crash_window.configure(bg="black")
-        self._crash_window.wm_attributes("-topmost", True)
+        if crash_img.size != (pw, ph):
+            crash_img = crash_img.resize((pw, ph), Image.Resampling.LANCZOS)
 
+        self._crash_window = self._make_overlay_window(x=px, y=py, width=pw, height=ph)
         self._crash_tk_image = ImageTk.PhotoImage(crash_img)
         label = tk.Label(
             self._crash_window, image=self._crash_tk_image, bd=0, highlightthickness=0

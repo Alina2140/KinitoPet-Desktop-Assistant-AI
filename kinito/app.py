@@ -310,6 +310,7 @@ class FloatingAssistant(
         self._glitch_hide_timer = None
         self._glitch_tk_image = None
         self._crash_window = None
+        self._crash_blackout_window = None
         self._crash_hide_timer = None
         self._crash_tk_image = None
         self._game_window = None
