@@ -33,7 +33,7 @@ def content(memory_dir):
 def test_ask_once_markers_cover_personal_questions():
     assert dlg.NAME_QUESTION in ASK_ONCE_MARKERS
     assert dlg.DAY_QUESTION not in ASK_ONCE_MARKERS
-    assert MARKER_TO_FACT_KEY[dlg.NAME_QUESTION] == "user_name"
+    assert MARKER_TO_FACT_KEY[dlg.NAME_QUESTION] == "user_names"
 
 
 def test_available_questions_skip_answered_markers(content):
@@ -51,7 +51,7 @@ def test_name_dialog_persists_answer(memory_dir):
     spec = find_dialog_spec(dlg.NAME_QUESTION)
     handle_dialog_response(app, spec, "Alex")
 
-    assert app._memory.get_fact("user_name") == "Alex"
+    assert app._memory.get_fact("user_names") == "Alex"
     assert app._memory.is_answered(dlg.NAME_QUESTION)
     app.speak.assert_called_once()
 
@@ -69,7 +69,7 @@ def test_programming_dialog_persists_yes_no(memory_dir):
 
 
 def test_answered_name_question_not_in_full_pool(content):
-    content._memory.set_fact("user_name", "Alex")
+    content._memory.set_fact("user_names", "Alex")
     content._memory.mark_answered(dlg.NAME_QUESTION)
     pool = content._available_spontaneous_questions()
     name_questions = [q for q in QUESTIONS if dlg.NAME_QUESTION in q]
@@ -81,10 +81,11 @@ class MemoryStub(MemoryMixin):
     pass
 
 
-def test_memory_question_does_not_overwrite_user_name(memory_dir):
+def test_memory_question_does_not_overwrite_user_names(memory_dir):
     stub = MemoryStub()
     stub._memory = MemoryStore(directory=memory_dir)
-    stub._memory.set_fact("user_name", "Ben")
+    stub._chat_session_user_label = None
+    stub._memory.set_fact("user_names", "Ben")
     stub._memory.mark_answered(dlg.NAME_QUESTION)
     stub.speak = MagicMock()
 
@@ -92,10 +93,26 @@ def test_memory_question_does_not_overwrite_user_name(memory_dir):
         question="What music genre do you like?",
         ui="textbox",
         topic="music_genre_relaxation",
-        save_as="user_name",
+        save_as="user_names",
     )
     stub._pending_memory_question = spec
     stub._handle_memory_question_response("Metal")
 
-    assert stub._memory.get_fact("user_name") == "Ben"
+    assert stub._memory.get_fact("user_names") == "Ben"
     assert any("music_genre_relaxation" in note["text"] for note in stub._memory.snapshot()["notes"])
+
+
+def test_chat_user_label_stays_pinned_until_cleared(memory_dir):
+    stub = MemoryStub()
+    stub._init_memory = MemoryMixin._init_memory.__get__(stub, MemoryStub)
+    stub._memory = MemoryStore(directory=memory_dir)
+    stub._chat_session_user_label = None
+    stub._memory.replace_fact_values("user_names", ["Alex", "Brian", "Sam"])
+
+    pinned = stub._pin_chat_user_label()
+    assert pinned in {"Alex", "Brian", "Sam"}
+    assert stub.chat_user_label() == pinned
+    assert stub.chat_user_label() == pinned
+
+    stub._clear_chat_session_user_label()
+    assert stub._chat_session_user_label is None

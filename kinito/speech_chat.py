@@ -24,12 +24,16 @@ class SpeechChatMixin:
         self._chat_generating = False
         self._chat_log_widget = None
         self._chat_entry_widget = None
+        if not hasattr(self, "_chat_session_user_label"):
+            self._chat_session_user_label = None
 
     def open_chat_bubble(self, greeting: str) -> None:
         """Open a persistent chat bubble with an initial assistant greeting."""
         self.interrupt_speech()
         self._chat_mode = True
         self._chat_generating = False
+        if hasattr(self, "_pin_chat_user_label") and not getattr(self, "_chat_session_user_label", None):
+            self._pin_chat_user_label()
         self._cancel_bubble_close_timer()
 
         if self._has_active_speech_bubble():
@@ -135,17 +139,29 @@ class SpeechChatMixin:
         )
 
     def _resolve_chat_user_label(self) -> str:
-        """Return the chat log label for the user (from memory when available)."""
+        """Return one chat log label for the user (from memory when available)."""
         label = getattr(self, "chat_user_label", None)
         if callable(label):
             return label()
         return prompts.CHAT_USER_LABEL_FALLBACK
 
+    def _resolve_chat_user_labels(self) -> set[str]:
+        """Return all known user chat labels (lowercased) for speaker styling."""
+        labels_fn = getattr(self, "chat_user_labels", None)
+        if callable(labels_fn):
+            names = [str(name).strip() for name in labels_fn() if str(name).strip()]
+            if names:
+                return {name.casefold() for name in names}
+        single = self._resolve_chat_user_label().strip()
+        if single:
+            return {single.casefold()}
+        return {prompts.CHAT_USER_LABEL_FALLBACK.casefold()}
+
     def _chat_role_tag(self, role: str) -> str | None:
         """Return the text tag for a chat speaker label, if any."""
         if role == prompts.CHAT_ASSISTANT_LABEL:
             return "chat_kinito"
-        if role == self._resolve_chat_user_label():
+        if role.casefold() in self._resolve_chat_user_labels():
             return "chat_user"
         return None
 
@@ -227,4 +243,6 @@ class SpeechChatMixin:
         self._chat_generating = False
         self._chat_log_widget = None
         self._chat_entry_widget = None
+        if hasattr(self, "_clear_chat_session_user_label"):
+            self._clear_chat_session_user_label()
         self._close_speech_bubble_impl()

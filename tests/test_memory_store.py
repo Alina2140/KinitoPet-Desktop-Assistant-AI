@@ -29,11 +29,11 @@ def test_empty_store_has_no_prompt_block(store):
 
 
 def test_set_fact_and_load_roundtrip(store, memory_dir):
-    store.set_fact("user_name", "Alex")
+    store.set_fact("user_names", "Alex")
     store.mark_answered("What should I call you?")
 
     reloaded = MemoryStore(directory=memory_dir)
-    assert reloaded.get_fact("user_name") == "Alex"
+    assert reloaded.get_fact("user_names") == "Alex"
     assert reloaded.is_answered("What should I call you?")
 
 
@@ -65,10 +65,10 @@ def test_notes_fifo_when_over_limit(store):
 
 
 def test_as_prompt_block_includes_facts_and_recent_notes(store):
-    store.set_fact("user_name", "Alex")
+    store.set_fact("user_names", "Alex")
     store.add_note("Often works late on the PC")
     block = store.as_prompt_block()
-    assert "user name: Alex" in block
+    assert "user names: Alex" in block
     assert "works late" in block
 
 
@@ -81,7 +81,7 @@ def test_as_prompt_block_limits_note_count(store):
 
 
 def test_as_prompt_block_truncates_long_output(store):
-    store.set_fact("user_name", "A" * 200)
+    store.set_fact("user_names", "A" * 200)
     block = store.as_prompt_block()
     assert len(block) <= MAX_PROMPT_BLOCK_CHARS
 
@@ -89,16 +89,16 @@ def test_as_prompt_block_truncates_long_output(store):
 def test_apply_extraction_updates_facts_and_notes(store):
     store.apply_extraction(
         add_notes=["Enjoys hiking on weekends"],
-        update_facts={"hobby": "hiking"},
-        allowed_fact_keys=frozenset({"hobby"}),
+        update_facts={"hobbies": "hiking"},
+        allowed_fact_keys=frozenset({"hobbies"}),
     )
     snapshot = store.snapshot()
-    assert snapshot["facts"]["hobby"] == "hiking"
+    assert snapshot["facts"]["hobbies"] == "hiking"
     assert snapshot["notes"][0]["text"] == "Enjoys hiking on weekends"
 
 
 def test_reset_removes_files(store, memory_dir):
-    store.set_fact("user_name", "Alex")
+    store.set_fact("user_names", "Alex")
     store.add_note("Test note")
     path = os.path.join(memory_dir, "memory.json")
     notes_path = os.path.join(memory_dir, "notes.txt")
@@ -122,18 +122,18 @@ def test_load_recovers_from_corrupt_json(memory_dir):
 
 
 def test_save_writes_valid_json(memory_dir, store):
-    store.set_fact("user_name", "Sam")
+    store.set_fact("user_names", "Sam")
     path = os.path.join(memory_dir, "memory.json")
     with open(path, encoding="utf-8") as handle:
         data = json.load(handle)
-    assert data["facts"]["user_name"] == "Sam"
+    assert data["facts"]["user_names"] == "Sam"
 
 
 def test_as_facts_prompt_block_omits_notes(store):
-    store.set_fact("user_name", "Alex")
+    store.set_fact("user_names", "Alex")
     store.add_note("Enjoys hiking on weekends")
     facts_block = store.as_facts_prompt_block()
-    assert "user name: Alex" in facts_block
+    assert "user names: Alex" in facts_block
     assert "hiking" not in facts_block
     full_block = store.as_prompt_block()
     assert "hiking" in full_block
@@ -144,3 +144,90 @@ def test_mark_topic_asked_and_fifo(memory_dir, store):
     assert store.is_topic_asked("topic_a")
     reloaded = MemoryStore(directory=memory_dir)
     assert reloaded.is_topic_asked("topic_a")
+
+
+def test_multi_value_hobby_set_fact_splits_and_roundtrips(store, memory_dir):
+    store.set_fact("hobbies", "Drawing, Reading, Crochet")
+    assert store.get_fact_values("hobbies") == ["Drawing", "Reading", "Crochet"]
+    assert store.get_fact("hobbies") == "Drawing, Reading, and Crochet"
+    assert store.snapshot()["facts"]["hobbies"] == ["Drawing", "Reading", "Crochet"]
+
+    reloaded = MemoryStore(directory=memory_dir)
+    assert reloaded.get_fact_values("hobbies") == ["Drawing", "Reading", "Crochet"]
+    assert reloaded.facts_dict()["hobbies"] == "Drawing, Reading, and Crochet"
+
+
+def test_multi_value_legacy_string_hobby_still_loads(memory_dir):
+    os.makedirs(memory_dir, exist_ok=True)
+    path = os.path.join(memory_dir, "memory.json")
+    with open(path, "w", encoding="utf-8") as handle:
+        json.dump(
+            {
+                "version": 1,
+                "facts": {"hobby": "Drawing"},
+                "answered_markers": [],
+                "asked_topics": [],
+                "notes": [],
+            },
+            handle,
+        )
+
+    store = MemoryStore(directory=memory_dir)
+    assert "hobby" not in store.snapshot()["facts"]
+    assert store.get_fact("hobbies") == "Drawing"
+    assert store.get_fact_values("hobbies") == ["Drawing"]
+
+
+def test_user_names_list_picks_random_display_name(store):
+    store.replace_fact_values("user_names", ["Alex", "Sad", "Sam"])
+    assert store.get_fact_values("user_names") == ["Alex", "Sad", "Sam"]
+    assert store.user_display_name() in {"Alex", "Sad", "Sam"}
+    assert store.pick_user_name() in {"Alex", "Sad", "Sam"}
+
+
+def test_loads_plural_multi_value_lists_from_disk(memory_dir):
+    os.makedirs(memory_dir, exist_ok=True)
+    path = os.path.join(memory_dir, "memory.json")
+    with open(path, "w", encoding="utf-8") as handle:
+        json.dump(
+            {
+                "version": 1,
+                "facts": {
+                    "user_names": ["Alex", "Sad"],
+                    "hobbies": ["Drawing", "Crochet"],
+                    "favorite_colors": ["Black", "Purple"],
+                    "pets": ["Lola", "Mae"],
+                },
+                "answered_markers": [],
+                "asked_topics": [],
+                "notes": [],
+            },
+            handle,
+        )
+
+    store = MemoryStore(directory=memory_dir)
+    assert store.get_fact_values("user_names") == ["Alex", "Sad"]
+    assert store.get_fact_values("hobbies") == ["Drawing", "Crochet"]
+    assert store.get_fact_values("favorite_colors") == ["Black", "Purple"]
+    assert store.get_fact_values("pets") == ["Lola", "Mae"]
+
+
+def test_apply_extraction_merges_hobby_string_and_replaces_list(store):
+    store.set_fact("hobbies", "Drawing")
+    store.apply_extraction(
+        update_facts={"hobbies": "Reading"},
+        allowed_fact_keys=frozenset({"hobbies"}),
+    )
+    assert store.get_fact_values("hobbies") == ["Drawing", "Reading"]
+
+    store.apply_extraction(
+        update_facts={"hobbies": ["Crochet"]},
+        allowed_fact_keys=frozenset({"hobbies"}),
+    )
+    assert store.get_fact_values("hobbies") == ["Crochet"]
+
+
+def test_pet_and_split_on_set_fact(store):
+    store.set_fact("pets", "Lola and Mae")
+    assert store.get_fact_values("pets") == ["Lola", "Mae"]
+    assert store.get_fact("pets") == "Lola and Mae"

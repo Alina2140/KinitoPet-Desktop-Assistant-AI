@@ -38,9 +38,11 @@ def llm_app():
     app._init_chat_state()
     app._memory = MagicMock()
     app._memory.get_fact.return_value = None
+    app._memory.pick_user_name.return_value = None
     app._memory.as_prompt_block.return_value = ""
     app._memory.user_display_name.return_value = "You"
     app.chat_user_label = MagicMock(return_value="You")
+    app._pin_chat_user_label = MagicMock(return_value="You")
     app.memory_prompt_block = MagicMock(return_value="")
     app._memory_extractor = MagicMock()
     app._last_chat_user_text = ""
@@ -61,7 +63,7 @@ def llm_app():
 
 
 def test_append_memory_context_omits_facts_for_poem_replacement(llm_app):
-    llm_app._memory.get_fact.return_value = "Ben"
+    llm_app._memory.pick_user_name.return_value = "Ben"
     prompt = llm_app._append_memory_context(
         "Say something fun.",
         scripted_text="Why did the chicken cross the road?",
@@ -75,7 +77,7 @@ def test_append_memory_context_omits_facts_for_poem_replacement(llm_app):
 def test_append_memory_context_includes_name_for_idle_prompt(llm_app):
     from content import llm_prompts as prompts
 
-    llm_app._memory.get_fact.return_value = "Ben"
+    llm_app._memory.pick_user_name.return_value = "Ben"
     prompt = llm_app._append_memory_context(
         prompts.IDLE_PROMPT,
         scripted_text="",
@@ -91,7 +93,7 @@ def test_append_memory_context_includes_name_for_idle_prompt(llm_app):
 def test_append_memory_context_omits_name_for_random_question(llm_app):
     from content import llm_prompts as prompts
 
-    llm_app._memory.get_fact.return_value = "Alina"
+    llm_app._memory.pick_user_name.return_value = "Alina"
     prompt = llm_app._append_memory_context(
         prompts.RANDOM_QUESTION_PROMPT,
         scripted_text="",

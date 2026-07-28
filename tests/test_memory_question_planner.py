@@ -22,7 +22,7 @@ def memory_dir(tmp_path):
 @pytest.fixture
 def store(memory_dir):
     memory = MemoryStore(directory=memory_dir)
-    memory.set_fact("user_name", "Alex")
+    memory.set_fact("user_names", "Alex")
     return memory
 
 
@@ -42,20 +42,20 @@ def test_normalize_question_plan_forces_note_save_as():
             "question": "What music genre relaxes you?",
             "ui": "textbox",
             "topic": "music_genre_relaxation",
-            "save_as": "user_name",
+            "save_as": "user_names",
         }
     )
     assert spec is not None
     assert spec.save_as == "note"
 
 
-def test_apply_extraction_does_not_overwrite_protected_user_name(store):
-    store.set_fact("user_name", "Ben")
+def test_apply_extraction_does_not_overwrite_protected_user_names(store):
+    store.set_fact("user_names", "Ben")
     store.apply_extraction(
-        update_facts={"user_name": "Metal"},
+        update_facts={"user_names": "Metal"},
         allowed_fact_keys=ALLOWED_FACT_KEYS,
     )
-    assert store.get_fact("user_name") == "Ben"
+    assert store.get_fact("user_names") == "Ben"
 
 
 def test_planner_uses_ollama_and_skips_known_topics(store):

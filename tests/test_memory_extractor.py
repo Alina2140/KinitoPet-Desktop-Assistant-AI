@@ -29,22 +29,22 @@ def test_normalize_extraction_rejects_unknown_fact_keys():
     payload = {
         "add_notes": ["Enjoys playing chess on weekends"],
         "remove_notes": [],
-        "update_facts": {"secret_password": "nope", "hobby": "chess"},
+        "update_facts": {"secret_password": "nope", "hobbies": "chess"},
     }
     normalized = normalize_extraction(payload)
-    assert normalized["update_facts"] == {"hobby": "chess"}
+    assert normalized["update_facts"] == {"hobbies": "chess"}
 
 
 def test_normalize_extraction_allows_preference_flip():
     payload = {
         "add_notes": [],
         "remove_notes": [],
-        "update_facts": {"likes_programming": "no", "favorite_color": "blue"},
+        "update_facts": {"likes_programming": "no", "favorite_colors": "blue"},
     }
     normalized = normalize_extraction(payload)
     assert normalized["update_facts"] == {
         "likes_programming": "no",
-        "favorite_color": "blue",
+        "favorite_colors": "blue",
     }
 
 
@@ -77,16 +77,42 @@ def test_extractor_applies_ollama_result(store, memory_dir):
         {
             "add_notes": ["Has a cat named Luna"],
             "remove_notes": [],
-            "update_facts": {"pet": "cat named Luna"},
+            "update_facts": {"pets": "cat named Luna"},
         }
     )
     extractor = MemoryExtractor(client, store)
     extractor.extract_from_turn("I have a cat named Luna", "That sounds lovely!")
 
     snapshot = store.snapshot()
-    assert snapshot["facts"]["pet"] == "cat named Luna"
+    assert snapshot["facts"]["pets"] == "cat named Luna"
     assert snapshot["notes"][0]["text"] == "Has a cat named Luna"
     client.generate.assert_called_once()
+
+
+def test_normalize_extraction_accepts_hobby_list():
+    payload = {
+        "add_notes": [],
+        "remove_notes": [],
+        "update_facts": {"hobbies": ["Drawing", "Reading"]},
+    }
+    normalized = normalize_extraction(payload)
+    assert normalized["update_facts"] == {"hobbies": ["Drawing", "Reading"]}
+
+
+def test_extractor_merges_new_hobby_string(store):
+    store.set_fact("hobbies", "Drawing")
+    client = MagicMock()
+    client.generate.return_value = json.dumps(
+        {
+            "add_notes": [],
+            "remove_notes": [],
+            "update_facts": {"hobbies": "Crochet"},
+        }
+    )
+    extractor = MemoryExtractor(client, store)
+    extractor.extract_from_turn("I also crochet", "Nice!")
+
+    assert store.get_fact_values("hobbies") == ["Drawing", "Crochet"]
 
 
 def test_extractor_ignores_invalid_json(store):

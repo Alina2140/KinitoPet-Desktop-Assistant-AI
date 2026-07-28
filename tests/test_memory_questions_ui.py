@@ -56,25 +56,25 @@ def test_handle_memory_question_response_saves_note(app):
 
 
 def test_handle_memory_question_response_saves_fact(app):
-    spec = MemoryQuestion("Favorite snack?", "textbox", "snack_followup", save_as="favorite_snack")
+    spec = MemoryQuestion("Favorite snack?", "textbox", "snack_followup", save_as="favorite_snacks")
     app._pending_memory_question = spec
     app._handle_memory_question_response("chips")
-    assert app._memory.get_fact("favorite_snack") == "chips"
+    assert app._memory.get_fact("favorite_snacks") == "chips"
 
 
 def test_verify_yes_keeps_fact(app):
     from kinito.memory.questions import save_as_verify
 
-    app._memory.set_fact("favorite_color", "black")
+    app._memory.set_fact("favorite_colors", "black")
     spec = MemoryQuestion(
         "Is your favorite color still black?",
         "yes_no",
         "verify_favorite_color",
-        save_as=save_as_verify("favorite_color"),
+        save_as=save_as_verify("favorite_colors"),
     )
     app._pending_memory_question = spec
     app._handle_memory_question_response(dlg.BUTTON_YES)
-    assert app._memory.get_fact("favorite_color") == "black"
+    assert app._memory.get_fact("favorite_colors") == "black"
     assert app._memory.is_topic_asked("verify_favorite_color")
     assert app._pending_memory_question is None
 
@@ -82,23 +82,23 @@ def test_verify_yes_keeps_fact(app):
 def test_verify_no_asks_for_updated_value(app):
     from kinito.memory.questions import save_as_verify
 
-    app._memory.set_fact("favorite_color", "black")
+    app._memory.set_fact("favorite_colors", "black")
     spec = MemoryQuestion(
         "Is your favorite color still black?",
         "yes_no",
         "verify_favorite_color",
-        save_as=save_as_verify("favorite_color"),
+        save_as=save_as_verify("favorite_colors"),
     )
     app._pending_memory_question = spec
     app._handle_memory_question_response(dlg.BUTTON_NO)
 
-    assert app._memory.get_fact("favorite_color") == "black"
+    assert app._memory.get_fact("favorite_colors") == "black"
     assert app._pending_memory_question is not None
-    assert app._pending_memory_question.save_as == "favorite_color"
-    assert "favorite color" in app._pending_memory_question.question.lower()
+    assert app._pending_memory_question.save_as == "favorite_colors"
+    assert "color" in app._pending_memory_question.question.lower()
 
     app._handle_memory_question_response("blue")
-    assert app._memory.get_fact("favorite_color") == "blue"
+    assert app._memory.get_fact("favorite_colors") == "blue"
     assert app._pending_memory_question is None
 
 

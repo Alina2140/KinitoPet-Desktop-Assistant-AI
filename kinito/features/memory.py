@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from content import dialogue as dlg
 from content.memory_followups import FACT_UPDATE_PROMPTS
-from content.memory_keys import ALLOWED_FACT_KEYS, PROTECTED_FACT_KEYS
+from content.memory_keys import ALLOWED_FACT_KEYS, MULTI_VALUE_FACT_KEYS, PROTECTED_FACT_KEYS
 from kinito.memory.questions import SAVE_AS_NOTE, MemoryQuestion, verify_fact_key
 from kinito.memory.store import MemoryStore
 
@@ -17,6 +17,7 @@ class MemoryMixin:
         self._memory = MemoryStore()
         self._pending_memory_question: MemoryQuestion | None = None
         self._planning_memory_question = False
+        self._chat_session_user_label: str | None = None
 
     def show_memory_summary(self) -> None:
         """Speak what Kinito currently remembers about the user."""
@@ -29,6 +30,7 @@ class MemoryMixin:
         """Clear all saved memory and confirm to the user."""
         self._memory.reset()
         self._pending_memory_question = None
+        self._chat_session_user_label = None
         self.speak(dlg.MEMORY_FORGOTTEN_LINE, skip_ai=True)
 
     def memory_prompt_block(self) -> str:
@@ -40,8 +42,28 @@ class MemoryMixin:
         return self._memory.as_facts_prompt_block()
 
     def chat_user_label(self) -> str:
-        """Return the display label for chat messages from the user."""
+        """Return the user chat label (stable for the open chat session)."""
+        pinned = getattr(self, "_chat_session_user_label", None)
+        if pinned:
+            return pinned
         return self._memory.user_display_name()
+
+    def chat_user_labels(self) -> list[str]:
+        """Return all known user names for chat speaker styling."""
+        names = self._memory.get_fact_values("user_names")
+        if names:
+            return names
+        return [self.chat_user_label()]
+
+    def _pin_chat_user_label(self) -> str:
+        """Pick a user name for this chat session and keep it until chat closes."""
+        label = self._memory.user_display_name()
+        self._chat_session_user_label = label
+        return label
+
+    def _clear_chat_session_user_label(self) -> None:
+        """Forget the pinned chat label so the next session can pick again."""
+        self._chat_session_user_label = None
 
     def ask_memory_question(self, spec: MemoryQuestion) -> None:
         """Speak an interactive memory question with textbox or yes/no UI."""
@@ -99,9 +121,12 @@ class MemoryMixin:
         """Handle yes/no confirmation of an existing fact; update instead of delete."""
         if answer == "yes":
             # Re-set the same value so the fact stays current without changing it.
-            current = self._memory.get_fact(fact_key)
-            if current:
-                self._memory.set_fact(fact_key, current)
+            values = self._memory.get_fact_values(fact_key)
+            if values:
+                if fact_key in MULTI_VALUE_FACT_KEYS:
+                    self._memory.replace_fact_values(fact_key, values)
+                else:
+                    self._memory.set_fact(fact_key, values[0])
             return None
 
         if answer != "no":

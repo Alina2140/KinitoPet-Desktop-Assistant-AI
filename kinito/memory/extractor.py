@@ -7,8 +7,9 @@ import re
 from typing import Any
 
 from content import llm_prompts as prompts
-from content.memory_keys import ALLOWED_FACT_KEYS
+from content.memory_keys import ALLOWED_FACT_KEYS, LEGACY_FACT_KEY_ALIASES, MULTI_VALUE_FACT_KEYS
 from kinito.llm.ollama_client import OllamaClient, OllamaUnavailableError
+from kinito.memory.fact_values import normalize_fact_value_list
 from kinito.memory.store import MAX_NEW_NOTES_PER_TURN, MemoryStore
 from kinito.memory.validation import is_storable_note
 
@@ -61,7 +62,23 @@ def normalize_extraction(payload: dict[str, Any]) -> dict[str, Any]:
     update_facts = payload.get("update_facts")
     if isinstance(update_facts, dict):
         for key, value in update_facts.items():
-            if isinstance(key, str) and key in ALLOWED_FACT_KEYS and isinstance(value, str):
+            if not isinstance(key, str):
+                continue
+            key = LEGACY_FACT_KEY_ALIASES.get(key, key)
+            if key not in ALLOWED_FACT_KEYS:
+                continue
+            if key in MULTI_VALUE_FACT_KEYS:
+                if isinstance(value, list):
+                    values = normalize_fact_value_list(value)
+                    if values:
+                        # Keep list form so apply_extraction can replace the full set.
+                        result["update_facts"][key] = values
+                elif isinstance(value, str):
+                    trimmed = value.strip()
+                    if trimmed:
+                        result["update_facts"][key] = trimmed
+                continue
+            if isinstance(value, str):
                 trimmed = value.strip()
                 if trimmed:
                     result["update_facts"][key] = trimmed

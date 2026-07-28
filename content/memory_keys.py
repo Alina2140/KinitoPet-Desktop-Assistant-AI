@@ -6,23 +6,45 @@ from content import dialogue as dlg
 
 # Marker substring -> fact key for personal questions (ask once).
 MARKER_TO_FACT_KEY: dict[str, str] = {
-    dlg.NAME_QUESTION: "user_name",
-    dlg.COLOR_QUESTION: "favorite_color",
+    dlg.NAME_QUESTION: "user_names",
+    dlg.COLOR_QUESTION: "favorite_colors",
     dlg.FOOD_QUESTION: "favorite_food",
-    dlg.HOBBY_QUESTION: "hobby",
-    dlg.PET_QUESTION: "pet",
+    dlg.HOBBY_QUESTION: "hobbies",
+    dlg.PET_QUESTION: "pets",
     dlg.BOOK_QUESTION: "favorite_book",
     dlg.DRINK_QUESTION: "favorite_drink",
     dlg.MOVIE_QUESTION: "favorite_movie",
-    dlg.SNACK_QUESTION: "favorite_snack",
-    dlg.SEASON_QUESTION: "favorite_season",
+    dlg.SNACK_QUESTION: "favorite_snacks",
+    dlg.SEASON_QUESTION: "favorite_seasons",
     dlg.PROGRAMMING_QUESTION: "likes_programming",
     dlg.MUSIC_QUESTION: "likes_music",
     dlg.COFFEE_QUESTION: "likes_coffee",
 }
 
 # Facts that must not be overwritten by follow-up questions or chat extraction.
-PROTECTED_FACT_KEYS: frozenset[str] = frozenset({"user_name"})
+PROTECTED_FACT_KEYS: frozenset[str] = frozenset({"user_names"})
+
+# Facts that may hold multiple values (stored as str or list[str]).
+MULTI_VALUE_FACT_KEYS: frozenset[str] = frozenset(
+    {
+        "user_names",
+        "hobbies",
+        "pets",
+        "favorite_colors",
+        "favorite_seasons",
+        "favorite_snacks",
+    }
+)
+
+# Legacy singular keys -> current keys (migrated on load).
+LEGACY_FACT_KEY_ALIASES: dict[str, str] = {
+    "user_name": "user_names",
+    "hobby": "hobbies",
+    "pet": "pets",
+    "favorite_color": "favorite_colors",
+    "favorite_season": "favorite_seasons",
+    "favorite_snack": "favorite_snacks",
+}
 
 ASK_ONCE_MARKERS: frozenset[str] = frozenset(MARKER_TO_FACT_KEY)
 

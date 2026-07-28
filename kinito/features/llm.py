@@ -168,7 +168,7 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
         """Append at most the user's name for light personalization of short lines."""
         if not self._should_personalize_generated_line(scripted_text, ai_hint):
             return prompt
-        name = self._memory.get_fact("user_name")
+        name = self._memory.pick_user_name()
         if not name:
             return prompt
         return f"{prompt}\n\nThe user's name is {name}.\n\n{prompts.MEMORY_GENERATION_HINT}"
@@ -209,8 +209,8 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
 
     def _chat_greeting(self) -> str:
         """Return a chat greeting, personalizing when the user's name is known."""
-        name = self._memory.get_fact("user_name")
-        if name:
+        name = self.chat_user_label()
+        if name and name != "You":
             return dlg.CHAT_GREETING_WITH_NAME.format(user_name=name)
         return dlg.CHAT_GREETING
 
@@ -294,6 +294,7 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
             self.speak(dlg.CHAT_UNAVAILABLE, skip_ai=True)
             return
         self._conversation.reset()
+        self._pin_chat_user_label()
         self.open_chat_bubble(self._chat_greeting())
 
     def send_chat_message(self, user_text: str) -> None:

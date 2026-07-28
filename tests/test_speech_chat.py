@@ -61,10 +61,16 @@ def test_init_chat_state_defaults(chat_app):
 
 def test_close_chat_mode_resets_conversation(chat_app):
     chat_app._chat_mode = True
+    chat_app._chat_session_user_label = "Sad"
+    chat_app._clear_chat_session_user_label = MagicMock(
+        side_effect=lambda: setattr(chat_app, "_chat_session_user_label", None)
+    )
     chat_app._close_speech_bubble_impl = MagicMock()
     chat_app.close_chat_mode()
     chat_app._conversation.reset.assert_called_once()
     assert chat_app._chat_mode is False
+    chat_app._clear_chat_session_user_label.assert_called_once()
+    assert chat_app._chat_session_user_label is None
     chat_app._close_speech_bubble_impl.assert_called_once()
 
 
@@ -121,6 +127,7 @@ def test_append_chat_message_styles_speaker_labels(chat_app):
     chat_app._configure_chat_log_tags(log)
 
     chat_app.chat_user_label = MagicMock(return_value="Alex")
+    chat_app.chat_user_labels = MagicMock(return_value=["Alex"])
     chat_app.append_chat_message("Kinito", "Hello there!")
     chat_app.append_chat_message("Alex", "hi :)")
 
@@ -129,5 +136,20 @@ def test_append_chat_message_styles_speaker_labels(chat_app):
     assert "Alex: hi :)" in content
     assert "chat_kinito" in log.tag_names("1.0")
     user_index = log.search("Alex:", "1.0", tk.END)
+    assert user_index
+    assert "chat_user" in log.tag_names(user_index)
+
+
+def test_append_chat_message_styles_any_known_user_name(chat_app):
+    log = _RecordingChatLog()
+    chat_app._chat_log_widget = log
+    chat_app._configure_chat_log_tags(log)
+
+    # Display label can differ from the name used on this line.
+    chat_app.chat_user_label = MagicMock(return_value="Alina")
+    chat_app.chat_user_labels = MagicMock(return_value=["Alina", "Sad", "Ben"])
+    chat_app.append_chat_message("Sad", "Spoopy vibes")
+
+    user_index = log.search("Sad:", "1.0", tk.END)
     assert user_index
     assert "chat_user" in log.tag_names(user_index)

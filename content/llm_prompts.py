@@ -66,12 +66,14 @@ Rules:
 - add_notes: max 1 short note. Prefer the single most useful new detail from this turn.
 - Do not add a note if Already known already covers the same topic, even with different wording.
 - remove_notes: exact note texts to delete if the user corrected themselves (notes only — never delete fact keys).
-- update_facts: only these keys if clearly stated: user_name, favorite_color, favorite_food, hobby, pet, favorite_book, favorite_drink, favorite_movie, favorite_snack, favorite_season, likes_programming, likes_music, likes_coffee.
+- update_facts: only these keys if clearly stated: user_names, favorite_colors, favorite_food, hobbies, pets, favorite_book, favorite_drink, favorite_movie, favorite_snacks, favorite_seasons, likes_programming, likes_music, likes_coffee.
 - When a preference changes, OVERWRITE the fact with the new value via update_facts. Do not leave the old value and do not try to remove the key.
-  Examples: "I don't like programming anymore" → {{"likes_programming": "no"}}; "my favorite color is blue now" → {{"favorite_color": "blue"}}.
+  Examples: "I don't like programming anymore" → {{"likes_programming": "no"}}; "my favorite color is blue now" → {{"favorite_colors": "blue"}}.
+- user_names, hobbies, pets, favorite_colors, favorite_seasons, and favorite_snacks may hold multiple values. Prefer a JSON array when listing more than one, or when correcting the full set.
+  Examples: new hobby "I also crochet" → {{"hobbies": "Crochet"}} (merged with known hobbies); "I only crochet now" → {{"hobbies": ["Crochet"]}}; pets "Lola and Mae" → {{"pets": ["Lola", "Mae"]}}; nickname "call me Sad sometimes" → {{"user_names": "Sad"}}.
 - For markers like likes_programming / likes_music / likes_coffee, always store "yes" or "no".
-- Never set user_name unless the user explicitly states their name (e.g. "my name is", "call me", "I'm …" as an introduction). Music genres, colors, foods, and hobbies are NOT names.
-- Do not overwrite an existing user_name with a preference, genre, or single-word topic label.
+- Never set user_names unless the user explicitly states their name (e.g. "my name is", "call me", "I'm …" as an introduction). Music genres, colors, foods, and hobbies are NOT names.
+- Do not overwrite existing user_names with a preference, genre, or single-word topic label.
 - Prefer update_facts over add_notes when a fact key fits.
 
 Already known:

@@ -6,6 +6,7 @@ import random
 from dataclasses import dataclass
 from typing import Literal
 
+from content.memory_keys import MULTI_VALUE_FACT_KEYS
 from kinito.memory.questions import SAVE_AS_NOTE, MemoryQuestion, save_as_verify, verify_fact_key
 from kinito.memory.store import MemoryStore
 
@@ -25,11 +26,11 @@ class MemoryFollowup:
 
 MEMORY_FOLLOWUPS: tuple[MemoryFollowup, ...] = (
     MemoryFollowup(
-        "user_name",
+        "user_names",
         "weekend_plans",
         (
-            "{user_name}, got any plans for the weekend?",
-            "Hey {user_name}! Anything fun coming up soon?",
+            "{user_names}, got any plans for the weekend?",
+            "Hey {user_names}! Anything fun coming up soon?",
         ),
         "textbox",
     ),
@@ -43,29 +44,31 @@ MEMORY_FOLLOWUPS: tuple[MemoryFollowup, ...] = (
         "yes_no",
     ),
     MemoryFollowup(
-        "hobby",
+        "hobbies",
         "hobby_duration",
         (
-            "How long have you been into {hobby}?",
-            "{hobby} is cool! How did you get into it?",
+            "How long have you been into {hobbies}?",
+            "{hobbies} is cool! How did you get into it?",
+            "Been doing any {hobbies} lately?",
         ),
         "textbox",
     ),
     MemoryFollowup(
-        "pet",
+        "pets",
         "pet_company",
         (
-            "Does {pet} keep you company while you work?",
-            "I bet {pet} is nearby right now. Am I right?",
+            "Does {pets} keep you company while you work?",
+            "I bet {pets} is nearby right now. Am I right?",
+            "How is {pets} doing today?",
         ),
         "yes_no",
     ),
     MemoryFollowup(
-        "favorite_color",
+        "favorite_colors",
         "color_everywhere",
         (
-            "Is {favorite_color} your color everywhere, or just sometimes?",
-            "I remember you like {favorite_color}. Do you wear it often?",
+            "Is {favorite_colors} your color everywhere, or just sometimes?",
+            "I remember you like {favorite_colors}. Do you wear it often?",
         ),
         "textbox",
     ),
@@ -80,14 +83,14 @@ MEMORY_FOLLOWUPS: tuple[MemoryFollowup, ...] = (
     ),
     # Confirm whether stored facts are still accurate (update on "no", never delete).
     MemoryFollowup(
-        "favorite_color",
+        "favorite_colors",
         "verify_favorite_color",
         (
-            "Is your favorite color still {favorite_color}?",
-            "Just checking — do you still like {favorite_color} best?",
+            "Is your favorite color still {favorite_colors}?",
+            "Just checking — do you still like {favorite_colors} best?",
         ),
         "yes_no",
-        save_as=save_as_verify("favorite_color"),
+        save_as=save_as_verify("favorite_colors"),
     ),
     MemoryFollowup(
         "favorite_food",
@@ -100,14 +103,15 @@ MEMORY_FOLLOWUPS: tuple[MemoryFollowup, ...] = (
         save_as=save_as_verify("favorite_food"),
     ),
     MemoryFollowup(
-        "hobby",
+        "hobbies",
         "verify_hobby",
         (
-            "Are you still into {hobby}?",
-            "Just curious — is {hobby} still your thing?",
+            "Are you still into {hobbies}?",
+            "Just curious — is {hobbies} still your thing?",
+            "Still enjoying {hobbies} these days?",
         ),
         "yes_no",
-        save_as=save_as_verify("hobby"),
+        save_as=save_as_verify("hobbies"),
     ),
     MemoryFollowup(
         "favorite_drink",
@@ -130,34 +134,35 @@ MEMORY_FOLLOWUPS: tuple[MemoryFollowup, ...] = (
         save_as=save_as_verify("favorite_movie"),
     ),
     MemoryFollowup(
-        "favorite_snack",
+        "favorite_snacks",
         "verify_favorite_snack",
         (
-            "Is {favorite_snack} still your go-to snack?",
-            "Do you still love {favorite_snack}?",
+            "Is {favorite_snacks} still your go-to snack?",
+            "Do you still love {favorite_snacks}?",
         ),
         "yes_no",
-        save_as=save_as_verify("favorite_snack"),
+        save_as=save_as_verify("favorite_snacks"),
     ),
     MemoryFollowup(
-        "favorite_season",
+        "favorite_seasons",
         "verify_favorite_season",
         (
-            "Is {favorite_season} still your favorite season?",
-            "Still partial to {favorite_season}?",
+            "Is {favorite_seasons} still your favorite season?",
+            "Still partial to {favorite_seasons}?",
         ),
         "yes_no",
-        save_as=save_as_verify("favorite_season"),
+        save_as=save_as_verify("favorite_seasons"),
     ),
     MemoryFollowup(
-        "pet",
+        "pets",
         "verify_pet",
         (
-            "Do you still have {pet}?",
-            "Is {pet} still part of your life?",
+            "Do you still have {pets}?",
+            "Is {pets} still part of your life?",
+            "Still hanging out with {pets}?",
         ),
         "yes_no",
-        save_as=save_as_verify("pet"),
+        save_as=save_as_verify("pets"),
     ),
     MemoryFollowup(
         "likes_programming",
@@ -193,27 +198,40 @@ MEMORY_FOLLOWUPS: tuple[MemoryFollowup, ...] = (
 
 # Human-readable prompts when a verification "no" needs a replacement value.
 FACT_UPDATE_PROMPTS: dict[str, str] = {
-    "favorite_color": "Got it! What's your favorite color now?",
+    "favorite_colors": "Got it! What colors do you like now?",
     "favorite_food": "Okay! What's your favorite food now?",
-    "hobby": "Fair enough! What hobby are you into these days?",
+    "hobbies": "Fair enough! What hobbies are you into these days?",
     "favorite_drink": "Noted! What's your favorite drink now?",
     "favorite_movie": "Alright! What's your favorite movie now?",
-    "favorite_snack": "Okay! What's your favorite snack now?",
-    "favorite_season": "Got it! What's your favorite season now?",
+    "favorite_snacks": "Okay! What snacks do you like now?",
+    "favorite_seasons": "Got it! Which seasons do you like best now?",
     "favorite_book": "Okay! What's a favorite book of yours now?",
-    "pet": "Got it! Do you have a pet now? If so, tell me about them.",
+    "pets": "Got it! Do you have any pets now? If so, tell me about them.",
+    "user_names": "Got it! What should I call you now?",
 }
+
+
+def _facts_for_followup_template(memory: MemoryStore, requires_fact: str) -> dict[str, str]:
+    """Build format kwargs; multi-value facts use one random item when possible."""
+    facts = memory.facts_dict()
+    if requires_fact not in MULTI_VALUE_FACT_KEYS:
+        return facts
+    values = memory.get_fact_values(requires_fact)
+    if not values:
+        return facts
+    # Speak about one item so lines stay natural with several hobbies/pets.
+    return {**facts, requires_fact: random.choice(values)}
 
 
 def pick_template_followup(memory: MemoryStore) -> MemoryQuestion | None:
     """Return a scripted follow-up question, or None if none apply."""
     candidates: list[MemoryQuestion] = []
-    facts = memory.facts_dict()
+    base_facts = memory.facts_dict()
 
     for followup in MEMORY_FOLLOWUPS:
         if memory.is_topic_asked(followup.topic):
             continue
-        value = facts.get(followup.requires_fact)
+        value = base_facts.get(followup.requires_fact)
         if not value:
             continue
         # Skip verifying likes_* facts that are already "no" — nothing to confirm.
@@ -223,6 +241,7 @@ def pick_template_followup(memory: MemoryStore) -> MemoryQuestion | None:
             and value.strip().lower() in {"no", "n", "false", "0"}
         ):
             continue
+        facts = _facts_for_followup_template(memory, followup.requires_fact)
         template = random.choice(followup.templates)
         try:
             question = template.format(**facts)

@@ -989,7 +989,7 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
     DialogSpec(
         dlg.COLOR_QUESTION,
         DialogUI("textbox", textbox_prompt=dlg.COLOR_QUESTION),
-        _text_format_with_memory(dlg.COLOR_QUESTION, "favorite_color", dlg.COLOR_RESPONSES),
+        _text_format_with_memory(dlg.COLOR_QUESTION, "favorite_colors", dlg.COLOR_RESPONSES),
     ),
     DialogSpec(
         dlg.PROGRAMMING_QUESTION,
@@ -1004,7 +1004,7 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
     DialogSpec(
         dlg.HOBBY_QUESTION,
         DialogUI("textbox", textbox_prompt=dlg.HOBBY_QUESTION),
-        _text_format_with_memory(dlg.HOBBY_QUESTION, "hobby", dlg.HOBBY_RESPONSES),
+        _text_format_with_memory(dlg.HOBBY_QUESTION, "hobbies", dlg.HOBBY_RESPONSES),
     ),
     DialogSpec(
         dlg.GAME_QUESTION,
@@ -1064,12 +1064,12 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
     DialogSpec(
         dlg.SEASON_QUESTION,
         DialogUI("textbox", textbox_prompt=dlg.SEASON_QUESTION),
-        _text_format_with_memory(dlg.SEASON_QUESTION, "favorite_season", dlg.SEASON_RESPONSES),
+        _text_format_with_memory(dlg.SEASON_QUESTION, "favorite_seasons", dlg.SEASON_RESPONSES),
     ),
     DialogSpec(
         dlg.PET_QUESTION,
         DialogUI("textbox", textbox_prompt=dlg.PET_QUESTION),
-        _text_format_with_memory(dlg.PET_QUESTION, "pet", dlg.PET_RESPONSES),
+        _text_format_with_memory(dlg.PET_QUESTION, "pets", dlg.PET_RESPONSES),
     ),
     DialogSpec(
         dlg.SLEEP_QUESTION,
@@ -1079,7 +1079,7 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
     DialogSpec(
         dlg.NAME_QUESTION,
         DialogUI("textbox", textbox_prompt=dlg.NAME_QUESTION),
-        _text_format_with_memory(dlg.NAME_QUESTION, "user_name", dlg.NAME_RESPONSES),
+        _text_format_with_memory(dlg.NAME_QUESTION, "user_names", dlg.NAME_RESPONSES),
     ),
     DialogSpec(
         dlg.BORED_QUESTION,
@@ -1129,7 +1129,7 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
     DialogSpec(
         dlg.SNACK_QUESTION,
         DialogUI("textbox", textbox_prompt=dlg.SNACK_QUESTION),
-        _text_format_with_memory(dlg.SNACK_QUESTION, "favorite_snack", dlg.SNACK_RESPONSES),
+        _text_format_with_memory(dlg.SNACK_QUESTION, "favorite_snacks", dlg.SNACK_RESPONSES),
     ),
     DialogSpec(
         dlg.WEATHER_QUESTION,
