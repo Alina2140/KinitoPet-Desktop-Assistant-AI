@@ -43,6 +43,9 @@ def _menu_app(**kwargs):
     app._ambient_reminders_enabled = kwargs.get("ambient_reminders_enabled", True)
     app._app_awareness_enabled = kwargs.get("app_awareness_enabled", True)
     app._snoring_enabled = kwargs.get("snoring_enabled", True)
+    app._window_grab_enabled = kwargs.get("window_grab_enabled", True)
+    app._tts_enabled = kwargs.get("tts_enabled", True)
+    app._hidden_menu_buttons = kwargs.get("hidden_menu_buttons", set())
     return app
 
 
@@ -134,6 +137,9 @@ def test_settings_and_actions_options():
         dlg.BUTTON_REMINDERS_ON,
         dlg.BUTTON_APP_AWARENESS_ON,
         dlg.BUTTON_SNORING_ON,
+        dlg.BUTTON_WINDOW_PLAY_ON,
+        dlg.BUTTON_TTS_ON,
+        dlg.BUTTON_MENU_BUTTONS,
         dlg.BUTTON_REMEMBER,
         dlg.BUTTON_FORGET,
         dlg.BUTTON_SHOW_CREDITS,
@@ -144,6 +150,9 @@ def test_settings_and_actions_options():
         dlg.BUTTON_REMINDERS_OFF,
         dlg.BUTTON_APP_AWARENESS_ON,
         dlg.BUTTON_SNORING_ON,
+        dlg.BUTTON_WINDOW_PLAY_ON,
+        dlg.BUTTON_TTS_ON,
+        dlg.BUTTON_MENU_BUTTONS,
         dlg.BUTTON_REMEMBER,
         dlg.BUTTON_FORGET,
         dlg.BUTTON_SHOW_CREDITS,
@@ -154,6 +163,9 @@ def test_settings_and_actions_options():
         dlg.BUTTON_REMINDERS_ON,
         dlg.BUTTON_APP_AWARENESS_OFF,
         dlg.BUTTON_SNORING_ON,
+        dlg.BUTTON_WINDOW_PLAY_ON,
+        dlg.BUTTON_TTS_ON,
+        dlg.BUTTON_MENU_BUTTONS,
         dlg.BUTTON_REMEMBER,
         dlg.BUTTON_FORGET,
         dlg.BUTTON_SHOW_CREDITS,
@@ -164,6 +176,9 @@ def test_settings_and_actions_options():
         dlg.BUTTON_REMINDERS_ON,
         dlg.BUTTON_APP_AWARENESS_ON,
         dlg.BUTTON_SNORING_ON,
+        dlg.BUTTON_WINDOW_PLAY_ON,
+        dlg.BUTTON_TTS_ON,
+        dlg.BUTTON_MENU_BUTTONS,
         dlg.BUTTON_REMEMBER,
         dlg.BUTTON_FORGET,
         dlg.BUTTON_SHOW_CREDITS,
@@ -174,9 +189,66 @@ def test_settings_and_actions_options():
         dlg.BUTTON_REMINDERS_ON,
         dlg.BUTTON_APP_AWARENESS_ON,
         dlg.BUTTON_SNORING_OFF,
+        dlg.BUTTON_WINDOW_PLAY_ON,
+        dlg.BUTTON_TTS_ON,
+        dlg.BUTTON_MENU_BUTTONS,
         dlg.BUTTON_REMEMBER,
         dlg.BUTTON_FORGET,
         dlg.BUTTON_SHOW_CREDITS,
+        dlg.BUTTON_BACK,
+    ]
+    assert settings_options_for(_menu_app(window_grab_enabled=False)) == [
+        dlg.BUTTON_SCREEN_EFFECTS_ON,
+        dlg.BUTTON_REMINDERS_ON,
+        dlg.BUTTON_APP_AWARENESS_ON,
+        dlg.BUTTON_SNORING_ON,
+        dlg.BUTTON_WINDOW_PLAY_OFF,
+        dlg.BUTTON_TTS_ON,
+        dlg.BUTTON_MENU_BUTTONS,
+        dlg.BUTTON_REMEMBER,
+        dlg.BUTTON_FORGET,
+        dlg.BUTTON_SHOW_CREDITS,
+        dlg.BUTTON_BACK,
+    ]
+    assert settings_options_for(_menu_app(tts_enabled=False)) == [
+        dlg.BUTTON_SCREEN_EFFECTS_ON,
+        dlg.BUTTON_REMINDERS_ON,
+        dlg.BUTTON_APP_AWARENESS_ON,
+        dlg.BUTTON_SNORING_ON,
+        dlg.BUTTON_WINDOW_PLAY_ON,
+        dlg.BUTTON_TTS_OFF,
+        dlg.BUTTON_MENU_BUTTONS,
+        dlg.BUTTON_REMEMBER,
+        dlg.BUTTON_FORGET,
+        dlg.BUTTON_SHOW_CREDITS,
+        dlg.BUTTON_BACK,
+    ]
+    assert settings_options_for(
+        _menu_app(hidden_menu_buttons={"actions.hug", "main.chat"})
+    ) == [
+        dlg.BUTTON_SCREEN_EFFECTS_ON,
+        dlg.BUTTON_REMINDERS_ON,
+        dlg.BUTTON_APP_AWARENESS_ON,
+        dlg.BUTTON_SNORING_ON,
+        dlg.BUTTON_WINDOW_PLAY_ON,
+        dlg.BUTTON_TTS_ON,
+        dlg.BUTTON_MENU_BUTTONS,
+        dlg.BUTTON_REMEMBER,
+        dlg.BUTTON_FORGET,
+        dlg.BUTTON_SHOW_CREDITS,
+        dlg.BUTTON_BACK,
+    ]
+    assert dlg.BUTTON_CHAT not in menu_options_for(
+        _menu_app(hidden_menu_buttons={"main.chat"})
+    )
+    assert actions_options_for(_menu_app(hidden_menu_buttons={"actions.hug"})) == [
+        dlg.BUTTON_SET_REMINDER,
+        dlg.BUTTON_TELL_TIME,
+        dlg.BUTTON_SING_SONG,
+        dlg.BUTTON_FUN_FACT,
+        dlg.BUTTON_VISIT_WEBSITE,
+        dlg.BUTTON_PLAY_MUSIC,
+        dlg.BUTTON_PLAY_GAME,
         dlg.BUTTON_BACK,
     ]
     assert actions_options_for(_menu_app()) == [

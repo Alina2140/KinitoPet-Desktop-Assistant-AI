@@ -13,7 +13,7 @@ from kinito.window_icon import apply_window_icon
 class NudgesMixin:
     """Occasionally remind the user via speech bubble or text popup."""
 
-    NUDGE_CHANCE = 1 / 300
+    NUDGE_CHANCE = 1 / 250
     NUDGE_COOLDOWN_SECONDS = 300
     NUDGE_POPUP_CHANCE = 0.5
     NUDGE_POPUP_WIDTH = 320

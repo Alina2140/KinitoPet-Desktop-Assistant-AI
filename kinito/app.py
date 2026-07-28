@@ -18,6 +18,8 @@ from kinito.assets import (
     list_standing_sprite_paths,
     sprite_path_fancy,
     sprite_path_fancy_1,
+    sprite_path_hand_left,
+    sprite_path_hand_right,
     sprite_path_hug,
     sprite_path_hug2,
     sprite_path_idle,
@@ -51,9 +53,11 @@ from kinito.features.games import GamesMixin
 from kinito.features.glitch import GlitchMixin
 from kinito.features.hug import HugMixin
 from kinito.features.llm import LLMMixin
+from kinito.features.menu_settings import MenuSettingsMixin
 from kinito.features.music import MusicMixin
 from kinito.features.nudges import NudgesMixin
 from kinito.features.programs import ProgramsMixin
+from kinito.features.window_grab import WindowGrabMixin
 from kinito.movement import MovementMixin
 from kinito.settings_store import SettingsStore
 from kinito.speech import SpeechMixin
@@ -102,6 +106,8 @@ class FloatingAssistant(
     GlitchMixin,
     AdsMixin,
     NudgesMixin,
+    WindowGrabMixin,
+    MenuSettingsMixin,
     MovementMixin,
     HugMixin,
     ContentMixin,
@@ -158,6 +164,8 @@ class FloatingAssistant(
         self.img_thinking2 = _open_sprite(sprite_path_thinking2, fallback)
         self.img_hug = _open_sprite(sprite_path_hug, fallback)
         self.img_hug2 = _open_sprite(sprite_path_hug2, fallback)
+        self.img_hand_left = _open_sprite(sprite_path_hand_left, fallback)
+        self.img_hand_right = _open_sprite(sprite_path_hand_right, fallback)
         self.tk_img_normal = ImageTk.PhotoImage(self.img_normal)
         self.tk_img_normal_2 = ImageTk.PhotoImage(self.img_normal_2)
         self._standing_look_sprites = _load_look_around_sprites(
@@ -220,6 +228,8 @@ class FloatingAssistant(
         self.tk_img_thinking2 = ImageTk.PhotoImage(self.img_thinking2)
         self.tk_img_hug = ImageTk.PhotoImage(self.img_hug)
         self.tk_img_hug2 = ImageTk.PhotoImage(self.img_hug2)
+        self.tk_img_hand_left = ImageTk.PhotoImage(self.img_hand_left)
+        self.tk_img_hand_right = ImageTk.PhotoImage(self.img_hand_right)
         self._surf_render_cache = {}
         self._surf_tk_image = None
 
@@ -278,6 +288,16 @@ class FloatingAssistant(
             "ambient_reminders_enabled", True
         )
         self._last_nudge_at = 0.0
+        self._window_grab_enabled = self._settings.get("window_grab_enabled", True)
+        self._last_window_grab_at = 0.0
+        self._window_grab_active = False
+        self._window_grab_state = None
+        self._window_grab_timer = None
+        self._hand_window = None
+        self._hand_photo_ref = None
+        self._tts_enabled = self._settings.get("tts_enabled", True)
+        self._hidden_menu_buttons = self._settings.get_hidden_menu_buttons()
+        self._menu_settings_window = None
         self._init_app_awareness(
             enabled=self._settings.get("app_awareness_enabled", True)
         )
@@ -370,7 +390,10 @@ class FloatingAssistant(
                 getattr(self, "_app_awareness_enabled", True)
             ),
             snoring_enabled=bool(getattr(self, "_snoring_enabled", True)),
+            window_grab_enabled=bool(getattr(self, "_window_grab_enabled", True)),
+            tts_enabled=bool(getattr(self, "_tts_enabled", True)),
         )
+        store.set_hidden_menu_buttons(getattr(self, "_hidden_menu_buttons", set()))
 
     def _schedule_startup_line(self):
         """Start the welcome speech in a background thread after a short delay."""

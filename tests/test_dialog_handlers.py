@@ -245,6 +245,24 @@ def test_handle_menu_toggle_snoring(mock_app):
     mock_app.toggle_snoring.assert_called_once()
 
 
+def test_handle_menu_toggle_window_play(mock_app):
+    spec = find_dialog_spec(dlg.SETTINGS_MENU_QUESTION)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_WINDOW_PLAY_ON)
+    mock_app.toggle_window_grab.assert_called_once()
+
+
+def test_handle_menu_toggle_tts(mock_app):
+    spec = find_dialog_spec(dlg.SETTINGS_MENU_QUESTION)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_TTS_ON)
+    mock_app.toggle_tts.assert_called_once()
+
+
+def test_handle_menu_open_menu_buttons(mock_app):
+    spec = find_dialog_spec(dlg.SETTINGS_MENU_QUESTION)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_MENU_BUTTONS)
+    mock_app.open_menu_button_settings.assert_called_once()
+
+
 def test_handle_menu_toggle_focus(mock_app):
     spec = find_dialog_spec(dlg.MODES_MENU_QUESTION)
     handle_dialog_response(mock_app, spec, dlg.BUTTON_FOCUS)

@@ -3,6 +3,7 @@
 import os
 import subprocess
 import threading
+import time
 import tkinter as tk
 from tkinter import Toplevel
 
@@ -702,6 +703,8 @@ class SpeechMixin:
 
     def _run_tts(self, text, pitch=45, voice_candidates=None, speech_epoch=None):
         """Run TTS via balcon (preferred) or pyttsx3 fallback."""
+        if not getattr(self, "_tts_enabled", True):
+            return False
         text = normalize_text_for_tts(text)
         if voice_candidates is None:
             voice_candidates = self.VOICE_NORMAL_CANDIDATES
@@ -720,6 +723,16 @@ class SpeechMixin:
         if self._tts_interrupted(speech_epoch):
             return False
         return self._run_pyttsx3_fallback(text)
+
+    def toggle_tts(self):
+        """Enable or disable spoken TTS (speech bubbles still appear)."""
+        from content import dialogue as dlg
+
+        self._tts_enabled = not getattr(self, "_tts_enabled", True)
+        if hasattr(self, "_persist_settings"):
+            self._persist_settings()
+        lines = dlg.TTS_ON_LINES if self._tts_enabled else dlg.TTS_OFF_LINES
+        self.speak(dlg.pick_line(lines), skip_ai=True)
 
     def _infer_talk_sprite_mode(self, text, question=None):
         """Return 'thinking' for questions and 'talking' for statements."""
@@ -791,7 +804,10 @@ class SpeechMixin:
 
                 if accompaniment_path:
                     self.root.after(350, start_music_soon)
-                self._run_tts(text, pitch, voice_candidates, speech_epoch=epoch)
+                spoke = self._run_tts(text, pitch, voice_candidates, speech_epoch=epoch)
+                if not spoke and getattr(self, "_tts_enabled", True) is False:
+                    # Give the user time to read the bubble when voice is muted.
+                    time.sleep(min(2.5, 0.35 + 0.045 * max(len(text), 1)))
                 if epoch != self._speech_epoch:
                     return
                 if hasattr(self, "stop_speech_accompaniment_music"):

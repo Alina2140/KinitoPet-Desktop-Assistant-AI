@@ -30,6 +30,17 @@ def test_is_noise_process_filters_shell_hosts():
     assert is_noise_process("explorer.exe") is True
     assert is_noise_process(r"C:\Windows\explorer.exe") is True
     assert is_noise_process("chrome.exe") is False
+    assert is_noise_process("WindowsTerminal.exe") is True
+    assert is_noise_process("powershell.exe") is True
+    assert is_noise_process("cmd.exe") is True
+
+
+def test_friendly_app_name_uses_description_when_available():
+    with patch(
+        "kinito.app_context.file_description_name",
+        return_value="My Cool App, Version 1",
+    ):
+        assert friendly_app_name(r"C:\Apps\coolapp.exe") == "My Cool App"
 
 
 def test_build_snapshot_from_process_map_dedupes_and_filters():

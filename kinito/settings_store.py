@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+from collections.abc import Iterable
 from typing import Any
 
 from kinito.assets import user_media_directory
@@ -12,12 +13,19 @@ from kinito.assets import user_media_directory
 SETTINGS_VERSION = 1
 SETTINGS_FILENAME = "settings.json"
 
-DEFAULT_SETTINGS: dict[str, bool] = {
+DEFAULT_BOOL_SETTINGS: dict[str, bool] = {
     "screen_effects_enabled": True,
     "ambient_reminders_enabled": True,
     "app_awareness_enabled": True,
     "snoring_enabled": True,
+    "window_grab_enabled": True,
+    "tts_enabled": True,
 }
+
+# Back-compat alias used by older tests/imports.
+DEFAULT_SETTINGS = DEFAULT_BOOL_SETTINGS
+
+HIDDEN_MENU_BUTTONS_KEY = "hidden_menu_buttons"
 
 
 def settings_file_path(directory: str | None = None) -> str:
@@ -51,7 +59,8 @@ class SettingsStore:
     def _empty_data() -> dict[str, Any]:
         return {
             "version": SETTINGS_VERSION,
-            **DEFAULT_SETTINGS,
+            **DEFAULT_BOOL_SETTINGS,
+            HIDDEN_MENU_BUTTONS_KEY: [],
         }
 
     def load(self) -> None:
@@ -83,9 +92,16 @@ class SettingsStore:
 
     def _normalize_loaded(self, raw: dict[str, Any]) -> dict[str, Any]:
         data = self._empty_data()
-        for key in DEFAULT_SETTINGS:
-            value = raw.get(key, DEFAULT_SETTINGS[key])
-            data[key] = bool(value) if isinstance(value, bool) else DEFAULT_SETTINGS[key]
+        for key in DEFAULT_BOOL_SETTINGS:
+            value = raw.get(key, DEFAULT_BOOL_SETTINGS[key])
+            data[key] = bool(value) if isinstance(value, bool) else DEFAULT_BOOL_SETTINGS[key]
+        hidden = raw.get(HIDDEN_MENU_BUTTONS_KEY, [])
+        if isinstance(hidden, list):
+            data[HIDDEN_MENU_BUTTONS_KEY] = [
+                str(item) for item in hidden if isinstance(item, str) and item
+            ]
+        else:
+            data[HIDDEN_MENU_BUTTONS_KEY] = []
         return data
 
     def get(self, key: str, default: bool | None = None) -> bool:
@@ -94,13 +110,13 @@ class SettingsStore:
             return self._data[key]
         if default is not None:
             return default
-        return bool(DEFAULT_SETTINGS.get(key, False))
+        return bool(DEFAULT_BOOL_SETTINGS.get(key, False))
 
     def update(self, **values: bool) -> None:
         """Update known boolean settings and save immediately."""
         changed = False
         for key, value in values.items():
-            if key not in DEFAULT_SETTINGS:
+            if key not in DEFAULT_BOOL_SETTINGS:
                 continue
             coerced = bool(value)
             if self._data.get(key) != coerced:
@@ -108,3 +124,18 @@ class SettingsStore:
                 changed = True
         if changed or not os.path.isfile(self._path):
             self.save()
+
+    def get_hidden_menu_buttons(self) -> set[str]:
+        """Return stable ids of menu buttons the user has hidden."""
+        raw = self._data.get(HIDDEN_MENU_BUTTONS_KEY, [])
+        if not isinstance(raw, list):
+            return set()
+        return {str(item) for item in raw if isinstance(item, str) and item}
+
+    def set_hidden_menu_buttons(self, button_ids: Iterable[str]) -> None:
+        """Persist the set of hidden menu button ids."""
+        cleaned = sorted({str(item) for item in button_ids if str(item)})
+        if self._data.get(HIDDEN_MENU_BUTTONS_KEY) == cleaned:
+            return
+        self._data[HIDDEN_MENU_BUTTONS_KEY] = cleaned
+        self.save()

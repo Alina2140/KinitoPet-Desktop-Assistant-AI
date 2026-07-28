@@ -10,6 +10,7 @@ from typing import Literal
 
 from content import credits, game_lines
 from content import dialogue as dlg
+from content.menu_visibility import filter_visible_menu_buttons
 from content.site_validator import pick_random_category
 from content.trivia_questions import ROUND_SIZE, check_answer
 from kinito.features.games.coin_dice import (
@@ -77,6 +78,12 @@ def apply_dialog_ui(app, spec: DialogSpec) -> None:
         app.show_response_textbox(spec.ui.textbox_prompt or spec.marker)
 
 
+def _visible_menu_buttons(app, buttons: list[str]) -> list[str]:
+    """Apply the user's menu-button visibility preferences."""
+    hidden = getattr(app, "_hidden_menu_buttons", set()) or set()
+    return filter_visible_menu_buttons(list(buttons), set(hidden))
+
+
 def menu_options_for(app) -> list[str]:
     """Return top-level right-click menu labels."""
     paused = getattr(app, "paused", False)
@@ -90,15 +97,18 @@ def menu_options_for(app) -> list[str]:
             if not paused:
                 options.append(dlg.BUTTON_SET_FOCUS_TIMER)
         options.append(dlg.BUTTON_SAY_GOODBYE)
-        return options
+        return _visible_menu_buttons(app, options)
 
-    return [
-        dlg.BUTTON_MODES,
-        dlg.BUTTON_SETTINGS,
-        dlg.BUTTON_ACTIONS,
-        dlg.BUTTON_CHAT,
-        dlg.BUTTON_SAY_GOODBYE,
-    ]
+    return _visible_menu_buttons(
+        app,
+        [
+            dlg.BUTTON_MODES,
+            dlg.BUTTON_SETTINGS,
+            dlg.BUTTON_ACTIONS,
+            dlg.BUTTON_CHAT,
+            dlg.BUTTON_SAY_GOODBYE,
+        ],
+    )
 
 
 def modes_options_for(app) -> list[str]:
@@ -116,8 +126,8 @@ def modes_options_for(app) -> list[str]:
     if getattr(app, "_focus_mode", False):
         allowed |= _MODES_FOCUS_BUTTONS
     if allowed:
-        return [option for option in options if option in allowed]
-    return options
+        options = [option for option in options if option in allowed]
+    return _visible_menu_buttons(app, options)
 
 
 def settings_options_for(app) -> list[str]:
@@ -142,32 +152,50 @@ def settings_options_for(app) -> list[str]:
         if getattr(app, "_snoring_enabled", True)
         else dlg.BUTTON_SNORING_OFF
     )
-    return [
-        screen_effects_label,
-        reminders_label,
-        app_awareness_label,
-        snoring_label,
-        dlg.BUTTON_REMEMBER,
-        dlg.BUTTON_FORGET,
-        dlg.BUTTON_SHOW_CREDITS,
-        dlg.BUTTON_BACK,
-    ]
+    window_play_label = (
+        dlg.BUTTON_WINDOW_PLAY_ON
+        if getattr(app, "_window_grab_enabled", True)
+        else dlg.BUTTON_WINDOW_PLAY_OFF
+    )
+    tts_label = (
+        dlg.BUTTON_TTS_ON
+        if getattr(app, "_tts_enabled", True)
+        else dlg.BUTTON_TTS_OFF
+    )
+    return _visible_menu_buttons(
+        app,
+        [
+            screen_effects_label,
+            reminders_label,
+            app_awareness_label,
+            snoring_label,
+            window_play_label,
+            tts_label,
+            dlg.BUTTON_MENU_BUTTONS,
+            dlg.BUTTON_REMEMBER,
+            dlg.BUTTON_FORGET,
+            dlg.BUTTON_SHOW_CREDITS,
+            dlg.BUTTON_BACK,
+        ],
+    )
 
 
 def actions_options_for(app) -> list[str]:
     """Return Actions submenu labels."""
-    del app
-    return [
-        dlg.BUTTON_SET_REMINDER,
-        dlg.BUTTON_TELL_TIME,
-        dlg.BUTTON_SING_SONG,
-        dlg.BUTTON_FUN_FACT,
-        dlg.BUTTON_VISIT_WEBSITE,
-        dlg.BUTTON_PLAY_MUSIC,
-        dlg.BUTTON_PLAY_GAME,
-        dlg.BUTTON_GIVE_HUG,
-        dlg.BUTTON_BACK,
-    ]
+    return _visible_menu_buttons(
+        app,
+        [
+            dlg.BUTTON_SET_REMINDER,
+            dlg.BUTTON_TELL_TIME,
+            dlg.BUTTON_SING_SONG,
+            dlg.BUTTON_FUN_FACT,
+            dlg.BUTTON_VISIT_WEBSITE,
+            dlg.BUTTON_PLAY_MUSIC,
+            dlg.BUTTON_PLAY_GAME,
+            dlg.BUTTON_GIVE_HUG,
+            dlg.BUTTON_BACK,
+        ],
+    )
 
 
 _MENU_SLEEP_BUTTONS = frozenset(
@@ -391,6 +419,13 @@ def _menu_action_handlers() -> dict[str, Handler]:
         dlg.BUTTON_SNORING: lambda a: a.toggle_snoring(),
         dlg.BUTTON_SNORING_ON: lambda a: a.toggle_snoring(),
         dlg.BUTTON_SNORING_OFF: lambda a: a.toggle_snoring(),
+        dlg.BUTTON_WINDOW_PLAY: lambda a: a.toggle_window_grab(),
+        dlg.BUTTON_WINDOW_PLAY_ON: lambda a: a.toggle_window_grab(),
+        dlg.BUTTON_WINDOW_PLAY_OFF: lambda a: a.toggle_window_grab(),
+        dlg.BUTTON_TTS: lambda a: a.toggle_tts(),
+        dlg.BUTTON_TTS_ON: lambda a: a.toggle_tts(),
+        dlg.BUTTON_TTS_OFF: lambda a: a.toggle_tts(),
+        dlg.BUTTON_MENU_BUTTONS: lambda a: a.open_menu_button_settings(),
         dlg.BUTTON_SING_SONG: lambda a: a.say_random_poem(),
         dlg.BUTTON_FUN_FACT: lambda a: a.say_random_fact(),
         dlg.BUTTON_REMEMBER: lambda a: a.show_memory_summary(),

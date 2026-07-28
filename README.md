@@ -2,7 +2,7 @@
 
 A free, open-source desktop companion inspired by **KinitoPET**. Kinito lives on your screen as a small floating character: he talks, wanders around, asks questions, opens safe websites, plays music, and keeps you company while you work.
 
-> **Platform:** Built and tested on **Windows 10/11**. Some features (TTS via `balcon.exe`, opening programs from the Desktop, window minimize) are Windows-specific. The core app may run on other OSes with reduced functionality.
+> **Platform:** Built and tested on **Windows 10/11**. Some features (TTS via `balcon.exe`, opening programs from the Desktop, window minimize / window grab) are Windows-specific. The core app may run on other OSes with reduced functionality.
 
 ---
 
@@ -136,6 +136,7 @@ Click the buttons in the speech bubble to respond. Press **Enter** in text boxes
 Some choices trigger **KinitoPET-style surprises** — not bugs:
 
 - **Declining a poem** (**No**) or **declining a secret image** (**Not now**) can cause certain intended things to happen. It needs `pyautogui` installed.
+- **Window Play** (Settings, on by default): Kinito may rarely reach out with a hand sprite, grab a window edge, and slide it (or sometimes minimize it). Windows stay on the virtual desktop so they remain reachable. While he is dragging, you can take over the window yourself — he lets go and does not keep pulling. Turn **Window Play** off in Settings if you prefer a quieter desktop.
 
 ### Browser safety
 
@@ -330,9 +331,9 @@ Common causes: missing `GameAssets`, missing `Pillow`, or no display (won’t ru
 
 The spoken line must contain a **marker substring** registered in `content/dialog_registry.py`. If you add new question text, see **[docs/EXTENDING.md](docs/EXTENDING.md)**.
 
-### My windows minimized — is that a bug?
+### My windows minimized or moved — is that a bug?
 
-Usually **no**. Declining certain offers (poem **No**, secret image **Not now**) triggers intentional window minimizing on Windows — a KinitoPET-style easter egg. See [Easter eggs](#easter-eggs-intentional-behavior) above.
+Usually **no**. Declining certain offers (poem **No**, secret image **Not now**) triggers intentional window minimizing on Windows — a KinitoPET-style easter egg. Separately, **Window Play** (Settings) may occasionally grab and slide open windows with a hand sprite; you can take over mid-drag, and you can disable it in Settings. Windows are never closed. See [Easter eggs](#easter-eggs-intentional-behavior) above.
 
 ---
 

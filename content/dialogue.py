@@ -568,6 +568,36 @@ SNORING_OFF_LINES = [
     "Sleep audio disabled. Peaceful silence while I nap. Miss the snoring yet?",
 ]
 
+WINDOW_PLAY_ON_LINES = [
+    "Window play on! Hands may wander. Windows may wander with them.",
+    "I can grab windows again. Gently. Mostly. Sometimes sideways.",
+    "Desktop rearranging enabled. Don't panic if things move. That's me saying hi.",
+]
+
+WINDOW_PLAY_OFF_LINES = [
+    "Window play off. Your windows stay put. My hands stay put. Mostly.",
+    "No more grabbing windows. Promise. Soft promise. Softly.",
+    "Hands off mode. Your layout is safe. For now.",
+]
+
+TTS_ON_LINES = [
+    "Speech on! I can talk again. Out loud. Missed that.",
+    "TTS enabled. Voice unlocked. Hello from the speakers.",
+    "I can speak again. Bubbles and voice. Full package.",
+]
+
+TTS_OFF_LINES = [
+    "Speech off. I'll still show bubbles — just quietly. Mime mode.",
+    "TTS disabled. Reading lips optional. Bubbles still work.",
+    "Voice muted. Text lives on. Soft silence.",
+]
+
+MENU_BUTTONS_OPEN_LINES = [
+    "Here's the menu button list. Check what you want to see.",
+    "Customize the menus. Tick boxes. Make it yours.",
+    "Menu buttons panel open. Hide what you don't need.",
+]
+
 FOCUS_ON_LINES = [
     "Focus mode on. I'll wander quietly. No chatter, no surprises. Just... presence.",
     "Quiet mode engaged. I'll keep moving, but I won't bother you. I'll still notice.",
@@ -1086,6 +1116,13 @@ BUTTON_APP_AWARENESS_OFF = "App Awareness off"
 BUTTON_SNORING = "Snoring"
 BUTTON_SNORING_ON = "Snoring on"
 BUTTON_SNORING_OFF = "Snoring off"
+BUTTON_WINDOW_PLAY = "Window Play"
+BUTTON_WINDOW_PLAY_ON = "Window Play on"
+BUTTON_WINDOW_PLAY_OFF = "Window Play off"
+BUTTON_TTS = "Speech"
+BUTTON_TTS_ON = "Speech on"
+BUTTON_TTS_OFF = "Speech off"
+BUTTON_MENU_BUTTONS = "Menu Buttons"
 BUTTON_SING_SONG = "Sing"
 BUTTON_FUN_FACT = "Fun Fact"
 BUTTON_CHAT = "Chat"

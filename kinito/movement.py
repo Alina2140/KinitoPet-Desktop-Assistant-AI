@@ -962,6 +962,10 @@ class MovementMixin:
         """No-op unless NudgesMixin is mixed in."""
         return False
 
+    def maybe_trigger_window_grab(self) -> bool:
+        """No-op unless WindowGrabMixin is mixed in."""
+        return False
+
     def _is_reading_idle_active(self) -> bool:
         """Return True while Kinito is uninterrupted in the book-idle animation."""
         return (
@@ -1072,6 +1076,7 @@ class MovementMixin:
                 or self._is_busy_with_speech()
                 or self._is_background_music_playing()
                 or getattr(self, "_reading_idle_active", False)
+                or getattr(self, "_window_grab_active", False)
                 or getattr(self, "_mouse_follow_state", "idle") in {"thinking", "chasing"}
             ):
                 time.sleep(0.1)
@@ -1080,6 +1085,9 @@ class MovementMixin:
             self.maybe_trigger_blue_screen()
             self.maybe_trigger_random_ad()
             self.maybe_trigger_ambient_reminder()
+            if self.maybe_trigger_window_grab():
+                time.sleep(0.1)
+                continue
             if (
                 random.random() < self.SPONTANEOUS_CHANCE
                 and self._allow_random_questions
