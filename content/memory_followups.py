@@ -12,6 +12,9 @@ from kinito.memory.store import MemoryStore
 
 UIKind = Literal["textbox", "yes_no"]
 
+# Verify yes/no checks may repeat after this many days (facts can change).
+VERIFY_TOPIC_COOLDOWN_DAYS = 14
+
 
 @dataclass(frozen=True)
 class MemoryFollowup:
@@ -229,14 +232,20 @@ def pick_template_followup(memory: MemoryStore) -> MemoryQuestion | None:
     base_facts = memory.facts_dict()
 
     for followup in MEMORY_FOLLOWUPS:
-        if memory.is_topic_asked(followup.topic):
+        is_verify = verify_fact_key(followup.save_as) is not None
+        if is_verify:
+            if memory.is_topic_on_cooldown(
+                followup.topic, days=VERIFY_TOPIC_COOLDOWN_DAYS
+            ):
+                continue
+        elif memory.is_topic_asked(followup.topic):
             continue
         value = base_facts.get(followup.requires_fact)
         if not value:
             continue
         # Skip verifying likes_* facts that are already "no" — nothing to confirm.
         if (
-            verify_fact_key(followup.save_as)
+            is_verify
             and followup.requires_fact.startswith("likes_")
             and value.strip().lower() in {"no", "n", "false", "0"}
         ):

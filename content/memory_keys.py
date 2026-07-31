@@ -46,9 +46,14 @@ LEGACY_FACT_KEY_ALIASES: dict[str, str] = {
     "favorite_snack": "favorite_snacks",
 }
 
-ASK_ONCE_MARKERS: frozenset[str] = frozenset(MARKER_TO_FACT_KEY)
+ASK_ONCE_MARKERS: frozenset[str] = frozenset(MARKER_TO_FACT_KEY) | frozenset(
+    {dlg.BIRTHDAY_CONSENT_QUESTION}
+)
 
-ALLOWED_FACT_KEYS: frozenset[str] = frozenset(MARKER_TO_FACT_KEY.values())
+# Extra structured facts not tied to a simple ask-once marker mapping.
+EXTRA_FACT_KEYS: frozenset[str] = frozenset({"birthday"})
+
+ALLOWED_FACT_KEYS: frozenset[str] = frozenset(MARKER_TO_FACT_KEY.values()) | EXTRA_FACT_KEYS
 
 
 def fact_key_for_marker(marker: str) -> str | None:

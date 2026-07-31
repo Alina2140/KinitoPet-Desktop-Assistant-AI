@@ -1,8 +1,10 @@
 """Tests for scripted memory follow-up templates."""
 
+from datetime import date, timedelta
+
 import pytest
 
-from content.memory_followups import pick_template_followup
+from content.memory_followups import VERIFY_TOPIC_COOLDOWN_DAYS, pick_template_followup
 from kinito.memory.store import MemoryStore
 
 
@@ -37,8 +39,6 @@ def test_pick_template_followup_returns_none_without_facts(store):
 
 def test_pick_template_followup_can_verify_favorite_color(store):
     store.set_fact("favorite_colors", "black")
-    # Exhaust non-verify topics that also require favorite_colors / others first is random;
-    # mark exploratory topics so only verify remains likely, then force by marking all else.
     for topic in (
         "weekend_plans",
         "cooks_favorite_food",
@@ -46,16 +46,6 @@ def test_pick_template_followup_can_verify_favorite_color(store):
         "pet_company",
         "color_everywhere",
         "book_reread",
-        "verify_favorite_food",
-        "verify_hobby",
-        "verify_favorite_drink",
-        "verify_favorite_movie",
-        "verify_favorite_snack",
-        "verify_favorite_season",
-        "verify_pet",
-        "verify_likes_programming",
-        "verify_likes_music",
-        "verify_likes_coffee",
     ):
         store.mark_topic_asked(topic)
 
@@ -67,6 +57,58 @@ def test_pick_template_followup_can_verify_favorite_color(store):
     assert spec.save_as == "verify:favorite_colors"
 
 
+def test_verify_followup_can_repeat_after_cooldown(store):
+    store.set_fact("favorite_colors", "black")
+    for topic in (
+        "weekend_plans",
+        "cooks_favorite_food",
+        "hobby_duration",
+        "pet_company",
+        "color_everywhere",
+        "book_reread",
+    ):
+        store.mark_topic_asked(topic)
+
+    today = date.today()
+    store.mark_topic_asked("verify_favorite_color", today=today)
+    assert store.is_topic_on_cooldown(
+        "verify_favorite_color", days=VERIFY_TOPIC_COOLDOWN_DAYS, today=today
+    )
+    assert pick_template_followup(store) is None
+
+    store.mark_topic_asked(
+        "verify_favorite_color",
+        today=today - timedelta(days=VERIFY_TOPIC_COOLDOWN_DAYS),
+    )
+    spec = pick_template_followup(store)
+    assert spec is not None
+    assert spec.topic == "verify_favorite_color"
+
+
+def test_verify_followup_without_ask_date_is_eligible_again(store):
+    """Legacy asked verify topics (no topic_asked_at) may be asked again."""
+    store.set_fact("favorite_colors", "purple")
+    for topic in (
+        "weekend_plans",
+        "cooks_favorite_food",
+        "hobby_duration",
+        "pet_company",
+        "color_everywhere",
+        "book_reread",
+        "verify_favorite_color",
+    ):
+        store._data["asked_topics"].append(topic)
+    store.save()
+
+    assert store.is_topic_asked("verify_favorite_color")
+    assert not store.is_topic_on_cooldown(
+        "verify_favorite_color", days=VERIFY_TOPIC_COOLDOWN_DAYS
+    )
+    spec = pick_template_followup(store)
+    assert spec is not None
+    assert spec.topic == "verify_favorite_color"
+
+
 def test_pick_template_followup_skips_likes_already_no(store):
     store.set_fact("likes_programming", "no")
     for topic in (
@@ -76,16 +118,6 @@ def test_pick_template_followup_skips_likes_already_no(store):
         "pet_company",
         "color_everywhere",
         "book_reread",
-        "verify_favorite_color",
-        "verify_favorite_food",
-        "verify_hobby",
-        "verify_favorite_drink",
-        "verify_favorite_movie",
-        "verify_favorite_snack",
-        "verify_favorite_season",
-        "verify_pet",
-        "verify_likes_music",
-        "verify_likes_coffee",
     ):
         store.mark_topic_asked(topic)
 
@@ -100,19 +132,9 @@ def test_pick_template_followup_uses_single_hobby_item(store):
         "pet_company",
         "color_everywhere",
         "book_reread",
-        "verify_favorite_color",
-        "verify_favorite_food",
-        "verify_hobby",
-        "verify_favorite_drink",
-        "verify_favorite_movie",
-        "verify_favorite_snack",
-        "verify_favorite_season",
-        "verify_pet",
-        "verify_likes_programming",
-        "verify_likes_music",
-        "verify_likes_coffee",
     ):
         store.mark_topic_asked(topic)
+    store.mark_topic_asked("verify_hobby", today=date.today())
 
     spec = pick_template_followup(store)
     assert spec is not None

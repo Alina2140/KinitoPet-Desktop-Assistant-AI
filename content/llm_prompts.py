@@ -66,11 +66,12 @@ Rules:
 - add_notes: max 1 short note. Prefer the single most useful new detail from this turn.
 - Do not add a note if Already known already covers the same topic, even with different wording.
 - remove_notes: exact note texts to delete if the user corrected themselves (notes only — never delete fact keys).
-- update_facts: only these keys if clearly stated: user_names, favorite_colors, favorite_food, hobbies, pets, favorite_book, favorite_drink, favorite_movie, favorite_snacks, favorite_seasons, likes_programming, likes_music, likes_coffee.
+- update_facts: only these keys if clearly stated: user_names, favorite_colors, favorite_food, hobbies, pets, favorite_book, favorite_drink, favorite_movie, favorite_snacks, favorite_seasons, likes_programming, likes_music, likes_coffee, birthday.
 - When a preference changes, OVERWRITE the fact with the new value via update_facts. Do not leave the old value and do not try to remove the key.
   Examples: "I don't like programming anymore" → {{"likes_programming": "no"}}; "my favorite color is blue now" → {{"favorite_colors": "blue"}}.
 - user_names, hobbies, pets, favorite_colors, favorite_seasons, and favorite_snacks may hold multiple values. Prefer a JSON array when listing more than one, or when correcting the full set.
   Examples: new hobby "I also crochet" → {{"hobbies": "Crochet"}} (merged with known hobbies); "I only crochet now" → {{"hobbies": ["Crochet"]}}; pets "Lola and Mae" → {{"pets": ["Lola", "Mae"]}}; nickname "call me Sad sometimes" → {{"user_names": "Sad"}}.
+- birthday: store as YYYY-MM-DD when the year is known (e.g. "1990-03-15"), otherwise MM-DD (e.g. "03-15"). If the user refuses to share, store "declined".
 - For markers like likes_programming / likes_music / likes_coffee, always store "yes" or "no".
 - Never set user_names unless the user explicitly states their name (e.g. "my name is", "call me", "I'm …" as an introduction). Music genres, colors, foods, and hobbies are NOT names.
 - Do not overwrite existing user_names with a preference, genre, or single-word topic label.
@@ -87,26 +88,43 @@ Reply with JSON only:
 """
 
 MEMORY_QUESTION_PLAN_SYSTEM = (
-    "You plan one interactive follow-up question for a desktop companion. "
+    "You plan one interactive question for a desktop companion. "
+    "Most questions should be fresh and unrelated to known personal facts but can include them. "
     "Reply with JSON only. No markdown."
 )
 
 MEMORY_QUESTION_PLAN_PROMPT = """Plan one new question Kinito should ask the user.
 
-Known memory:
+Current date/time context:
+{time_context}
+
+Optional known memory (use sparingly — do NOT default to these):
 {known_facts}
 
-Already asked topics (do not repeat):
+Already asked topics (do not reuse these topic ids; invent a new snake_case id):
 {asked_topics}
 
 Rules:
-- Prefer either (a) something not already clearly known, or (b) a short yes/no check that a known fact is still true
-  (e.g. "Is your favorite color still black?").
+- About 2 out of 4 questions should be completely random and unrelated to the known memory
+  (day/mood, weekend plans, food cravings, weather, hypotheticals, movies/shows, dreams,
+  childhood nostalgia, silly opinions, seasonal events, holidays, travel wishes,
+  desktop life, comfort routines, "would you rather", etc.).
+- Only about 2 out of 4 may lightly reference known memory (a deeper angle or a short
+  yes/no check like "Is your favorite color still black?"). Yes/no checks about known
+  facts may use a fresh topic id later — preferences can change.
+- Never invent personal details that are not listed in known memory.
+- Always return a real question. There is always something new to ask.
 - One friendly question in Kinito's voice, ending with ?.
-- ui must be "textbox" for open answers or "yes_no" for simple yes/no questions.
-- topic: short snake_case id unique for this question theme.
-- save_as: always "note" for follow-up questions (never update structured facts here).
-- If nothing useful to ask, reply with: {{"question": ""}}
+- ui must match the question type:
+  - "yes_no" ONLY for questions that can truly be answered with Yes or No
+    (e.g. "Is your favorite color still black?", "Do you have plans tonight?").
+  - "textbox" for everything else: open questions, opinions, "would you rather A or B",
+    "what/which/where/how", lists, explanations.
+  - Never use "yes_no" for "would you rather" or any A-or-B choice.
+- Prefer "textbox" when unsure.
+- topic: short descriptive snake_case id (e.g. "weekend_garden_walk"), NOT a random hash.
+  It must NOT be in the already-asked list.
+- save_as: always "note".
 
 Reply with JSON only:
 {{"question": "...", "ui": "textbox", "topic": "...", "save_as": "note"}}
@@ -122,8 +140,9 @@ IDLE_PROMPT = (
 )
 
 RANDOM_QUESTION_PROMPT = (
-    "Ask the user one friendly, open-ended question about their day, mood, interests, "
-    "hobbies, or something light and general. "
+    "Ask the user one friendly, open-ended question about anything light and conversational: "
+    "their day, mood, weekend, food, weather, a silly hypothetical, a seasonal moment, "
+    "a comfort habit, a dream trip, a show/movie opinion, a random curiosity, etc. "
     "Usually keep it wholesome; occasionally (about one in four) give the question "
     "a slight uncanny edge without scaring them off. "
     "Rules: "

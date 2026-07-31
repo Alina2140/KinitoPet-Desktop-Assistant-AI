@@ -79,6 +79,7 @@ class MemoryStore:
             "facts": {},
             "answered_markers": [],
             "asked_topics": [],
+            "topic_asked_at": {},
             "notes": [],
         }
 
@@ -178,6 +179,21 @@ class MemoryStore:
                     if normalized and normalized not in seen_topics:
                         data["asked_topics"].append(normalized)
                         seen_topics.add(normalized)
+
+        asked_at = raw.get("topic_asked_at")
+        if isinstance(asked_at, dict):
+            for topic, stamped in asked_at.items():
+                if not isinstance(topic, str) or not isinstance(stamped, str):
+                    continue
+                normalized = topic.strip()
+                day = stamped.strip()
+                if not normalized or not day:
+                    continue
+                try:
+                    date.fromisoformat(day)
+                except ValueError:
+                    continue
+                data["topic_asked_at"][normalized] = day
         return data
 
     @classmethod
@@ -249,6 +265,17 @@ class MemoryStore:
         trimmed_value = value.strip()[:MAX_FACT_VALUE_LEN]
         if not trimmed_value:
             return
+        if trimmed_key == "birthday":
+            from content.birthday import BIRTHDAY_DECLINED, parse_birthday
+
+            lowered = trimmed_value.casefold()
+            if lowered in {BIRTHDAY_DECLINED, "no", "private", "none"}:
+                trimmed_value = BIRTHDAY_DECLINED
+            else:
+                parsed = parse_birthday(trimmed_value)
+                if parsed is None:
+                    return
+                trimmed_value = parsed
         facts: dict[str, Any] = self._data["facts"]
         if trimmed_key not in facts and len(facts) >= MAX_FACTS:
             return
@@ -326,17 +353,45 @@ class MemoryStore:
         normalized = topic.strip()
         return normalized in self._data["asked_topics"]
 
-    def mark_topic_asked(self, topic: str) -> None:
+    def is_topic_on_cooldown(self, topic: str, *, days: int, today: date | None = None) -> bool:
+        """Return True when *topic* was asked fewer than *days* ago.
+
+        Topics without a stored ask-date are treated as not on cooldown so older
+        verify questions can be asked again after this feature was added.
+        """
+        if days <= 0:
+            return False
+        normalized = topic.strip()
+        if not normalized:
+            return False
+        asked_at = self._data.get("topic_asked_at")
+        if not isinstance(asked_at, dict):
+            return False
+        stamped = asked_at.get(normalized)
+        if not isinstance(stamped, str) or not stamped.strip():
+            return False
+        try:
+            last = date.fromisoformat(stamped.strip())
+        except ValueError:
+            return False
+        moment = today or date.today()
+        return (moment - last).days < days
+
+    def mark_topic_asked(self, topic: str, *, today: date | None = None) -> None:
         """Record that an interactive memory question topic was used."""
         normalized = topic.strip()
         if not normalized:
             return
         topics: list[str] = self._data["asked_topics"]
-        if normalized in topics:
-            return
-        topics.append(normalized)
-        if len(topics) > MAX_ASKED_TOPICS:
-            del topics[0]
+        if normalized not in topics:
+            topics.append(normalized)
+            if len(topics) > MAX_ASKED_TOPICS:
+                del topics[0]
+        asked_at = self._data.setdefault("topic_asked_at", {})
+        if not isinstance(asked_at, dict):
+            asked_at = {}
+            self._data["topic_asked_at"] = asked_at
+        asked_at[normalized] = (today or date.today()).isoformat()
         self.save()
 
     def asked_topics_list(self) -> list[str]:

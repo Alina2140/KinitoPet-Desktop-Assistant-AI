@@ -236,7 +236,7 @@ Right-click Kinito → **Settings** → **Forget** to clear saved memory.
 
 Dialog-based memory works without Ollama. Chat note extraction requires Ollama.
 
-**Memory questions:** Kinito can ask personalized follow-up questions (textbox or Yes/No) during idle roaming or as scripted follow-ups when it already knows facts about you. Answers are saved to `memory.json`. With Ollama running, new questions can be AI-planned; otherwise template follow-ups are used.
+**Memory questions:** Kinito can ask interactive questions (textbox or Yes/No) during idle roaming. With Ollama, most AI-planned questions are open and random (day, mood, events, hypotheticals, etc.); only sometimes they follow up on known facts. Without Ollama, scripted template follow-ups are used when facts exist. Answers are saved to `memory.json`.
 
 ### GameAssets folder
 

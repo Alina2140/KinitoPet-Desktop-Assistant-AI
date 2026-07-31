@@ -67,6 +67,7 @@ class ContentMixin:
             self.ask_for_hug,
             self.spontaneous_nap,
             self.maybe_announce_special_day,
+            self.maybe_announce_birthday,
         ]
         random.choice(actions)()
 
@@ -93,6 +94,27 @@ class ContentMixin:
         line = pick_special_day_line()
         if not line:
             return False
+        self.speak(line, skip_ai=True)
+        return True
+
+    def maybe_announce_birthday(self) -> bool:
+        """Congratulate the user when today is their stored birthday."""
+        from content.birthday import birthday_age, is_birthday_today, pick_birthday_congrats_line
+
+        if not self._can_initiate_spontaneous_speech():
+            return False
+        memory = getattr(self, "_memory", None)
+        stored = memory.get_fact("birthday") if memory is not None else None
+        if memory is None or not is_birthday_today(stored):
+            return False
+        name = None
+        if hasattr(self, "chat_user_label"):
+            name = self.chat_user_label()
+        line = pick_birthday_congrats_line(
+            dlg.BIRTHDAY_CONGRATS_LINES,
+            name=name,
+            age=birthday_age(stored),
+        )
         self.speak(line, skip_ai=True)
         return True
 

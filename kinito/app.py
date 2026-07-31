@@ -403,10 +403,31 @@ class FloatingAssistant(
         threading.Thread(target=self._play_startup_line, daemon=True).start()
 
     def _play_startup_line(self):
-        """Speak a welcome line; prefer a special-day line when enabled."""
+        """Speak a welcome line; prefer birthday, then special-day, then default."""
         try:
             line = None
-            if getattr(self, "_special_days_enabled", True):
+            memory = getattr(self, "_memory", None)
+            if memory is not None:
+                from content import dialogue as dlg_local
+                from content.birthday import (
+                    birthday_age,
+                    is_birthday_today,
+                    pick_birthday_congrats_line,
+                )
+
+                stored = memory.get_fact("birthday")
+                if is_birthday_today(stored):
+                    name = None
+                    if hasattr(self, "pick_user_name"):
+                        name = self.pick_user_name()
+                    elif hasattr(self, "chat_user_label"):
+                        name = self.chat_user_label()
+                    line = pick_birthday_congrats_line(
+                        dlg_local.BIRTHDAY_CONGRATS_LINES,
+                        name=name,
+                        age=birthday_age(stored),
+                    )
+            if not line and getattr(self, "_special_days_enabled", True):
                 from content.special_days import pick_special_day_line
 
                 line = pick_special_day_line()

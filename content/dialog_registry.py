@@ -353,6 +353,42 @@ def _yes_no_lines_with_memory(marker: str, fact_key: str, yes_lines, no_lines) -
     return handler
 
 
+def _handle_birthday_consent(app, response: str) -> None:
+    """Ask for consent first; on yes open the date prompt, on no store decline."""
+    from content.birthday import BIRTHDAY_DECLINED
+
+    memory = getattr(app, "_memory", None)
+    if response == dlg.BUTTON_NO:
+        if memory is not None:
+            memory.set_fact("birthday", BIRTHDAY_DECLINED)
+            memory.mark_answered(dlg.BIRTHDAY_CONSENT_QUESTION)
+        app.speak(dlg.pick_declined_line(dlg.BIRTHDAY_CONSENT_NO_LINES))
+        return
+    if response == dlg.BUTTON_YES:
+        if memory is not None:
+            memory.mark_answered(dlg.BIRTHDAY_CONSENT_QUESTION)
+        app.speak(dlg.BIRTHDAY_DATE_QUESTION, 45, True)
+
+
+def _handle_birthday_date(app, response: str) -> None:
+    """Parse and store a birthday date, or re-prompt on invalid input."""
+    from content.birthday import format_birthday_display, parse_birthday
+
+    parsed = parse_birthday(response)
+    if not parsed:
+        app.speak(dlg.BIRTHDAY_DATE_RETRY, 45, True)
+        return
+
+    memory = getattr(app, "_memory", None)
+    if memory is not None:
+        memory.set_fact("birthday", parsed)
+        memory.mark_answered(dlg.BIRTHDAY_CONSENT_QUESTION)
+        memory.mark_answered(dlg.BIRTHDAY_DATE_MARKER)
+
+    display = format_birthday_display(parsed) or response.strip() or parsed
+    app.speak(dlg.pick_line(dlg.BIRTHDAY_SAVED_LINES).format(response=display))
+
+
 def _okay_not_now(
     yes_fn: Handler, declined_lines, *, minimize_count: int = 0, speak_pitch: int = 45
 ) -> Handler:
@@ -1119,6 +1155,16 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
             dlg.COFFEE_YES_LINES,
             dlg.COFFEE_NO_LINES,
         ),
+    ),
+    DialogSpec(
+        dlg.BIRTHDAY_CONSENT_QUESTION,
+        DialogUI("buttons", buttons=(dlg.BUTTON_YES, dlg.BUTTON_NO)),
+        _handle_birthday_consent,
+    ),
+    DialogSpec(
+        dlg.BIRTHDAY_DATE_MARKER,
+        DialogUI("textbox", textbox_prompt=dlg.BIRTHDAY_DATE_QUESTION),
+        _handle_birthday_date,
     ),
     DialogSpec(
         dlg.DRINK_QUESTION,

@@ -2,6 +2,7 @@
 
 import json
 import os
+from datetime import date
 
 import pytest
 
@@ -144,6 +145,13 @@ def test_mark_topic_asked_and_fifo(memory_dir, store):
     assert store.is_topic_asked("topic_a")
     reloaded = MemoryStore(directory=memory_dir)
     assert reloaded.is_topic_asked("topic_a")
+    assert reloaded.is_topic_on_cooldown("topic_a", days=7)
+
+
+def test_mark_topic_asked_updates_date_when_already_listed(store):
+    store.mark_topic_asked("verify_hobby", today=date(2026, 1, 1))
+    store.mark_topic_asked("verify_hobby", today=date(2026, 7, 28))
+    assert store._data["topic_asked_at"]["verify_hobby"] == "2026-07-28"
 
 
 def test_multi_value_hobby_set_fact_splits_and_roundtrips(store, memory_dir):

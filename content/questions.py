@@ -1,6 +1,7 @@
 """Pool of spontaneous questions Kinito can ask during idle roaming."""
 
 from content.dialogue import (
+    BIRTHDAY_CONSENT_QUESTIONS,
     BOOK_QUESTIONS,
     BORED_QUESTIONS,
     BROWSER_QUESTIONS,
@@ -51,6 +52,7 @@ QUESTIONS = [
     *MUSIC_QUESTIONS,
     *BOOK_QUESTIONS,
     *COFFEE_QUESTIONS,
+    *BIRTHDAY_CONSENT_QUESTIONS,
     *DRINK_QUESTIONS,
     *JOKE_QUESTIONS,
     *MOVIE_QUESTIONS,

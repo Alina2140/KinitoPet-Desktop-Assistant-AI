@@ -3,8 +3,6 @@
 from datetime import date, datetime
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from content.special_days import (
     pick_special_day_line,
     special_day_for,
