@@ -274,6 +274,7 @@ def test_settings_and_actions_options():
         dlg.BUTTON_VISIT_WEBSITE,
         dlg.BUTTON_PLAY_MUSIC,
         dlg.BUTTON_PLAY_GAME,
+        dlg.BUTTON_PAINT,
         dlg.BUTTON_BACK,
     ]
     assert actions_options_for(_menu_app()) == [
@@ -284,6 +285,7 @@ def test_settings_and_actions_options():
         dlg.BUTTON_VISIT_WEBSITE,
         dlg.BUTTON_PLAY_MUSIC,
         dlg.BUTTON_PLAY_GAME,
+        dlg.BUTTON_PAINT,
         dlg.BUTTON_GIVE_HUG,
         dlg.BUTTON_BACK,
     ]

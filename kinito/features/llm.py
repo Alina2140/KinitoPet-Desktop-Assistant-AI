@@ -87,6 +87,7 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
             getattr(self, "_is_game_active", lambda: False)()
             and not skip_ai
             and find_dialog_spec(str(text)) is None
+            and not getattr(self, "_is_paint_only_active", lambda: False)()
         ):
             return
         if skip_ai or wait_for_tts or not self._should_ai_replace(text):
@@ -152,7 +153,10 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
 
     def _should_ai_replace(self, text: str | None) -> bool:
         """Return whether a scripted line should be replaced by Ollama."""
-        if getattr(self, "_is_game_active", lambda: False)():
+        # Paint reuses game-active for ambient suppression but still allows AI lines.
+        if getattr(self, "_is_game_active", lambda: False)() and not getattr(
+            self, "_is_paint_only_active", lambda: False
+        )():
             return False
         if not self._llm_config.enabled or not self._llm_config.idle_lines:
             return False

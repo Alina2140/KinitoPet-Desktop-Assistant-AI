@@ -198,6 +198,7 @@ def actions_options_for(app) -> list[str]:
             dlg.BUTTON_VISIT_WEBSITE,
             dlg.BUTTON_PLAY_MUSIC,
             dlg.BUTTON_PLAY_GAME,
+            dlg.BUTTON_PAINT,
             dlg.BUTTON_GIVE_HUG,
             dlg.BUTTON_BACK,
         ],
@@ -478,6 +479,7 @@ def _menu_action_handlers() -> dict[str, Handler]:
         dlg.BUTTON_VISIT_WEBSITE: lambda a: a.ask_browser_category(),
         dlg.BUTTON_PLAY_MUSIC: lambda a: a.ask_music_player_pick(),
         dlg.BUTTON_PLAY_GAME: lambda a: a.offer_game_picker(),
+        dlg.BUTTON_PAINT: lambda a: a.offer_paint_picker(),
         dlg.BUTTON_GIVE_HUG: lambda a: a.give_hug(),
         dlg.BUTTON_TELL_TIME: lambda a: a.print_current_datetime(),
         dlg.BUTTON_SHOW_CREDITS: lambda a: a.show_credits(),
@@ -625,6 +627,16 @@ def _handle_game_picker(app, response: str) -> None:
     action = actions.get(response)
     if action:
         action(app)
+
+
+def _handle_paint_picker(app, response: str) -> None:
+    """Open Paint canvas or gallery, or return to Actions."""
+    if response == dlg.BUTTON_PAINT_DRAW:
+        app.open_paint()
+    elif response == dlg.BUTTON_PAINT_GALLERY:
+        app.open_paint_gallery()
+    elif response == dlg.BUTTON_BACK:
+        _open_actions_menu(app)
 
 
 def _handle_quick_games(app, response: str) -> None:
@@ -936,6 +948,18 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
             ),
         ),
         _handle_game_picker,
+    ),
+    DialogSpec(
+        dlg.PAINT_PICKER_MARKER,
+        DialogUI(
+            "buttons",
+            buttons=(
+                dlg.BUTTON_PAINT_DRAW,
+                dlg.BUTTON_PAINT_GALLERY,
+                dlg.BUTTON_BACK,
+            ),
+        ),
+        _handle_paint_picker,
     ),
     DialogSpec(
         dlg.RPS_MARKER,

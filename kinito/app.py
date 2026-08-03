@@ -56,6 +56,7 @@ from kinito.features.llm import LLMMixin
 from kinito.features.menu_settings import MenuSettingsMixin
 from kinito.features.music import MusicMixin
 from kinito.features.nudges import NudgesMixin
+from kinito.features.paint import PaintMixin
 from kinito.features.programs import ProgramsMixin
 from kinito.features.window_grab import WindowGrabMixin
 from kinito.movement import MovementMixin
@@ -111,6 +112,7 @@ class FloatingAssistant(
     MovementMixin,
     HugMixin,
     ContentMixin,
+    PaintMixin,
     GamesMixin,
     MusicMixin,
     ProgramsMixin,
@@ -315,6 +317,10 @@ class FloatingAssistant(
         self._crash_hide_timer = None
         self._crash_tk_image = None
         self._game_window = None
+        self._paint_window = None
+        self._paint_session = None
+        self._paint_gallery_window = None
+        self._paint_detail_window = None
         self._auto_wake_timer = None
         self._bubble_position_timer = None
         self._screen_bounds_timer = None
@@ -464,6 +470,8 @@ class FloatingAssistant(
         self.hide_blue_screen()
         if hasattr(self, "_ensure_single_game_window"):
             self._ensure_single_game_window()
+        if hasattr(self, "_ensure_single_paint_window"):
+            self._ensure_single_paint_window()
         self.close_camera()
         self.close_browser()
         self._focus_mode = True
@@ -780,6 +788,8 @@ class FloatingAssistant(
         self.close_camera()
         self.close_browser()
         self._ensure_single_game_window()
+        if hasattr(self, "_ensure_single_paint_window"):
+            self._ensure_single_paint_window()
         self.end_hug()
         self.hide_screen_glitch()
         self.hide_blue_screen()
@@ -819,6 +829,8 @@ class FloatingAssistant(
         self.close_camera()
         self.close_browser()
         self._ensure_single_game_window()
+        if hasattr(self, "_ensure_single_paint_window"):
+            self._ensure_single_paint_window()
         self.end_hug()
         self.hide_screen_glitch()
         self.hide_blue_screen()

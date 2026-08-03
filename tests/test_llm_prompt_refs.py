@@ -37,6 +37,7 @@ def test_core_ai_hint_prompts_are_non_empty_strings():
         "POEM_PROMPT",
         "FUN_FACT_PROMPT",
         "HUG_PROMPT",
+        "PAINT_PROMPT",
         "JOKE_PROMPT",
         "IDLE_PROMPT",
         "RANDOM_QUESTION_PROMPT",

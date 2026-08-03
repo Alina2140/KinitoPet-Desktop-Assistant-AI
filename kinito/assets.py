@@ -30,6 +30,7 @@ programs_directory = os.path.join(assets_directory, "Programs")
 ads_directory = os.path.join(assets_directory, "ads")
 websites_directory = os.path.join(assets_directory, "websites")
 user_media_directory = os.path.join(assets_directory, "UserMedia")
+paintings_directory = os.path.join(user_media_directory, "paintings")
 crash_directory = os.path.join(assets_directory, "crash")
 balconexe_directory = os.path.join(programs_directory, "balcon.exe")
 
@@ -115,8 +116,9 @@ _IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp")
 
 
 def ensure_user_media_directories():
-    """Create GameAssets/UserMedia for memory files if it does not exist yet."""
+    """Create GameAssets/UserMedia (and paintings/) if they do not exist yet."""
     os.makedirs(user_media_directory, exist_ok=True)
+    os.makedirs(paintings_directory, exist_ok=True)
 
 
 def list_image_files(directory):

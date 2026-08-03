@@ -157,6 +157,7 @@ MENU_VISIBILITY_SECTIONS: tuple[tuple[str, tuple[MenuEntry, ...]], ...] = (
             ),
             ("actions.music", "Play Music", frozenset({dlg.BUTTON_PLAY_MUSIC})),
             ("actions.game", "Play Game", frozenset({dlg.BUTTON_PLAY_GAME})),
+            ("actions.paint", "Paint", frozenset({dlg.BUTTON_PAINT})),
             ("actions.hug", "Hug", frozenset({dlg.BUTTON_GIVE_HUG})),
             ("actions.back", "Back", frozenset({dlg.BUTTON_BACK})),
         ),

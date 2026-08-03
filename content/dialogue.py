@@ -86,6 +86,9 @@ GAME_QUESTIONS = [
 GAME_PICKER_MARKER = "pick a game"
 GAME_PICKER_QUESTION = "Pick a game! What do you want to play?"
 
+PAINT_PICKER_MARKER = "draw something or look at saved paintings"
+PAINT_PICKER_QUESTION = "Paint time! Want to draw something or look at saved paintings?"
+
 QUICK_GAMES_MARKER = "quick games"
 QUICK_GAMES_QUESTION = "Quick games! Pick one!"
 
@@ -1196,6 +1199,9 @@ BUTTON_PLAY_MUSIC = "Play Music"
 BUTTON_STOP_MUSIC = "Stop music"
 BUTTON_CHANGE_SONG = "Pick another song"
 BUTTON_PLAY_GAME = "Play Game"
+BUTTON_PAINT = "Paint"
+BUTTON_PAINT_DRAW = "Paint"
+BUTTON_PAINT_GALLERY = "My Paintings"
 BUTTON_QUICK_GAMES = "Quick Games"
 BUTTON_BOARD_GAMES = "Board Games"
 BUTTON_BACK = "Back"

@@ -37,6 +37,7 @@ A free, open-source desktop companion inspired by **KinitoPET**. Kinito lives on
 | **Idle animations** | Blinking, reading, fancy hat mode, sleep sprites |
 | **Reminders** | Timer with sound after X minutes |
 | **Mini-games** | Tic-tac-toe, memory, battleships, RPS, trivia, and more (right-click → **Actions** → **Play Game**) |
+| **Paint** | Retro drawing window; save PNGs and browse them (right-click → **Actions** → **Paint**) |
 
 ---
 
@@ -95,7 +96,7 @@ Top level:
 
 - **Modes** — Sleep / Wake up, Focus / Unfocus, Focus Timer
 - **Settings** — Screen Effects, Memories, Forget, Credits
-- **Actions** — Reminder, Tell Time, Sing, Fun Fact, Visit Website, Play Music, Play Game, Hug
+- **Actions** — Reminder, Tell Time, Sing, Fun Fact, Visit Website, Play Music, Play Game, Paint, Hug
 - **Chat** — free-form conversation with a local Ollama model (see below)
 - **Goodbye** — farewell line, then closes the app
 
@@ -117,6 +118,7 @@ Submenus (same pattern as **Play Game**):
 - **Actions → Visit Website** — pick a category (Animals, Knowledge, Games, Horror, Surprise Me)
 - **Actions → Play Music** — pick an MP3 or play a random one from your Music/Downloads folders
 - **Actions → Play Game** — mini-games (quick games and board games)
+- **Actions → Paint** — draw (pencil, eraser, spray, shapes) or view saved PNGs
 - **Actions → Hug** — hug pose sprites + hug line
 
 ### Spontaneous speech
@@ -228,6 +230,7 @@ Kinito can remember personal facts across sessions — no database required.
 - Files live in `GameAssets/UserMedia/`:
   - `memory.json` — structured facts and notes (auto-managed)
   - `notes.txt` — human-readable mirror of chat notes
+  - `paintings/` — PNGs saved from **Actions → Paint**
 
 These files are local only (listed in `.gitignore`) and are not uploaded to Git. You do **not** need to create them manually — Kinito creates `memory.json` and `notes.txt` automatically the first time something is saved (e.g. when you answer a name question or a memory follow-up). After cloning the repo, the `UserMedia/` folder already exists; your personal memory starts empty until you use the app.
 
@@ -257,10 +260,11 @@ GameAssets/
 ├── Timer.mp3, Woosh.mp3, StartTalking.mp3, ...       # Sounds
 ├── Programs/balcon.exe                               # Windows TTS (optional fallback: pyttsx3)
 ├── SecretImages/                                     # Optional images for easter egg
-└── UserMedia/                                        # Personal memory files (gitignored)
+└── UserMedia/                                        # Personal data (gitignored)
+    └── paintings/                                    # Saved Paint PNGs
 ```
 
-The `UserMedia/` directory is created when Kinito starts. Memory files (`memory.json`, `notes.txt`) appear automatically when you first save a fact — nothing to copy or create by hand after `git clone`.
+The `UserMedia/` directory is created when Kinito starts. Memory files (`memory.json`, `notes.txt`) appear automatically when you first save a fact — nothing to copy or create by hand after `git clone`. The `paintings/` subfolder is created at startup (and again when saving a drawing).
 
 If a sprite is missing, Kinito falls back to `Standing/KinitoNormal.png`.
 

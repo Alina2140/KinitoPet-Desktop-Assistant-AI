@@ -1,7 +1,7 @@
 Kinito User Media
 =================
 
-This folder stores personal data for Kinito — not pictures or videos for display.
+This folder stores personal data for Kinito.
 
 Memory
 ------
@@ -9,6 +9,14 @@ Kinito can remember things about you across sessions.
 
 - memory.json  — structured facts and chat notes (auto-managed)
 - notes.txt    — human-readable mirror of chat notes (optional to edit)
+
+Paintings
+---------
+Drawings saved from Actions → Paint:
+
+- paintings/   — PNG files (paint_YYYYMMDD_HHMMSS.png)
+
+Open Actions → Paint → My Paintings to browse them in-app.
 
 Settings
 --------

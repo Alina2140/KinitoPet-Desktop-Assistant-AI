@@ -172,6 +172,11 @@ HUG_PROMPT = (
     "Keep it sweet; a soft possessive 'don't let go / forever friends' undertone is okay sometimes."
 )
 
+PAINT_PROMPT = (
+    "React briefly to the user painting or drawing with you. One or two sentences. "
+    "No markdown. You cannot see the image — stay encouraging, curious, a little uncanny."
+)
+
 JOKE_PROMPT = "Tell one short, corny/ funny joke. Two sentences max. No markdown."
 
 GAME_REACTION_PROMPT = (

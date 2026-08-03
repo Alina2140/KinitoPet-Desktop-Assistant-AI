@@ -226,6 +226,18 @@ def test_speak_blocked_during_game_for_plain_lines(mock_speak, llm_app):
 
 
 @patch.object(SpeechMixin, "speak")
+def test_speak_allowed_during_paint_only(mock_speak, llm_app):
+    llm_app._is_game_active = MagicMock(return_value=True)
+    llm_app._is_paint_only_active = MagicMock(return_value=True)
+    llm_app._should_ai_replace = MagicMock(return_value=False)
+    with patch("kinito.features.llm.find_dialog_spec", return_value=None):
+        llm_app.speak("Nice strokes!")
+
+    mock_speak.assert_called_once()
+    assert mock_speak.call_args.args[0] == "Nice strokes!"
+
+
+@patch.object(SpeechMixin, "speak")
 def test_deliver_generated_line_ignored_during_game(mock_speak, llm_app):
     llm_app._is_game_active = MagicMock(return_value=True)
     llm_app.close_speech_bubble = MagicMock()

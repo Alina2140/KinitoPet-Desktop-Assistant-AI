@@ -14,6 +14,14 @@ from content.goodbye_lines import GOODBYE_LINES
 from content.hug_lines import HUG_ASK_LINES, HUG_LINES
 from content.music_player_lines import MUSIC_PLAYER_LINES
 from content.nudge_lines import CREEPY_NUDGE_LINES, WELLNESS_NUDGE_LINES
+from content.paint_lines import (
+    PAINT_CLOSE_LINES,
+    PAINT_GALLERY_EMPTY_LINES,
+    PAINT_GALLERY_OPEN_LINES,
+    PAINT_OPEN_LINES,
+    PAINT_SAVE_LINES,
+    PAINT_WHILE_LINES,
+)
 from content.poems import POEMS
 from content.startup import STARTUP_LINES
 from content.stories import STORIES
@@ -38,6 +46,12 @@ def _assert_non_empty_strings(items, *, min_length=1):
         (FANCY_LINES, "fancy"),
         (HUG_LINES, "hug"),
         (HUG_ASK_LINES, "hug_ask"),
+        (PAINT_OPEN_LINES, "paint_open"),
+        (PAINT_CLOSE_LINES, "paint_close"),
+        (PAINT_WHILE_LINES, "paint_while"),
+        (PAINT_SAVE_LINES, "paint_save"),
+        (PAINT_GALLERY_EMPTY_LINES, "paint_gallery_empty"),
+        (PAINT_GALLERY_OPEN_LINES, "paint_gallery_open"),
         (WELLNESS_NUDGE_LINES, "wellness_nudge"),
         (CREEPY_NUDGE_LINES, "creepy_nudge"),
         (BROWSER_LINES, "browser"),
