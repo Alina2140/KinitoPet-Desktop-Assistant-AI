@@ -375,6 +375,7 @@ This project is released under the **[MIT License](LICENSE)** — free to use, m
 |------|-------------|
 | **Kinito & KinitoPET** | [KinitoPET on Steam](https://store.steampowered.com/app/2075070/KinitoPET/) by **troy_en** |
 | **Python template** | [TimTamCoder/KinitoPET-Python-Virtual-Assistant](https://github.com/TimTamCoder/KinitoPET-Python-Virtual-Assistant) by **TimTamCoder** |
+| **Pixel art emojis** | [Kuteken Pixel Art Emoji](https://kuteken.itch.io/pixel-art-emoji) (CC0) |
 | **AI-assisted development** | Parts of this codebase were written and refactored with **[Cursor](https://cursor.com)** (AI-assisted IDE) |
 
 This is a **fan-made** desktop assistant. It is not an official KinitoPET product and is not affiliated with the game's developers or publishers.

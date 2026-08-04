@@ -7,9 +7,10 @@ import tkinter as tk
 
 from content import llm_prompts as prompts
 from kinito.assets import starttalk_file_path
+from kinito.features.emoji_picker import EmojiPickerMixin
 
 
-class SpeechChatMixin:
+class SpeechChatMixin(EmojiPickerMixin):
     """Chat-mode speech bubble with scrollable history and persistent input."""
 
     CHAT_TITLE = "Kinito Chat"
@@ -24,6 +25,7 @@ class SpeechChatMixin:
         self._chat_generating = False
         self._chat_log_widget = None
         self._chat_entry_widget = None
+        self._init_emoji_picker_state()
         if not hasattr(self, "_chat_session_user_label"):
             self._chat_session_user_label = None
 
@@ -47,6 +49,7 @@ class SpeechChatMixin:
         self._speech_bubble_button_frame = None
         self._chat_log_widget = None
         self._chat_entry_widget = None
+        self._close_emoji_picker()
 
         container = self._create_bubble_shell(self.speech_bubble)
 
@@ -78,9 +81,14 @@ class SpeechChatMixin:
 
     def _show_chat_input_row(self, parent) -> None:
         """Add the persistent chat entry row below the log."""
+        self._emoji_dropdown_parent = parent
         input_frame = tk.Frame(parent, bg=self.BUBBLE_BG)
         input_frame.pack(fill=tk.X, padx=5, pady=5, anchor="w")
         self._speech_bubble_button_frame = input_frame
+
+        entry_font = self._bubble_font()
+        if isinstance(entry_font, tuple) and len(entry_font) >= 2:
+            entry_font = (entry_font[0], int(entry_font[1]) + 2)
 
         entry_width = self.get_entry_char_width("Type your message here...")
         entry = tk.Entry(
@@ -88,16 +96,40 @@ class SpeechChatMixin:
             bg=self.BUBBLE_ENTRY_BG,
             fg=self.BUBBLE_FG,
             insertbackground=self.BUBBLE_FG,
-            font=self._bubble_font(),
+            font=entry_font,
             width=entry_width,
             relief=tk.SOLID,
             borderwidth=1,
         )
         entry.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=2)
         entry.bind("<Return>", self._handle_chat_entry_submit)
+        entry.bind("<BackSpace>", self._on_chat_entry_backspace)
         self._chat_entry_widget = entry
         self._speech_bubble_entry = entry
         self._bind_entry_focus_on_click(entry)
+
+        from kinito.features.emoji_picker import load_emoji_button_icon
+
+        self._emoji_button_photo = load_emoji_button_icon()
+        if self._emoji_button_photo is not None:
+            emoji_button = self._create_bubble_button(
+                input_frame,
+                "",
+                self._toggle_emoji_picker,
+                image=self._emoji_button_photo,
+                padx=4,
+                pady=2,
+            )
+        else:
+            emoji_button = self._create_bubble_button(
+                input_frame,
+                "☺",
+                self._toggle_emoji_picker,
+                width=2,
+                padx=4,
+            )
+        emoji_button.pack(side=tk.LEFT, padx=(5, 0))
+        self._emoji_picker_button = emoji_button
 
         close_button = self._create_bubble_button(
             input_frame,
@@ -237,12 +269,14 @@ class SpeechChatMixin:
 
     def close_chat_mode(self) -> None:
         """End chat mode, reset conversation history, and close the bubble."""
+        self._close_emoji_picker()
         if hasattr(self, "_conversation"):
             self._conversation.reset()
         self._chat_mode = False
         self._chat_generating = False
         self._chat_log_widget = None
         self._chat_entry_widget = None
+        self._emoji_picker_button = None
         if hasattr(self, "_clear_chat_session_user_label"):
             self._clear_chat_session_user_label()
         self._close_speech_bubble_impl()

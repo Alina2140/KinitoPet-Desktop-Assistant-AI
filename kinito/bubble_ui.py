@@ -44,18 +44,22 @@ def measure_chamfered_button(
     chamfer: int,
     border_width: int,
     width: int | None = None,
+    image_size: tuple[int, int] | None = None,
 ) -> tuple[int, int]:
-    """Return the pixel size a chamfered button needs for *text*."""
+    """Return the pixel size a chamfered button needs for *text* or *image_size*."""
     font_obj = tkfont.Font(font=font, root=parent)
-    text_width = font_obj.measure(text)
-    if width is not None:
-        text_width = max(text_width, width * font_obj.measure("0"))
-    text_height = font_obj.metrics("linespace")
+    if image_size is not None:
+        content_width, content_height = image_size
+    else:
+        content_width = font_obj.measure(text)
+        if width is not None:
+            content_width = max(content_width, width * font_obj.measure("0"))
+        content_height = font_obj.metrics("linespace")
     inset = chamfer + border_width
     pad = outline_canvas_pad(border_width)
     return (
-        text_width + (2 * padx) + (2 * inset) + (2 * pad),
-        text_height + (2 * pady) + (2 * inset) + (2 * pad),
+        content_width + (2 * padx) + (2 * inset) + (2 * pad),
+        content_height + (2 * pady) + (2 * inset) + (2 * pad),
     )
 
 
@@ -66,7 +70,7 @@ class ChamferedButton(tk.Canvas):
         self,
         parent,
         *,
-        text: str,
+        text: str = "",
         command,
         font,
         bg: str,
@@ -78,9 +82,11 @@ class ChamferedButton(tk.Canvas):
         padx: int,
         pady: int,
         width: int | None = None,
+        image=None,
         cursor: str = "hand2",
     ) -> None:
         self._text = text
+        self._image = image
         self._command = command
         self._font = font
         self._bg = bg
@@ -94,6 +100,9 @@ class ChamferedButton(tk.Canvas):
         self._char_width = width
         self._hover = False
         self._outline_pad = outline_canvas_pad(border_width)
+        image_size = None
+        if image is not None:
+            image_size = (int(image.width()), int(image.height()))
         button_w, button_h = measure_chamfered_button(
             parent,
             text=text,
@@ -103,6 +112,7 @@ class ChamferedButton(tk.Canvas):
             chamfer=chamfer,
             border_width=border_width,
             width=width,
+            image_size=image_size,
         )
         super().__init__(
             parent,
@@ -115,6 +125,7 @@ class ChamferedButton(tk.Canvas):
         )
         self._shape_id = None
         self._label_id = None
+        self._image_id = None
         self._draw(self._bg)
         self.bind("<Button-1>", self._on_click)
         self.bind("<Enter>", self._on_enter)
@@ -128,6 +139,8 @@ class ChamferedButton(tk.Canvas):
             self.delete(self._shape_id)
         if self._label_id is not None:
             self.delete(self._label_id)
+        if self._image_id is not None:
+            self.delete(self._image_id)
         points = chamfered_rect_points(
             pad + self._border_width / 2,
             pad + self._border_width / 2,
@@ -142,13 +155,20 @@ class ChamferedButton(tk.Canvas):
             width=self._border_width,
             smooth=False,
         )
-        self._label_id = self.create_text(
-            width // 2,
-            height // 2,
-            text=self._text,
-            fill=self._fg,
-            font=self._font,
-        )
+        if self._image is not None:
+            self._image_id = self.create_image(
+                width // 2,
+                height // 2,
+                image=self._image,
+            )
+        else:
+            self._label_id = self.create_text(
+                width // 2,
+                height // 2,
+                text=self._text,
+                fill=self._fg,
+                font=self._font,
+            )
 
     def _on_click(self, _event=None):
         if callable(self._command):

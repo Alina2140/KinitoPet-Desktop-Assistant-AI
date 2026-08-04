@@ -240,8 +240,11 @@ class SpeechMixin:
             return
         try:
             body.update_idletasks()
-            content_w = max(body.winfo_reqwidth(), body.winfo_width(), 1)
-            content_h = max(body.winfo_reqheight(), body.winfo_height(), 1)
+            # Prefer requested size so the bubble can shrink when content is removed
+            # (e.g. closing the emoji dropdown). Using winfo_width/height would stick
+            # at the previous larger allocation.
+            content_w = max(body.winfo_reqwidth(), 1)
+            content_h = max(body.winfo_reqheight(), 1)
             inset = self.BUBBLE_CHAMFER + self.BUBBLE_BORDER_WIDTH
             outline_pad = outline_canvas_pad(self.BUBBLE_BORDER_WIDTH)
             panel_w = content_w + (2 * inset)
