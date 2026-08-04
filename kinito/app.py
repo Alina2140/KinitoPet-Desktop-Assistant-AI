@@ -381,6 +381,13 @@ class FloatingAssistant(
         if getattr(self, "_llm_config", None) and self._llm_config.enabled:
             ollama_status = "ok" if self._ollama_client.is_available() else "unreachable"
         status["ollama"] = ollama_status
+        try:
+            from kinito.stt.voice_input import check_voice_input_available
+
+            voice_ok, _err = check_voice_input_available()
+            status["voice_stt"] = "ok" if voice_ok else "missing"
+        except Exception:  # noqa: BLE001
+            status["voice_stt"] = "missing"
         print(f"Kinito optional deps: {status}", flush=True)
 
     def _persist_settings(self) -> None:

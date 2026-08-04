@@ -558,6 +558,15 @@ CHAT_GREETING_WITH_NAME = "Hey {user_name}! I'm all ears — what's on your mind
 CHAT_UNAVAILABLE = (
     "I'd love to chat, but I can't reach my brain right now. Don't worry — I'm still here."
 )
+CHAT_MODE_PROMPT = "How do you want to chat?"
+CHAT_VOICE_UNAVAILABLE = (
+    "I'd love to hear you, but voice input isn't set up. You can still type — or install "
+    "faster-whisper and sounddevice."
+)
+CHAT_VOICE_MIC_ERROR = (
+    "I couldn't hear you — check the microphone, or that the Whisper model can download "
+    "(network/SSL). You can still type."
+)
 MEMORY_FORGOTTEN_LINE = (
     "Okay. I've cleared what I remembered about you. We can start fresh. I'll miss the old facts a little."
 )
@@ -1207,6 +1216,8 @@ BUTTON_MENU_BUTTONS = "Menu Buttons"
 BUTTON_SING_SONG = "Sing"
 BUTTON_FUN_FACT = "Fun Fact"
 BUTTON_CHAT = "Chat"
+BUTTON_CHAT_AUTO_LISTEN = "Auto listening"
+BUTTON_CHAT_NORMAL = "Normal Chat"
 BUTTON_REMEMBER = "Memories"
 BUTTON_FORGET = "Forget"
 BUTTON_VISIT_WEBSITE = "Visit Website"

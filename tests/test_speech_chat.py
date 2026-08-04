@@ -61,6 +61,7 @@ def test_init_chat_state_defaults(chat_app):
 
 def test_close_chat_mode_resets_conversation(chat_app):
     chat_app._chat_mode = True
+    chat_app._chat_voice_mode = "push"
     chat_app._chat_session_user_label = "Sad"
     chat_app._clear_chat_session_user_label = MagicMock(
         side_effect=lambda: setattr(chat_app, "_chat_session_user_label", None)
@@ -69,10 +70,17 @@ def test_close_chat_mode_resets_conversation(chat_app):
     chat_app.close_chat_mode()
     chat_app._conversation.reset.assert_called_once()
     assert chat_app._chat_mode is False
+    assert chat_app._chat_voice_mode is None
     chat_app._clear_chat_session_user_label.assert_called_once()
     assert chat_app._chat_session_user_label is None
     chat_app._close_speech_bubble_impl.assert_called_once()
 
+
+def test_init_chat_state_includes_voice_defaults(chat_app):
+    assert chat_app._chat_voice_mode is None
+    assert chat_app._chat_voice_listening is False
+    assert chat_app._chat_voice_paused is False
+    assert chat_app._voice_input is None
 
 def test_set_chat_generating_disables_input(chat_app):
     entry = MagicMock()

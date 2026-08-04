@@ -52,6 +52,7 @@ def llm_app():
     app._conversation.add_user = MagicMock()
     app._conversation.add_assistant = MagicMock()
     app.open_chat_bubble = MagicMock()
+    app.open_chat_mode_picker = MagicMock()
     app.append_chat_message = MagicMock()
     app.set_chat_generating = MagicMock()
     app.speak_chat_response = MagicMock()
@@ -87,7 +88,8 @@ def test_append_memory_context_includes_name_for_idle_prompt(llm_app):
     assert "favorite_drink" not in prompt
     llm_app.start_chat()
     llm_app._conversation.reset.assert_called_once()
-    llm_app.open_chat_bubble.assert_called_once()
+    llm_app.open_chat_mode_picker.assert_called_once()
+    llm_app.open_chat_bubble.assert_not_called()
 
 
 def test_append_memory_context_omits_name_for_random_question(llm_app):
@@ -120,6 +122,7 @@ def test_start_chat_fallback_when_unavailable(mock_speak, llm_app):
     llm_app._ollama_client.is_available.return_value = False
     llm_app.start_chat()
     mock_speak.assert_called_once()
+    llm_app.open_chat_mode_picker.assert_not_called()
     llm_app.open_chat_bubble.assert_not_called()
 
 

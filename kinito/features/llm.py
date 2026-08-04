@@ -81,7 +81,7 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
         speech_accompaniment_volume=None,
     ):
         """Speak *text*, optionally replacing scripted lines with Ollama output."""
-        if not self._may_start_speech(str(text)):
+        if show_bubble and not self._may_start_speech(str(text)):
             return
         if (
             getattr(self, "_is_game_active", lambda: False)()
@@ -304,7 +304,7 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
             return
         self._conversation.reset()
         self._pin_chat_user_label()
-        self.open_chat_bubble(self._chat_greeting())
+        self.open_chat_mode_picker()
 
     def send_chat_message(self, user_text: str) -> None:
         """Send a user message to Ollama and display the reply in the chat bubble."""

@@ -769,7 +769,7 @@ class SpeechMixin:
         del ai_hint, skip_ai  # handled by LLMMixin when present in the MRO
         if getattr(self, "_focus_mode", False) and not allow_in_focus:
             return
-        if not self._may_start_speech(text):
+        if show_bubble and not self._may_start_speech(text):
             return
         self.interrupt_speech()
         if hasattr(self, "_stop_roaming"):

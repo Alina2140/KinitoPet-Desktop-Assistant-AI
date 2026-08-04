@@ -29,6 +29,7 @@ A free, open-source desktop companion inspired by **KinitoPET**. Kinito lives on
 | **Speech bubbles** | Interactive buttons and text boxes for replies |
 | **Random questions** | 30+ conversation topics while idle |
 | **AI chat (Ollama)** | Free-form chat via local Ollama model; optional AI idle lines |
+| **Chat voice input** | Mic in chat (push-to-talk or auto-listen); local Whisper STT |
 | **Right-click menu** | Grouped Modes / Settings / Actions, plus chat and goodbye |
 | **Safe browser** | Opens whitelisted HTTPS sites in a small window (or your default browser) |
 | **Camera** | Optional webcam view (requires OpenCV) |
@@ -182,6 +183,7 @@ KinitoPET-Python-Virtual-Assistant/
 |---------|---------|------------|
 | `pywebview` | Built-in browser window | Falls back to system default browser |
 | `opencv-python` | Webcam feature | Camera questions still appear; opening camera shows a message |
+| `faster-whisper` + `sounddevice` | Chat voice input (local STT) | Chat still works by typing; voice mode shows a message |
 | `pyttsx3` | TTS fallback | Uses `balcon.exe` only |
 | `pygame` | Sound effects & MP3 | Required for sounds |
 | `pyautogui` | Minimize windows (poem/image easter egg) | That easter egg silently fails |
