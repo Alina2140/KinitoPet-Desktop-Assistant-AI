@@ -32,3 +32,8 @@ def test_credits_handler_opens_github_link(mock_open):
     spec = find_dialog_spec(credits.CREDITS_TEXT)
     handle_dialog_response(app, spec, dlg.BUTTON_CREDITS_GITHUB)
     mock_open.assert_called_once_with(credits.CREDITS_URL_GITHUB)
+
+
+def test_credits_text_mentions_spriters_resource():
+    assert "spriters-resource.com/pc_computer/kinitopet" in credits.CREDITS_TEXT
+    assert credits.CREDITS_URL_SPRITERS.startswith("https://www.spriters-resource.com/")
