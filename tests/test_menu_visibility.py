@@ -13,6 +13,7 @@ def test_menu_button_id_for_known_labels():
     assert menu_button_id_for_label(dlg.BUTTON_GIVE_HUG) == "actions.hug"
     assert menu_button_id_for_label(dlg.BUTTON_PAINT) == "actions.paint"
     assert menu_button_id_for_label(dlg.BUTTON_TTS_ON) == "settings.tts"
+    assert menu_button_id_for_label(dlg.BUTTON_EMOJI_OFF) == "settings.emojis"
     assert menu_button_id_for_label(dlg.BUTTON_SPECIAL_DAYS_OFF) == "settings.special_days"
 
 

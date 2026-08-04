@@ -257,6 +257,12 @@ def test_handle_menu_toggle_tts(mock_app):
     mock_app.toggle_tts.assert_called_once()
 
 
+def test_handle_menu_toggle_emoji_picker(mock_app):
+    spec = find_dialog_spec(dlg.SETTINGS_MENU_QUESTION)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_EMOJI_ON)
+    mock_app.toggle_emoji_picker_setting.assert_called_once()
+
+
 def test_handle_menu_toggle_special_days(mock_app):
     spec = find_dialog_spec(dlg.SETTINGS_MENU_QUESTION)
     handle_dialog_response(mock_app, spec, dlg.BUTTON_SPECIAL_DAYS_ON)

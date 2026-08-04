@@ -201,10 +201,28 @@ class EmojiPickerMixin:
 
     def _toggle_emoji_picker(self) -> None:
         """Open or close the emoji dropdown."""
+        if not getattr(self, "_emoji_picker_enabled", True):
+            return
         if self._emoji_picker_is_open():
             self._close_emoji_picker()
             return
         self._open_emoji_picker()
+
+    def toggle_emoji_picker_setting(self) -> None:
+        """Enable or disable the chat emoji button (persisted in settings)."""
+        from content import dialogue as dlg
+
+        self._emoji_picker_enabled = not getattr(self, "_emoji_picker_enabled", True)
+        if not self._emoji_picker_enabled:
+            self._close_emoji_picker()
+        if hasattr(self, "_persist_settings"):
+            self._persist_settings()
+        lines = (
+            dlg.EMOJI_PICKER_ON_LINES
+            if self._emoji_picker_enabled
+            else dlg.EMOJI_PICKER_OFF_LINES
+        )
+        self.speak(dlg.pick_line(lines), skip_ai=True)
 
     def _emoji_picker_is_open(self) -> bool:
         frame = getattr(self, "_emoji_picker_frame", None)

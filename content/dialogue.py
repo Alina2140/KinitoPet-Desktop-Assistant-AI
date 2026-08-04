@@ -643,6 +643,18 @@ TTS_OFF_LINES = [
     "Voice muted. Text lives on. Soft silence.",
 ]
 
+EMOJI_PICKER_ON_LINES = [
+    "Emoji button on! Pixel faces in chat. Soft smiles.",
+    "Chat emojis enabled. Tap the smile. Express yourself.",
+    "Emoji picker is back. Yellow pixels. Ready when you are.",
+]
+
+EMOJI_PICKER_OFF_LINES = [
+    "Emoji button hidden. Words only — for now. Softly.",
+    "Chat emojis off. The smile button took a break.",
+    "Emoji picker disabled. You can turn it back on in Settings.",
+]
+
 SPECIAL_DAYS_ON_LINES = [
     "Special days on! If the calendar looks festive, I might mention it. Softly.",
     "Holiday comments enabled. Birthdays for the world. And jokes. I like jokes.",
@@ -1185,6 +1197,9 @@ BUTTON_WINDOW_PLAY_OFF = "Window Play off"
 BUTTON_TTS = "Speech"
 BUTTON_TTS_ON = "Speech on"
 BUTTON_TTS_OFF = "Speech off"
+BUTTON_EMOJI = "Emojis"
+BUTTON_EMOJI_ON = "Emojis on"
+BUTTON_EMOJI_OFF = "Emojis off"
 BUTTON_SPECIAL_DAYS = "Special Days"
 BUTTON_SPECIAL_DAYS_ON = "Special Days on"
 BUTTON_SPECIAL_DAYS_OFF = "Special Days off"

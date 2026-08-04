@@ -299,6 +299,7 @@ class FloatingAssistant(
         self._hand_photo_ref = None
         self._tts_enabled = self._settings.get("tts_enabled", True)
         self._special_days_enabled = self._settings.get("special_days_enabled", True)
+        self._emoji_picker_enabled = self._settings.get("emoji_picker_enabled", True)
         self._hidden_menu_buttons = self._settings.get_hidden_menu_buttons()
         self._menu_settings_window = None
         self._init_app_awareness(
@@ -401,6 +402,7 @@ class FloatingAssistant(
             window_grab_enabled=bool(getattr(self, "_window_grab_enabled", True)),
             tts_enabled=bool(getattr(self, "_tts_enabled", True)),
             special_days_enabled=bool(getattr(self, "_special_days_enabled", True)),
+            emoji_picker_enabled=bool(getattr(self, "_emoji_picker_enabled", True)),
         )
         store.set_hidden_menu_buttons(getattr(self, "_hidden_menu_buttons", set()))
 

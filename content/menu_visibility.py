@@ -118,6 +118,11 @@ MENU_VISIBILITY_SECTIONS: tuple[tuple[str, tuple[MenuEntry, ...]], ...] = (
                 frozenset({dlg.BUTTON_TTS, dlg.BUTTON_TTS_ON, dlg.BUTTON_TTS_OFF}),
             ),
             (
+                "settings.emojis",
+                "Emojis",
+                frozenset({dlg.BUTTON_EMOJI, dlg.BUTTON_EMOJI_ON, dlg.BUTTON_EMOJI_OFF}),
+            ),
+            (
                 "settings.special_days",
                 "Special Days",
                 frozenset(

@@ -46,6 +46,7 @@ def _menu_app(**kwargs):
     app._window_grab_enabled = kwargs.get("window_grab_enabled", True)
     app._tts_enabled = kwargs.get("tts_enabled", True)
     app._special_days_enabled = kwargs.get("special_days_enabled", True)
+    app._emoji_picker_enabled = kwargs.get("emoji_picker_enabled", True)
     app._hidden_menu_buttons = kwargs.get("hidden_menu_buttons", set())
     return app
 
@@ -140,6 +141,7 @@ def test_settings_and_actions_options():
         dlg.BUTTON_SNORING_ON,
         dlg.BUTTON_WINDOW_PLAY_ON,
         dlg.BUTTON_TTS_ON,
+        dlg.BUTTON_EMOJI_ON,
         dlg.BUTTON_SPECIAL_DAYS_ON,
         dlg.BUTTON_MENU_BUTTONS,
         dlg.BUTTON_REMEMBER,
@@ -154,6 +156,7 @@ def test_settings_and_actions_options():
         dlg.BUTTON_SNORING_ON,
         dlg.BUTTON_WINDOW_PLAY_ON,
         dlg.BUTTON_TTS_ON,
+        dlg.BUTTON_EMOJI_ON,
         dlg.BUTTON_SPECIAL_DAYS_ON,
         dlg.BUTTON_MENU_BUTTONS,
         dlg.BUTTON_REMEMBER,
@@ -168,6 +171,7 @@ def test_settings_and_actions_options():
         dlg.BUTTON_SNORING_ON,
         dlg.BUTTON_WINDOW_PLAY_ON,
         dlg.BUTTON_TTS_ON,
+        dlg.BUTTON_EMOJI_ON,
         dlg.BUTTON_SPECIAL_DAYS_ON,
         dlg.BUTTON_MENU_BUTTONS,
         dlg.BUTTON_REMEMBER,
@@ -182,6 +186,7 @@ def test_settings_and_actions_options():
         dlg.BUTTON_SNORING_ON,
         dlg.BUTTON_WINDOW_PLAY_ON,
         dlg.BUTTON_TTS_ON,
+        dlg.BUTTON_EMOJI_ON,
         dlg.BUTTON_SPECIAL_DAYS_ON,
         dlg.BUTTON_MENU_BUTTONS,
         dlg.BUTTON_REMEMBER,
@@ -196,6 +201,7 @@ def test_settings_and_actions_options():
         dlg.BUTTON_SNORING_OFF,
         dlg.BUTTON_WINDOW_PLAY_ON,
         dlg.BUTTON_TTS_ON,
+        dlg.BUTTON_EMOJI_ON,
         dlg.BUTTON_SPECIAL_DAYS_ON,
         dlg.BUTTON_MENU_BUTTONS,
         dlg.BUTTON_REMEMBER,
@@ -210,6 +216,7 @@ def test_settings_and_actions_options():
         dlg.BUTTON_SNORING_ON,
         dlg.BUTTON_WINDOW_PLAY_OFF,
         dlg.BUTTON_TTS_ON,
+        dlg.BUTTON_EMOJI_ON,
         dlg.BUTTON_SPECIAL_DAYS_ON,
         dlg.BUTTON_MENU_BUTTONS,
         dlg.BUTTON_REMEMBER,
@@ -224,6 +231,7 @@ def test_settings_and_actions_options():
         dlg.BUTTON_SNORING_ON,
         dlg.BUTTON_WINDOW_PLAY_ON,
         dlg.BUTTON_TTS_OFF,
+        dlg.BUTTON_EMOJI_ON,
         dlg.BUTTON_SPECIAL_DAYS_ON,
         dlg.BUTTON_MENU_BUTTONS,
         dlg.BUTTON_REMEMBER,
@@ -239,6 +247,7 @@ def test_settings_and_actions_options():
         dlg.BUTTON_SNORING_ON,
         dlg.BUTTON_WINDOW_PLAY_ON,
         dlg.BUTTON_TTS_ON,
+        dlg.BUTTON_EMOJI_ON,
         dlg.BUTTON_SPECIAL_DAYS_OFF,
         dlg.BUTTON_MENU_BUTTONS,
         dlg.BUTTON_REMEMBER,
@@ -247,6 +256,21 @@ def test_settings_and_actions_options():
         dlg.BUTTON_BACK,
     ]
 
+    assert settings_options_for(_menu_app(emoji_picker_enabled=False)) == [
+        dlg.BUTTON_SCREEN_EFFECTS_ON,
+        dlg.BUTTON_REMINDERS_ON,
+        dlg.BUTTON_APP_AWARENESS_ON,
+        dlg.BUTTON_SNORING_ON,
+        dlg.BUTTON_WINDOW_PLAY_ON,
+        dlg.BUTTON_TTS_ON,
+        dlg.BUTTON_EMOJI_OFF,
+        dlg.BUTTON_SPECIAL_DAYS_ON,
+        dlg.BUTTON_MENU_BUTTONS,
+        dlg.BUTTON_REMEMBER,
+        dlg.BUTTON_FORGET,
+        dlg.BUTTON_SHOW_CREDITS,
+        dlg.BUTTON_BACK,
+    ]
     assert settings_options_for(
         _menu_app(hidden_menu_buttons={"actions.hug", "main.chat"})
     ) == [
@@ -256,6 +280,7 @@ def test_settings_and_actions_options():
         dlg.BUTTON_SNORING_ON,
         dlg.BUTTON_WINDOW_PLAY_ON,
         dlg.BUTTON_TTS_ON,
+        dlg.BUTTON_EMOJI_ON,
         dlg.BUTTON_SPECIAL_DAYS_ON,
         dlg.BUTTON_MENU_BUTTONS,
         dlg.BUTTON_REMEMBER,

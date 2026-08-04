@@ -108,28 +108,32 @@ class SpeechChatMixin(EmojiPickerMixin):
         self._speech_bubble_entry = entry
         self._bind_entry_focus_on_click(entry)
 
-        from kinito.features.emoji_picker import load_emoji_button_icon
+        if getattr(self, "_emoji_picker_enabled", True):
+            from kinito.features.emoji_picker import load_emoji_button_icon
 
-        self._emoji_button_photo = load_emoji_button_icon()
-        if self._emoji_button_photo is not None:
-            emoji_button = self._create_bubble_button(
-                input_frame,
-                "",
-                self._toggle_emoji_picker,
-                image=self._emoji_button_photo,
-                padx=4,
-                pady=2,
-            )
+            self._emoji_button_photo = load_emoji_button_icon()
+            if self._emoji_button_photo is not None:
+                emoji_button = self._create_bubble_button(
+                    input_frame,
+                    "",
+                    self._toggle_emoji_picker,
+                    image=self._emoji_button_photo,
+                    padx=4,
+                    pady=2,
+                )
+            else:
+                emoji_button = self._create_bubble_button(
+                    input_frame,
+                    "☺",
+                    self._toggle_emoji_picker,
+                    width=2,
+                    padx=4,
+                )
+            emoji_button.pack(side=tk.LEFT, padx=(5, 0))
+            self._emoji_picker_button = emoji_button
         else:
-            emoji_button = self._create_bubble_button(
-                input_frame,
-                "☺",
-                self._toggle_emoji_picker,
-                width=2,
-                padx=4,
-            )
-        emoji_button.pack(side=tk.LEFT, padx=(5, 0))
-        self._emoji_picker_button = emoji_button
+            self._emoji_button_photo = None
+            self._emoji_picker_button = None
 
         close_button = self._create_bubble_button(
             input_frame,
