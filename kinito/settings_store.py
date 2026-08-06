@@ -17,6 +17,7 @@ DEFAULT_BOOL_SETTINGS: dict[str, bool] = {
     "screen_effects_enabled": True,
     "ambient_reminders_enabled": True,
     "app_awareness_enabled": True,
+    "screen_comments_enabled": True,
     "snoring_enabled": True,
     "window_grab_enabled": True,
     "tts_enabled": True,

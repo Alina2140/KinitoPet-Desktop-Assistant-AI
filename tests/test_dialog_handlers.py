@@ -263,6 +263,12 @@ def test_handle_menu_toggle_app_awareness(mock_app):
     mock_app.toggle_app_awareness.assert_called_once()
 
 
+def test_handle_menu_toggle_screen_comments(mock_app):
+    spec = find_dialog_spec(dlg.SETTINGS_MENU_QUESTION)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_SCREEN_COMMENTS_ON)
+    mock_app.toggle_screen_comments.assert_called_once()
+
+
 def test_handle_menu_toggle_snoring(mock_app):
     spec = find_dialog_spec(dlg.SETTINGS_MENU_QUESTION)
     handle_dialog_response(mock_app, spec, dlg.BUTTON_SNORING_ON)

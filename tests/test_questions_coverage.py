@@ -42,6 +42,7 @@ def _menu_app(**kwargs):
     app._screen_effects_enabled = kwargs.get("screen_effects_enabled", True)
     app._ambient_reminders_enabled = kwargs.get("ambient_reminders_enabled", True)
     app._app_awareness_enabled = kwargs.get("app_awareness_enabled", True)
+    app._screen_comments_enabled = kwargs.get("screen_comments_enabled", True)
     app._snoring_enabled = kwargs.get("snoring_enabled", True)
     app._window_grab_enabled = kwargs.get("window_grab_enabled", True)
     app._tts_enabled = kwargs.get("tts_enabled", True)
@@ -138,6 +139,7 @@ def test_settings_and_actions_options():
         dlg.BUTTON_SCREEN_EFFECTS_ON,
         dlg.BUTTON_REMINDERS_ON,
         dlg.BUTTON_APP_AWARENESS_ON,
+        dlg.BUTTON_SCREEN_COMMENTS_ON,
         dlg.BUTTON_SNORING_ON,
         dlg.BUTTON_WINDOW_PLAY_ON,
         dlg.BUTTON_TTS_ON,
@@ -153,6 +155,7 @@ def test_settings_and_actions_options():
         dlg.BUTTON_SCREEN_EFFECTS_ON,
         dlg.BUTTON_REMINDERS_OFF,
         dlg.BUTTON_APP_AWARENESS_ON,
+        dlg.BUTTON_SCREEN_COMMENTS_ON,
         dlg.BUTTON_SNORING_ON,
         dlg.BUTTON_WINDOW_PLAY_ON,
         dlg.BUTTON_TTS_ON,
@@ -168,6 +171,23 @@ def test_settings_and_actions_options():
         dlg.BUTTON_SCREEN_EFFECTS_ON,
         dlg.BUTTON_REMINDERS_ON,
         dlg.BUTTON_APP_AWARENESS_OFF,
+        dlg.BUTTON_SCREEN_COMMENTS_ON,
+        dlg.BUTTON_SNORING_ON,
+        dlg.BUTTON_WINDOW_PLAY_ON,
+        dlg.BUTTON_TTS_ON,
+        dlg.BUTTON_EMOJI_ON,
+        dlg.BUTTON_SPECIAL_DAYS_ON,
+        dlg.BUTTON_MENU_BUTTONS,
+        dlg.BUTTON_REMEMBER,
+        dlg.BUTTON_FORGET,
+        dlg.BUTTON_SHOW_CREDITS,
+        dlg.BUTTON_BACK,
+    ]
+    assert settings_options_for(_menu_app(screen_comments_enabled=False)) == [
+        dlg.BUTTON_SCREEN_EFFECTS_ON,
+        dlg.BUTTON_REMINDERS_ON,
+        dlg.BUTTON_APP_AWARENESS_ON,
+        dlg.BUTTON_SCREEN_COMMENTS_OFF,
         dlg.BUTTON_SNORING_ON,
         dlg.BUTTON_WINDOW_PLAY_ON,
         dlg.BUTTON_TTS_ON,
@@ -183,6 +203,7 @@ def test_settings_and_actions_options():
         dlg.BUTTON_SCREEN_EFFECTS_OFF,
         dlg.BUTTON_REMINDERS_ON,
         dlg.BUTTON_APP_AWARENESS_ON,
+        dlg.BUTTON_SCREEN_COMMENTS_ON,
         dlg.BUTTON_SNORING_ON,
         dlg.BUTTON_WINDOW_PLAY_ON,
         dlg.BUTTON_TTS_ON,
@@ -198,6 +219,7 @@ def test_settings_and_actions_options():
         dlg.BUTTON_SCREEN_EFFECTS_ON,
         dlg.BUTTON_REMINDERS_ON,
         dlg.BUTTON_APP_AWARENESS_ON,
+        dlg.BUTTON_SCREEN_COMMENTS_ON,
         dlg.BUTTON_SNORING_OFF,
         dlg.BUTTON_WINDOW_PLAY_ON,
         dlg.BUTTON_TTS_ON,
@@ -213,6 +235,7 @@ def test_settings_and_actions_options():
         dlg.BUTTON_SCREEN_EFFECTS_ON,
         dlg.BUTTON_REMINDERS_ON,
         dlg.BUTTON_APP_AWARENESS_ON,
+        dlg.BUTTON_SCREEN_COMMENTS_ON,
         dlg.BUTTON_SNORING_ON,
         dlg.BUTTON_WINDOW_PLAY_OFF,
         dlg.BUTTON_TTS_ON,
@@ -228,6 +251,7 @@ def test_settings_and_actions_options():
         dlg.BUTTON_SCREEN_EFFECTS_ON,
         dlg.BUTTON_REMINDERS_ON,
         dlg.BUTTON_APP_AWARENESS_ON,
+        dlg.BUTTON_SCREEN_COMMENTS_ON,
         dlg.BUTTON_SNORING_ON,
         dlg.BUTTON_WINDOW_PLAY_ON,
         dlg.BUTTON_TTS_OFF,
@@ -244,6 +268,7 @@ def test_settings_and_actions_options():
         dlg.BUTTON_SCREEN_EFFECTS_ON,
         dlg.BUTTON_REMINDERS_ON,
         dlg.BUTTON_APP_AWARENESS_ON,
+        dlg.BUTTON_SCREEN_COMMENTS_ON,
         dlg.BUTTON_SNORING_ON,
         dlg.BUTTON_WINDOW_PLAY_ON,
         dlg.BUTTON_TTS_ON,
@@ -260,6 +285,7 @@ def test_settings_and_actions_options():
         dlg.BUTTON_SCREEN_EFFECTS_ON,
         dlg.BUTTON_REMINDERS_ON,
         dlg.BUTTON_APP_AWARENESS_ON,
+        dlg.BUTTON_SCREEN_COMMENTS_ON,
         dlg.BUTTON_SNORING_ON,
         dlg.BUTTON_WINDOW_PLAY_ON,
         dlg.BUTTON_TTS_ON,
@@ -277,6 +303,7 @@ def test_settings_and_actions_options():
         dlg.BUTTON_SCREEN_EFFECTS_ON,
         dlg.BUTTON_REMINDERS_ON,
         dlg.BUTTON_APP_AWARENESS_ON,
+        dlg.BUTTON_SCREEN_COMMENTS_ON,
         dlg.BUTTON_SNORING_ON,
         dlg.BUTTON_WINDOW_PLAY_ON,
         dlg.BUTTON_TTS_ON,

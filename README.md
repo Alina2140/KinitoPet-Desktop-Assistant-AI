@@ -208,6 +208,7 @@ Optional environment variables:
 |----------|---------|---------|
 | `OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | Ollama API URL |
 | `OLLAMA_MODEL` | `llama3.2:3b` | Model name |
+| `OLLAMA_VISION_MODEL` | `llava` | Vision model for screen comments (`ollama pull llava`) |
 | `OLLAMA_ENABLED` | `true` | Enable/disable AI features |
 | `OLLAMA_IDLE_LINES` | `true` | AI-generated spontaneous lines |
 | `OLLAMA_REPLACE_CHANCE` | `0.30` | Chance that any non-interactive spoken line is AI-generated |

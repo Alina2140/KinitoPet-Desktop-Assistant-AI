@@ -95,6 +95,17 @@ MENU_VISIBILITY_SECTIONS: tuple[tuple[str, tuple[MenuEntry, ...]], ...] = (
                 ),
             ),
             (
+                "settings.screen_comments",
+                "Screen Comments",
+                frozenset(
+                    {
+                        dlg.BUTTON_SCREEN_COMMENTS,
+                        dlg.BUTTON_SCREEN_COMMENTS_ON,
+                        dlg.BUTTON_SCREEN_COMMENTS_OFF,
+                    }
+                ),
+            ),
+            (
                 "settings.snoring",
                 "Snoring",
                 frozenset(

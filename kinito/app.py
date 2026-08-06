@@ -58,6 +58,7 @@ from kinito.features.music import MusicMixin
 from kinito.features.nudges import NudgesMixin
 from kinito.features.paint import PaintMixin
 from kinito.features.programs import ProgramsMixin
+from kinito.features.screen_comments import ScreenCommentsMixin
 from kinito.features.window_grab import WindowGrabMixin
 from kinito.movement import MovementMixin
 from kinito.settings_store import SettingsStore
@@ -108,6 +109,7 @@ class FloatingAssistant(
     AdsMixin,
     NudgesMixin,
     WindowGrabMixin,
+    ScreenCommentsMixin,
     MenuSettingsMixin,
     MovementMixin,
     HugMixin,
@@ -290,6 +292,10 @@ class FloatingAssistant(
             "ambient_reminders_enabled", True
         )
         self._last_nudge_at = 0.0
+        self._screen_comments_enabled = self._settings.get(
+            "screen_comments_enabled", True
+        )
+        self._last_screen_comment_at = 0.0
         self._window_grab_enabled = self._settings.get("window_grab_enabled", True)
         self._last_window_grab_at = 0.0
         self._window_grab_active = False
@@ -404,6 +410,9 @@ class FloatingAssistant(
             ),
             app_awareness_enabled=bool(
                 getattr(self, "_app_awareness_enabled", True)
+            ),
+            screen_comments_enabled=bool(
+                getattr(self, "_screen_comments_enabled", True)
             ),
             snoring_enabled=bool(getattr(self, "_snoring_enabled", True)),
             window_grab_enabled=bool(getattr(self, "_window_grab_enabled", True)),

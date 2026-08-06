@@ -24,6 +24,7 @@ def client():
     config = LLMConfig(
         base_url="http://127.0.0.1:11434",
         model="test-model",
+        vision_model="test-vision",
         timeout_s=5,
         enabled=True,
     )
@@ -35,6 +36,21 @@ def test_chat_returns_assistant_message(client):
     with patch("urllib.request.urlopen", return_value=_mock_urlopen(payload)):
         result = client.chat([{"role": "user", "content": "Hi"}])
     assert result == "Hello there!"
+
+
+def test_chat_with_image_sends_base64_and_vision_model(client):
+    payload = {"message": {"role": "assistant", "content": "Busy screen vibe."}}
+    with patch("urllib.request.urlopen", return_value=_mock_urlopen(payload)) as urlopen:
+        result = client.chat_with_image("Comment.", b"\xff\xd8fake", system="Be brief.")
+    assert result == "Busy screen vibe."
+    request = urlopen.call_args.args[0]
+    body = json.loads(request.data.decode("utf-8"))
+    assert body["model"] == client.config.vision_model
+    assert body["stream"] is False
+    user_msg = body["messages"][-1]
+    assert user_msg["content"] == "Comment."
+    assert len(user_msg["images"]) == 1
+    assert isinstance(user_msg["images"][0], str)
 
 
 def test_generate_returns_response_text(client):

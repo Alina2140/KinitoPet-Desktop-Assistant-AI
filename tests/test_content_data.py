@@ -23,6 +23,7 @@ from content.paint_lines import (
     PAINT_WHILE_LINES,
 )
 from content.poems import POEMS
+from content.screen_comment_lines import SCREEN_COMMENT_FALLBACK_LINES
 from content.startup import STARTUP_LINES
 from content.stories import STORIES
 from content.wisdom import WISDOM, format_wisdom_line, get_random_wisdom, load_quotes
@@ -57,6 +58,7 @@ def _assert_non_empty_strings(items, *, min_length=1):
         (BROWSER_LINES, "browser"),
         (HORROR_BROWSER_LINES, "horror_browser"),
         (CAMERA_LINES, "camera"),
+        (SCREEN_COMMENT_FALLBACK_LINES, "screen_comment_fallback"),
         (MUSIC_PLAYER_LINES, "music_player"),
     ],
 )

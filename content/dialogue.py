@@ -616,6 +616,18 @@ APP_AWARENESS_OFF_LINES = [
     "Desktop radar disabled. No more 'still in that app?' from me. For now.",
 ]
 
+SCREEN_COMMENTS_ON_LINES = [
+    "Screen comments on. I may glance. Softly. Then talk. No souvenirs.",
+    "Desktop peeks enabled. Nothing gets saved. Just my opinions. Unsolicited.",
+    "I'll occasionally notice your screen. Briefly. Then chat about the vibe.",
+]
+
+SCREEN_COMMENTS_OFF_LINES = [
+    "Screen comments off. Eyes closed. Mouth still available for hugs.",
+    "No more desktop glances. Your pixels are private again. For now.",
+    "I won't peek at the screen anymore. Promise. Mostly. Okay, completely.",
+]
+
 SNORING_ON_LINES = [
     "Snoring on. When I nap, expect the occasional soft... zzz. Charming, right?",
     "Sleep sounds enabled. I'll snore a little. Quietly. Mostly. Cute mostly.",
@@ -1197,6 +1209,9 @@ BUTTON_REMINDERS_OFF = "Reminders off"
 BUTTON_APP_AWARENESS = "App Awareness"
 BUTTON_APP_AWARENESS_ON = "App Awareness on"
 BUTTON_APP_AWARENESS_OFF = "App Awareness off"
+BUTTON_SCREEN_COMMENTS = "Screen Comments"
+BUTTON_SCREEN_COMMENTS_ON = "Screen Comments on"
+BUTTON_SCREEN_COMMENTS_OFF = "Screen Comments off"
 BUTTON_SNORING = "Snoring"
 BUTTON_SNORING_ON = "Snoring on"
 BUTTON_SNORING_OFF = "Snoring off"

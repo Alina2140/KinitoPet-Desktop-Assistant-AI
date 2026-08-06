@@ -40,6 +40,7 @@ class LLMConfig:
 
     base_url: str = "http://127.0.0.1:11434"
     model: str = "llama3.2:3b"
+    vision_model: str = "llava"
     timeout_s: int = 60
     enabled: bool = True
     idle_lines: bool = True
@@ -58,6 +59,7 @@ class LLMConfig:
         return cls(
             base_url=os.environ.get("OLLAMA_BASE_URL", "http://127.0.0.1:11434").rstrip("/"),
             model=os.environ.get("OLLAMA_MODEL", "llama3.2:3b"),
+            vision_model=os.environ.get("OLLAMA_VISION_MODEL", "llava"),
             timeout_s=_env_int("OLLAMA_TIMEOUT_S", 60),
             enabled=_env_bool("OLLAMA_ENABLED", True),
             idle_lines=_env_bool("OLLAMA_IDLE_LINES", True),

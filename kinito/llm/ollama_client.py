@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import urllib.error
 import urllib.request
@@ -58,6 +59,42 @@ class OllamaClient:
         content = self._extract_message_content(data)
         if not content:
             raise OllamaUnavailableError("Ollama returned an empty chat response.")
+        return content
+
+    def chat_with_image(
+        self,
+        prompt: str,
+        image_bytes: bytes,
+        *,
+        system: str | None = None,
+        max_tokens: int | None = None,
+    ) -> str:
+        """One-shot vision chat; *image_bytes* are not stored by this client."""
+        if not image_bytes:
+            raise OllamaUnavailableError("No image bytes provided for vision chat.")
+        tokens = max_tokens if max_tokens is not None else self.config.max_tokens_short
+        encoded = base64.b64encode(image_bytes).decode("ascii")
+        messages: list[dict[str, Any]] = []
+        if system:
+            messages.append({"role": "system", "content": system})
+        messages.append(
+            {
+                "role": "user",
+                "content": prompt,
+                "images": [encoded],
+            }
+        )
+        payload = {
+            "model": self.config.vision_model,
+            "messages": messages,
+            "stream": False,
+            "keep_alive": self.config.keep_alive,
+            "options": {"num_predict": tokens},
+        }
+        data = self._request("POST", "/api/chat", body=payload)
+        content = self._extract_message_content(data)
+        if not content:
+            raise OllamaUnavailableError("Ollama returned an empty vision chat response.")
         return content
 
     def generate(self, prompt: str, *, system: str | None = None, max_tokens: int = 128) -> str:
