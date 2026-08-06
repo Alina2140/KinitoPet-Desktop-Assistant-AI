@@ -166,3 +166,15 @@ BATTLESHIPS_LOSE_LINES = [
     "Ten shots, no victory. You got {hits} of {total}. The rest are revealed. Study the board.",
     "No more ammo! Only {hits} of {total} ships hit. I win. The map tells the rest.",
 ]
+
+SNAKE_GAME_OVER_LINES = [
+    "Game over! Score: {score}. Highscore: {highscore}. Slither better next time.",
+    "Bonk! You scored {score}. My highscore watch says {highscore}. Rematch?",
+    "Snake down at {score} points. Session best is {highscore}. I was rooting for you. Mostly.",
+]
+
+SNAKE_NEW_HIGH_LINES = [
+    "New highscore! {score}! I'll remember that. Forever.",
+    "Record broken — {score}! You're getting dangerously good at this.",
+    "Highscore: {score}! My circuits are mildly jealous.",
+]

@@ -13,6 +13,7 @@ from content.trivia_questions import (
     check_answer,
     pick_random_question,
 )
+from kinito.features.games import snake as snake_game
 from kinito.features.games.battleships import (
     GRID_SIZE,
     MAX_SHOTS,
@@ -40,6 +41,16 @@ from kinito.features.games.number_guess import (
     parse_guess,
 )
 from kinito.features.games.rock_paper_scissors import MOVES, rps_winner
+from kinito.features.games.snake import (
+    BASE_DELAY_MS,
+    LEFT,
+    MIN_DELAY_MS,
+    RIGHT,
+    UP,
+    queue_direction,
+    step,
+    tick_delay_ms,
+)
 from kinito.features.games.tic_tac_toe import (
     EMPTY,
     KINITO,
@@ -222,6 +233,64 @@ def test_battleships_lose_when_out_of_shots():
     assert results[-1] == "lose"
     assert state["finished"] is True
     assert not all_sunk(state)
+
+
+def test_snake_rejects_180_turn():
+    state = snake_game.new_game(rng=random.Random(0))
+    assert state["direction"] == RIGHT
+    assert queue_direction(state, *LEFT) is False
+    assert state["pending_direction"] == RIGHT
+    assert queue_direction(state, *UP) is True
+    assert state["pending_direction"] == UP
+
+
+def test_snake_step_without_food_keeps_length():
+    state = snake_game.new_game(rng=random.Random(0))
+    state["food"] = (0, 0)
+    length_before = len(state["snake"])
+    head_before = state["snake"][0]
+    assert step(state) == "ok"
+    assert len(state["snake"]) == length_before
+    assert state["snake"][0] == (head_before[0] + 1, head_before[1])
+    assert state["alive"] is True
+
+
+def test_snake_eating_grows_and_scores():
+    state = snake_game.new_game(rng=random.Random(0))
+    head = state["snake"][0]
+    state["food"] = (head[0] + 1, head[1])
+    length_before = len(state["snake"])
+    assert step(state) == "ate"
+    assert state["score"] == 1
+    assert len(state["snake"]) == length_before + 1
+    assert state["food"] not in state["snake"]
+
+
+def test_snake_wall_collision_kills():
+    state = snake_game.new_game(rng=random.Random(0))
+    state["snake"] = [(snake_game.GRID_SIZE - 1, 5)]
+    state["direction"] = RIGHT
+    state["pending_direction"] = RIGHT
+    state["food"] = (0, 0)
+    assert step(state) == "dead"
+    assert state["alive"] is False
+
+
+def test_snake_self_collision_kills():
+    state = snake_game.new_game(rng=random.Random(0))
+    # Head at (5,5) moving right into body at (6,5).
+    state["snake"] = [(5, 5), (5, 6), (6, 6), (6, 5), (6, 4)]
+    state["direction"] = RIGHT
+    state["pending_direction"] = RIGHT
+    state["food"] = (0, 0)
+    assert step(state) == "dead"
+    assert state["alive"] is False
+
+
+def test_snake_tick_delay_decreases_with_floor():
+    assert tick_delay_ms(0) == BASE_DELAY_MS
+    assert tick_delay_ms(5) < BASE_DELAY_MS
+    assert tick_delay_ms(100) == MIN_DELAY_MS
 
 
 def test_game_window_close_shows_speech_bubble():

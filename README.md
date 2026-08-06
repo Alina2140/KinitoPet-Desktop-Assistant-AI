@@ -37,7 +37,7 @@ A free, open-source desktop companion inspired by **KinitoPET**. Kinito lives on
 | **Hug** | Hug sprites + sweet lines |
 | **Idle animations** | Blinking, reading, fancy hat mode, sleep sprites |
 | **Reminders** | Timer with sound after X minutes |
-| **Mini-games** | Tic-tac-toe, memory, battleships, RPS, trivia, and more (right-click → **Actions** → **Play Game**) |
+| **Mini-games** | Tic-tac-toe, memory, battleships, snake, RPS, trivia, and more (right-click → **Actions** → **Play Game**) |
 | **Paint** | Retro drawing window; save PNGs and browse them (right-click → **Actions** → **Paint**) |
 
 ---

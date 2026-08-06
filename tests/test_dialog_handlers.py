@@ -105,6 +105,12 @@ def test_handle_board_games_tic_tac_toe(mock_app):
     mock_app.start_tic_tac_toe.assert_called_once()
 
 
+def test_handle_board_games_snake(mock_app):
+    spec = find_dialog_spec(dlg.BOARD_GAMES_QUESTION)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_GAME_SNAKE)
+    mock_app.start_snake.assert_called_once()
+
+
 def test_handle_board_games_back(mock_app):
     spec = find_dialog_spec(dlg.BOARD_GAMES_QUESTION)
     handle_dialog_response(mock_app, spec, dlg.BUTTON_BACK)

@@ -5,6 +5,7 @@ from content.trivia_questions import ROUND_SIZE
 from kinito.features.games.battleships_ui import BattleshipsGame
 from kinito.features.games.memory_ui import MemoryGame
 from kinito.features.games.number_guess import new_secret_number
+from kinito.features.games.snake_ui import SnakeGame
 from kinito.features.games.tic_tac_toe import TicTacToeGame
 
 
@@ -113,3 +114,7 @@ class GamesMixin:
     def start_battleships(self):
         """Open a mini battleships game window."""
         self.root.after(0, lambda: BattleshipsGame(self).open())
+
+    def start_snake(self):
+        """Open a snake game window."""
+        self.root.after(0, lambda: SnakeGame(self).open())
