@@ -16,7 +16,7 @@ from kinito.llm.ollama_client import OllamaUnavailableError
 class ScreenCommentsMixin:
     """Grab the screen ephemerally and speak a short comment (bubble + TTS)."""
 
-    SCREEN_COMMENT_CHANCE = 1
+    SCREEN_COMMENT_CHANCE = 1 / 300
     SCREEN_COMMENT_COOLDOWN_SECONDS = 5
     SCREEN_COMMENT_MAX_EDGE = 896
     SCREEN_COMMENT_JPEG_QUALITY = 70
