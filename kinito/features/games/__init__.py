@@ -6,6 +6,7 @@ from kinito.features.games.battleships_ui import BattleshipsGame
 from kinito.features.games.connect_four import ConnectFourGame
 from kinito.features.games.hangman import HangmanGame
 from kinito.features.games.memory_ui import MemoryGame
+from kinito.features.games.minesweeper_ui import MinesweeperGame
 from kinito.features.games.number_guess import new_secret_number
 from kinito.features.games.snake_ui import SnakeGame
 from kinito.features.games.tic_tac_toe import TicTacToeGame
@@ -128,3 +129,7 @@ class GamesMixin:
     def start_hangman(self):
         """Open a hangman game window."""
         self.root.after(0, lambda: HangmanGame(self).open())
+
+    def start_minesweeper(self):
+        """Open a minesweeper game window."""
+        self.root.after(0, lambda: MinesweeperGame(self).open())

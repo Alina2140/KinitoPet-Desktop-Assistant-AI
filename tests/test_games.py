@@ -16,6 +16,7 @@ from content.trivia_questions import (
 )
 from kinito.features.games import connect_four as c4
 from kinito.features.games import hangman as hangman_game
+from kinito.features.games import minesweeper as ms
 from kinito.features.games import snake as snake_game
 from kinito.features.games.battleships import (
     GRID_SIZE,
@@ -422,6 +423,73 @@ def test_hangman_lose_at_max_misses():
     assert state["misses"] == MAX_MISSES
     assert state["status"] == "lost"
     assert display_word(state) == "A B"
+
+
+def test_minesweeper_ensure_mines_avoids_safe_zone():
+    state = ms.new_game()
+    safe = 40  # center-ish
+    ms.ensure_mines(state, safe, rng=random.Random(0))
+    assert len(state["mines"]) == ms.MINE_COUNT
+    assert safe not in state["mines"]
+    for neighbor in ms._neighbors(safe):
+        assert neighbor not in state["mines"]
+    assert state["started"] is True
+
+
+def test_minesweeper_flood_fill_on_zero():
+    state = ms.new_game()
+    # Place mines only in a corner so center opens wide.
+    state["mines"] = {0, 1, 2, 9, 10, 18, 19, 20, 27, 28}
+    state["started"] = True
+    result = ms.reveal_cell(state, 80)  # bottom-right
+    assert result in ("ok", "win")
+    assert 80 in state["revealed"]
+    assert len(state["revealed"]) > 1
+    assert ms.neighbor_count(state, 80) == 0
+
+
+def test_minesweeper_reveal_mine_loses():
+    state = ms.new_game()
+    state["mines"] = {5}
+    state["started"] = True
+    assert ms.reveal_cell(state, 5) == "lose"
+    assert state["finished"] is True
+    assert state["won"] is False
+
+
+def test_minesweeper_clear_board_wins():
+    state = ms.new_game()
+    state["mines"] = {0}
+    state["started"] = True
+    result = "ok"
+    for index in range(1, ms.CELL_COUNT):
+        outcome = ms.reveal_cell(state, index)
+        if outcome != "ignored":
+            result = outcome
+    assert result == "win"
+    assert state["won"] is True
+    assert state["finished"] is True
+
+
+def test_minesweeper_flag_toggle_and_block_revealed():
+    state = ms.new_game()
+    state["mines"] = {10}
+    state["started"] = True
+    assert ms.toggle_flag(state, 0) is True
+    assert 0 in state["flags"]
+    assert ms.toggle_flag(state, 0) is True
+    assert 0 not in state["flags"]
+    ms.reveal_cell(state, 1)
+    assert ms.toggle_flag(state, 1) is False
+
+
+def test_minesweeper_flagged_cell_not_revealed():
+    state = ms.new_game()
+    state["mines"] = {0}
+    state["started"] = True
+    ms.toggle_flag(state, 5)
+    assert ms.reveal_cell(state, 5) == "ignored"
+    assert 5 not in state["revealed"]
 
 
 def test_game_window_close_shows_speech_bubble():

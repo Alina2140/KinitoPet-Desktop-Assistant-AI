@@ -208,3 +208,15 @@ HANGMAN_LOSE_LINES = [
     "Game over. It was {word}. I was rooting for you. Mostly.",
     "The word was {word}. Don't worry — the stick figure will recover.",
 ]
+
+MINESWEEPER_WIN_LINES = [
+    "All clear! {mines} mines dodged. You're dangerously good at this.",
+    "Board cleared! {mines} mines, zero explosions. Impressive.",
+    "You win! Every safe tile opened. My circuits approve.",
+]
+
+MINESWEEPER_LOSE_LINES = [
+    "Boom! That was a mine. I'll sweep up the pixels.",
+    "Kaboom. Game over. Flagging is your friend. Next time.",
+    "You hit a mine! Don't feel bad. Explosions are educational.",
+]
