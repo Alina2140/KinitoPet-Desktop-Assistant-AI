@@ -3,6 +3,7 @@
 from content import dialogue as dlg
 from content.trivia_questions import ROUND_SIZE
 from kinito.features.games.battleships_ui import BattleshipsGame
+from kinito.features.games.connect_four import ConnectFourGame
 from kinito.features.games.memory_ui import MemoryGame
 from kinito.features.games.number_guess import new_secret_number
 from kinito.features.games.snake_ui import SnakeGame
@@ -118,3 +119,7 @@ class GamesMixin:
     def start_snake(self):
         """Open a snake game window."""
         self.root.after(0, lambda: SnakeGame(self).open())
+
+    def start_connect_four(self):
+        """Open a Connect Four game window."""
+        self.root.after(0, lambda: ConnectFourGame(self).open())

@@ -13,6 +13,7 @@ from content.trivia_questions import (
     check_answer,
     pick_random_question,
 )
+from kinito.features.games import connect_four as c4
 from kinito.features.games import snake as snake_game
 from kinito.features.games.battleships import (
     GRID_SIZE,
@@ -291,6 +292,72 @@ def test_snake_tick_delay_decreases_with_floor():
     assert tick_delay_ms(0) == BASE_DELAY_MS
     assert tick_delay_ms(5) < BASE_DELAY_MS
     assert tick_delay_ms(100) == MIN_DELAY_MS
+
+
+def test_connect_four_drop_stacks_from_bottom():
+    board = c4.new_board()
+    assert c4.drop_disc(board, 0, c4.PLAYER) == (c4.ROWS - 1, 0)
+    assert c4.drop_disc(board, 0, c4.KINITO) == (c4.ROWS - 2, 0)
+    assert board[c4.ROWS - 1][0] == c4.PLAYER
+    assert board[c4.ROWS - 2][0] == c4.KINITO
+
+
+def test_connect_four_full_column_rejects_drop():
+    board = c4.new_board()
+    for _ in range(c4.ROWS):
+        assert c4.drop_disc(board, 3, c4.PLAYER) is not None
+    assert c4.drop_disc(board, 3, c4.KINITO) is None
+
+
+def test_connect_four_horizontal_win():
+    board = c4.new_board()
+    row = c4.ROWS - 1
+    for col in range(4):
+        board[row][col] = c4.PLAYER
+    assert c4.check_winner(board) == c4.PLAYER
+
+
+def test_connect_four_vertical_win():
+    board = c4.new_board()
+    for row in range(c4.ROWS - 4, c4.ROWS):
+        board[row][2] = c4.KINITO
+    assert c4.check_winner(board) == c4.KINITO
+
+
+def test_connect_four_diagonal_win():
+    board = c4.new_board()
+    for i in range(4):
+        board[c4.ROWS - 1 - i][i] = c4.PLAYER
+    assert c4.check_winner(board) == c4.PLAYER
+
+
+def test_connect_four_draw_when_full_without_four():
+    board = [
+        list("LRLRLRL"),
+        list("LRLRLRL"),
+        list("RLRLRLR"),
+        list("RLRLRLR"),
+        list("LRLRLRL"),
+        list("LRLRLRL"),
+    ]
+    assert len(board) == c4.ROWS
+    assert all(len(row) == c4.COLS for row in board)
+    assert c4.check_winner(board) == "draw"
+
+
+def test_connect_four_ai_takes_winning_column():
+    board = c4.new_board()
+    for col in range(3):
+        board[c4.ROWS - 1][col] = c4.KINITO
+    assert c4.winning_column(board, c4.KINITO) == 3
+    assert c4.choose_ai_column(board) == 3
+
+
+def test_connect_four_ai_blocks_player_win():
+    board = c4.new_board()
+    for col in range(3):
+        board[c4.ROWS - 1][col] = c4.PLAYER
+    assert c4.choose_ai_column(board) == 3
 
 
 def test_game_window_close_shows_speech_bubble():
