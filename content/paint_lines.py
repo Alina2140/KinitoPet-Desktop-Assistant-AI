@@ -44,3 +44,14 @@ PAINT_GALLERY_OPEN_LINES = [
     "Your gallery! Every file is a memory. Friendship!",
     "Saved paintings — choose one and I'll show it.",
 ]
+
+PAINT_RECALL_LINES = [
+    "Remember this one? I kept it safe. Look!",
+    "Found something in our gallery. Soft masterpiece energy.",
+    "I was thinking about this painting. So I brought it back.",
+    "Popup! Your art. My favorite kind of surprise.",
+    "Gallery flashback! Still love this one. Softly obsessed.",
+    "Look what I found. Your pixels. Our history.",
+    "Random gallery moment! Admire with me. Forever optional. Preferred.",
+]
+

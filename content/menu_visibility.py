@@ -106,6 +106,17 @@ MENU_VISIBILITY_SECTIONS: tuple[tuple[str, tuple[MenuEntry, ...]], ...] = (
                 ),
             ),
             (
+                "settings.paint_recall",
+                "Painting Popups",
+                frozenset(
+                    {
+                        dlg.BUTTON_PAINT_RECALL,
+                        dlg.BUTTON_PAINT_RECALL_ON,
+                        dlg.BUTTON_PAINT_RECALL_OFF,
+                    }
+                ),
+            ),
+            (
                 "settings.snoring",
                 "Snoring",
                 frozenset(

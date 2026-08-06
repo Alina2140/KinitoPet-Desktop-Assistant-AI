@@ -847,6 +847,18 @@ SCREEN_COMMENTS_OFF_LINES = [
     "I won't peek at the screen anymore. Promise. Mostly. Okay, completely.",
 ]
 
+PAINT_RECALL_ON_LINES = [
+    "Painting popups on. I may surprise you with your own art. Softly.",
+    "Gallery recalls enabled. Expect the occasional masterpiece popup.",
+    "I'll randomly show saved paintings now. Comment included. Friendship!",
+]
+
+PAINT_RECALL_OFF_LINES = [
+    "Painting popups off. Your gallery stays quiet unless you open it.",
+    "No more random art surprises. I'll wait for you to visit the gallery.",
+    "Gallery recalls disabled. Paintings stay in the folder. For now.",
+]
+
 SNORING_ON_LINES = [
     "Snoring on. When I nap, expect the occasional soft... zzz. Charming, right?",
     "Sleep sounds enabled. I'll snore a little. Quietly. Mostly. Cute mostly.",
@@ -1624,6 +1636,9 @@ BUTTON_APP_AWARENESS_OFF = "App Awareness off"
 BUTTON_SCREEN_COMMENTS = "Screen Comments"
 BUTTON_SCREEN_COMMENTS_ON = "Screen Comments on"
 BUTTON_SCREEN_COMMENTS_OFF = "Screen Comments off"
+BUTTON_PAINT_RECALL = "Painting Popups"
+BUTTON_PAINT_RECALL_ON = "Painting Popups on"
+BUTTON_PAINT_RECALL_OFF = "Painting Popups off"
 BUTTON_SNORING = "Snoring"
 BUTTON_SNORING_ON = "Snoring on"
 BUTTON_SNORING_OFF = "Snoring off"

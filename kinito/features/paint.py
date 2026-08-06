@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import io
 import math
 import os
 import random
 import shutil
 import threading
+import time
 import tkinter as tk
 from datetime import datetime
 from tkinter import Button, Frame, Label, Scrollbar, Toplevel, filedialog, messagebox
@@ -18,6 +20,7 @@ from content import llm_prompts as prompts
 from content import paint_lines
 from kinito.assets import ensure_user_media_directories, list_image_files, paintings_directory
 from kinito.features.games.base import center_toplevel
+from kinito.llm.ollama_client import OllamaUnavailableError
 from kinito.window_icon import apply_window_icon
 
 # Win95-ish palette (two rows).
@@ -496,6 +499,10 @@ class PaintMixin:
     """Actions menu entry points for Paint and the painting gallery."""
 
     PAINT_COMMENT_RETRY_MS = 400
+    PAINT_RECALL_CHANCE = 1 / 350
+    PAINT_RECALL_COOLDOWN_SECONDS = 900
+    PAINT_RECALL_MAX_EDGE = 896
+    PAINT_RECALL_JPEG_QUALITY = 70
 
     def offer_paint_picker(self):
         """Speak the Paint submenu (Draw / My Paintings)."""
@@ -768,3 +775,210 @@ class PaintMixin:
                 pass
 
         window.protocol("WM_DELETE_WINDOW", on_close)
+
+    def maybe_trigger_paint_recall(self) -> bool:
+        """Roll for a random saved-painting popup with commentary."""
+        if not getattr(self, "_paint_recall_enabled", True):
+            return False
+        if getattr(self, "_focus_mode", False):
+            return False
+        if getattr(self, "_is_game_active", lambda: False)():
+            return False
+        if (
+            self.paused
+            or getattr(self, "_is_position_locked_by_user", lambda: self.is_dragging)()
+            or getattr(self, "_camera_active", False)
+            or getattr(self, "_browser_active", False)
+        ):
+            return False
+        if getattr(self, "_is_busy_with_speech", lambda: False)():
+            return False
+        if self._is_paint_gallery_open():
+            return False
+        paths = self._list_painting_paths()
+        if not paths:
+            return False
+        last_at = getattr(self, "_last_paint_recall_at", 0.0)
+        if time.monotonic() - last_at < self.PAINT_RECALL_COOLDOWN_SECONDS:
+            return False
+        if random.random() >= self.PAINT_RECALL_CHANCE:
+            return False
+        self._last_paint_recall_at = time.monotonic()
+        self.root.after(0, self._start_paint_recall)
+        return True
+
+    def toggle_paint_recall(self):
+        """Enable or disable spontaneous painting popups."""
+        self._paint_recall_enabled = not getattr(self, "_paint_recall_enabled", True)
+        if hasattr(self, "_persist_settings"):
+            self._persist_settings()
+        lines = (
+            dlg.PAINT_RECALL_ON_LINES
+            if self._paint_recall_enabled
+            else dlg.PAINT_RECALL_OFF_LINES
+        )
+        self.speak(dlg.pick_line(lines), skip_ai=True)
+
+    def _is_paint_gallery_open(self) -> bool:
+        for attr in ("_paint_gallery_window", "_paint_detail_window", "_paint_recall_popup"):
+            window = getattr(self, attr, None)
+            if window is None:
+                continue
+            try:
+                if window.winfo_exists():
+                    return True
+            except tk.TclError:
+                setattr(self, attr, None)
+        return False
+
+    def _start_paint_recall(self):
+        """Pick a painting and prepare comment off the UI thread."""
+        if not getattr(self, "_running", True):
+            return
+        if not getattr(self, "_paint_recall_enabled", True):
+            return
+        paths = self._list_painting_paths()
+        if not paths:
+            return
+        path = random.choice(paths)
+        threading.Thread(
+            target=self._paint_recall_worker,
+            args=(path,),
+            daemon=True,
+        ).start()
+
+    def _paint_recall_worker(self, path: str):
+        """Build a comment (vision if available), then show popup + speak."""
+        line = dlg.pick_line(paint_lines.PAINT_RECALL_LINES)
+        try:
+            image_bytes = self._painting_jpeg_bytes(path)
+            if image_bytes:
+                vision_line = self._vision_paint_recall(image_bytes)
+                if vision_line:
+                    line = vision_line
+        except Exception:
+            pass
+
+        if not getattr(self, "_running", True):
+            return
+        if not getattr(self, "_paint_recall_enabled", True):
+            return
+        self.root.after(
+            0,
+            lambda spoken=line, painting=path: self._present_paint_recall(painting, spoken),
+        )
+
+    def _present_paint_recall(self, path: str, line: str):
+        """Speak the comment and open a non-modal painting popup."""
+        if getattr(self, "_is_busy_with_speech", lambda: False)():
+            return
+        if not os.path.isfile(path):
+            return
+        existing = getattr(self, "_paint_recall_popup", None)
+        if existing is not None:
+            try:
+                if existing.winfo_exists():
+                    existing.destroy()
+            except tk.TclError:
+                pass
+            self._paint_recall_popup = None
+
+        self.speak(line, skip_ai=True)
+        title = os.path.basename(path)
+
+        def _on_close():
+            self._paint_recall_popup = None
+
+        self._open_paint_recall_popup(path, title=title, on_close=_on_close)
+
+    def _open_paint_recall_popup(self, path: str, *, title: str, on_close) -> None:
+        """Show the painting in a topmost non-modal popup."""
+        try:
+            img = Image.open(path)
+        except OSError:
+            on_close()
+            return
+
+        self.root.update_idletasks()
+        vroot_x = self.root.winfo_vrootx()
+        vroot_y = self.root.winfo_vrooty()
+        vroot_w = self.root.winfo_vrootwidth()
+        vroot_h = self.root.winfo_vrootheight()
+
+        img_w, img_h = img.size
+        max_w = max(int(vroot_w * 0.55), 1)
+        max_h = max(int(vroot_h * 0.55), 1)
+        scale = min(1.0, max_w / max(img_w, 1), max_h / max(img_h, 1))
+        width = max(1, int(img_w * scale))
+        height = max(1, int(img_h * scale))
+        if scale < 1.0:
+            img = img.resize((width, height), Image.Resampling.LANCZOS)
+
+        popup = Toplevel(self.root)
+        self._paint_recall_popup = popup
+        popup.title(title)
+        apply_window_icon(popup)
+        popup.wm_attributes("-topmost", True)
+        popup.configure(bg="black")
+
+        tk_img = ImageTk.PhotoImage(img)
+        label = Label(popup, image=tk_img, bd=0, highlightthickness=0, bg="black")
+        label.image = tk_img
+        label.pack(fill="both", expand=True)
+
+        x = vroot_x + (vroot_w - width) // 2
+        y = vroot_y + (vroot_h - height) // 2
+        popup.geometry(f"{width}x{height}+{int(x)}+{int(y)}")
+
+        def _handle_close():
+            on_close()
+            try:
+                popup.destroy()
+            except tk.TclError:
+                pass
+
+        popup.protocol("WM_DELETE_WINDOW", _handle_close)
+
+    def _painting_jpeg_bytes(self, path: str) -> bytes | None:
+        """Load a saved painting into JPEG bytes for local vision (RAM only)."""
+        buffer = None
+        image = None
+        try:
+            image = Image.open(path).convert("RGB")
+            max_edge = self.PAINT_RECALL_MAX_EDGE
+            width, height = image.size
+            scale = min(1.0, max_edge / max(width, height))
+            if scale < 1.0:
+                image = image.resize(
+                    (max(1, int(width * scale)), max(1, int(height * scale))),
+                )
+            buffer = io.BytesIO()
+            image.save(buffer, format="JPEG", quality=self.PAINT_RECALL_JPEG_QUALITY)
+            return buffer.getvalue()
+        except Exception:
+            return None
+        finally:
+            if buffer is not None:
+                buffer.close()
+            image = None
+
+    def _vision_paint_recall(self, image_bytes: bytes) -> str | None:
+        """Ask local Ollama vision for a short painting comment."""
+        client = getattr(self, "_ollama_client", None)
+        if client is None or not client.is_available():
+            return None
+        try:
+            reply = client.chat_with_image(
+                prompts.PAINT_RECALL_VISION_PROMPT,
+                image_bytes,
+                system=prompts.PAINT_RECALL_VISION_SYSTEM,
+                max_tokens=80,
+            )
+        except OllamaUnavailableError:
+            return None
+        cleaned = (reply or "").strip()
+        if not cleaned:
+            return None
+        if len(cleaned) > 280:
+            cleaned = cleaned[:277].rstrip() + "…"
+        return cleaned

@@ -296,6 +296,9 @@ class FloatingAssistant(
             "screen_comments_enabled", True
         )
         self._last_screen_comment_at = 0.0
+        self._paint_recall_enabled = self._settings.get("paint_recall_enabled", True)
+        self._last_paint_recall_at = 0.0
+        self._paint_recall_popup = None
         self._window_grab_enabled = self._settings.get("window_grab_enabled", True)
         self._last_window_grab_at = 0.0
         self._window_grab_active = False
@@ -414,6 +417,7 @@ class FloatingAssistant(
             screen_comments_enabled=bool(
                 getattr(self, "_screen_comments_enabled", True)
             ),
+            paint_recall_enabled=bool(getattr(self, "_paint_recall_enabled", True)),
             snoring_enabled=bool(getattr(self, "_snoring_enabled", True)),
             window_grab_enabled=bool(getattr(self, "_window_grab_enabled", True)),
             tts_enabled=bool(getattr(self, "_tts_enabled", True)),

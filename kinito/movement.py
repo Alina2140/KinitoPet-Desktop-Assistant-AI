@@ -966,6 +966,10 @@ class MovementMixin:
         """No-op unless ScreenCommentsMixin is mixed in."""
         return False
 
+    def maybe_trigger_paint_recall(self) -> bool:
+        """No-op unless PaintMixin is mixed in."""
+        return False
+
     def maybe_trigger_window_grab(self) -> bool:
         """No-op unless WindowGrabMixin is mixed in."""
         return False
@@ -1090,6 +1094,9 @@ class MovementMixin:
             self.maybe_trigger_random_ad()
             self.maybe_trigger_ambient_reminder()
             if self.maybe_trigger_screen_comment():
+                time.sleep(0.1)
+                continue
+            if self.maybe_trigger_paint_recall():
                 time.sleep(0.1)
                 continue
             if self.maybe_trigger_window_grab():

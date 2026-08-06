@@ -23,6 +23,7 @@ def test_defaults_when_missing(store):
     assert store.get("ambient_reminders_enabled") is True
     assert store.get("app_awareness_enabled") is True
     assert store.get("screen_comments_enabled") is True
+    assert store.get("paint_recall_enabled") is True
     assert store.get("snoring_enabled") is True
     assert store.get("window_grab_enabled") is True
     assert store.get("tts_enabled") is True
@@ -37,6 +38,7 @@ def test_update_and_reload_roundtrip(store, settings_dir):
         ambient_reminders_enabled=False,
         app_awareness_enabled=False,
         screen_comments_enabled=False,
+        paint_recall_enabled=False,
         snoring_enabled=False,
         window_grab_enabled=False,
         tts_enabled=False,
@@ -49,6 +51,7 @@ def test_update_and_reload_roundtrip(store, settings_dir):
     assert reloaded.get("ambient_reminders_enabled") is False
     assert reloaded.get("app_awareness_enabled") is False
     assert reloaded.get("screen_comments_enabled") is False
+    assert reloaded.get("paint_recall_enabled") is False
     assert reloaded.get("snoring_enabled") is False
     assert reloaded.get("window_grab_enabled") is False
     assert reloaded.get("tts_enabled") is False
