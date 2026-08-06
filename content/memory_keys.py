@@ -22,7 +22,7 @@ MARKER_TO_FACT_KEY: dict[str, str] = {
 }
 
 # Facts that must not be overwritten by follow-up questions or chat extraction.
-PROTECTED_FACT_KEYS: frozenset[str] = frozenset({"user_names"})
+PROTECTED_FACT_KEYS: frozenset[str] = frozenset({"user_names", "first_met"})
 
 # Facts that may hold multiple values (stored as str or list[str]).
 MULTI_VALUE_FACT_KEYS: frozenset[str] = frozenset(
@@ -51,9 +51,13 @@ ASK_ONCE_MARKERS: frozenset[str] = frozenset(MARKER_TO_FACT_KEY) | frozenset(
 )
 
 # Extra structured facts not tied to a simple ask-once marker mapping.
-EXTRA_FACT_KEYS: frozenset[str] = frozenset({"birthday"})
+EXTRA_FACT_KEYS: frozenset[str] = frozenset({"birthday", "first_met"})
 
 ALLOWED_FACT_KEYS: frozenset[str] = frozenset(MARKER_TO_FACT_KEY.values()) | EXTRA_FACT_KEYS
+
+# Cooldown topic for occasional "we've known each other…" idle mentions.
+FRIENDSHIP_DURATION_TOPIC = "friendship_duration"
+FRIENDSHIP_DURATION_COOLDOWN_DAYS = 7
 
 
 def fact_key_for_marker(marker: str) -> str | None:

@@ -427,7 +427,7 @@ class FloatingAssistant(
         threading.Thread(target=self._play_startup_line, daemon=True).start()
 
     def _play_startup_line(self):
-        """Speak a welcome line; prefer birthday, then special-day, then default."""
+        """Speak a welcome line; prefer birthday, met anniversary, special-day, then default."""
         try:
             line = None
             memory = getattr(self, "_memory", None)
@@ -438,9 +438,15 @@ class FloatingAssistant(
                     is_birthday_today,
                     pick_birthday_congrats_line,
                 )
+                from content.friendship import (
+                    format_friendship_duration,
+                    friendship_years,
+                    is_met_anniversary_today,
+                    pick_met_anniversary_line,
+                )
 
-                stored = memory.get_fact("birthday")
-                if is_birthday_today(stored):
+                stored_birthday = memory.get_fact("birthday")
+                if is_birthday_today(stored_birthday):
                     name = None
                     if hasattr(self, "pick_user_name"):
                         name = self.pick_user_name()
@@ -449,8 +455,27 @@ class FloatingAssistant(
                     line = pick_birthday_congrats_line(
                         dlg_local.BIRTHDAY_CONGRATS_LINES,
                         name=name,
-                        age=birthday_age(stored),
+                        age=birthday_age(stored_birthday),
                     )
+                if not line:
+                    stored_met = memory.get_fact("first_met")
+                    if is_met_anniversary_today(stored_met):
+                        years = friendship_years(stored_met)
+                        if years is not None and years >= 1:
+                            name = None
+                            if hasattr(self, "pick_user_name"):
+                                name = self.pick_user_name()
+                            elif hasattr(self, "chat_user_label"):
+                                name = self.chat_user_label()
+                            duration = format_friendship_duration(stored_met) or (
+                                "1 year" if years == 1 else f"{years} years"
+                            )
+                            line = pick_met_anniversary_line(
+                                dlg_local.MET_ANNIVERSARY_LINES,
+                                years=years,
+                                name=name,
+                                duration=duration,
+                            )
             if not line and getattr(self, "_special_days_enabled", True):
                 from content.special_days import pick_special_day_line
 

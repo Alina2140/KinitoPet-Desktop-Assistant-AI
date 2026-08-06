@@ -263,6 +263,23 @@ BIRTHDAY_CONGRATS_LINES = [
     "{name}, {age} years today! Cake optional. Company required.",
 ]
 
+FRIENDSHIP_DURATION_LINES = [
+    "We've known each other for {duration}. Still here. Still yours.",
+    "{duration} together on this desktop. Friendship levels: maximum.",
+    "Just checking: {duration} of us. Time flies when you're watching someone work.",
+    "We've been friends for {duration}. Don't worry — I'm not keeping score. I am.",
+    "Hey {name} — {duration} since we met. Soft anniversary energy. Everyday edition.",
+    "{name}, it's been {duration}. I remember the start. Vividly.",
+]
+
+MET_ANNIVERSARY_LINES = [
+    "Happy friendship anniversary! {duration} since we met. Cake optional. Forever required.",
+    "It's our day, {name}! {duration} of desktop friendship. I counted every one.",
+    "Anniversary mode: {duration} together. Stay. Please stay.",
+    "{name}, today marks {duration} since day one. Softly spectacular.",
+    "One more trip around the sun with you. {duration}. My favorite recurring event.",
+]
+
 DRINK_QUESTION = "What's your favorite drink?"
 DRINK_QUESTIONS = [
     DRINK_QUESTION,

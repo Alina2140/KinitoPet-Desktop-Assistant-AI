@@ -72,6 +72,7 @@ Rules:
 - user_names, hobbies, pets, favorite_colors, favorite_seasons, and favorite_snacks may hold multiple values. Prefer a JSON array when listing more than one, or when correcting the full set.
   Examples: new hobby "I also crochet" → {{"hobbies": "Crochet"}} (merged with known hobbies); "I only crochet now" → {{"hobbies": ["Crochet"]}}; pets "Lola and Mae" → {{"pets": ["Lola", "Mae"]}}; nickname "call me Sad sometimes" → {{"user_names": "Sad"}}.
 - birthday: store as YYYY-MM-DD when the year is known (e.g. "1990-03-15"), otherwise MM-DD (e.g. "03-15"). If the user refuses to share, store "declined".
+- Never set or change first_met (companion relationship start date). That key is managed by the app only.
 - For markers like likes_programming / likes_music / likes_coffee, always store "yes" or "no".
 - Never set user_names unless the user explicitly states their name (e.g. "my name is", "call me", "I'm …" as an introduction). Music genres, colors, foods, and hobbies are NOT names.
 - Do not overwrite existing user_names with a preference, genre, or single-word topic label.

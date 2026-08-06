@@ -68,6 +68,8 @@ class ContentMixin:
             self.spontaneous_nap,
             self.maybe_announce_special_day,
             self.maybe_announce_birthday,
+            self.maybe_announce_met_anniversary,
+            self.maybe_mention_friendship_duration,
         ]
         random.choice(actions)()
 
@@ -115,6 +117,80 @@ class ContentMixin:
             name=name,
             age=birthday_age(stored),
         )
+        self.speak(line, skip_ai=True)
+        return True
+
+    def maybe_announce_met_anniversary(self) -> bool:
+        """Celebrate the anniversary of first meeting when it falls today."""
+        from content.friendship import (
+            format_friendship_duration,
+            friendship_years,
+            is_met_anniversary_today,
+            pick_met_anniversary_line,
+        )
+
+        if not self._can_initiate_spontaneous_speech():
+            return False
+        memory = getattr(self, "_memory", None)
+        stored = memory.get_fact("first_met") if memory is not None else None
+        if memory is None or not is_met_anniversary_today(stored):
+            return False
+        years = friendship_years(stored)
+        if years is None or years < 1:
+            return False
+        name = None
+        if hasattr(self, "chat_user_label"):
+            name = self.chat_user_label()
+        duration = format_friendship_duration(stored) or (
+            "1 year" if years == 1 else f"{years} years"
+        )
+        line = pick_met_anniversary_line(
+            dlg.MET_ANNIVERSARY_LINES,
+            years=years,
+            name=name,
+            duration=duration,
+        )
+        self.speak(line, skip_ai=True)
+        return True
+
+    def maybe_mention_friendship_duration(self) -> bool:
+        """Occasionally mention how long Kinito and the user have known each other."""
+        from content.friendship import (
+            days_together,
+            format_friendship_duration,
+            pick_friendship_duration_line,
+        )
+        from content.memory_keys import (
+            FRIENDSHIP_DURATION_COOLDOWN_DAYS,
+            FRIENDSHIP_DURATION_TOPIC,
+        )
+
+        if not self._can_initiate_spontaneous_speech():
+            return False
+        memory = getattr(self, "_memory", None)
+        if memory is None:
+            return False
+        stored = memory.get_fact("first_met")
+        days = days_together(stored)
+        if days is None or days < 1:
+            return False
+        if memory.is_topic_on_cooldown(
+            FRIENDSHIP_DURATION_TOPIC,
+            days=FRIENDSHIP_DURATION_COOLDOWN_DAYS,
+        ):
+            return False
+        duration = format_friendship_duration(stored)
+        if not duration:
+            return False
+        name = None
+        if hasattr(self, "chat_user_label"):
+            name = self.chat_user_label()
+        line = pick_friendship_duration_line(
+            dlg.FRIENDSHIP_DURATION_LINES,
+            duration=duration,
+            name=name,
+        )
+        memory.mark_topic_asked(FRIENDSHIP_DURATION_TOPIC)
         self.speak(line, skip_ai=True)
         return True
 

@@ -14,10 +14,13 @@ class MemoryMixin:
 
     def _init_memory(self) -> None:
         """Create the on-disk memory store (call from app __init__)."""
+        from content.friendship import ensure_first_met
+
         self._memory = MemoryStore()
         self._pending_memory_question: MemoryQuestion | None = None
         self._planning_memory_question = False
         self._chat_session_user_label: str | None = None
+        ensure_first_met(self._memory)
 
     def show_memory_summary(self) -> None:
         """Speak what Kinito currently remembers about the user."""
@@ -28,7 +31,10 @@ class MemoryMixin:
 
     def forget_memory(self) -> None:
         """Clear all saved memory and confirm to the user."""
+        from content.friendship import ensure_first_met
+
         self._memory.reset()
+        ensure_first_met(self._memory)
         self._pending_memory_question = None
         self._chat_session_user_label = None
         self.speak(dlg.MEMORY_FORGOTTEN_LINE, skip_ai=True)

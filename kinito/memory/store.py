@@ -276,6 +276,13 @@ class MemoryStore:
                 if parsed is None:
                     return
                 trimmed_value = parsed
+        elif trimmed_key == "first_met":
+            from content.friendship import parse_first_met
+
+            parsed = parse_first_met(trimmed_value)
+            if parsed is None:
+                return
+            trimmed_value = parsed.isoformat()
         facts: dict[str, Any] = self._data["facts"]
         if trimmed_key not in facts and len(facts) >= MAX_FACTS:
             return
