@@ -196,3 +196,15 @@ CONNECT_FOUR_DRAW_LINES = [
     "Tie game! Nobody connected four. Suspiciously even.",
     "Draw! Every column filled, no winner. Classic stalemate.",
 ]
+
+HANGMAN_WIN_LINES = [
+    "You got it! The word was {word}. Sharp guessing.",
+    "{word}! Correct. I'll hang a medal instead next time.",
+    "Victory! {word} was the word. My gallows are unemployed.",
+]
+
+HANGMAN_LOSE_LINES = [
+    "Out of guesses! The word was {word}. Better luck next rope.",
+    "Game over. It was {word}. I was rooting for you. Mostly.",
+    "The word was {word}. Don't worry — the stick figure will recover.",
+]

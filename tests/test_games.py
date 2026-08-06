@@ -5,6 +5,7 @@ import random
 import pytest
 
 from content import dialogue as dlg
+from content.hangman_words import WORDS, pick_word
 from content.magic_8_ball import MAGIC_8_BALL_ANSWERS
 from content.trivia_questions import (
     ROUND_SIZE,
@@ -14,6 +15,7 @@ from content.trivia_questions import (
     pick_random_question,
 )
 from kinito.features.games import connect_four as c4
+from kinito.features.games import hangman as hangman_game
 from kinito.features.games import snake as snake_game
 from kinito.features.games.battleships import (
     GRID_SIZE,
@@ -34,6 +36,7 @@ from kinito.features.games.coin_dice import (
     flip_coin,
     roll_dice,
 )
+from kinito.features.games.hangman import MAX_MISSES, apply_guess, display_word
 from kinito.features.games.magic_8_ball import pick_answer
 from kinito.features.games.memory import DEFAULT_PAIRS, build_deck, is_match
 from kinito.features.games.number_guess import (
@@ -358,6 +361,67 @@ def test_connect_four_ai_blocks_player_win():
     for col in range(3):
         board[c4.ROWS - 1][col] = c4.PLAYER
     assert c4.choose_ai_column(board) == 3
+
+
+def test_hangman_words_are_playable():
+    assert len(WORDS) >= 120
+    for word in WORDS:
+        assert 4 <= len(word) <= 10
+        assert word.isalpha() and word.isupper()
+        assert word.isascii()
+
+
+def test_hangman_pick_word_from_list():
+    word = pick_word(rng=random.Random(0))
+    assert word in WORDS
+
+
+def test_hangman_pick_word_avoids_used():
+    used = set(WORDS[:-1])
+    word = pick_word(rng=random.Random(1), used=used)
+    assert word == WORDS[-1]
+
+
+def test_hangman_hit_reveals_letters():
+    state = hangman_game.new_game("CAT")
+    assert apply_guess(state, "a") == "hit"
+    assert display_word(state) == "_ A _"
+    assert state["misses"] == 0
+
+
+def test_hangman_miss_increments():
+    state = hangman_game.new_game("CAT")
+    assert apply_guess(state, "z") == "miss"
+    assert state["misses"] == 1
+    assert display_word(state) == "_ _ _"
+
+
+def test_hangman_repeat_guess_ignored():
+    state = hangman_game.new_game("CAT")
+    apply_guess(state, "z")
+    before = dict(state)
+    before["guessed"] = set(state["guessed"])
+    before["revealed"] = list(state["revealed"])
+    assert apply_guess(state, "z") == "repeat"
+    assert state["misses"] == before["misses"]
+    assert state["guessed"] == before["guessed"]
+
+
+def test_hangman_win_when_all_revealed():
+    state = hangman_game.new_game("HI")
+    assert apply_guess(state, "h") == "hit"
+    assert apply_guess(state, "i") == "hit"
+    assert state["status"] == "won"
+    assert display_word(state) == "H I"
+
+
+def test_hangman_lose_at_max_misses():
+    state = hangman_game.new_game("AB")
+    for letter in "CDEFGH":
+        apply_guess(state, letter)
+    assert state["misses"] == MAX_MISSES
+    assert state["status"] == "lost"
+    assert display_word(state) == "A B"
 
 
 def test_game_window_close_shows_speech_bubble():

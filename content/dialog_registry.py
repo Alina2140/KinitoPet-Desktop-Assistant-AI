@@ -676,6 +676,7 @@ def _handle_board_games(app, response: str) -> None:
         dlg.BUTTON_GAME_BATTLESHIPS: lambda a: a.start_battleships(),
         dlg.BUTTON_GAME_SNAKE: lambda a: a.start_snake(),
         dlg.BUTTON_GAME_CONNECT_FOUR: lambda a: a.start_connect_four(),
+        dlg.BUTTON_GAME_HANGMAN: lambda a: a.start_hangman(),
     }
     action = actions.get(response)
     if action:
@@ -901,6 +902,7 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
                 dlg.BUTTON_GAME_BATTLESHIPS,
                 dlg.BUTTON_GAME_SNAKE,
                 dlg.BUTTON_GAME_CONNECT_FOUR,
+                dlg.BUTTON_GAME_HANGMAN,
                 dlg.BUTTON_BACK,
             ),
         ),
