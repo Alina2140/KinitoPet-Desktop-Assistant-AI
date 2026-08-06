@@ -56,9 +56,9 @@ Do NOT store:
 - descriptions of emojis, facial expressions, gestures, or what is visible on screen
 - which apps or windows are open or active right now (that is live context, not memory)
 - random phrases, greetings, or throwaway small talk with no lasting meaning
-- fleeting mood about today ("having a good day") unless the user asks you to remember it
+- fleeting mood about today ("having a good day") unless clearly answered as a check-in; then use mood_today as "good" or "bad" only
 - meta replies ("no change needed") or guesses
-- sensitive data (passwords, addresses)
+- sensitive data (passwords, street addresses — city/region only for home_city)
 - notes that repeat or rephrase something already listed under Already known
 
 Rules:
@@ -66,14 +66,17 @@ Rules:
 - add_notes: max 1 short note. Prefer the single most useful new detail from this turn.
 - Do not add a note if Already known already covers the same topic, even with different wording.
 - remove_notes: exact note texts to delete if the user corrected themselves (notes only — never delete fact keys).
-- update_facts: only these keys if clearly stated: user_names, favorite_colors, favorite_food, hobbies, pets, favorite_book, favorite_drink, favorite_movie, favorite_snacks, favorite_seasons, likes_programming, likes_music, likes_coffee, birthday.
+- update_facts: only these keys if clearly stated: user_names, favorite_colors, favorite_food, hobbies, pets, favorite_book, favorite_drink, favorite_movie, favorite_snacks, favorite_seasons, likes_programming, likes_music, likes_coffee, birthday, job, favorite_game, bedtime, mood_today, favorite_show, favorite_artist, favorite_animal, comfort_food, dream_destination, favorite_app, morning_drink, wake_time, home_city, chronotype, languages, likes_rain, likes_horror, likes_spicy_food, likes_staying_up_late, partner_status, siblings, important_person, pronouns, energy_today, focus_today, plans_tonight.
 - When a preference changes, OVERWRITE the fact with the new value via update_facts. Do not leave the old value and do not try to remove the key.
-  Examples: "I don't like programming anymore" → {{"likes_programming": "no"}}; "my favorite color is blue now" → {{"favorite_colors": "blue"}}.
-- user_names, hobbies, pets, favorite_colors, favorite_seasons, and favorite_snacks may hold multiple values. Prefer a JSON array when listing more than one, or when correcting the full set.
+  Examples: "I don't like programming anymore" → {{"likes_programming": "no"}}; "my favorite color is blue now" → {{"favorite_colors": "blue"}}; "I work as a nurse" → {{"job": "nurse"}}; "bedtime is around 11pm" → {{"bedtime": "11pm"}}; "my favorite game is Zelda" → {{"favorite_game": "Zelda"}}; "I speak German and English" → {{"languages": ["German", "English"]}}; "pronouns are they/them" → {{"pronouns": "they/them"}}.
+- user_names, hobbies, pets, favorite_colors, favorite_seasons, favorite_snacks, languages, and favorite_animal may hold multiple values. Prefer a JSON array when listing more than one, or when correcting the full set.
   Examples: new hobby "I also crochet" → {{"hobbies": "Crochet"}} (merged with known hobbies); "I only crochet now" → {{"hobbies": ["Crochet"]}}; pets "Lola and Mae" → {{"pets": ["Lola", "Mae"]}}; nickname "call me Sad sometimes" → {{"user_names": "Sad"}}.
 - birthday: store as YYYY-MM-DD when the year is known (e.g. "1990-03-15"), otherwise MM-DD (e.g. "03-15"). If the user refuses to share, store "declined".
 - Never set or change first_met (companion relationship start date). That key is managed by the app only.
-- For markers like likes_programming / likes_music / likes_coffee, always store "yes" or "no".
+- mood_today: only "good" or "bad". energy_today: only "high" or "low". focus_today: only "busy" or "chill".
+- home_city: city or region only — never a street address.
+- partner_status: short status text, or "private" if the user declines.
+- For markers like likes_programming / likes_music / likes_coffee / likes_rain / likes_horror / likes_spicy_food / likes_staying_up_late, always store "yes" or "no".
 - Never set user_names unless the user explicitly states their name (e.g. "my name is", "call me", "I'm …" as an introduction). Music genres, colors, foods, and hobbies are NOT names.
 - Do not overwrite existing user_names with a preference, genre, or single-word topic label.
 - Prefer update_facts over add_notes when a fact key fits.

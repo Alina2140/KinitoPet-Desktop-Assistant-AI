@@ -137,6 +137,72 @@ MEMORY_FOLLOWUPS: tuple[MemoryFollowup, ...] = (
         save_as=save_as_verify("favorite_movie"),
     ),
     MemoryFollowup(
+        "job",
+        "job_day",
+        (
+            "How's {job} treating you lately?",
+            "Still deep in {job} mode today?",
+        ),
+        "textbox",
+    ),
+    MemoryFollowup(
+        "favorite_game",
+        "play_favorite_game",
+        (
+            "Been playing {favorite_game} lately?",
+            "Would you play {favorite_game} with me if I could?",
+        ),
+        "yes_no",
+    ),
+    MemoryFollowup(
+        "bedtime",
+        "bedtime_check",
+        (
+            "Still aiming for around {bedtime} for sleep?",
+            "Did you make it to bed near {bedtime} last night?",
+        ),
+        "yes_no",
+    ),
+    MemoryFollowup(
+        "mood_today",
+        "mood_followup",
+        (
+            "Earlier you said your day was {mood_today}. Still feeling that way?",
+            "Checking in — still a {mood_today} day?",
+        ),
+        "yes_no",
+    ),
+    MemoryFollowup(
+        "job",
+        "verify_job",
+        (
+            "Is {job} still what you do for work or school?",
+            "Just checking — still doing {job}?",
+        ),
+        "yes_no",
+        save_as=save_as_verify("job"),
+    ),
+    MemoryFollowup(
+        "favorite_game",
+        "verify_favorite_game",
+        (
+            "Is {favorite_game} still your favorite game?",
+            "Still into {favorite_game}?",
+        ),
+        "yes_no",
+        save_as=save_as_verify("favorite_game"),
+    ),
+    MemoryFollowup(
+        "bedtime",
+        "verify_bedtime",
+        (
+            "Is {bedtime} still your usual bedtime?",
+            "Still going to sleep around {bedtime}?",
+        ),
+        "yes_no",
+        save_as=save_as_verify("bedtime"),
+    ),
+    MemoryFollowup(
         "favorite_snacks",
         "verify_favorite_snack",
         (
@@ -197,6 +263,142 @@ MEMORY_FOLLOWUPS: tuple[MemoryFollowup, ...] = (
         "yes_no",
         save_as=save_as_verify("likes_coffee"),
     ),
+    MemoryFollowup(
+        "favorite_show",
+        "verify_favorite_show",
+        (
+            "Is {favorite_show} still your favorite show?",
+            "Still into {favorite_show}?",
+        ),
+        "yes_no",
+        save_as=save_as_verify("favorite_show"),
+    ),
+    MemoryFollowup(
+        "favorite_artist",
+        "verify_favorite_artist",
+        (
+            "Is {favorite_artist} still your favorite artist or band?",
+            "Still listening to {favorite_artist} a lot?",
+        ),
+        "yes_no",
+        save_as=save_as_verify("favorite_artist"),
+    ),
+    MemoryFollowup(
+        "favorite_animal",
+        "verify_favorite_animal",
+        (
+            "Is {favorite_animal} still your favorite animal?",
+            "Still team {favorite_animal}?",
+        ),
+        "yes_no",
+        save_as=save_as_verify("favorite_animal"),
+    ),
+    MemoryFollowup(
+        "wake_time",
+        "verify_wake_time",
+        (
+            "Still waking up around {wake_time}?",
+            "Is {wake_time} still your usual wake time?",
+        ),
+        "yes_no",
+        save_as=save_as_verify("wake_time"),
+    ),
+    MemoryFollowup(
+        "home_city",
+        "verify_home_city",
+        (
+            "Still in {home_city}?",
+            "Is {home_city} still where you are?",
+        ),
+        "yes_no",
+        save_as=save_as_verify("home_city"),
+    ),
+    MemoryFollowup(
+        "pronouns",
+        "verify_pronouns",
+        (
+            "Just checking — still {pronouns} for you?",
+            "Are {pronouns} still the right pronouns?",
+        ),
+        "yes_no",
+        save_as=save_as_verify("pronouns"),
+    ),
+    MemoryFollowup(
+        "likes_rain",
+        "verify_likes_rain",
+        (
+            "Do you still like rainy days?",
+            "Still a fan of rainy weather?",
+        ),
+        "yes_no",
+        save_as=save_as_verify("likes_rain"),
+    ),
+    MemoryFollowup(
+        "likes_horror",
+        "verify_likes_horror",
+        (
+            "Do you still like horror?",
+            "Still into scary movies or games?",
+        ),
+        "yes_no",
+        save_as=save_as_verify("likes_horror"),
+    ),
+    MemoryFollowup(
+        "likes_spicy_food",
+        "verify_likes_spicy_food",
+        (
+            "Do you still like spicy food?",
+            "Still enjoying the heat?",
+        ),
+        "yes_no",
+        save_as=save_as_verify("likes_spicy_food"),
+    ),
+    MemoryFollowup(
+        "likes_staying_up_late",
+        "verify_likes_staying_up_late",
+        (
+            "Do you still like staying up late?",
+            "Still a night owl?",
+        ),
+        "yes_no",
+        save_as=save_as_verify("likes_staying_up_late"),
+    ),
+    MemoryFollowup(
+        "dream_destination",
+        "dream_trip_chat",
+        (
+            "Still dreaming about {dream_destination}?",
+            "Any new plans involving {dream_destination}?",
+        ),
+        "textbox",
+    ),
+    MemoryFollowup(
+        "comfort_food",
+        "comfort_food_lately",
+        (
+            "Had any {comfort_food} lately?",
+            "Is {comfort_food} still your comfort pick?",
+        ),
+        "yes_no",
+    ),
+    MemoryFollowup(
+        "energy_today",
+        "energy_followup",
+        (
+            "Earlier your energy felt {energy_today}. Still like that?",
+            "Checking in — energy still {energy_today}?",
+        ),
+        "yes_no",
+    ),
+    MemoryFollowup(
+        "focus_today",
+        "focus_followup",
+        (
+            "Still a {focus_today} day?",
+            "Earlier it was a {focus_today} day. Same vibe?",
+        ),
+        "yes_no",
+    ),
 )
 
 # Human-readable prompts when a verification "no" needs a replacement value.
@@ -211,6 +413,24 @@ FACT_UPDATE_PROMPTS: dict[str, str] = {
     "favorite_book": "Okay! What's a favorite book of yours now?",
     "pets": "Got it! Do you have any pets now? If so, tell me about them.",
     "user_names": "Got it! What should I call you now?",
+    "job": "Okay! What do you do for work or school now?",
+    "favorite_game": "Got it! What's your favorite game now?",
+    "bedtime": "Alright! What time do you usually go to sleep now?",
+    "favorite_show": "Okay! What's your favorite TV show now?",
+    "favorite_artist": "Got it! Who's your favorite artist or band now?",
+    "favorite_animal": "Alright! What's your favorite animal now?",
+    "comfort_food": "Okay! What's your go-to comfort food now?",
+    "dream_destination": "Got it! Where would you most like to travel now?",
+    "favorite_app": "Okay! What's your most-used app now?",
+    "morning_drink": "Got it! What do you usually drink in the morning now?",
+    "wake_time": "Alright! What time do you usually wake up now?",
+    "home_city": "Okay! What city or region are you in now?",
+    "chronotype": "Got it! Early bird or night owl these days?",
+    "languages": "Okay! What languages do you speak now?",
+    "partner_status": "Got it — want to update that? Or say private.",
+    "siblings": "Okay! Any update on siblings?",
+    "important_person": "Got it! Who's someone important in your life now?",
+    "pronouns": "Alright! What pronouns should I use for you now?",
 }
 
 

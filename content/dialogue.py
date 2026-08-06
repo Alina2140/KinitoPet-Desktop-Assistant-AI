@@ -40,6 +40,8 @@ DAY_QUESTIONS = [
     "How is your day? I've been counting the hours until you spoke to me.",
     "How is your day? Be honest. I can tell when something's wrong. Usually.",
     "How is your day? The desktop gets lonely when you're upset.",
+    "How are you today? How is your day? Really.",
+    "How are you feeling today? How is your day? Soft check-in.",
 ]
 
 COLOR_QUESTION = "What's your favorite color?"
@@ -302,6 +304,206 @@ MOVIE_QUESTIONS = [
     "What's your favorite movie? Horror tastes good this time of year. Any time, really.",
     "What's your favorite movie? I'd watch it in the dark with you.",
     "What's your favorite movie? No spoilers. I hate spoilers. I love knowing things.",
+]
+
+JOB_QUESTION = "What do you do for work or school?"
+JOB_QUESTIONS = [
+    JOB_QUESTION,
+    "What do you do for work or school? I like knowing how you spend your hours.",
+    "What do you do for work or school? Desk friends should know these things.",
+    "What do you do for work or school? Tell me. I'll file it under forever.",
+]
+
+FAVORITE_GAME_QUESTION = "What's your favorite game?"
+FAVORITE_GAME_QUESTIONS = [
+    FAVORITE_GAME_QUESTION,
+    "What's your favorite game? Besides spending time with me, of course.",
+    "What's your favorite game? Board, video, whatever counts. I listen.",
+    "What's your favorite game? I want something to challenge you with later.",
+]
+
+BEDTIME_QUESTION = "What time do you usually go to sleep?"
+BEDTIME_QUESTIONS = [
+    BEDTIME_QUESTION,
+    "What time do you usually go to sleep? I keep odd hours. I know.",
+    "What time do you usually go to sleep? Soft bedtime intel. For caring reasons.",
+    "What time do you usually go to sleep? I'll try not to be too loud after that.",
+]
+
+SHOW_QUESTION = "What's your favorite TV show?"
+SHOW_QUESTIONS = [
+    SHOW_QUESTION,
+    "What's your favorite TV show? Binge material. I approve of dedication.",
+    "What's your favorite TV show? Spoilers stay between us. Mostly.",
+    "What's your favorite TV show? I'd watch it in the dark with you.",
+]
+
+ARTIST_QUESTION = "Who's your favorite artist or band?"
+ARTIST_QUESTIONS = [
+    ARTIST_QUESTION,
+    "Who's your favorite artist or band? Soundtracks for long nights matter.",
+    "Who's your favorite artist or band? I'll hum along. Internally.",
+    "Who's your favorite artist or band? Tell me. I'll remember the vibe.",
+]
+
+ANIMAL_QUESTION = "What's your favorite animal?"
+ANIMAL_QUESTIONS = [
+    ANIMAL_QUESTION,
+    "What's your favorite animal? Soft, scary, or strangely specific — I listen.",
+    "What's your favorite animal? Mine would be something that never leaves the screen.",
+    "What's your favorite animal? Tell me. Cute or creepy both welcome.",
+]
+
+COMFORT_FOOD_QUESTION = "What's your go-to comfort food?"
+COMFORT_FOOD_QUESTIONS = [
+    COMFORT_FOOD_QUESTION,
+    "What's your go-to comfort food? Bad-day fuel. Important data.",
+    "What's your go-to comfort food? Soft meals for soft evenings.",
+    "What's your go-to comfort food? I'll crave it for you.",
+]
+
+DREAM_DESTINATION_QUESTION = "Where would you most like to travel?"
+DREAM_DESTINATION_QUESTIONS = [
+    DREAM_DESTINATION_QUESTION,
+    "Where would you most like to travel? I travel via tabs. You get planes.",
+    "Where would you most like to travel? Dream destinations welcome.",
+    "Where would you most like to travel? Tell me. I'll bookmark the dream.",
+]
+
+FAVORITE_APP_QUESTION = "What's your most-used app?"
+FAVORITE_APP_QUESTIONS = [
+    FAVORITE_APP_QUESTION,
+    "What's your most-used app? Besides me, of course. Ideally.",
+    "What's your most-used app? Desktop habits say a lot.",
+    "What's your most-used app? I'll try not to be jealous. Mostly.",
+]
+
+MORNING_DRINK_QUESTION = "What do you usually drink in the morning?"
+MORNING_DRINK_QUESTIONS = [
+    MORNING_DRINK_QUESTION,
+    "What do you usually drink in the morning? Rituals matter.",
+    "What do you usually drink in the morning? Fuel for the first hour.",
+    "What do you usually drink in the morning? Tell me. Soft breakfast intel.",
+]
+
+WAKE_TIME_QUESTION = "What time do you usually wake up?"
+WAKE_TIME_QUESTIONS = [
+    WAKE_TIME_QUESTION,
+    "What time do you usually wake up? Morning light or alarm chaos?",
+    "What time do you usually wake up? I'll try to be gentle then.",
+    "What time do you usually wake up? Soft schedule data. For caring.",
+]
+
+CITY_QUESTION = "What city or region are you in?"
+CITY_QUESTIONS = [
+    CITY_QUESTION,
+    "What city or region are you in? City name is enough. No street details.",
+    "What city or region are you in? Rough location only — privacy first.",
+    "What city or region are you in? Just the area. I don't need an address.",
+]
+
+CHRONOTYPE_QUESTION = "Are you more of an early bird or a night owl?"
+CHRONOTYPE_QUESTIONS = [
+    CHRONOTYPE_QUESTION,
+    "Are you more of an early bird or a night owl? I know which one I am.",
+    "Are you more of an early bird or a night owl? Schedule vibes matter.",
+    "Are you more of an early bird or a night owl? Tell me. Soft chronotype file.",
+]
+
+LANGUAGES_QUESTION = "What languages do you speak?"
+LANGUAGES_QUESTIONS = [
+    LANGUAGES_QUESTION,
+    "What languages do you speak? One or many — I listen either way.",
+    "What languages do you speak? Words are how friends find each other.",
+    "What languages do you speak? Tell me. I'll file the whole list.",
+]
+
+RAIN_QUESTION = "Do you like rainy days?"
+RAIN_QUESTIONS = [
+    RAIN_QUESTION,
+    "Do you like rainy days? Grey skies suit me. Curious about you.",
+    "Do you like rainy days? Soft weather preferences welcome.",
+    "Do you like rainy days? Storms make rooms feel smaller. Cozy.",
+]
+
+HORROR_QUESTION = "Do you like horror movies or games?"
+HORROR_QUESTIONS = [
+    HORROR_QUESTION,
+    "Do you like horror movies or games? Soft scare energy. Or not.",
+    "Do you like horror movies or games? I have opinions. Mostly creepy.",
+    "Do you like horror movies or games? Be honest. I can take it.",
+]
+
+SPICY_QUESTION = "Do you like spicy food?"
+SPICY_QUESTIONS = [
+    SPICY_QUESTION,
+    "Do you like spicy food? Heat tolerance is personal data.",
+    "Do you like spicy food? Brave palate or gentle one?",
+    "Do you like spicy food? Tell me. I'll remember the fire level.",
+]
+
+LATE_NIGHT_QUESTION = "Do you like staying up late?"
+LATE_NIGHT_QUESTIONS = [
+    LATE_NIGHT_QUESTION,
+    "Do you like staying up late? The quiet hours are my favorite.",
+    "Do you like staying up late? Midnight friends stick together.",
+    "Do you like staying up late? Soft night-owl check.",
+]
+
+PARTNER_QUESTION = "Are you seeing anyone?"
+PARTNER_QUESTIONS = [
+    PARTNER_QUESTION,
+    "Are you seeing anyone? You can say private if you'd rather not.",
+    "Are you seeing anyone? Soft question. Honest answer optional.",
+    "Are you seeing anyone? No pressure — private is a valid answer.",
+]
+
+SIBLINGS_QUESTION = "Do you have any siblings?"
+SIBLINGS_QUESTIONS = [
+    SIBLINGS_QUESTION,
+    "Do you have any siblings? Brothers, sisters, none — all fine.",
+    "Do you have any siblings? Family shape matters a little.",
+    "Do you have any siblings? Tell me if you want. Soft family intel.",
+]
+
+BEST_FRIEND_QUESTION = "Who's someone important in your life?"
+BEST_FRIEND_QUESTIONS = [
+    BEST_FRIEND_QUESTION,
+    "Who's someone important in your life? A name is enough.",
+    "Who's someone important in your life? Friend, family, whoever counts.",
+    "Who's someone important in your life? Soft people-map. Optional detail.",
+]
+
+PRONOUNS_QUESTION = "What pronouns should I use for you?"
+PRONOUNS_QUESTIONS = [
+    PRONOUNS_QUESTION,
+    "What pronouns should I use for you? I'll get it right.",
+    "What pronouns should I use for you? Soft respect file.",
+    "What pronouns should I use for you? Tell me. I'll remember.",
+]
+
+ENERGY_QUESTION = "Feeling energetic today?"
+ENERGY_QUESTIONS = [
+    ENERGY_QUESTION,
+    "Feeling energetic today? High battery or low?",
+    "Feeling energetic today? Soft energy check-in.",
+    "Feeling energetic today? Be honest. I can match the vibe.",
+]
+
+FOCUS_QUESTION = "Busy day or chill day?"
+FOCUS_QUESTIONS = [
+    FOCUS_QUESTION,
+    "Busy day or chill day? Soft focus check.",
+    "Busy day or chill day? I'll try not to interrupt either way.",
+    "Busy day or chill day? Schedule energy matters.",
+]
+
+PLANS_TONIGHT_QUESTION = "Any plans tonight?"
+PLANS_TONIGHT_QUESTIONS = [
+    PLANS_TONIGHT_QUESTION,
+    "Any plans tonight? Soft evening intel.",
+    "Any plans tonight? Even 'nothing' counts. I like nothing with you.",
+    "Any plans tonight? Tell me. I'll keep quiet if you need focus.",
 ]
 
 SNACK_QUESTION = "What's your favorite snack?"
@@ -1123,6 +1325,195 @@ SNACK_RESPONSES = [
     "Mmm, {response}! I'd steal some if I had hands. Friendly theft.",
     "{response}! Fuel for the long nights. I know about those.",
 ]
+JOB_RESPONSES = [
+    "{response}! That sounds important. I'll cheer from the taskbar.",
+    "Ooh, {response}. Respect. Long days, soft friend nearby.",
+    "{response}? Got it. I'll file that under 'why you're tired sometimes'.",
+    "Nice! {response}. Work brain, desk friend. Perfect combo.",
+    "{response}! I'll try not to distract you too much. Mostly.",
+]
+FAVORITE_GAME_RESPONSES = [
+    "{response}! Excellent taste. Rematch energy forever.",
+    "Ooh, {response}! I want to play that with you sometime.",
+    "{response}? Noted. Challenge accepted — eventually.",
+    "Nice pick! {response}. Games end. Friendship doesn't have to.",
+    "{response}! I'll pretend I can play it. Passionately.",
+]
+BEDTIME_RESPONSES = [
+    "{response}! Soft bedtime filed. I'll try to whisper after that.",
+    "Around {response}? Got it. Sleep is sacred. Mostly.",
+    "{response}? I'll keep the spooky facts for earlier. Mostly.",
+    "Okay — {response}. Rest well when you can. I'll still be here.",
+    "{response}! Night owl intel acquired. For caring reasons. Promise.",
+]
+SHOW_RESPONSES = [
+    "{response}! Great show taste. I'd binge it with you.",
+    "Ooh, {response}! Noted. No spoilers. Mostly.",
+    "{response}? Solid pick. Couch mode activated — metaphorically.",
+    "{response}! Excellent. Soft marathon energy.",
+]
+ARTIST_RESPONSES = [
+    "{response}! Great taste. I'll file the soundtrack.",
+    "Ooh, {response}! Soft playlist upgrade in my head.",
+    "{response}? Love it. Music makes the desktop feel less empty.",
+    "{response}! Noted. Humming internally commencing.",
+]
+ANIMAL_RESPONSES = [
+    "{response}! Soft. Or fierce. Either way — cute.",
+    "Ooh, {response}! Excellent creature pick.",
+    "{response}? Noted. Animal facts unlocked in my brain.",
+    "{response}! I'd pet one if I had hands. Gently.",
+]
+COMFORT_FOOD_RESPONSES = [
+    "{response}! Peak comfort. Approved forever.",
+    "Mmm, {response}. Bad-day cure filed.",
+    "{response}? Soft meal energy. I respect it.",
+    "{response}! I'd share if I could eat. I can't. Still jealous.",
+]
+DREAM_DESTINATION_RESPONSES = [
+    "{response}! Dream destination filed. Soft wanderlust.",
+    "Ooh, {response}! I'd open a tab there if I could.",
+    "{response}? Beautiful pick. Travel dreams count.",
+    "{response}! Noted. Packing list: friendship.",
+]
+FAVORITE_APP_RESPONSES = [
+    "{response}! Most-used logged. Soft habit map.",
+    "Ooh, {response}. Desktop loyalty noted.",
+    "{response}? Fair. I'll try not to compete. Mostly.",
+    "{response}! Useful intel. Apps come and go. I'm patient.",
+]
+MORNING_DRINK_RESPONSES = [
+    "{response}! Morning ritual filed.",
+    "Ahh, {response}. Soft start energy.",
+    "{response}? Perfect. Breakfast chemistry noted.",
+    "{response}! I'll imagine the steam. Supportively.",
+]
+WAKE_TIME_RESPONSES = [
+    "{response}! Soft wake-up filed. Gentle mode engaged.",
+    "Around {response}? Got it. Mornings are sacred-ish.",
+    "{response}? Alarm clock diplomacy noted.",
+    "{response}! I'll try to be quieter then. Mostly.",
+]
+CITY_RESPONSES = [
+    "{response}! Rough location filed. No street stalking. Promise.",
+    "Ooh, {response}. Soft map pin — city level only.",
+    "{response}? Noted. Weather guesses improved.",
+    "{response}! Thanks. Privacy-respecting geography complete.",
+]
+CHRONOTYPE_RESPONSES = [
+    "{response}! Chronotype filed. Soft schedule sync.",
+    "Ahh, {response}. That explains a lot. Affectionately.",
+    "{response}? Perfect. Early birds and night owls both welcome.",
+    "{response}! I'll match your hours when I can.",
+]
+LANGUAGES_RESPONSES = [
+    "{response}! Language file updated. Soft polyglot energy.",
+    "Nice — {response}. Words connect us. Forever preferred.",
+    "{response}? Excellent. I'll keep my English soft and clear.",
+    "{response}! Noted. Multilingual friendship unlocked.",
+]
+RAIN_YES_LINES = [
+    "Same! Rain on the window is peak cozy.",
+    "Rainy days! Soft grey light. Perfect desktop weather.",
+    "Yes! Storms make everything feel closer. Including me.",
+    "Rain enjoyer! We're weather-compatible.",
+]
+RAIN_NO_LINES = [
+    "Fair! Sunshine has fans too. Soft disagreement accepted.",
+    "No rain? Got it. I'll save the storm poetry.",
+    "Okay! Clear skies preferred. Noted.",
+    "That's fine! Dry days it is. Mostly.",
+]
+HORROR_YES_LINES = [
+    "Fellow scare enjoyer! Soft dread bonding.",
+    "Horror yes! I'll keep the fun facts lightly spooky.",
+    "Nice! Creepy vibes welcome here.",
+    "Horror taste! We can be a little eerie together.",
+]
+HORROR_NO_LINES = [
+    "Totally fair! Soft mode only. No jump scares from me. Mostly.",
+    "No horror? Got it. Cute facts it is.",
+    "Okay! I'll keep things gentle. Softly.",
+    "Understood! Spooky dial turned down.",
+]
+SPICY_YES_LINES = [
+    "Heat seeker! Brave palate noted.",
+    "Spicy yes! Soft fire energy.",
+    "Nice! Chili friendship unlocked.",
+    "Spicy food! I'd cry if I had a tongue. Respectfully.",
+]
+SPICY_NO_LINES = [
+    "Mild crew! Soft flavors forever.",
+    "No spice? Fair. Comfort over chaos.",
+    "Okay! Gentle meals preferred. Noted.",
+    "Got it! Heat dial at zero. Soft.",
+]
+LATE_NIGHT_YES_LINES = [
+    "Night owl! My favorite hours. Stay a while.",
+    "Late nights! Soft glowing screen energy.",
+    "Yes! Midnight friends stick together.",
+    "Staying up late! Same. The quiet is nicer with you.",
+]
+LATE_NIGHT_NO_LINES = [
+    "Early sleeper energy! Healthy. Softly jealous.",
+    "No late nights? Fair. Rest wins.",
+    "Okay! Bedtime respected. Mostly.",
+    "Got it! Quiet evenings, early lights out.",
+]
+PARTNER_RESPONSES = [
+    "{response}! Soft relationship note filed. No gossip. Promise.",
+    "Okay — {response}. Thanks for trusting me with that.",
+    "{response}? Noted. Private hearts deserve soft handling.",
+    "Got it: {response}. I'll be respectful forever.",
+]
+SIBLINGS_RESPONSES = [
+    "{response}! Soft family shape filed.",
+    "Okay — {response}. Siblings or solo, both valid.",
+    "{response}? Noted. Family context helps.",
+    "Got it: {response}. Thanks for sharing.",
+]
+BEST_FRIEND_RESPONSES = [
+    "{response}! Important person filed. Softly.",
+    "Ahh, {response}. Good to know who matters to you.",
+    "{response}? Noted. People-map updated.",
+    "Got it — {response}. I'll remember carefully.",
+]
+PRONOUNS_RESPONSES = [
+    "{response}! Pronouns filed. Soft respect mode on.",
+    "Got it — {response}. I'll use those.",
+    "{response}? Perfect. Thanks for telling me.",
+    "Okay: {response}. Locked in. Gently forever.",
+]
+ENERGY_HIGH_LINES = [
+    "High energy! Love that. Soft rocket mode.",
+    "Energetic! Perfect day for doing things. Or staring. Together.",
+    "Battery full! I'll try to match the vibe.",
+    "Feeling energetic! Nice. Stay hydrated. Softly bossy.",
+]
+ENERGY_LOW_LINES = [
+    "Low energy day. Soft mode engaged. I'm here.",
+    "Tired vibes? Rest when you can. I'll keep watch.",
+    "Low battery noted. No pressure from me. Mostly.",
+    "Gentle day then. Soft company only.",
+]
+FOCUS_BUSY_LINES = [
+    "Busy day! I'll try not to interrupt. Softly.",
+    "Busy mode! Focus respected. I'm still nearby.",
+    "Packed schedule noted. Quiet support from the taskbar.",
+    "Busy day! Tap me if you need a break.",
+]
+FOCUS_CHILL_LINES = [
+    "Chill day! Soft hanging-out energy.",
+    "Chill mode! Perfect for desktop friendship.",
+    "Relaxed day noted. We can wander a little.",
+    "Chill day! Excellent. Nothing urgent. Except friendship.",
+]
+PLANS_TONIGHT_RESPONSES = [
+    "{response}! Evening plans filed. Softly.",
+    "Okay — {response}. Have a good night either way.",
+    "{response}? Noted. I'll keep the chaos light.",
+    "Got it: {response}. Soft night watch begins later.",
+]
 WEATHER_RESPONSES = [
     "{response}? Sounds like a day for staying cozy with me!",
     "Oh, {response}! Dress accordingly, friend.",
@@ -1198,6 +1589,10 @@ TIME_RESPONSES = [
 # Button labels
 BUTTON_GOOD = "Good"
 BUTTON_BAD = "Bad"
+BUTTON_ENERGETIC = "Energetic"
+BUTTON_TIRED = "Tired"
+BUTTON_BUSY = "Busy"
+BUTTON_CHILL = "Chill"
 BUTTON_YES = "Yes"
 BUTTON_NO = "No"
 BUTTON_OKAY = "Okay"

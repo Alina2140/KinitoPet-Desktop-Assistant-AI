@@ -310,6 +310,65 @@ def _good_bad(good_lines, bad_lines) -> Handler:
     return handler
 
 
+def _good_bad_with_mood_memory(good_lines, bad_lines) -> Handler:
+    """Like _good_bad, but store mood_today without ask-once (daily cooldown)."""
+    return _two_button_with_daily_fact(
+        fact_key="mood_today",
+        topic="mood_today",
+        button_a=dlg.BUTTON_GOOD,
+        value_a="good",
+        lines_a=good_lines,
+        button_b=dlg.BUTTON_BAD,
+        value_b="bad",
+        lines_b=bad_lines,
+    )
+
+
+def _two_button_with_daily_fact(
+    *,
+    fact_key: str,
+    topic: str,
+    button_a: str,
+    value_a: str,
+    lines_a,
+    button_b: str,
+    value_b: str,
+    lines_b,
+) -> Handler:
+    """Persist a daily fact from a two-button answer without ask-once."""
+
+    def handler(app, response: str) -> None:
+        memory = getattr(app, "_memory", None)
+        if response == button_a:
+            if memory is not None:
+                memory.set_fact(fact_key, value_a)
+                memory.mark_topic_asked(topic)
+            app.speak(dlg.pick_line(lines_a))
+        elif response == button_b:
+            if memory is not None:
+                memory.set_fact(fact_key, value_b)
+                memory.mark_topic_asked(topic)
+            app.speak(dlg.pick_line(lines_b))
+
+    return handler
+
+
+def _text_format_with_daily_memory(
+    fact_key: str, topic: str, response_lines
+) -> Handler:
+    """Persist a daily text answer without ask-once marking."""
+
+    def handler(app, response: str) -> None:
+        memory = getattr(app, "_memory", None)
+        trimmed = response.strip()
+        if memory is not None and trimmed:
+            memory.set_fact(fact_key, trimmed)
+            memory.mark_topic_asked(topic)
+        app.speak(dlg.pick_line(response_lines).format(response=response))
+
+    return handler
+
+
 def _sure_decline(yes_fn: Handler, declined_lines) -> Handler:
     """Build a handler for Sure / Not now button pairs."""
 
@@ -1079,7 +1138,42 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
     DialogSpec(
         dlg.DAY_QUESTION,
         DialogUI("buttons", buttons=(dlg.BUTTON_GOOD, dlg.BUTTON_BAD)),
-        _good_bad(dlg.DAY_GOOD_LINES, dlg.DAY_BAD_LINES),
+        _good_bad_with_mood_memory(dlg.DAY_GOOD_LINES, dlg.DAY_BAD_LINES),
+    ),
+    DialogSpec(
+        dlg.ENERGY_QUESTION,
+        DialogUI("buttons", buttons=(dlg.BUTTON_ENERGETIC, dlg.BUTTON_TIRED)),
+        _two_button_with_daily_fact(
+            fact_key="energy_today",
+            topic="energy_today",
+            button_a=dlg.BUTTON_ENERGETIC,
+            value_a="high",
+            lines_a=dlg.ENERGY_HIGH_LINES,
+            button_b=dlg.BUTTON_TIRED,
+            value_b="low",
+            lines_b=dlg.ENERGY_LOW_LINES,
+        ),
+    ),
+    DialogSpec(
+        dlg.FOCUS_QUESTION,
+        DialogUI("buttons", buttons=(dlg.BUTTON_BUSY, dlg.BUTTON_CHILL)),
+        _two_button_with_daily_fact(
+            fact_key="focus_today",
+            topic="focus_today",
+            button_a=dlg.BUTTON_BUSY,
+            value_a="busy",
+            lines_a=dlg.FOCUS_BUSY_LINES,
+            button_b=dlg.BUTTON_CHILL,
+            value_b="chill",
+            lines_b=dlg.FOCUS_CHILL_LINES,
+        ),
+    ),
+    DialogSpec(
+        dlg.PLANS_TONIGHT_QUESTION,
+        DialogUI("textbox", textbox_prompt=dlg.PLANS_TONIGHT_QUESTION),
+        _text_format_with_daily_memory(
+            "plans_tonight", "plans_tonight", dlg.PLANS_TONIGHT_RESPONSES
+        ),
     ),
     DialogSpec(
         dlg.COLOR_QUESTION,
@@ -1230,6 +1324,152 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
         dlg.MOVIE_QUESTION,
         DialogUI("textbox", textbox_prompt=dlg.MOVIE_QUESTION),
         _text_format_with_memory(dlg.MOVIE_QUESTION, "favorite_movie", dlg.MOVIE_RESPONSES),
+    ),
+    DialogSpec(
+        dlg.JOB_QUESTION,
+        DialogUI("textbox", textbox_prompt=dlg.JOB_QUESTION),
+        _text_format_with_memory(dlg.JOB_QUESTION, "job", dlg.JOB_RESPONSES),
+    ),
+    DialogSpec(
+        dlg.FAVORITE_GAME_QUESTION,
+        DialogUI("textbox", textbox_prompt=dlg.FAVORITE_GAME_QUESTION),
+        _text_format_with_memory(
+            dlg.FAVORITE_GAME_QUESTION, "favorite_game", dlg.FAVORITE_GAME_RESPONSES
+        ),
+    ),
+    DialogSpec(
+        dlg.BEDTIME_QUESTION,
+        DialogUI("textbox", textbox_prompt=dlg.BEDTIME_QUESTION),
+        _text_format_with_memory(dlg.BEDTIME_QUESTION, "bedtime", dlg.BEDTIME_RESPONSES),
+    ),
+    DialogSpec(
+        dlg.SHOW_QUESTION,
+        DialogUI("textbox", textbox_prompt=dlg.SHOW_QUESTION),
+        _text_format_with_memory(dlg.SHOW_QUESTION, "favorite_show", dlg.SHOW_RESPONSES),
+    ),
+    DialogSpec(
+        dlg.ARTIST_QUESTION,
+        DialogUI("textbox", textbox_prompt=dlg.ARTIST_QUESTION),
+        _text_format_with_memory(dlg.ARTIST_QUESTION, "favorite_artist", dlg.ARTIST_RESPONSES),
+    ),
+    DialogSpec(
+        dlg.ANIMAL_QUESTION,
+        DialogUI("textbox", textbox_prompt=dlg.ANIMAL_QUESTION),
+        _text_format_with_memory(dlg.ANIMAL_QUESTION, "favorite_animal", dlg.ANIMAL_RESPONSES),
+    ),
+    DialogSpec(
+        dlg.COMFORT_FOOD_QUESTION,
+        DialogUI("textbox", textbox_prompt=dlg.COMFORT_FOOD_QUESTION),
+        _text_format_with_memory(
+            dlg.COMFORT_FOOD_QUESTION, "comfort_food", dlg.COMFORT_FOOD_RESPONSES
+        ),
+    ),
+    DialogSpec(
+        dlg.DREAM_DESTINATION_QUESTION,
+        DialogUI("textbox", textbox_prompt=dlg.DREAM_DESTINATION_QUESTION),
+        _text_format_with_memory(
+            dlg.DREAM_DESTINATION_QUESTION,
+            "dream_destination",
+            dlg.DREAM_DESTINATION_RESPONSES,
+        ),
+    ),
+    DialogSpec(
+        dlg.FAVORITE_APP_QUESTION,
+        DialogUI("textbox", textbox_prompt=dlg.FAVORITE_APP_QUESTION),
+        _text_format_with_memory(
+            dlg.FAVORITE_APP_QUESTION, "favorite_app", dlg.FAVORITE_APP_RESPONSES
+        ),
+    ),
+    DialogSpec(
+        dlg.MORNING_DRINK_QUESTION,
+        DialogUI("textbox", textbox_prompt=dlg.MORNING_DRINK_QUESTION),
+        _text_format_with_memory(
+            dlg.MORNING_DRINK_QUESTION, "morning_drink", dlg.MORNING_DRINK_RESPONSES
+        ),
+    ),
+    DialogSpec(
+        dlg.WAKE_TIME_QUESTION,
+        DialogUI("textbox", textbox_prompt=dlg.WAKE_TIME_QUESTION),
+        _text_format_with_memory(dlg.WAKE_TIME_QUESTION, "wake_time", dlg.WAKE_TIME_RESPONSES),
+    ),
+    DialogSpec(
+        dlg.CITY_QUESTION,
+        DialogUI("textbox", textbox_prompt=dlg.CITY_QUESTION),
+        _text_format_with_memory(dlg.CITY_QUESTION, "home_city", dlg.CITY_RESPONSES),
+    ),
+    DialogSpec(
+        dlg.CHRONOTYPE_QUESTION,
+        DialogUI("textbox", textbox_prompt=dlg.CHRONOTYPE_QUESTION),
+        _text_format_with_memory(
+            dlg.CHRONOTYPE_QUESTION, "chronotype", dlg.CHRONOTYPE_RESPONSES
+        ),
+    ),
+    DialogSpec(
+        dlg.LANGUAGES_QUESTION,
+        DialogUI("textbox", textbox_prompt=dlg.LANGUAGES_QUESTION),
+        _text_format_with_memory(dlg.LANGUAGES_QUESTION, "languages", dlg.LANGUAGES_RESPONSES),
+    ),
+    DialogSpec(
+        dlg.RAIN_QUESTION,
+        DialogUI("buttons", buttons=(dlg.BUTTON_YES, dlg.BUTTON_NO)),
+        _yes_no_lines_with_memory(
+            dlg.RAIN_QUESTION,
+            "likes_rain",
+            dlg.RAIN_YES_LINES,
+            dlg.RAIN_NO_LINES,
+        ),
+    ),
+    DialogSpec(
+        dlg.HORROR_QUESTION,
+        DialogUI("buttons", buttons=(dlg.BUTTON_YES, dlg.BUTTON_NO)),
+        _yes_no_lines_with_memory(
+            dlg.HORROR_QUESTION,
+            "likes_horror",
+            dlg.HORROR_YES_LINES,
+            dlg.HORROR_NO_LINES,
+        ),
+    ),
+    DialogSpec(
+        dlg.SPICY_QUESTION,
+        DialogUI("buttons", buttons=(dlg.BUTTON_YES, dlg.BUTTON_NO)),
+        _yes_no_lines_with_memory(
+            dlg.SPICY_QUESTION,
+            "likes_spicy_food",
+            dlg.SPICY_YES_LINES,
+            dlg.SPICY_NO_LINES,
+        ),
+    ),
+    DialogSpec(
+        dlg.LATE_NIGHT_QUESTION,
+        DialogUI("buttons", buttons=(dlg.BUTTON_YES, dlg.BUTTON_NO)),
+        _yes_no_lines_with_memory(
+            dlg.LATE_NIGHT_QUESTION,
+            "likes_staying_up_late",
+            dlg.LATE_NIGHT_YES_LINES,
+            dlg.LATE_NIGHT_NO_LINES,
+        ),
+    ),
+    DialogSpec(
+        dlg.PARTNER_QUESTION,
+        DialogUI("textbox", textbox_prompt=dlg.PARTNER_QUESTION),
+        _text_format_with_memory(dlg.PARTNER_QUESTION, "partner_status", dlg.PARTNER_RESPONSES),
+    ),
+    DialogSpec(
+        dlg.SIBLINGS_QUESTION,
+        DialogUI("textbox", textbox_prompt=dlg.SIBLINGS_QUESTION),
+        _text_format_with_memory(dlg.SIBLINGS_QUESTION, "siblings", dlg.SIBLINGS_RESPONSES),
+    ),
+    DialogSpec(
+        dlg.BEST_FRIEND_QUESTION,
+        DialogUI("textbox", textbox_prompt=dlg.BEST_FRIEND_QUESTION),
+        _text_format_with_memory(
+            dlg.BEST_FRIEND_QUESTION, "important_person", dlg.BEST_FRIEND_RESPONSES
+        ),
+    ),
+    DialogSpec(
+        dlg.PRONOUNS_QUESTION,
+        DialogUI("textbox", textbox_prompt=dlg.PRONOUNS_QUESTION),
+        _text_format_with_memory(dlg.PRONOUNS_QUESTION, "pronouns", dlg.PRONOUNS_RESPONSES),
     ),
     DialogSpec(
         dlg.SNACK_QUESTION,

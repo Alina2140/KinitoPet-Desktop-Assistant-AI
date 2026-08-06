@@ -33,7 +33,19 @@ def content(memory_dir):
 def test_ask_once_markers_cover_personal_questions():
     assert dlg.NAME_QUESTION in ASK_ONCE_MARKERS
     assert dlg.DAY_QUESTION not in ASK_ONCE_MARKERS
+    assert dlg.ENERGY_QUESTION not in ASK_ONCE_MARKERS
+    assert dlg.JOB_QUESTION in ASK_ONCE_MARKERS
+    assert dlg.FAVORITE_GAME_QUESTION in ASK_ONCE_MARKERS
+    assert dlg.BEDTIME_QUESTION in ASK_ONCE_MARKERS
+    assert dlg.SHOW_QUESTION in ASK_ONCE_MARKERS
+    assert dlg.PRONOUNS_QUESTION in ASK_ONCE_MARKERS
     assert MARKER_TO_FACT_KEY[dlg.NAME_QUESTION] == "user_names"
+    assert MARKER_TO_FACT_KEY[dlg.JOB_QUESTION] == "job"
+    assert MARKER_TO_FACT_KEY[dlg.FAVORITE_GAME_QUESTION] == "favorite_game"
+    assert MARKER_TO_FACT_KEY[dlg.BEDTIME_QUESTION] == "bedtime"
+    assert MARKER_TO_FACT_KEY[dlg.SHOW_QUESTION] == "favorite_show"
+    assert MARKER_TO_FACT_KEY[dlg.CITY_QUESTION] == "home_city"
+    assert MARKER_TO_FACT_KEY[dlg.RAIN_QUESTION] == "likes_rain"
 
 
 def test_available_questions_skip_answered_markers(content):
@@ -41,6 +53,78 @@ def test_available_questions_skip_answered_markers(content):
     pool = content._available_spontaneous_questions()
     assert all(dlg.NAME_QUESTION not in q for q in pool)
     assert any(dlg.DAY_QUESTION in q for q in pool)
+
+
+def test_mood_checkin_persists_and_cools_down(content):
+    from content.memory_keys import (
+        ALLOWED_FACT_KEYS,
+        MOOD_TODAY_COOLDOWN_DAYS,
+        MOOD_TODAY_TOPIC,
+    )
+
+    assert "mood_today" in ALLOWED_FACT_KEYS
+    assert "energy_today" in ALLOWED_FACT_KEYS
+    assert "plans_tonight" in ALLOWED_FACT_KEYS
+    app = MagicMock()
+    app._memory = content._memory
+    app.speak = MagicMock()
+    spec = find_dialog_spec(dlg.DAY_QUESTION)
+    handle_dialog_response(app, spec, dlg.BUTTON_GOOD)
+    assert content._memory.get_fact("mood_today") == "good"
+    assert content._memory.is_topic_on_cooldown(
+        MOOD_TODAY_TOPIC, days=MOOD_TODAY_COOLDOWN_DAYS
+    )
+    pool = content._available_spontaneous_questions()
+    assert all(dlg.DAY_QUESTION not in q for q in pool)
+
+
+def test_energy_and_plans_daily_checkins(content):
+    app = MagicMock()
+    app._memory = content._memory
+    app.speak = MagicMock()
+
+    energy_spec = find_dialog_spec(dlg.ENERGY_QUESTION)
+    handle_dialog_response(app, energy_spec, dlg.BUTTON_TIRED)
+    assert content._memory.get_fact("energy_today") == "low"
+
+    plans_spec = find_dialog_spec(dlg.PLANS_TONIGHT_QUESTION)
+    handle_dialog_response(app, plans_spec, "movie night")
+    assert content._memory.get_fact("plans_tonight") == "movie night"
+
+    pool = content._available_spontaneous_questions()
+    assert all(dlg.ENERGY_QUESTION not in q for q in pool)
+    assert all(dlg.PLANS_TONIGHT_QUESTION not in q for q in pool)
+
+
+def test_expanded_fact_keys_persist(memory_dir):
+    app = MagicMock()
+    app._memory = MemoryStore(directory=memory_dir)
+    app.speak = MagicMock()
+
+    show_spec = find_dialog_spec(dlg.SHOW_QUESTION)
+    handle_dialog_response(app, show_spec, "The Office")
+    assert app._memory.get_fact("favorite_show") == "The Office"
+
+    rain_spec = find_dialog_spec(dlg.RAIN_QUESTION)
+    handle_dialog_response(app, rain_spec, dlg.BUTTON_YES)
+    assert app._memory.get_fact("likes_rain") == "yes"
+
+    pronouns_spec = find_dialog_spec(dlg.PRONOUNS_QUESTION)
+    handle_dialog_response(app, pronouns_spec, "they/them")
+    assert app._memory.get_fact("pronouns") == "they/them"
+
+
+def test_job_dialog_persists_answer(memory_dir):
+    app = MagicMock()
+    app._memory = MemoryStore(directory=memory_dir)
+    app.speak = MagicMock()
+
+    spec = find_dialog_spec(dlg.JOB_QUESTION)
+    handle_dialog_response(app, spec, "software engineer")
+
+    assert app._memory.get_fact("job") == "software engineer"
+    assert app._memory.is_answered(dlg.JOB_QUESTION)
+    app.speak.assert_called_once()
 
 
 def test_name_dialog_persists_answer(memory_dir):

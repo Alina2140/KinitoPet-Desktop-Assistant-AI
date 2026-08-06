@@ -47,6 +47,12 @@ class ContentMixin:
         memory = getattr(self, "_memory", None)
         if memory is not None:
             pool = [q for q in pool if not memory.is_question_answered(q)]
+            from content.memory_keys import DAILY_CHECKIN_COOLDOWNS
+
+            for topic, days, marker in DAILY_CHECKIN_COOLDOWNS:
+                if memory.is_topic_on_cooldown(topic, days=days):
+                    needle = marker.lower()
+                    pool = [q for q in pool if needle not in q.lower()]
         if getattr(self, "_camera_active", False):
             marker = dlg.CAMERA_QUESTION_MARKER.lower()
             pool = [q for q in pool if marker not in q.lower()]
