@@ -274,6 +274,39 @@ def test_paint_mixin_on_floating_assistant():
     assert hasattr(FloatingAssistant, "_is_paint_only_active")
 
 
+def test_sanitize_painting_filename():
+    from kinito.features.paint import sanitize_painting_filename
+
+    assert sanitize_painting_filename("My Cool Art") == "My Cool Art.png"
+    assert sanitize_painting_filename("friendship!!") == "friendship.png"
+    assert sanitize_painting_filename("  already.png  ") == "already.png"
+    assert sanitize_painting_filename("../secret") == "secret.png"
+    assert sanitize_painting_filename("   ") is None
+    assert sanitize_painting_filename("???") is None
+
+
+def test_rename_painting_file(tmp_path, monkeypatch):
+    paints = tmp_path / "paintings"
+    paints.mkdir()
+    sample = paints / "paint_old.png"
+    Image.new("RGB", (8, 8), "green").save(sample)
+    monkeypatch.setattr("kinito.features.paint.paintings_directory", str(paints))
+    monkeypatch.setattr(
+        "kinito.features.paint.ensure_user_media_directories", lambda: None
+    )
+
+    from kinito.features.paint import sanitize_painting_filename
+
+    new_name = sanitize_painting_filename("Axolotl Friends")
+    assert new_name == "Axolotl Friends.png"
+    new_path = paints / new_name
+    os.rename(sample, new_path)
+    host = _PaintHost()
+    paths = host._list_painting_paths()
+    assert any(p.endswith("Axolotl Friends.png") for p in paths)
+    assert not sample.exists()
+
+
 def test_thumbnail_helper(tmp_path):
     from kinito.features.paint import _THUMB_SIZE, _thumbnail_image
 

@@ -11,7 +11,7 @@ import threading
 import time
 import tkinter as tk
 from datetime import datetime
-from tkinter import Button, Frame, Label, Scrollbar, Toplevel, filedialog, messagebox
+from tkinter import Button, Frame, Label, Scrollbar, Toplevel, filedialog, messagebox, simpledialog
 
 from PIL import Image, ImageDraw, ImageTk
 
@@ -103,6 +103,30 @@ def _thumbnail_photo(path: str, size: tuple[int, int] = _THUMB_SIZE) -> ImageTk.
     if thumb is None:
         return None
     return ImageTk.PhotoImage(thumb)
+
+
+def sanitize_painting_filename(raw: str) -> str | None:
+    """Return a safe ``*.png`` filename, or None if empty/invalid."""
+    if not isinstance(raw, str):
+        return None
+    trimmed = raw.strip()
+    if not trimmed:
+        return None
+    base = os.path.basename(trimmed)
+    stem, ext = os.path.splitext(base)
+    if not stem:
+        return None
+    cleaned = "".join(
+        ch if (ch.isalnum() or ch in {" ", "-", "_", "."}) else "_" for ch in stem
+    )
+    cleaned = " ".join(cleaned.split()).strip(" ._")
+    if not cleaned:
+        return None
+    if len(cleaned) > 80:
+        cleaned = cleaned[:80].rstrip(" ._")
+    if not cleaned:
+        return None
+    return f"{cleaned}.png"
 
 
 class PaintWindow:
@@ -685,7 +709,7 @@ class PaintMixin:
         window.protocol("WM_DELETE_WINDOW", on_close)
 
     def _open_painting_detail(self, path: str) -> None:
-        """Show a large preview with download and delete actions."""
+        """Show a large preview with download, rename, and delete actions."""
         if not os.path.isfile(path):
             self._show_paint_gallery()
             return
@@ -717,9 +741,10 @@ class PaintMixin:
         window.wm_attributes("-topmost", True)
         center_toplevel(self, window, max_w + 40, max_h + 120)
 
-        Label(window, text=name, bg=_UI_BG, font=("TkDefaultFont", 10, "bold")).pack(
-            pady=(10, 4)
+        title_label = Label(
+            window, text=name, bg=_UI_BG, font=("TkDefaultFont", 10, "bold")
         )
+        title_label.pack(pady=(10, 4))
         label = Label(window, image=photo, bg="black", bd=2, relief=tk.SUNKEN)
         label.image = photo
         label.pack(padx=12, pady=4)
@@ -727,34 +752,83 @@ class PaintMixin:
         buttons = Frame(window, bg=_UI_BG)
         buttons.pack(pady=10)
 
+        state = {"path": path, "name": name}
+
         def download():
             dest = filedialog.asksaveasfilename(
                 parent=window,
                 title="Download painting",
                 defaultextension=".png",
-                initialfile=name,
+                initialfile=state["name"],
                 filetypes=[("PNG images", "*.png"), ("All files", "*.*")],
             )
             if not dest:
                 return
             try:
-                shutil.copy2(path, dest)
+                shutil.copy2(state["path"], dest)
             except OSError:
-                messagebox.showerror("Download failed", "Could not save the file.", parent=window)
+                messagebox.showerror(
+                    "Download failed", "Could not save the file.", parent=window
+                )
                 return
             self.speak_paint_line(dlg.pick_line(paint_lines.PAINT_SAVE_LINES))
+
+        def rename():
+            current = state["name"]
+            stem = os.path.splitext(current)[0]
+            answer = simpledialog.askstring(
+                "Rename painting",
+                "New name:",
+                initialvalue=stem,
+                parent=window,
+            )
+            if answer is None:
+                return
+            new_name = sanitize_painting_filename(answer)
+            if new_name is None:
+                messagebox.showerror(
+                    "Rename failed",
+                    "Please enter a valid name.",
+                    parent=window,
+                )
+                return
+            if new_name.casefold() == current.casefold():
+                return
+            directory = os.path.dirname(state["path"])
+            new_path = os.path.join(directory, new_name)
+            if os.path.exists(new_path):
+                messagebox.showerror(
+                    "Rename failed",
+                    f'A painting named "{new_name}" already exists.',
+                    parent=window,
+                )
+                return
+            try:
+                os.rename(state["path"], new_path)
+            except OSError:
+                messagebox.showerror(
+                    "Rename failed", "Could not rename the file.", parent=window
+                )
+                return
+            state["path"] = new_path
+            state["name"] = new_name
+            title_label.configure(text=new_name)
+            window.title(new_name)
+            self.speak_paint_line(dlg.pick_line(paint_lines.PAINT_RENAME_LINES))
 
         def delete():
             if not messagebox.askyesno(
                 "Delete painting",
-                f"Delete {name}?",
+                f"Delete {state['name']}?",
                 parent=window,
             ):
                 return
             try:
-                os.remove(path)
+                os.remove(state["path"])
             except OSError:
-                messagebox.showerror("Delete failed", "Could not delete the file.", parent=window)
+                messagebox.showerror(
+                    "Delete failed", "Could not delete the file.", parent=window
+                )
                 return
             try:
                 window.destroy()
@@ -763,18 +837,29 @@ class PaintMixin:
             self._paint_detail_window = None
             self._show_paint_gallery()
 
-        Button(buttons, text="Download", command=download, width=12).pack(side=tk.LEFT, padx=6)
-        Button(buttons, text="Delete", command=delete, width=12).pack(side=tk.LEFT, padx=6)
-        Button(buttons, text="Close", command=window.destroy, width=12).pack(side=tk.LEFT, padx=6)
-
-        def on_close():
+        def close_detail():
             self._paint_detail_window = None
             try:
                 window.destroy()
             except tk.TclError:
                 pass
+            # Rebuild gallery so renames show up in the thumbnails list.
+            self._show_paint_gallery()
 
-        window.protocol("WM_DELETE_WINDOW", on_close)
+        Button(buttons, text="Download", command=download, width=10).pack(
+            side=tk.LEFT, padx=4
+        )
+        Button(buttons, text="Rename", command=rename, width=10).pack(
+            side=tk.LEFT, padx=4
+        )
+        Button(buttons, text="Delete", command=delete, width=10).pack(
+            side=tk.LEFT, padx=4
+        )
+        Button(buttons, text="Close", command=close_detail, width=10).pack(
+            side=tk.LEFT, padx=4
+        )
+
+        window.protocol("WM_DELETE_WINDOW", close_detail)
 
     def maybe_trigger_paint_recall(self) -> bool:
         """Roll for a random saved-painting popup with commentary."""

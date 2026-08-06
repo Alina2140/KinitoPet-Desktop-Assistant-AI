@@ -45,6 +45,12 @@ PAINT_GALLERY_OPEN_LINES = [
     "Saved paintings — choose one and I'll show it.",
 ]
 
+PAINT_RENAME_LINES = [
+    "Renamed! Fresh title for a familiar masterpiece.",
+    "New name locked in. Soft gallery upgrade complete.",
+    "Renamed and filed. I still remember the old strokes though.",
+]
+
 PAINT_RECALL_LINES = [
     "Remember this one? I kept it safe. Look!",
     "Found something in our gallery. Soft masterpiece energy.",

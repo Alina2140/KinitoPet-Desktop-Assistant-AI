@@ -20,6 +20,7 @@ from content.paint_lines import (
     PAINT_GALLERY_OPEN_LINES,
     PAINT_OPEN_LINES,
     PAINT_RECALL_LINES,
+    PAINT_RENAME_LINES,
     PAINT_SAVE_LINES,
     PAINT_WHILE_LINES,
 )
@@ -55,6 +56,7 @@ def _assert_non_empty_strings(items, *, min_length=1):
         (PAINT_GALLERY_EMPTY_LINES, "paint_gallery_empty"),
         (PAINT_GALLERY_OPEN_LINES, "paint_gallery_open"),
         (PAINT_RECALL_LINES, "paint_recall"),
+        (PAINT_RENAME_LINES, "paint_rename"),
         (WELLNESS_NUDGE_LINES, "wellness_nudge"),
         (CREEPY_NUDGE_LINES, "creepy_nudge"),
         (BROWSER_LINES, "browser"),
