@@ -155,13 +155,37 @@ def test_paint_tool_defs_exclude_shapes():
     from kinito.features.paint import _SHAPE_TIP_SPECS, _TOOL_DEFS
 
     tool_ids = [t for t, _ in _TOOL_DEFS]
-    assert tool_ids == ["eraser", "pencil", "spray"]
+    assert tool_ids == ["eraser", "pencil", "spray", "fill"]
     shape_tools = {t for t, _, _ in _SHAPE_TIP_SPECS}
     assert shape_tools == {"line", "circle", "rect"}
     assert all(
         sum(1 for t, _, _ in _SHAPE_TIP_SPECS if t == shape) == 3
         for shape in ("line", "circle", "rect")
     )
+
+
+def test_paint_fill_floods_region():
+    app = MagicMock()
+    window = PaintWindow(app)
+    window.canvas = MagicMock()
+    window._set_color("#ff0000")
+    # Closed black box on white canvas; fill inside should turn red.
+    window._draw.rectangle((10, 10, 40, 40), outline=(0, 0, 0))
+    window._set_tool("fill")
+    with patch.object(window, "_sync_canvas_from_image") as sync:
+        window._flood_fill_at(25, 25)
+        sync.assert_called_once()
+    assert window._image.getpixel((25, 25)) == (255, 0, 0)
+    assert window._image.getpixel((0, 0)) == (255, 255, 255)
+
+
+def test_paint_fill_tip_switches_to_pencil():
+    app = MagicMock()
+    window = PaintWindow(app)
+    window._set_tool("fill")
+    window._set_tip("rect", 4)
+    assert window._tool == "pencil"
+    assert window._tip_shape == "rect"
 
 def test_spray_uses_tip_size_and_throttles():
     app = MagicMock()

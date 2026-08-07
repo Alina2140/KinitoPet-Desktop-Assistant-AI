@@ -84,12 +84,33 @@ _TOOL_DEFS = (
     ("eraser", "Eraser"),
     ("pencil", "Pencil"),
     ("spray", "Spray"),
+    ("fill", "Fill"),
 )
 
+# Fixed tip-button chrome so glyph size never changes cell size.
+_TIP_BTN_FONT = ("TkDefaultFont", 10)
+_TIP_BTN_WIDTH = 3
+_TIP_BTN_HEIGHT = 1
+
+_TIP_GLYPHS = {
+    ("circle", 16): "⬤",
+    ("circle", 10): "●",
+    ("circle", 4): "•",
+    ("rect", 16): "⬛",
+    ("rect", 10): "■",
+    ("rect", 4): "▪",
+}
+
 _SHAPE_GLYPHS = {
-    "line": "/",
-    "circle": "○",
-    "rect": "□",
+    ("line", 16): "/",
+    ("line", 10): "/",
+    ("line", 4): "/",
+    ("circle", 16): "◯",
+    ("circle", 10): "○",
+    ("circle", 4): "∘",
+    ("rect", 16): "⬜",
+    ("rect", 10): "□",
+    ("rect", 4): "▫",
 }
 
 _UI_BG = "#e6ded5"
@@ -177,6 +198,7 @@ class PaintWindow:
         self._tip_buttons: list[tuple[Button, str, int]] = []
         self._shape_tip_buttons: list[tuple[Button, str, int]] = []
         self._color_preview: tk.Canvas | None = None
+        self._canvas_photo: ImageTk.PhotoImage | None = None
         self._dirty = False
         self._saved_name: str | None = None
         self._line_timer = None
@@ -231,17 +253,23 @@ class PaintWindow:
 
         tips = Frame(sidebar, bg=_UI_BG, bd=2, relief=tk.SUNKEN)
         tips.pack(fill=tk.X, pady=(0, 6))
+        for col in range(3):
+            tips.grid_columnconfigure(col, weight=1, uniform="tip")
+        tip_row_count = (len(_TIP_SPECS) + 2) // 3 + (len(_SHAPE_TIP_SPECS) + 2) // 3
+        for row in range(tip_row_count):
+            tips.grid_rowconfigure(row, weight=1, uniform="tip")
+
         for index, (shape, _name, size) in enumerate(_TIP_SPECS):
             row, col = divmod(index, 3)
-            glyph = "●" if shape == "circle" else "■"
             btn = Button(
                 tips,
-                text=glyph,
-                font=("TkDefaultFont", 6 + size // 4),
-                width=3,
+                text=_TIP_GLYPHS[(shape, size)],
+                font=_TIP_BTN_FONT,
+                width=_TIP_BTN_WIDTH,
+                height=_TIP_BTN_HEIGHT,
                 command=lambda s=shape, z=size: self._set_tip(s, z),
             )
-            btn.grid(row=row, column=col, padx=1, pady=1)
+            btn.grid(row=row, column=col, padx=1, pady=1, sticky="nsew")
             self._tip_buttons.append((btn, shape, size))
 
         tip_rows = (len(_TIP_SPECS) + 2) // 3
@@ -249,12 +277,13 @@ class PaintWindow:
             row, col = divmod(index, 3)
             btn = Button(
                 tips,
-                text=_SHAPE_GLYPHS[tool_id],
-                font=("TkDefaultFont", 6 + size // 4),
-                width=3,
+                text=_SHAPE_GLYPHS[(tool_id, size)],
+                font=_TIP_BTN_FONT,
+                width=_TIP_BTN_WIDTH,
+                height=_TIP_BTN_HEIGHT,
                 command=lambda t=tool_id, z=size: self._set_shape_tool(t, z),
             )
-            btn.grid(row=tip_rows + row, column=col, padx=1, pady=1)
+            btn.grid(row=tip_rows + row, column=col, padx=1, pady=1, sticky="nsew")
             self._shape_tip_buttons.append((btn, tool_id, size))
 
         Button(sidebar, text="Save", command=self.save).pack(fill=tk.X, pady=(4, 0))
@@ -364,8 +393,8 @@ class PaintWindow:
     def _set_tip(self, shape: str, size: int) -> None:
         self._tip_shape = shape
         self._tip_size = size
-        # Stamp tips belong to freehand tools; leave shapes for the outline buttons.
-        if self._tool in _SHAPE_TOOLS:
+        # Stamp tips belong to freehand tools; leave shapes/fill for their own buttons.
+        if self._tool in _SHAPE_TOOLS or self._tool == "fill":
             self._tool = "pencil"
         self._refresh_tool_highlights()
 
@@ -415,6 +444,23 @@ class PaintWindow:
             max(0, min(self.CANVAS_W - 1, int(x))),
             max(0, min(self.CANVAS_H - 1, int(y))),
         )
+
+    def _sync_canvas_from_image(self) -> None:
+        """Replace canvas items with the current backing image (e.g. after fill)."""
+        assert self.canvas is not None
+        self.canvas.delete("all")
+        self._preview_id = None
+        self._canvas_photo = ImageTk.PhotoImage(self._image)
+        self.canvas.create_image(0, 0, anchor=tk.NW, image=self._canvas_photo)
+
+    def _flood_fill_at(self, x: int, y: int) -> None:
+        """Paint-bucket fill from (x, y) with the active color."""
+        fill_rgb = self._active_rgb()
+        target = self._image.getpixel((x, y))
+        if target == fill_rgb:
+            return
+        ImageDraw.floodfill(self._image, (x, y), fill_rgb, thresh=0)
+        self._sync_canvas_from_image()
 
     def _stamp(self, x: int, y: int) -> None:
         assert self.canvas is not None
@@ -514,6 +560,10 @@ class PaintWindow:
         if self._tool in _SHAPE_TOOLS:
             self._shape_start = (x, y)
             return
+        if self._tool == "fill":
+            self._flood_fill_at(x, y)
+            self._dirty = True
+            return
         if self._tool == "spray":
             self._spray_at(x, y)
         else:
@@ -522,6 +572,8 @@ class PaintWindow:
 
     def _on_drag(self, event) -> None:
         if not self._drawing:
+            return
+        if self._tool == "fill":
             return
         x, y = self._clamp(event.x, event.y)
         if self._tool in _SHAPE_TOOLS and self._shape_start is not None:
@@ -538,6 +590,9 @@ class PaintWindow:
             return
         x, y = self._clamp(event.x, event.y)
         self._drawing = False
+        if self._tool == "fill":
+            self._last_xy = None
+            return
         if self._tool in _SHAPE_TOOLS and self._shape_start is not None:
             self._commit_shape(self._shape_start[0], self._shape_start[1], x, y)
             self._shape_start = None
