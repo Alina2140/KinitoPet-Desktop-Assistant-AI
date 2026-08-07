@@ -55,6 +55,7 @@ _PALETTE = (
     "#c46b47",
 )
 
+# Freehand stamp tips (circle/square brush). Name is unused; kept for readability.
 _TIP_SPECS = (
     ("circle", "large", 16),
     ("circle", "medium", 10),
@@ -64,14 +65,32 @@ _TIP_SPECS = (
     ("rect", "small", 4),
 )
 
+# Shape tools live in the tip panel: each has three stroke thicknesses.
+_SHAPE_TIP_SPECS = (
+    ("line", "large", 16),
+    ("line", "medium", 10),
+    ("line", "small", 4),
+    ("circle", "large", 16),
+    ("circle", "medium", 10),
+    ("circle", "small", 4),
+    ("rect", "large", 16),
+    ("rect", "medium", 10),
+    ("rect", "small", 4),
+)
+
+_SHAPE_TOOLS = frozenset({"line", "circle", "rect"})
+
 _TOOL_DEFS = (
     ("eraser", "Eraser"),
     ("pencil", "Pencil"),
     ("spray", "Spray"),
-    ("line", "Line"),
-    ("circle", "Circle"),
-    ("rect", "Rect"),
 )
+
+_SHAPE_GLYPHS = {
+    "line": "/",
+    "circle": "○",
+    "rect": "□",
+}
 
 _UI_BG = "#e6ded5"
 _CANVAS_BG = "#ffffff"
@@ -156,6 +175,7 @@ class PaintWindow:
         self._preview_id: int | None = None
         self._tool_buttons: dict[str, Button] = {}
         self._tip_buttons: list[tuple[Button, str, int]] = []
+        self._shape_tip_buttons: list[tuple[Button, str, int]] = []
         self._color_preview: tk.Canvas | None = None
         self._dirty = False
         self._saved_name: str | None = None
@@ -223,6 +243,19 @@ class PaintWindow:
             )
             btn.grid(row=row, column=col, padx=1, pady=1)
             self._tip_buttons.append((btn, shape, size))
+
+        tip_rows = (len(_TIP_SPECS) + 2) // 3
+        for index, (tool_id, _name, size) in enumerate(_SHAPE_TIP_SPECS):
+            row, col = divmod(index, 3)
+            btn = Button(
+                tips,
+                text=_SHAPE_GLYPHS[tool_id],
+                font=("TkDefaultFont", 6 + size // 4),
+                width=3,
+                command=lambda t=tool_id, z=size: self._set_shape_tool(t, z),
+            )
+            btn.grid(row=tip_rows + row, column=col, padx=1, pady=1)
+            self._shape_tip_buttons.append((btn, tool_id, size))
 
         Button(sidebar, text="Save", command=self.save).pack(fill=tk.X, pady=(4, 0))
         Button(sidebar, text="Clear", command=self.clear_canvas).pack(fill=tk.X, pady=(4, 0))
@@ -326,17 +359,42 @@ class PaintWindow:
 
     def _set_tool(self, tool: str) -> None:
         self._tool = tool
-        for tool_id, btn in self._tool_buttons.items():
-            if tool_id == tool:
-                btn.configure(relief=tk.SUNKEN, bg=_SELECTED_BG)
-            else:
-                btn.configure(relief=tk.RAISED, bg=_UI_BG)
+        self._refresh_tool_highlights()
 
     def _set_tip(self, shape: str, size: int) -> None:
         self._tip_shape = shape
         self._tip_size = size
+        # Stamp tips belong to freehand tools; leave shapes for the outline buttons.
+        if self._tool in _SHAPE_TOOLS:
+            self._tool = "pencil"
+        self._refresh_tool_highlights()
+
+    def _set_shape_tool(self, tool: str, size: int) -> None:
+        """Select a shape tool (line/circle/rect) with a stroke thickness."""
+        self._tool = tool
+        self._tip_size = size
+        self._refresh_tool_highlights()
+
+    def _refresh_tool_highlights(self) -> None:
+        for tool_id, btn in self._tool_buttons.items():
+            if tool_id == self._tool:
+                btn.configure(relief=tk.SUNKEN, bg=_SELECTED_BG)
+            else:
+                btn.configure(relief=tk.RAISED, bg=_UI_BG)
+
+        freehand = self._tool not in _SHAPE_TOOLS
         for btn, tip_shape, tip_size in self._tip_buttons:
-            if tip_shape == shape and tip_size == size:
+            if freehand and tip_shape == self._tip_shape and tip_size == self._tip_size:
+                btn.configure(relief=tk.SUNKEN, bg=_SELECTED_BG)
+            else:
+                btn.configure(relief=tk.RAISED, bg=_UI_BG)
+
+        for btn, shape_tool, tip_size in self._shape_tip_buttons:
+            if (
+                not freehand
+                and shape_tool == self._tool
+                and tip_size == self._tip_size
+            ):
                 btn.configure(relief=tk.SUNKEN, bg=_SELECTED_BG)
             else:
                 btn.configure(relief=tk.RAISED, bg=_UI_BG)
@@ -418,13 +476,18 @@ class PaintWindow:
         assert self.canvas is not None
         self._clear_preview()
         color = self._color
+        width = max(1, self._tip_size // 3)
         if self._tool == "line":
-            self._preview_id = self.canvas.create_line(x0, y0, x1, y1, fill=color, width=2)
+            self._preview_id = self.canvas.create_line(
+                x0, y0, x1, y1, fill=color, width=width
+            )
         elif self._tool == "circle":
-            self._preview_id = self.canvas.create_oval(x0, y0, x1, y1, outline=color, width=2)
+            self._preview_id = self.canvas.create_oval(
+                x0, y0, x1, y1, outline=color, width=width
+            )
         elif self._tool == "rect":
             self._preview_id = self.canvas.create_rectangle(
-                x0, y0, x1, y1, outline=color, width=2
+                x0, y0, x1, y1, outline=color, width=width
             )
 
     def _commit_shape(self, x0: int, y0: int, x1: int, y1: int) -> None:
@@ -448,7 +511,7 @@ class PaintWindow:
         self._drawing = True
         self._last_xy = (x, y)
         self._last_spray_xy = None
-        if self._tool in ("line", "circle", "rect"):
+        if self._tool in _SHAPE_TOOLS:
             self._shape_start = (x, y)
             return
         if self._tool == "spray":
@@ -461,7 +524,7 @@ class PaintWindow:
         if not self._drawing:
             return
         x, y = self._clamp(event.x, event.y)
-        if self._tool in ("line", "circle", "rect") and self._shape_start is not None:
+        if self._tool in _SHAPE_TOOLS and self._shape_start is not None:
             self._preview_shape(self._shape_start[0], self._shape_start[1], x, y)
             return
         if self._tool == "spray":
@@ -475,7 +538,7 @@ class PaintWindow:
             return
         x, y = self._clamp(event.x, event.y)
         self._drawing = False
-        if self._tool in ("line", "circle", "rect") and self._shape_start is not None:
+        if self._tool in _SHAPE_TOOLS and self._shape_start is not None:
             self._commit_shape(self._shape_start[0], self._shape_start[1], x, y)
             self._shape_start = None
             self._dirty = True

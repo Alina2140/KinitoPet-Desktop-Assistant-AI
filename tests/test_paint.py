@@ -123,18 +123,45 @@ def test_paint_window_commit_shapes():
     window.canvas = MagicMock()
     window._set_color("#0000ff")
 
-    window._set_tool("line")
+    window._set_shape_tool("line", 10)
     window._commit_shape(0, 0, 30, 30)
     window.canvas.create_line.assert_called()
+    assert window._tool == "line"
+    assert window._tip_size == 10
 
-    window._set_tool("circle")
+    window._set_shape_tool("circle", 16)
     window._commit_shape(5, 5, 40, 40)
     window.canvas.create_oval.assert_called()
+    assert window._tip_size == 16
 
-    window._set_tool("rect")
+    window._set_shape_tool("rect", 4)
     window._commit_shape(5, 5, 40, 40)
     window.canvas.create_rectangle.assert_called()
+    assert window._tip_size == 4
 
+
+def test_paint_shape_tip_switches_back_to_pencil():
+    app = MagicMock()
+    window = PaintWindow(app)
+    window._set_shape_tool("line", 10)
+    assert window._tool == "line"
+    window._set_tip("circle", 10)
+    assert window._tool == "pencil"
+    assert window._tip_shape == "circle"
+    assert window._tip_size == 10
+
+
+def test_paint_tool_defs_exclude_shapes():
+    from kinito.features.paint import _SHAPE_TIP_SPECS, _TOOL_DEFS
+
+    tool_ids = [t for t, _ in _TOOL_DEFS]
+    assert tool_ids == ["eraser", "pencil", "spray"]
+    shape_tools = {t for t, _, _ in _SHAPE_TIP_SPECS}
+    assert shape_tools == {"line", "circle", "rect"}
+    assert all(
+        sum(1 for t, _, _ in _SHAPE_TIP_SPECS if t == shape) == 3
+        for shape in ("line", "circle", "rect")
+    )
 
 def test_spray_uses_tip_size_and_throttles():
     app = MagicMock()
