@@ -25,8 +25,8 @@ EMPTY_BG = "SystemButtonFace"
 EMPTY_MARK = "○"
 DISC_MARK = "●"
 
-# Prefer center columns when no win/block is available.
-COLUMN_PRIORITY = (3, 2, 4, 1, 5, 0, 6)
+# Soft center bias for scoring (not a hard pick order).
+_CENTER_WEIGHT = (1, 2, 3, 4, 3, 2, 1)
 
 
 def new_board() -> list[list[str]]:
@@ -87,8 +87,55 @@ def winning_column(board: list[list[str]], player: str) -> int | None:
     return None
 
 
+def _gives_opponent_immediate_win(board: list[list[str]], col: int) -> bool:
+    """True if dropping in *col* lets the player win on the next move."""
+    trial = copy.deepcopy(board)
+    if drop_disc(trial, col, KINITO) is None:
+        return True
+    return winning_column(trial, PLAYER) is not None
+
+
+def _adjacent_score(board: list[list[str]], row: int, col: int, player: str) -> int:
+    """Score nearby friendly discs; horizontal/diagonal outweigh pure vertical."""
+    score = 0
+    weights = (
+        ((0, 1), 4),
+        ((0, -1), 4),
+        ((1, 1), 3),
+        ((1, -1), 3),
+        ((-1, 1), 3),
+        ((-1, -1), 3),
+        ((1, 0), 1),
+        ((-1, 0), 1),
+    )
+    for (dr, dc), weight in weights:
+        r, c = row + dr, col + dc
+        if 0 <= r < ROWS and 0 <= c < COLS and board[r][c] == player:
+            score += weight
+    return score
+
+
+def _score_column(board: list[list[str]], col: int) -> int:
+    """Heuristic value of dropping Kinito's disc in *col*."""
+    trial = copy.deepcopy(board)
+    placed = drop_disc(trial, col, KINITO)
+    if placed is None:
+        return -10_000
+    row, c = placed
+    score = _CENTER_WEIGHT[c] * 2
+    score += _adjacent_score(trial, row, c, KINITO)
+    # Prefer setting up an immediate threat the opponent must answer.
+    if winning_column(trial, KINITO) is not None:
+        score += 12
+    # Discourage lonely vertical towers that gift diagonal setups.
+    own_in_col = sum(1 for r in range(ROWS) if board[r][c] == KINITO)
+    if own_in_col >= 1:
+        score -= own_in_col * 2
+    return score
+
+
 def choose_ai_column(board: list[list[str]], rng: random.Random | None = None) -> int:
-    """Pick a column for Kinito: win, block, prefer center, else random."""
+    """Pick a column: win, block, then scored safe move with light randomness."""
     source = rng or random
     win = winning_column(board, KINITO)
     if win is not None:
@@ -96,11 +143,18 @@ def choose_ai_column(board: list[list[str]], rng: random.Random | None = None) -
     block = winning_column(board, PLAYER)
     if block is not None:
         return block
-    valid = set(valid_columns(board))
-    for col in COLUMN_PRIORITY:
-        if col in valid:
-            return col
-    return source.choice(list(valid))
+
+    valid = valid_columns(board)
+    if not valid:
+        raise ValueError("no valid columns")
+
+    safe = [col for col in valid if not _gives_opponent_immediate_win(board, col)]
+    pool = safe or valid
+    scored = [(_score_column(board, col), col) for col in pool]
+    best = max(score for score, _ in scored)
+    # Near-best ties keep openings varied instead of always stacking center.
+    top = [col for score, col in scored if score >= best - 2]
+    return source.choice(top)
 
 
 class ConnectFourGame:

@@ -49,20 +49,72 @@ def winning_move(board: list[str], player: str) -> int | None:
     return None
 
 
-def choose_ai_move(board: list[str]) -> int:
-    """Pick a move for Kinito using simple heuristics."""
+def _fork_move(board: list[str], player: str) -> int | None:
+    """Return a move that creates two winning threats at once, if any."""
+    for index in available_moves(board):
+        trial = board[:]
+        trial[index] = player
+        threats = 0
+        for follow in available_moves(trial):
+            probe = trial[:]
+            probe[follow] = player
+            if check_winner(probe) == player:
+                threats += 1
+                if threats >= 2:
+                    return index
+    return None
+
+
+def _apply(board: list[str], index: int, player: str) -> list[str]:
+    trial = board[:]
+    trial[index] = player
+    return trial
+
+
+def choose_ai_move(board: list[str], rng: random.Random | None = None) -> int:
+    """Pick a move for Kinito: win, block, fork, then varied heuristics."""
+    source = rng or random
     win = winning_move(board, KINITO)
     if win is not None:
         return win
     block = winning_move(board, PLAYER)
     if block is not None:
         return block
+    fork = _fork_move(board, KINITO)
+    if fork is not None:
+        return fork
+    if _fork_move(board, PLAYER) is not None:
+        killers = [
+            move
+            for move in available_moves(board)
+            if _fork_move(_apply(board, move, KINITO), PLAYER) is None
+        ]
+        if killers:
+            return source.choice(killers)
+
+    empties = available_moves(board)
     if board[4] == EMPTY:
-        return 4
+        # Usually take center; sometimes leave it for a less robotic opener.
+        if len(empties) == 9 or (len(empties) == 8 and source.random() < 0.75):
+            return 4
+        if len(empties) < 8:
+            return 4
+
     corners = [i for i in (0, 2, 6, 8) if board[i] == EMPTY]
-    if corners:
-        return random.choice(corners)
-    return random.choice(available_moves(board))
+    sides = [i for i in (1, 3, 5, 7) if board[i] == EMPTY]
+
+    def without_gifting_fork(moves: list[int]) -> list[int]:
+        return [
+            move
+            for move in moves
+            if _fork_move(_apply(board, move, KINITO), PLAYER) is None
+        ]
+
+    for group in (corners, sides, empties):
+        safe = without_gifting_fork(group)
+        if safe:
+            return source.choice(safe)
+    return source.choice(empties)
 
 
 class TicTacToeGame:
