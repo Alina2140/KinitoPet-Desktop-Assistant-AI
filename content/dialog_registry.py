@@ -760,6 +760,33 @@ def _handle_quick_games(app, response: str) -> None:
         action(app)
 
 
+def _handle_trivia_pack(app, response: str) -> None:
+    """Start a true-or-false round for the chosen pack, or return to quick games."""
+    if response == dlg.BUTTON_BACK:
+        app.offer_quick_games()
+        return
+    from content.trivia_questions import (
+        PACK_ANIMALS,
+        PACK_KINITO,
+        PACK_MIXED,
+        PACK_SEASONAL,
+        PACK_SPOOKY,
+        PACK_TECH,
+    )
+
+    pack_map = {
+        dlg.BUTTON_TRIVIA_MIXED: PACK_MIXED,
+        dlg.BUTTON_TRIVIA_ANIMALS: PACK_ANIMALS,
+        dlg.BUTTON_TRIVIA_TECH: PACK_TECH,
+        dlg.BUTTON_TRIVIA_SPOOKY: PACK_SPOOKY,
+        dlg.BUTTON_TRIVIA_KINITO: PACK_KINITO,
+        dlg.BUTTON_TRIVIA_SEASONAL: PACK_SEASONAL,
+    }
+    pack = pack_map.get(response)
+    if pack is not None:
+        app.start_true_false_pack(pack)
+
+
 def _handle_board_games(app, response: str) -> None:
     """Launch a board mini-game or return to the top-level picker."""
     if response == dlg.BUTTON_BACK:
@@ -875,7 +902,8 @@ def _handle_true_false(app, response: str) -> None:
             score=app._trivia_score,
             total=ROUND_SIZE,
         )
-        _offer_play_again(app, line, lambda a: a.start_true_false())
+        pack = getattr(app, "_trivia_pack", None)
+        _offer_play_again(app, line, lambda a, p=pack: a.start_true_false_pack(p))
         return
 
     app.speak(feedback, 45, False, skip_ai=True)
@@ -1041,6 +1069,22 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
         dlg.MAGIC_8_BALL_MARKER,
         DialogUI("textbox", textbox_prompt=dlg.MAGIC_8_BALL_QUESTION),
         _handle_magic_8_ball,
+    ),
+    DialogSpec(
+        dlg.TRIVIA_PACK_MARKER,
+        DialogUI(
+            "buttons",
+            buttons=(
+                dlg.BUTTON_TRIVIA_MIXED,
+                dlg.BUTTON_TRIVIA_ANIMALS,
+                dlg.BUTTON_TRIVIA_TECH,
+                dlg.BUTTON_TRIVIA_SPOOKY,
+                dlg.BUTTON_TRIVIA_KINITO,
+                dlg.BUTTON_TRIVIA_SEASONAL,
+                dlg.BUTTON_BACK,
+            ),
+        ),
+        _handle_trivia_pack,
     ),
     DialogSpec(
         dlg.TRUE_FALSE_MARKER,

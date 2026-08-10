@@ -132,6 +132,9 @@ MAGIC_8_BALL_QUESTION = "Ask the Magic 8-Ball a yes-or-no question!"
 
 TRUE_FALSE_MARKER = "true or false"
 
+TRIVIA_PACK_MARKER = "trivia pack"
+TRIVIA_PACK_QUESTION = "True or False! Pick a trivia pack!"
+
 GAME_PLAY_AGAIN_MARKER = "play again"
 GAME_PLAY_AGAIN_SUFFIX = "Want to play again?"
 
@@ -1702,6 +1705,12 @@ BUTTON_GAME_MEMORY = "Memory"
 BUTTON_GAME_COIN_DICE = "Coin & Dice"
 BUTTON_GAME_MAGIC_8_BALL = "Magic 8-Ball"
 BUTTON_GAME_TRUE_FALSE = "True or False"
+BUTTON_TRIVIA_MIXED = "Mixed"
+BUTTON_TRIVIA_ANIMALS = "Animals"
+BUTTON_TRIVIA_TECH = "Tech"
+BUTTON_TRIVIA_SPOOKY = "Spooky"
+BUTTON_TRIVIA_KINITO = "Kinito"
+BUTTON_TRIVIA_SEASONAL = "Seasonal"
 BUTTON_GAME_BATTLESHIPS = "Battleships"
 BUTTON_GAME_SNAKE = "Snake"
 BUTTON_GAME_CONNECT_FOUR = "Connect Four"

@@ -189,6 +189,26 @@ def test_trivia_pick_random_question_excludes_used():
     assert second != first
 
 
+def test_trivia_pick_random_question_respects_pack():
+    from content.trivia_questions import PACK_ANIMALS, questions_for_pack
+
+    random.seed(0)
+    for _ in range(20):
+        question = pick_random_question(pack=PACK_ANIMALS)
+        assert question.pack == PACK_ANIMALS
+        assert question in questions_for_pack(PACK_ANIMALS)
+
+
+def test_trivia_mixed_uses_all_packs():
+    from content.trivia_questions import ALL_PACK_IDS, PACK_MIXED, TRIVIA_PACKS
+
+    assert len(TRIVIA_QUESTIONS) == sum(len(q) for q in TRIVIA_PACKS.values())
+    for pack_id in ALL_PACK_IDS:
+        if pack_id == PACK_MIXED:
+            continue
+        assert len(TRIVIA_PACKS[pack_id]) >= ROUND_SIZE
+
+
 def test_trivia_round_size_is_five():
     assert ROUND_SIZE == 5
     assert len(TRIVIA_QUESTIONS) >= ROUND_SIZE

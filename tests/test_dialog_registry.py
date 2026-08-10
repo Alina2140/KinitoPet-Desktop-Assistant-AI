@@ -194,6 +194,7 @@ def test_game_picker_before_game_question():
         (dlg.COIN_FLIP_QUESTION, dlg.COIN_FLIP_MARKER),
         (dlg.DICE_GUESS_QUESTION, dlg.DICE_GUESS_MARKER),
         (dlg.MAGIC_8_BALL_QUESTION, dlg.MAGIC_8_BALL_MARKER),
+        (dlg.TRIVIA_PACK_QUESTION, dlg.TRIVIA_PACK_MARKER),
         (dlg.GAME_PLAY_AGAIN_SUFFIX, dlg.GAME_PLAY_AGAIN_MARKER),
     ],
 )
@@ -207,6 +208,13 @@ def test_true_false_question_matches_registry():
     spec = find_dialog_spec("True or false: Honey never spoils.")
     assert spec is not None
     assert spec.marker == dlg.TRUE_FALSE_MARKER
+
+
+def test_trivia_pack_question_does_not_match_true_false_marker():
+    spec = find_dialog_spec(dlg.TRIVIA_PACK_QUESTION)
+    assert spec is not None
+    assert spec.marker == dlg.TRIVIA_PACK_MARKER
+    assert dlg.BUTTON_TRIVIA_MIXED in spec.ui.buttons
 
 
 def test_quick_games_before_game_picker():

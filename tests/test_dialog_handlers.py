@@ -203,10 +203,34 @@ def test_handle_true_false_round_end_offers_play_again(mock_app):
     mock_app._trivia_current = TriviaQuestion("The sky is blue.", True)
     mock_app._trivia_score = ROUND_SIZE - 1
     mock_app._trivia_round = ROUND_SIZE - 1
+    mock_app._trivia_pack = "animals"
     spec = find_dialog_spec("True or false: The sky is blue.")
     handle_dialog_response(mock_app, spec, dlg.BUTTON_TRUE)
     spoken = mock_app.speak.call_args[0][0]
     assert dlg.GAME_PLAY_AGAIN_MARKER.lower() in spoken.lower()
+    assert mock_app._play_again_restart is not None
+    mock_app._play_again_restart(mock_app)
+    mock_app.start_true_false_pack.assert_called_once_with("animals")
+
+
+def test_handle_trivia_pack_animals(mock_app):
+    from content.trivia_questions import PACK_ANIMALS
+
+    spec = find_dialog_spec(dlg.TRIVIA_PACK_QUESTION)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_TRIVIA_ANIMALS)
+    mock_app.start_true_false_pack.assert_called_once_with(PACK_ANIMALS)
+
+
+def test_handle_trivia_pack_back_opens_quick_games(mock_app):
+    spec = find_dialog_spec(dlg.TRIVIA_PACK_QUESTION)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_BACK)
+    mock_app.offer_quick_games.assert_called_once()
+
+
+def test_handle_quick_games_true_false_opens_pack_picker(mock_app):
+    spec = find_dialog_spec(dlg.QUICK_GAMES_QUESTION)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_GAME_TRUE_FALSE)
+    mock_app.start_true_false.assert_called_once()
 
 
 def test_game_picker_buttons_exclude_not_now():

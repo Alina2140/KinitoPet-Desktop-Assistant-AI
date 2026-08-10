@@ -96,7 +96,17 @@ class GamesMixin:
         self.speak(dlg.MAGIC_8_BALL_QUESTION, 45, True)
 
     def start_true_false(self):
-        """Start a true-or-false trivia round."""
+        """Offer thematic trivia packs for true-or-false."""
+        if self._is_busy_with_speech():
+            return
+        self.speak(dlg.TRIVIA_PACK_QUESTION, 45, True)
+
+    def start_true_false_pack(self, pack: str | None = None):
+        """Start a true-or-false trivia round for *pack* (mixed if None)."""
+        from content.trivia_questions import PACK_MIXED, is_valid_pack
+
+        chosen = pack if is_valid_pack(pack) else PACK_MIXED
+        self._trivia_pack = chosen
         self._trivia_score = 0
         self._trivia_round = 0
         self._trivia_used = set()
@@ -108,7 +118,8 @@ class GamesMixin:
 
         if self._trivia_round >= ROUND_SIZE:
             return
-        question = pick_random_question(self._trivia_used)
+        pack = getattr(self, "_trivia_pack", None)
+        question = pick_random_question(self._trivia_used, pack=pack)
         self._trivia_used.add(question)
         self._trivia_current = question
         prompt = f"True or false: {question.statement}"
