@@ -327,6 +327,28 @@ class MoodMixin:
         strength = "mildly" if intensity < 0.45 else ("clearly" if intensity < 0.75 else "strongly")
         return f"Kinito's current mood is {strength} {mood}. {hint}"
 
+    def speak_current_mood(self) -> None:
+        """Tell the user how Kinito is currently feeling."""
+        from content import dialogue as dlg
+        from content import llm_prompts as prompts
+        from content.mood_lines import STATUS_BY_MOOD, lines_for_mood
+
+        mood = self.get_mood()
+        pool = lines_for_mood(STATUS_BY_MOOD, mood) or STATUS_BY_MOOD[MOOD_NEUTRAL]
+        line = dlg.pick_line(pool)
+        speak = getattr(self, "speak", None)
+        if not callable(speak):
+            return
+        speak(
+            line,
+            ai_hint=(
+                f"{prompts.IDLE_PROMPT}\n"
+                f"The user asked how you feel. {self.mood_tone_hint()} "
+                f"Answer in one or two short sentences about your mood ({mood})."
+            ),
+            allow_in_focus=True,
+        )
+
     def mood_speech_chance_mult(self) -> float:
         """Multiplier for spontaneous speech chance."""
         return self.mood_action_weights().get("speech_chance_mult", 1.0)

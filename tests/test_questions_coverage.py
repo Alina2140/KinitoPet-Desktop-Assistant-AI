@@ -59,6 +59,7 @@ def test_menu_options_default_toggle_labels():
         dlg.BUTTON_MODES,
         dlg.BUTTON_SETTINGS,
         dlg.BUTTON_ACTIONS,
+        dlg.BUTTON_MOOD,
         dlg.BUTTON_CHAT,
         dlg.BUTTON_SAY_GOODBYE,
     ]
@@ -102,11 +103,12 @@ def test_menu_options_include_all_top_level_actions():
         dlg.BUTTON_MODES,
         dlg.BUTTON_SETTINGS,
         dlg.BUTTON_ACTIONS,
+        dlg.BUTTON_MOOD,
         dlg.BUTTON_CHAT,
         dlg.BUTTON_SAY_GOODBYE,
     }
     assert set(opts) == expected
-    assert len(opts) == 5
+    assert len(opts) == 6
 
 
 def test_modes_options_default_and_focus_timer():

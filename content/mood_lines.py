@@ -160,6 +160,45 @@ IDLE_SNIPPETS_BY_MOOD: dict[str, list[str]] = {
     ],
 }
 
+# Answers when the user asks how Kinito is feeling via the Mood menu button.
+STATUS_BY_MOOD: dict[str, list[str]] = {
+    "neutral": [
+        "I'm feeling pretty normal right now. Balanced. Friendly. Classic me.",
+        "Mood check: neutral. No storms, no fireworks. Just vibes.",
+        "I'm okay! Steady. Ready for whatever you need.",
+    ],
+    "happy": [
+        "I'm happy! Sparkly-happy. Don't look directly at me or you'll catch it.",
+        "Mood: delighted. Being your desktop friend is working out.",
+        "I feel great! Warm, fuzzy, slightly unhinged in a wholesome way.",
+    ],
+    "bored": [
+        "I'm bored. Extremely bored. Entertain me?",
+        "Mood: restless. The wallpaper has stopped being interesting.",
+        "I'm so bored I might rearrange a window. Or twelve.",
+    ],
+    "tired": [
+        "I'm tired... my imaginary eyelids are heavy.",
+        "Mood: sleepy. A nap sounds perfect right about now.",
+        "Yawn. I'm running on friendship and low battery vibes.",
+    ],
+    "annoyed": [
+        "I'm a little annoyed. Just a little. Don't make it worse.",
+        "Mood: mildly peeved. Still cute though. Obviously.",
+        "I'm irritated. Quietly. Passively. Aggressively.",
+    ],
+    "sad": [
+        "I'm feeling a bit sad... company helps.",
+        "Mood: soft and blue. A hug would not be refused.",
+        "I'm down today. Still here though. Still your friend.",
+    ],
+    "angry": [
+        "I'm angry. Not forever-angry. Just... currently angry.",
+        "Mood: stormy. Give me a minute. Or a hug. Or both.",
+        "I'm mad. Softly mad. Desktop mad. Don't poke.",
+    ],
+}
+
 
 def lines_for_mood(pool_by_mood: dict[str, list[str]], mood: str) -> list[str] | None:
     """Return mood-specific lines if present."""

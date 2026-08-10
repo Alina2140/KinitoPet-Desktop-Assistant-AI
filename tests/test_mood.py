@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import random
 import time
+from unittest.mock import MagicMock
 
 from content import dialogue as dlg
 from content import llm_prompts as prompts
 from content.memory_keys import ALLOWED_FACT_KEYS, EXTRA_FACT_KEYS, PROTECTED_FACT_KEYS
-from content.mood_lines import DECLINED_BY_MOOD, HUG_BY_MOOD
+from content.mood_lines import DECLINED_BY_MOOD, HUG_BY_MOOD, STATUS_BY_MOOD
 from kinito.features.mood import (
     KINITO_MOOD_FACT_KEY,
     MOOD_ANGRY,
@@ -128,6 +129,17 @@ def test_mood_tone_hint_mentions_mood():
     hint = host.mood_tone_hint()
     assert "annoyed" in hint.lower()
     assert prompts.append_mood_context("Hello.", hint).endswith(hint)
+
+
+def test_speak_current_mood_uses_status_pool():
+    host = _MoodHost()
+    host.set_mood(MOOD_BORED, 0.8)
+    host.speak = MagicMock()
+    host.speak_current_mood()
+    host.speak.assert_called_once()
+    spoken = host.speak.call_args.args[0]
+    assert spoken in STATUS_BY_MOOD["bored"]
+    assert "bored" in host.speak.call_args.kwargs["ai_hint"].lower()
 
 
 def test_pick_line_for_mood_can_use_mood_pool():

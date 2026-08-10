@@ -87,6 +87,12 @@ def test_handle_menu_opens_actions_submenu(mock_app):
     mock_app.speak.assert_called_once_with(dlg.ACTIONS_MENU_QUESTION, 45, True)
 
 
+def test_handle_menu_speaks_current_mood(mock_app):
+    spec = find_dialog_spec(dlg.MENU_PROMPT)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_MOOD)
+    mock_app.speak_current_mood.assert_called_once()
+
+
 def test_handle_game_picker_opens_quick_games(mock_app):
     spec = find_dialog_spec(dlg.GAME_PICKER_QUESTION)
     handle_dialog_response(mock_app, spec, dlg.BUTTON_QUICK_GAMES)
