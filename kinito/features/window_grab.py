@@ -83,7 +83,10 @@ class WindowGrabMixin:
         last_at = getattr(self, "_last_window_grab_at", 0.0)
         if time.monotonic() - last_at < self.WINDOW_GRAB_COOLDOWN_SECONDS:
             return False
-        if random.random() >= self.WINDOW_GRAB_CHANCE:
+        grab_chance = self.WINDOW_GRAB_CHANCE
+        if hasattr(self, "mood_window_grab_mult"):
+            grab_chance *= max(0.05, float(self.mood_window_grab_mult()))
+        if random.random() >= grab_chance:
             return False
         self._last_window_grab_at = time.monotonic()
         # Reserve immediately so roam/surf cannot start in parallel.

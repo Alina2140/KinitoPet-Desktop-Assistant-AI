@@ -44,7 +44,7 @@ MARKER_TO_FACT_KEY: dict[str, str] = {
 }
 
 # Facts that must not be overwritten by follow-up questions or chat extraction.
-PROTECTED_FACT_KEYS: frozenset[str] = frozenset({"user_names", "first_met"})
+PROTECTED_FACT_KEYS: frozenset[str] = frozenset({"user_names", "first_met", "kinito_mood"})
 
 # Facts that may hold multiple values (stored as str or list[str]).
 MULTI_VALUE_FACT_KEYS: frozenset[str] = frozenset(
@@ -84,6 +84,7 @@ EXTRA_FACT_KEYS: frozenset[str] = frozenset(
         "energy_today",
         "focus_today",
         "plans_tonight",
+        "kinito_mood",
     }
 )
 

@@ -36,7 +36,7 @@ def test_ask_for_hug_asks_yes_no(hug):
 
 
 def test_give_hug_defers_pose_until_speech(hug):
-    with patch("kinito.features.hug.random.choice", return_value=HUG_LINES[0]):
+    with patch("content.dialogue.pick_line_for_mood", return_value=HUG_LINES[0]):
         hug.give_hug()
     hug.change_sprite.assert_not_called()
     assert hug._begin_hug_after_speech is True

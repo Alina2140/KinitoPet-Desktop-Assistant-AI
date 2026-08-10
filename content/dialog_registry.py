@@ -277,7 +277,9 @@ def handle_dialog_response(app, spec: DialogSpec, response: str) -> None:
 
 def _speak_declined(app, lines) -> None:
     """Acknowledge a declined offer with a short spoken line."""
-    app.speak(dlg.pick_declined_line(lines))
+    mood = app.get_mood() if hasattr(app, "get_mood") else None
+    intensity = app.get_mood_intensity() if hasattr(app, "get_mood_intensity") else 0.0
+    app.speak(dlg.pick_declined_line(lines, mood=mood, intensity=intensity))
 
 
 def _yes_no(yes_fn: Handler, no_lines) -> Handler:
@@ -288,6 +290,20 @@ def _yes_no(yes_fn: Handler, no_lines) -> Handler:
             yes_fn(app)
         elif response == dlg.BUTTON_NO:
             _speak_declined(app, no_lines)
+
+    return handler
+
+
+def _hug_yes_no() -> Handler:
+    """Yes/No handler for hug asks; decline can sour Kinito's mood."""
+
+    def handler(app, response: str) -> None:
+        if response == dlg.BUTTON_YES:
+            app.give_hug()
+        elif response == dlg.BUTTON_NO:
+            if hasattr(app, "on_hug_declined"):
+                app.on_hug_declined()
+            _speak_declined(app, dlg.HUG_DECLINED_LINES)
 
     return handler
 
@@ -1252,7 +1268,7 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
     DialogSpec(
         dlg.HUG_QUESTION_MARKER,
         DialogUI("buttons", buttons=(dlg.BUTTON_YES, dlg.BUTTON_NO)),
-        _yes_no(lambda a: a.give_hug(), dlg.HUG_DECLINED_LINES),
+        _hug_yes_no(),
     ),
     DialogSpec(
         dlg.TRUST_QUESTION,

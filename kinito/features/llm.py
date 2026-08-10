@@ -207,6 +207,8 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
             include_special_day=bool(getattr(self, "_special_days_enabled", True)),
         )
         prompt = prompts.append_app_context(prompt, self._prompt_app_snapshot())
+        if hasattr(self, "mood_tone_hint"):
+            prompt = prompts.append_mood_context(prompt, self.mood_tone_hint())
         return self._append_memory_context(prompt, scripted_text=scripted_text, ai_hint=ai_hint)
 
     def _prompt_app_snapshot(self):
@@ -226,14 +228,20 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
     def _system_prompt(self) -> str:
         """Build the system prompt including persistent memory and live app context."""
         base = prompts.build_system_prompt(self.memory_prompt_block())
-        return prompts.append_app_context(base, self._prompt_app_snapshot())
+        base = prompts.append_app_context(base, self._prompt_app_snapshot())
+        if hasattr(self, "mood_tone_hint"):
+            base = prompts.append_mood_context(base, self.mood_tone_hint())
+        return base
 
     def _generation_system_prompt(self, ai_hint: str | None) -> str:
         """System prompt for short line generation; idle lines omit memory facts."""
         if ai_hint in prompts.IDLE_GENERATION_HINTS:
-            return prompts.append_app_context(
+            base = prompts.append_app_context(
                 prompts.SYSTEM_PROMPT, self._prompt_app_snapshot()
             )
+            if hasattr(self, "mood_tone_hint"):
+                base = prompts.append_mood_context(base, self.mood_tone_hint())
+            return base
         return self._system_prompt()
 
     def _generate_and_speak(self, scripted_text: str, *, ai_hint=None, max_tokens=None, **speak_kwargs):
@@ -378,6 +386,12 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
             fallback = pick_app_aware_idle_line(snapshot)
         else:
             fallback = random.choice(prompts.IDLE_ERROR_FALLBACK_LINES)
+            if hasattr(self, "get_mood"):
+                from content.mood_lines import IDLE_SNIPPETS_BY_MOOD, lines_for_mood
+
+                mood_lines = lines_for_mood(IDLE_SNIPPETS_BY_MOOD, self.get_mood())
+                if mood_lines and random.random() < 0.45:
+                    fallback = random.choice(mood_lines)
         prompt = random.choice([prompts.IDLE_PROMPT, prompts.RANDOM_QUESTION_PROMPT])
         self._generate_and_speak(
             fallback,

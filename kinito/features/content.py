@@ -64,20 +64,26 @@ class ContentMixin:
             return
 
         actions = [
-            self.print_current_datetime,
-            self.say_random_poem,
-            self.say_random_fact,
-            self.offer_browser_visit,
-            self.offer_random_music,
-            self.offer_game_picker,
-            self.ask_for_hug,
-            self.spontaneous_nap,
-            self.maybe_announce_special_day,
-            self.maybe_announce_birthday,
-            self.maybe_announce_met_anniversary,
-            self.maybe_mention_friendship_duration,
+            ("datetime", self.print_current_datetime),
+            ("poem", self.say_random_poem),
+            ("fact", self.say_random_fact),
+            ("browser", self.offer_browser_visit),
+            ("music", self.offer_random_music),
+            ("games", self.offer_game_picker),
+            ("hug_ask", self.ask_for_hug),
+            ("nap", self.spontaneous_nap),
+            ("special_day", self.maybe_announce_special_day),
+            ("birthday", self.maybe_announce_birthday),
+            ("anniversary", self.maybe_announce_met_anniversary),
+            ("friendship", self.maybe_mention_friendship_duration),
         ]
-        random.choice(actions)()
+        if hasattr(self, "mood_action_weights"):
+            weights_map = self.mood_action_weights()
+        else:
+            weights_map = {}
+        probs = [max(0.05, weights_map.get(key, 1.0)) for key, _ in actions]
+        _key, action = random.choices(actions, weights=probs, k=1)[0]
+        action()
 
     def toggle_special_days(self):
         """Enable or disable special-day comments on startup and idle."""

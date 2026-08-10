@@ -8,8 +8,29 @@ def pick_line(lines):
     return random.choice(lines)
 
 
-def pick_declined_line(specific_lines):
+def pick_line_for_mood(lines, mood=None, intensity=0.0, mood_lines=None):
+    """Pick from *mood_lines* when mood is strong enough, else from *lines*."""
+    try:
+        strength = float(intensity or 0.0)
+    except (TypeError, ValueError):
+        strength = 0.0
+    if mood and mood_lines and strength >= 0.25 and random.random() < min(0.85, 0.35 + strength):
+        return pick_line(mood_lines)
+    return pick_line(lines)
+
+
+def pick_declined_line(specific_lines, mood=None, intensity=0.0):
     """Return a short generic or context-specific declined-response line."""
+    if mood:
+        from content.mood_lines import DECLINED_BY_MOOD, lines_for_mood
+
+        mood_pool = lines_for_mood(DECLINED_BY_MOOD, mood)
+        try:
+            strength = float(intensity or 0.0)
+        except (TypeError, ValueError):
+            strength = 0.0
+        if mood_pool and random.random() < min(0.75, 0.4 + strength * 0.4):
+            return pick_line(mood_pool)
     if random.random() < 0.45:
         return pick_line(DECLINED_ACK_LINES)
     return pick_line(specific_lines)

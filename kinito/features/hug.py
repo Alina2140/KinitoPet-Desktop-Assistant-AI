@@ -1,6 +1,5 @@
 """Hug sprite animations during virtual hugs."""
 
-import random
 import tkinter as tk
 
 from content.hug_lines import HUG_LINES
@@ -48,7 +47,17 @@ class HugMixin:
 
     def give_hug(self):
         """Show hug sprites and speak a hug line after the user accepts a hug."""
+        from content import dialogue as dlg
         from content import llm_prompts as prompts
+        from content.mood_lines import HUG_BY_MOOD, lines_for_mood
 
+        if hasattr(self, "on_hug_accepted"):
+            self.on_hug_accepted()
+        mood = self.get_mood() if hasattr(self, "get_mood") else None
+        intensity = self.get_mood_intensity() if hasattr(self, "get_mood_intensity") else 0.0
+        mood_lines = lines_for_mood(HUG_BY_MOOD, mood) if mood else None
+        line = dlg.pick_line_for_mood(
+            HUG_LINES, mood=mood, intensity=intensity, mood_lines=mood_lines
+        )
         self._begin_hug_after_speech = True
-        self.speak(random.choice(HUG_LINES), ai_hint=prompts.HUG_PROMPT)
+        self.speak(line, ai_hint=prompts.HUG_PROMPT)

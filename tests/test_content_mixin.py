@@ -50,16 +50,25 @@ def test_speak_random_question_respects_gate(content):
 
 def test_perform_random_menu_action_respects_gate(content):
     content._can_initiate_spontaneous_speech.return_value = False
-    with patch("kinito.features.content.random.choice") as choice:
+    with patch("kinito.features.content.random.choices") as choices:
         content.perform_random_menu_action()
-    choice.assert_not_called()
+    choices.assert_not_called()
 
 
 def test_perform_random_menu_action_calls_one_handler(content):
-    action = MagicMock()
-    with patch("kinito.features.content.random.choice", return_value=action):
+    content.say_random_poem = MagicMock()
+    content.say_random_fact = MagicMock()
+    content.maybe_announce_special_day = MagicMock()
+    content.maybe_announce_birthday = MagicMock()
+    content.maybe_announce_met_anniversary = MagicMock()
+    content.maybe_mention_friendship_duration = MagicMock()
+    # Force the weighted picker to the poem action.
+    with patch(
+        "kinito.features.content.random.choices",
+        return_value=[("poem", content.say_random_poem)],
+    ):
         content.perform_random_menu_action()
-    action.assert_called_once()
+    content.say_random_poem.assert_called_once()
 
 
 def test_speak_random_question_speaks_from_pool(content):

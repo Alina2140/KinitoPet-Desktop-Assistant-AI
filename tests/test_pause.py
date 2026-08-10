@@ -37,7 +37,7 @@ def test_wake_from_spontaneous_nap_calls_unpause(pause_app):
     pause_app.paused = True
     with patch.object(pause_app, "unpause") as unpause:
         pause_app._wake_from_spontaneous_nap()
-    unpause.assert_called_once()
+    unpause.assert_called_once_with(spontaneous=True)
 
 
 def test_unpause_cancels_auto_wake_timer(pause_app):

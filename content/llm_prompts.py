@@ -330,6 +330,16 @@ def append_app_context(prompt: str, snapshot) -> str:
     return f"{prompt}\n\n{block}"
 
 
+def append_mood_context(prompt: str, mood_hint: str | None) -> str:
+    """Append Kinito's current mood tone hint when available."""
+    if not mood_hint or not str(mood_hint).strip():
+        return prompt
+    return (
+        f"{prompt}\n\n"
+        f"Current emotional state (stay in character): {str(mood_hint).strip()}"
+    )
+
+
 def build_system_prompt(memory_block: str = "") -> str:
     """Return the chat/generate system prompt, optionally with user memory."""
     block = memory_block.strip()

@@ -1102,15 +1102,26 @@ class MovementMixin:
             if self.maybe_trigger_window_grab():
                 time.sleep(0.1)
                 continue
+            if hasattr(self, "maybe_drift_mood"):
+                self.maybe_drift_mood()
+            speech_chance = self.SPONTANEOUS_CHANCE
+            menu_chance = self.MENU_ACTION_CHANCE
+            memory_chance = self.MEMORY_QUESTION_CHANCE
+            if hasattr(self, "mood_action_weights"):
+                weights = self.mood_action_weights()
+                speech_chance *= weights.get("speech_chance_mult", 1.0)
+                menu_chance *= weights.get("menu_action_mult", 1.0)
+                # Bored asks more questions; annoyed asks fewer.
+                memory_chance *= weights.get("questions_mult", 1.0)
             if (
-                random.random() < self.SPONTANEOUS_CHANCE
+                random.random() < speech_chance
                 and self._allow_random_questions
                 and not getattr(self, "_focus_mode", False)
                 and not getattr(self, "_is_game_active", lambda: False)()
             ):
-                if random.random() < self.MENU_ACTION_CHANCE:
+                if random.random() < menu_chance:
                     self.perform_random_menu_action()
-                elif random.random() < self.MEMORY_QUESTION_CHANCE:
+                elif random.random() < memory_chance:
                     self.speak_memory_question_idle()
                 elif self._should_use_ai_idle_line():
                     self.speak_ai_idle_line()
