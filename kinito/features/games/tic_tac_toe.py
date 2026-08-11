@@ -205,13 +205,18 @@ class TicTacToeGame:
         if result == PLAYER:
             line = dlg.pick_line(game_lines.TTT_PLAYER_WIN_LINES)
             status = "You win!"
+            outcome = "player_win"
         elif result == KINITO:
             line = dlg.pick_line(game_lines.TTT_KINITO_WIN_LINES)
             status = "Kinito wins!"
+            outcome = "kinito_win"
         else:
             line = dlg.pick_line(game_lines.TTT_DRAW_LINES)
             status = "Draw!"
+            outcome = "draw"
 
         if self.status_label:
             self.status_label.config(text=status)
+        if hasattr(self.app, "on_game_outcome"):
+            self.app.on_game_outcome(outcome)
         self.app.speak_game_line(line)

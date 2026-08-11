@@ -304,6 +304,8 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
 
     def start_chat(self) -> None:
         """Open chat mode if Ollama is reachable, otherwise show a fallback line."""
+        if hasattr(self, "note_user_attention"):
+            self.note_user_attention()
         if not self._llm_config.enabled:
             self.speak(dlg.CHAT_UNAVAILABLE, skip_ai=True)
             return
@@ -322,6 +324,8 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
         if getattr(self, "_chat_generating", False):
             return
 
+        if hasattr(self, "note_user_attention"):
+            self.note_user_attention()
         self._last_chat_user_text = text
         self.append_chat_message(self.chat_user_label(), text)
         self._conversation.add_user(text)

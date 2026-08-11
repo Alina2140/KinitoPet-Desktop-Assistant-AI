@@ -167,8 +167,12 @@ class MinesweeperGame:
         self._lock_board()
         if self.state["won"]:
             line = dlg.pick_line(game_lines.MINESWEEPER_WIN_LINES).format(mines=MINE_COUNT)
+            outcome = "player_win"
         else:
             line = dlg.pick_line(game_lines.MINESWEEPER_LOSE_LINES)
+            outcome = "kinito_win"
+        if hasattr(self.app, "on_game_outcome"):
+            self.app.on_game_outcome(outcome)
         self.app.speak_game_line(line)
 
     def _on_left_click(self, index: int):

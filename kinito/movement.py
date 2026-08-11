@@ -201,6 +201,8 @@ class MovementMixin:
 
     def on_mouse_down(self, event):
         """Begin dragging, stop roam sounds, and play the bomp click sound."""
+        if hasattr(self, "note_user_attention"):
+            self.note_user_attention()
         if getattr(self, "_throwing", False):
             self._cancel_throw()
         self.is_dragging = True
@@ -288,6 +290,8 @@ class MovementMixin:
         self._drag_samples = []
         if not self._should_skip_drag_sounds():
             self.play_sfx(woosh_file_path)
+        if hasattr(self, "on_throw"):
+            self.on_throw()
         self._maybe_speak_throw_reaction()
         if hasattr(self, "_keep_assistant_on_top"):
             self.root.after(0, self._keep_assistant_on_top)

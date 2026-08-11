@@ -98,12 +98,16 @@ class BattleshipsGame:
             line = dlg.pick_line(game_lines.BATTLESHIPS_WIN_LINES).format(
                 shots=len(self.state["shots"]),
             )
+            outcome = "player_win"
         else:
             hits = len(self.state["hits"])
             line = dlg.pick_line(game_lines.BATTLESHIPS_LOSE_LINES).format(
                 hits=hits,
                 total=SHIP_COUNT,
             )
+            outcome = "kinito_win"
+        if hasattr(self.app, "on_game_outcome"):
+            self.app.on_game_outcome(outcome)
         self.app.speak_game_line(line)
 
     def _fire(self, index: int):

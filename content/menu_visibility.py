@@ -157,6 +157,22 @@ MENU_VISIBILITY_SECTIONS: tuple[tuple[str, tuple[MenuEntry, ...]], ...] = (
                 ),
             ),
             (
+                "settings.mood_system",
+                "Mood System",
+                frozenset(
+                    {
+                        dlg.BUTTON_MOOD_SYSTEM,
+                        dlg.BUTTON_MOOD_SYSTEM_ON,
+                        dlg.BUTTON_MOOD_SYSTEM_OFF,
+                    }
+                ),
+            ),
+            (
+                "settings.reset_mood",
+                "Reset Mood",
+                frozenset({dlg.BUTTON_RESET_MOOD}),
+            ),
+            (
                 "settings.menu_buttons",
                 "Menu Buttons",
                 frozenset({dlg.BUTTON_MENU_BUTTONS}),

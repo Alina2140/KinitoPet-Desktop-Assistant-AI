@@ -45,6 +45,10 @@ _TONE_HINTS = {
     MOOD_ANGRY: "Tone: sharp, sulky, possessive undertone; keep it short.",
 }
 
+GAME_PLAYER_WIN = "player_win"
+GAME_KINITO_WIN = "kinito_win"
+GAME_DRAW = "draw"
+
 # Baseline weights for menu / ambient actions (relative).
 _BASE_ACTION_WEIGHTS = {
     "datetime": 1.0,
@@ -63,6 +67,7 @@ _BASE_ACTION_WEIGHTS = {
     "window_grab_mult": 1.0,
     "menu_action_mult": 1.0,
     "questions_mult": 1.0,
+    "nudge_mult": 1.0,
 }
 
 _MOOD_ACTION_MODIFIERS = {
@@ -74,6 +79,7 @@ _MOOD_ACTION_MODIFIERS = {
         "poem": 1.2,
         "speech_chance_mult": 1.15,
         "nap": 0.6,
+        "nudge_mult": 1.15,
     },
     MOOD_BORED: {
         "games": 2.2,
@@ -86,6 +92,7 @@ _MOOD_ACTION_MODIFIERS = {
         "speech_chance_mult": 1.25,
         "nap": 0.5,
         "hug_ask": 0.8,
+        "nudge_mult": 1.7,
     },
     MOOD_TIRED: {
         "nap": 2.8,
@@ -97,6 +104,7 @@ _MOOD_ACTION_MODIFIERS = {
         "questions_mult": 0.7,
         "hug_ask": 1.2,
         "poem": 0.8,
+        "nudge_mult": 0.7,
     },
     MOOD_ANNOYED: {
         "speech_chance_mult": 0.55,
@@ -108,6 +116,7 @@ _MOOD_ACTION_MODIFIERS = {
         "window_grab_mult": 0.6,
         "questions_mult": 0.6,
         "fact": 0.7,
+        "nudge_mult": 0.5,
     },
     MOOD_SAD: {
         "hug_ask": 2.0,
@@ -118,6 +127,7 @@ _MOOD_ACTION_MODIFIERS = {
         "speech_chance_mult": 0.85,
         "nap": 1.2,
         "music": 1.15,
+        "nudge_mult": 0.9,
     },
     MOOD_ANGRY: {
         "speech_chance_mult": 0.4,
@@ -128,6 +138,7 @@ _MOOD_ACTION_MODIFIERS = {
         "window_grab_mult": 0.8,
         "nap": 0.9,
         "questions_mult": 0.5,
+        "nudge_mult": 0.4,
     },
 }
 
@@ -198,13 +209,26 @@ class MoodMixin:
     MOOD_DRIFT_CHANCE = 0.14
     MOOD_DECAY_CHANCE = 0.22
     MOOD_DRIFT_EVERY_TICKS = 2
+    MOOD_NEGLECT_SECONDS = 12 * 60
+    MOOD_NEGLECT_COOLDOWN_SECONDS = 8 * 60
+    MOOD_THROW_STREAK_WINDOW = 90.0
 
     def _init_mood(self) -> None:
         """Initialize mood state (call after memory is ready)."""
         self._mood = MOOD_NEUTRAL
         self._mood_intensity = 0.0
         self._mood_idle_ticks = 0
+        self._last_user_attention_at = time.monotonic()
+        self._last_neglect_mood_at = 0.0
+        self._throw_mood_hits = 0
+        self._last_throw_mood_at = 0.0
+        if not hasattr(self, "_mood_system_enabled"):
+            self._mood_system_enabled = True
         self._load_persisted_mood()
+
+    def is_mood_system_enabled(self) -> bool:
+        """Return True when mood shifts and weights are active."""
+        return bool(getattr(self, "_mood_system_enabled", True))
 
     def get_mood(self) -> str:
         """Return the current mood id."""
@@ -237,6 +261,39 @@ class MoodMixin:
         if persist:
             self._persist_mood()
 
+    def reset_mood(self) -> None:
+        """Hard-reset mood to neutral and confirm to the user."""
+        from content import dialogue as dlg
+
+        self.set_mood(MOOD_NEUTRAL, 0.0)
+        self._throw_mood_hits = 0
+        speak = getattr(self, "speak", None)
+        if callable(speak):
+            speak(dlg.pick_line(dlg.MOOD_RESET_LINES), skip_ai=True)
+
+    def toggle_mood_system(self) -> None:
+        """Enable or disable the mood system and persist the setting."""
+        from content import dialogue as dlg
+
+        self._mood_system_enabled = not self.is_mood_system_enabled()
+        if not self._mood_system_enabled:
+            self.set_mood(MOOD_NEUTRAL, 0.0)
+            self._throw_mood_hits = 0
+        if hasattr(self, "_persist_settings"):
+            self._persist_settings()
+        lines = (
+            dlg.MOOD_SYSTEM_ON_LINES
+            if self._mood_system_enabled
+            else dlg.MOOD_SYSTEM_OFF_LINES
+        )
+        speak = getattr(self, "speak", None)
+        if callable(speak):
+            speak(dlg.pick_line(lines), skip_ai=True)
+
+    def note_user_attention(self) -> None:
+        """Record that the user interacted with Kinito."""
+        self._last_user_attention_at = time.monotonic()
+
     def shift_mood(
         self,
         target: str | None = None,
@@ -245,6 +302,8 @@ class MoodMixin:
         toward_neutral: bool = False,
     ) -> None:
         """Nudge mood intensity / target without hard-resetting."""
+        if not self.is_mood_system_enabled():
+            return
         amount = abs(float(amount))
         current = self.get_mood()
         intensity = self.get_mood_intensity()
@@ -270,6 +329,8 @@ class MoodMixin:
 
     def soften_mood(self, amount: float = 0.22) -> None:
         """Gently improve mood one step (hug / good nap), never a hard wipe."""
+        if not self.is_mood_system_enabled():
+            return
         current = self.get_mood()
         if current == MOOD_NEUTRAL:
             if random.random() < 0.45:
@@ -292,6 +353,9 @@ class MoodMixin:
 
     def maybe_drift_mood(self, rng: random.Random | None = None) -> None:
         """Occasionally drift away from or back toward neutral during idle."""
+        if not self.is_mood_system_enabled():
+            return
+        self.maybe_neglect_mood(rng=rng)
         source = rng or random
         self._mood_idle_ticks = getattr(self, "_mood_idle_ticks", 0) + 1
         if self._mood_idle_ticks % max(1, self.MOOD_DRIFT_EVERY_TICKS) != 0:
@@ -313,12 +377,40 @@ class MoodMixin:
             # Sometimes deepen the current mood a little.
             self.set_mood(mood, clamp_intensity(intensity + source.uniform(0.05, 0.18)))
 
+    def maybe_neglect_mood(self, rng: random.Random | None = None) -> None:
+        """Shift toward bored/sad when the user has ignored Kinito for a while."""
+        if not self.is_mood_system_enabled():
+            return
+        if getattr(self, "paused", False) or getattr(self, "_focus_mode", False):
+            return
+        if getattr(self, "_is_game_active", lambda: False)():
+            return
+        if getattr(self, "_is_busy_with_speech", lambda: False)():
+            return
+
+        now = time.monotonic()
+        last_attention = float(getattr(self, "_last_user_attention_at", now))
+        if now - last_attention < self.MOOD_NEGLECT_SECONDS:
+            return
+        last_neglect = float(getattr(self, "_last_neglect_mood_at", 0.0))
+        if now - last_neglect < self.MOOD_NEGLECT_COOLDOWN_SECONDS:
+            return
+
+        source = rng or random
+        self._last_neglect_mood_at = now
+        target = MOOD_BORED if source.random() < 0.65 else MOOD_SAD
+        self.shift_mood(target, source.uniform(0.18, 0.28))
+
     def mood_action_weights(self) -> dict[str, float]:
         """Action / chance multipliers for the current mood."""
+        if not self.is_mood_system_enabled():
+            return blend_action_weights(MOOD_NEUTRAL, 0.0)
         return blend_action_weights(self.get_mood(), self.get_mood_intensity())
 
     def mood_tone_hint(self) -> str:
         """Short tone instruction for LLM / dialogue selection."""
+        if not self.is_mood_system_enabled():
+            return _TONE_HINTS[MOOD_NEUTRAL]
         mood = self.get_mood()
         intensity = self.get_mood_intensity()
         hint = _TONE_HINTS.get(mood, _TONE_HINTS[MOOD_NEUTRAL])
@@ -332,6 +424,12 @@ class MoodMixin:
         from content import dialogue as dlg
         from content import llm_prompts as prompts
         from content.mood_lines import STATUS_BY_MOOD, lines_for_mood
+
+        if not self.is_mood_system_enabled():
+            speak = getattr(self, "speak", None)
+            if callable(speak):
+                speak(dlg.pick_line(dlg.MOOD_SYSTEM_OFF_LINES), skip_ai=True)
+            return
 
         mood = self.get_mood()
         pool = lines_for_mood(STATUS_BY_MOOD, mood) or STATUS_BY_MOOD[MOOD_NEUTRAL]
@@ -357,8 +455,52 @@ class MoodMixin:
         """Multiplier for ambient window-grab chance."""
         return self.mood_action_weights().get("window_grab_mult", 1.0)
 
+    def mood_nudge_mult(self) -> float:
+        """Multiplier for ambient nudge chance."""
+        return self.mood_action_weights().get("nudge_mult", 1.0)
+
+    def on_game_outcome(self, result: str) -> None:
+        """Shift mood after a mini-game ends."""
+        if not self.is_mood_system_enabled():
+            return
+        self.note_user_attention()
+        if result == GAME_PLAYER_WIN:
+            target = MOOD_ANNOYED if random.random() < 0.6 else MOOD_SAD
+            self.shift_mood(target, random.uniform(0.15, 0.26))
+            return
+        if result == GAME_KINITO_WIN:
+            if random.random() < 0.7:
+                self.shift_mood(MOOD_HAPPY, random.uniform(0.16, 0.26))
+            else:
+                self.soften_mood(0.18)
+            return
+        if result == GAME_DRAW and random.random() < 0.45:
+            self.shift_mood(MOOD_BORED, random.uniform(0.12, 0.2))
+
+    def on_throw(self) -> None:
+        """Shift mood after being flicked across the screen."""
+        if not self.is_mood_system_enabled():
+            return
+        now = time.monotonic()
+        last = float(getattr(self, "_last_throw_mood_at", 0.0))
+        if now - last > self.MOOD_THROW_STREAK_WINDOW:
+            self._throw_mood_hits = 0
+        self._throw_mood_hits = int(getattr(self, "_throw_mood_hits", 0)) + 1
+        self._last_throw_mood_at = now
+        hits = self._throw_mood_hits
+        if hits >= 3:
+            self.shift_mood(MOOD_ANGRY, random.uniform(0.2, 0.3))
+        elif hits == 2:
+            self.shift_mood(MOOD_ANNOYED, random.uniform(0.18, 0.26))
+        else:
+            target = MOOD_ANNOYED if random.random() < 0.7 else MOOD_SAD
+            self.shift_mood(target, random.uniform(0.14, 0.22))
+
     def on_hug_accepted(self) -> None:
         """Adjust mood after a successful hug (gradual, mood-dependent)."""
+        self.note_user_attention()
+        if not self.is_mood_system_enabled():
+            return
         mood = self.get_mood()
         if mood == MOOD_ANGRY:
             if random.random() < 0.35:
@@ -376,12 +518,19 @@ class MoodMixin:
 
     def on_hug_declined(self) -> None:
         """Small chance to sour mood when a hug is refused."""
+        self.note_user_attention()
+        if not self.is_mood_system_enabled():
+            return
         if random.random() < 0.55:
             target = MOOD_SAD if random.random() < 0.55 else MOOD_ANNOYED
             self.shift_mood(target, 0.2)
 
     def on_sleep_start(self, *, spontaneous: bool = False) -> None:
         """Note sleep start; tired mood may deepen slightly before rest."""
+        if not self.is_mood_system_enabled():
+            self._mood_sleep_was_spontaneous = spontaneous
+            self._mood_sleep_started_as = self.get_mood()
+            return
         if self.get_mood() == MOOD_TIRED and random.random() < 0.4:
             self.shift_mood(MOOD_TIRED, 0.08)
         self._mood_sleep_was_spontaneous = spontaneous
@@ -393,6 +542,8 @@ class MoodMixin:
             spontaneous = bool(getattr(self, "_mood_sleep_was_spontaneous", False))
         started = getattr(self, "_mood_sleep_started_as", self.get_mood())
         mood = self.get_mood()
+        if not self.is_mood_system_enabled():
+            return
 
         if started == MOOD_TIRED or mood == MOOD_TIRED:
             if random.random() < 0.75:

@@ -232,8 +232,12 @@ class HangmanGame:
         word = self.state["word"]
         if self.state["status"] == "won":
             line = dlg.pick_line(game_lines.HANGMAN_WIN_LINES).format(word=word)
+            outcome = "player_win"
         else:
             line = dlg.pick_line(game_lines.HANGMAN_LOSE_LINES).format(word=word)
+            outcome = "kinito_win"
+        if hasattr(self.app, "on_game_outcome"):
+            self.app.on_game_outcome(outcome)
         self.app.speak_game_line(line)
 
     def _reset(self):

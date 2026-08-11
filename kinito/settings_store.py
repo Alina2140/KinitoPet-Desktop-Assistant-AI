@@ -24,6 +24,7 @@ DEFAULT_BOOL_SETTINGS: dict[str, bool] = {
     "tts_enabled": True,
     "special_days_enabled": True,
     "emoji_picker_enabled": True,
+    "mood_system_enabled": True,
 }
 
 # Back-compat alias used by older tests/imports.

@@ -943,6 +943,24 @@ SPECIAL_DAYS_OFF_LINES = [
     "Special-day remarks disabled. Every day is still friendship day. Quietly.",
 ]
 
+MOOD_SYSTEM_ON_LINES = [
+    "Mood system on! I can feel again. Softly. Dramatically. Both.",
+    "Feelings enabled. Boredom, joy, mild chaos — the full package.",
+    "Mood tracking is back. I'll react to hugs, games, and neglect. Fair warning.",
+]
+
+MOOD_SYSTEM_OFF_LINES = [
+    "Mood system off. Flatline vibes. Perfectly balanced. Forever neutral.",
+    "Feelings paused. No more sulking about throws. Mostly.",
+    "Mood disabled. I'm still friendly. Just... emotionally buffered.",
+]
+
+MOOD_RESET_LINES = [
+    "Mood reset! Fresh start. Neutral. Like a reboot, but cuter.",
+    "All feelings cleared. Back to baseline friendship mode.",
+    "Emotional slate wiped. Hi. I'm fine. Newly fine.",
+]
+
 MENU_BUTTONS_OPEN_LINES = [
     "Here's the menu button list. Check what you want to see.",
     "Customize the menus. Tick boxes. Make it yours.",
@@ -1679,6 +1697,10 @@ BUTTON_EMOJI_OFF = "Emojis off"
 BUTTON_SPECIAL_DAYS = "Special Days"
 BUTTON_SPECIAL_DAYS_ON = "Special Days on"
 BUTTON_SPECIAL_DAYS_OFF = "Special Days off"
+BUTTON_MOOD_SYSTEM = "Mood System"
+BUTTON_MOOD_SYSTEM_ON = "Mood System on"
+BUTTON_MOOD_SYSTEM_OFF = "Mood System off"
+BUTTON_RESET_MOOD = "Reset Mood"
 BUTTON_MENU_BUTTONS = "Menu Buttons"
 BUTTON_SING_SONG = "Sing"
 BUTTON_FUN_FACT = "Fun Fact"

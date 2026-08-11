@@ -37,8 +37,22 @@ CREEPY_NUDGE_LINES = [
     "Your mouse paused. Are you thinking about leaving? Don't.",
 ]
 
+PLAY_INVITE_NUDGE_LINES = [
+    "I'm bored. Play a game with me? Please? Pretty please?",
+    "Trivia? Tic-tac-toe? Literally anything? Entertain me.",
+    "The desktop is quiet. Too quiet. Let's play something.",
+    "Quick game? I promise I'll only gloat a little if I win.",
+    "Hey. Games exist. We exist. Coincidence? Let's not waste it.",
+    "If you don't play with me soon, I might invent a worse idea.",
+]
+
 
 def pick_nudge_line() -> str:
     """Pick a wellness or creepy nudge line at random (50/50 category)."""
     pool = WELLNESS_NUDGE_LINES if random.random() < 0.5 else CREEPY_NUDGE_LINES
     return pick_line(pool)
+
+
+def pick_play_invite_nudge_line() -> str:
+    """Pick a bored play-invite nudge line."""
+    return pick_line(PLAY_INVITE_NUDGE_LINES)

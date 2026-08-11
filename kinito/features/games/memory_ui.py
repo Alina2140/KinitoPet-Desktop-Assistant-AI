@@ -158,4 +158,6 @@ class MemoryGame:
             self.status_label.config(text=f"All pairs found in {self.moves} moves!")
         self._expand_window_for_summary()
         line = dlg.pick_line(game_lines.MEMORY_WIN_LINES).format(moves=self.moves)
+        if hasattr(self.app, "on_game_outcome"):
+            self.app.on_game_outcome("player_win")
         self.app.speak_game_line(line)

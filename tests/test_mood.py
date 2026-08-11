@@ -9,8 +9,15 @@ from unittest.mock import MagicMock
 from content import dialogue as dlg
 from content import llm_prompts as prompts
 from content.memory_keys import ALLOWED_FACT_KEYS, EXTRA_FACT_KEYS, PROTECTED_FACT_KEYS
-from content.mood_lines import DECLINED_BY_MOOD, HUG_BY_MOOD, STATUS_BY_MOOD
+from content.mood_lines import (
+    DECLINED_BY_MOOD,
+    HUG_BY_MOOD,
+    IDLE_SNIPPETS_BY_MOOD,
+    STATUS_BY_MOOD,
+)
 from kinito.features.mood import (
+    GAME_KINITO_WIN,
+    GAME_PLAYER_WIN,
     KINITO_MOOD_FACT_KEY,
     MOOD_ANGRY,
     MOOD_ANNOYED,
@@ -26,6 +33,7 @@ from kinito.features.mood import (
     parse_mood_fact,
 )
 from kinito.memory.store import MemoryStore
+from kinito.settings_store import DEFAULT_BOOL_SETTINGS
 
 
 class _MoodHost(MoodMixin):
@@ -67,6 +75,14 @@ def test_blend_weights_bored_prefers_play():
     assert bored["games"] > neutral["games"]
     assert bored["browser"] > neutral["browser"]
     assert bored["window_grab_mult"] > neutral["window_grab_mult"]
+    assert bored["nudge_mult"] > neutral["nudge_mult"]
+
+
+def test_blend_weights_annoyed_reduces_nudges():
+    annoyed = blend_action_weights(MOOD_ANNOYED, 1.0)
+    neutral = blend_action_weights(MOOD_NEUTRAL, 0.0)
+    assert annoyed["nudge_mult"] < neutral["nudge_mult"]
+    assert annoyed["games"] < neutral["games"]
 
 
 def test_shift_mood_does_not_hard_reset():
@@ -205,3 +221,78 @@ def test_floating_assistant_includes_mood_mixin():
     assert issubclass(FloatingAssistant, MoodMixin)
     assert hasattr(FloatingAssistant, "mood_action_weights")
     assert hasattr(FloatingAssistant, "on_hug_accepted")
+
+
+def test_on_game_outcome_player_win_sours_mood():
+    host = _MoodHost()
+    host.set_mood(MOOD_NEUTRAL, 0.0)
+    random.seed(0)
+    host.on_game_outcome(GAME_PLAYER_WIN)
+    assert host.get_mood() in {MOOD_ANNOYED, MOOD_SAD}
+
+
+def test_on_game_outcome_kinito_win_can_happy():
+    host = _MoodHost()
+    host.set_mood(MOOD_NEUTRAL, 0.0)
+    random.seed(0)
+    host.on_game_outcome(GAME_KINITO_WIN)
+    assert host.get_mood() in {MOOD_HAPPY, MOOD_NEUTRAL}
+
+
+def test_on_throw_escalates_with_streak():
+    host = _MoodHost()
+    host.set_mood(MOOD_NEUTRAL, 0.0)
+    random.seed(0)
+    host.on_throw()
+    first = host.get_mood()
+    assert first in {MOOD_ANNOYED, MOOD_SAD}
+    host.on_throw()
+    host.on_throw()
+    assert host.get_mood() == MOOD_ANGRY
+
+
+def test_neglect_shifts_when_ignored():
+    host = _MoodHost()
+    host.set_mood(MOOD_NEUTRAL, 0.0)
+    host.paused = False
+    host._focus_mode = False
+    host._is_game_active = lambda: False
+    host._is_busy_with_speech = lambda: False
+    host._last_user_attention_at = time.monotonic() - (host.MOOD_NEGLECT_SECONDS + 1)
+    host._last_neglect_mood_at = 0.0
+    random.seed(0)
+    host.maybe_neglect_mood(rng=random.Random(0))
+    assert host.get_mood() in {MOOD_BORED, MOOD_SAD}
+
+
+def test_mood_system_toggle_disables_shifts():
+    host = _MoodHost()
+    host.speak = MagicMock()
+    host._persist_settings = MagicMock()
+    host.set_mood(MOOD_HAPPY, 0.8)
+    host.toggle_mood_system()
+    assert host.is_mood_system_enabled() is False
+    assert host.get_mood() == MOOD_NEUTRAL
+    host.on_game_outcome(GAME_PLAYER_WIN)
+    assert host.get_mood() == MOOD_NEUTRAL
+    weights = host.mood_action_weights()
+    assert abs(weights["games"] - 1.0) < 0.001
+
+
+def test_reset_mood_sets_neutral():
+    host = _MoodHost()
+    host.speak = MagicMock()
+    host.set_mood(MOOD_ANGRY, 0.9)
+    host.reset_mood()
+    assert host.get_mood() == MOOD_NEUTRAL
+    assert host.get_mood_intensity() == 0.0
+    host.speak.assert_called_once()
+
+
+def test_idle_snippets_have_depth_per_mood():
+    for mood, lines in IDLE_SNIPPETS_BY_MOOD.items():
+        assert len(lines) >= 6, mood
+
+
+def test_mood_system_setting_default_exists():
+    assert DEFAULT_BOOL_SETTINGS["mood_system_enabled"] is True

@@ -20,6 +20,8 @@ class NudgesMixin:
     NUDGE_POPUP_HEIGHT = 140
     NUDGE_POPUP_AUTO_CLOSE_MS = 8000
     APP_AWARE_NUDGE_CHANCE = 0.35
+    BORED_PLAY_INVITE_CHANCE = 0.4
+    BORED_PLAY_INVITE_INTENSITY = 0.3
 
     def maybe_trigger_ambient_reminder(self) -> bool:
         """Roll for an ambient nudge; schedule on the Tk main thread if it hits."""
@@ -36,7 +38,10 @@ class NudgesMixin:
         last_at = getattr(self, "_last_nudge_at", 0.0)
         if time.monotonic() - last_at < self.NUDGE_COOLDOWN_SECONDS:
             return False
-        if random.random() >= self.NUDGE_CHANCE:
+        chance = self.NUDGE_CHANCE
+        if hasattr(self, "mood_nudge_mult"):
+            chance *= max(0.05, float(self.mood_nudge_mult()))
+        if random.random() >= chance:
             return False
         self._last_nudge_at = time.monotonic()
         self.root.after(0, self._present_ambient_nudge)
@@ -60,6 +65,19 @@ class NudgesMixin:
 
     def _pick_ambient_nudge_text(self) -> str:
         """Pick a wellness/creepy nudge, sometimes referencing open apps."""
+        from content.nudge_lines import pick_play_invite_nudge_line
+        from kinito.features.mood import MOOD_BORED
+
+        if (
+            hasattr(self, "get_mood")
+            and hasattr(self, "get_mood_intensity")
+            and getattr(self, "is_mood_system_enabled", lambda: True)()
+            and self.get_mood() == MOOD_BORED
+            and self.get_mood_intensity() >= self.BORED_PLAY_INVITE_INTENSITY
+            and random.random() < self.BORED_PLAY_INVITE_CHANCE
+        ):
+            return pick_play_invite_nudge_line()
+
         snapshot = None
         get_snapshot = getattr(self, "get_app_snapshot", None)
         if callable(get_snapshot):

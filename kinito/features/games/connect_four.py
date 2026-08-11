@@ -317,13 +317,18 @@ class ConnectFourGame:
         if result == PLAYER:
             line = dlg.pick_line(game_lines.CONNECT_FOUR_PLAYER_WIN_LINES)
             status = "You win! Four in a row."
+            outcome = "player_win"
         elif result == KINITO:
             line = dlg.pick_line(game_lines.CONNECT_FOUR_KINITO_WIN_LINES)
             status = "Kinito wins!"
+            outcome = "kinito_win"
         else:
             line = dlg.pick_line(game_lines.CONNECT_FOUR_DRAW_LINES)
             status = "Draw! Board is full."
+            outcome = "draw"
 
         if self.status_label:
             self.status_label.config(text=status)
+        if hasattr(self.app, "on_game_outcome"):
+            self.app.on_game_outcome(outcome)
         self.app.speak_game_line(line)

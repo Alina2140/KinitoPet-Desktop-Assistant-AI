@@ -19,6 +19,8 @@ class GamesMixin:
         """Ask the user which mini-game to play."""
         if self._is_busy_with_speech():
             return
+        if hasattr(self, "note_user_attention"):
+            self.note_user_attention()
         self.speak(dlg.GAME_PICKER_QUESTION, 45, True)
 
     def offer_quick_games(self):
@@ -71,40 +73,56 @@ class GamesMixin:
 
     def start_tic_tac_toe(self):
         """Open a tic-tac-toe game window."""
+        if hasattr(self, "note_user_attention"):
+            self.note_user_attention()
         self.root.after(0, lambda: TicTacToeGame(self).open())
 
     def start_rock_paper_scissors(self):
         """Start a rock-paper-scissors round in the speech bubble."""
+        if hasattr(self, "note_user_attention"):
+            self.note_user_attention()
         self.speak(dlg.RPS_QUESTION, 45, True)
 
     def start_number_guess(self):
         """Start a number-guessing round."""
+        if hasattr(self, "note_user_attention"):
+            self.note_user_attention()
         self._number_guess_target = new_secret_number()
         self._number_guess_attempts = 0
         self.speak(dlg.NUMBER_GUESS_QUESTION, 45, True)
 
     def start_memory(self):
         """Open a memory card game window."""
+        if hasattr(self, "note_user_attention"):
+            self.note_user_attention()
         self.root.after(0, lambda: MemoryGame(self).open())
 
     def start_coin_dice(self):
         """Start the coin-and-dice quick game."""
+        if hasattr(self, "note_user_attention"):
+            self.note_user_attention()
         self.speak(dlg.COIN_DICE_QUESTION, 45, True)
 
     def start_magic_8_ball(self):
         """Start a Magic 8-Ball question round."""
+        if hasattr(self, "note_user_attention"):
+            self.note_user_attention()
         self.speak(dlg.MAGIC_8_BALL_QUESTION, 45, True)
 
     def start_true_false(self):
         """Offer thematic trivia packs for true-or-false."""
         if self._is_busy_with_speech():
             return
+        if hasattr(self, "note_user_attention"):
+            self.note_user_attention()
         self.speak(dlg.TRIVIA_PACK_QUESTION, 45, True)
 
     def start_true_false_pack(self, pack: str | None = None):
         """Start a true-or-false trivia round for *pack* (mixed if None)."""
         from content.trivia_questions import PACK_MIXED, is_valid_pack
 
+        if hasattr(self, "note_user_attention"):
+            self.note_user_attention()
         chosen = pack if is_valid_pack(pack) else PACK_MIXED
         self._trivia_pack = chosen
         self._trivia_score = 0
@@ -127,20 +145,30 @@ class GamesMixin:
 
     def start_battleships(self):
         """Open a mini battleships game window."""
+        if hasattr(self, "note_user_attention"):
+            self.note_user_attention()
         self.root.after(0, lambda: BattleshipsGame(self).open())
 
     def start_snake(self):
         """Open a snake game window."""
+        if hasattr(self, "note_user_attention"):
+            self.note_user_attention()
         self.root.after(0, lambda: SnakeGame(self).open())
 
     def start_connect_four(self):
         """Open a Connect Four game window."""
+        if hasattr(self, "note_user_attention"):
+            self.note_user_attention()
         self.root.after(0, lambda: ConnectFourGame(self).open())
 
     def start_hangman(self):
         """Open a hangman game window."""
+        if hasattr(self, "note_user_attention"):
+            self.note_user_attention()
         self.root.after(0, lambda: HangmanGame(self).open())
 
     def start_minesweeper(self):
         """Open a minesweeper game window."""
+        if hasattr(self, "note_user_attention"):
+            self.note_user_attention()
         self.root.after(0, lambda: MinesweeperGame(self).open())

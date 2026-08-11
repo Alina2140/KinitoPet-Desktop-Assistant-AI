@@ -29,6 +29,7 @@ def test_defaults_when_missing(store):
     assert store.get("tts_enabled") is True
     assert store.get("special_days_enabled") is True
     assert store.get("emoji_picker_enabled") is True
+    assert store.get("mood_system_enabled") is True
     assert store.get_hidden_menu_buttons() == set()
 
 
@@ -44,6 +45,7 @@ def test_update_and_reload_roundtrip(store, settings_dir):
         tts_enabled=False,
         special_days_enabled=False,
         emoji_picker_enabled=False,
+        mood_system_enabled=False,
     )
     store.set_hidden_menu_buttons({"main.chat", "actions.hug"})
     reloaded = SettingsStore(directory=settings_dir)
@@ -57,6 +59,7 @@ def test_update_and_reload_roundtrip(store, settings_dir):
     assert reloaded.get("tts_enabled") is False
     assert reloaded.get("special_days_enabled") is False
     assert reloaded.get("emoji_picker_enabled") is False
+    assert reloaded.get("mood_system_enabled") is False
     assert reloaded.get_hidden_menu_buttons() == {"main.chat", "actions.hug"}
 
 

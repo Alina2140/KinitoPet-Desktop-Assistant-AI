@@ -177,11 +177,15 @@ class SnakeGame:
                 score=score,
                 highscore=self.highscore,
             )
+            outcome = "player_win"
         else:
             line = dlg.pick_line(game_lines.SNAKE_GAME_OVER_LINES).format(
                 score=score,
                 highscore=self.highscore,
             )
+            outcome = "draw"
+        if hasattr(self.app, "on_game_outcome"):
+            self.app.on_game_outcome(outcome)
         self.app.speak_game_line(line)
 
     def _reset(self):
