@@ -633,15 +633,50 @@ class SpeechMixin:
         if engine is None:
             return False
         try:
+            volume = max(0.0, min(1.0, self.get_tts_volume() / 100.0))
+            engine.setProperty("volume", volume)
             engine.say(text)
             engine.runAndWait()
             return True
         except Exception:
             return False
 
+    def get_tts_volume(self) -> int:
+        """Return the current TTS volume in 0–100."""
+        from kinito.settings_store import clamp_tts_volume
+
+        return clamp_tts_volume(getattr(self, "_tts_volume", 100))
+
+    def offer_tts_volume_picker(self) -> None:
+        """Ask the user to pick a TTS volume preset."""
+        from content import dialogue as dlg
+
+        volume = self.get_tts_volume()
+        self.speak(
+            dlg.TTS_VOLUME_QUESTION.format(volume=volume),
+            45,
+            True,
+            skip_ai=True,
+        )
+
+    def set_tts_volume(self, volume: int) -> None:
+        """Set and persist TTS volume, then confirm aloud."""
+        from content import dialogue as dlg
+        from kinito.settings_store import clamp_tts_volume
+
+        self._tts_volume = clamp_tts_volume(volume)
+        if hasattr(self, "_persist_settings"):
+            self._persist_settings()
+        self.speak(
+            dlg.pick_line(dlg.TTS_VOLUME_SET_LINES).format(volume=self._tts_volume),
+            skip_ai=True,
+        )
+
     @staticmethod
-    def _balcon_command(voice: str, pitch: int) -> list[str]:
+    def _balcon_command(voice: str, pitch: int, volume: int = 100) -> list[str]:
         """Build a balcon argv that reads speech text from stdin."""
+        from kinito.settings_store import clamp_tts_volume
+
         return [
             balconexe_directory,
             "-n",
@@ -651,6 +686,8 @@ class SpeechMixin:
             "utf8",
             "-p",
             str(pitch),
+            "-v",
+            str(clamp_tts_volume(volume)),
         ]
 
     def _run_balcon_tts(self, voice: str, text: str, pitch: int, speech_epoch=None) -> bool:
@@ -659,7 +696,7 @@ class SpeechMixin:
             return False
         try:
             process = subprocess.Popen(
-                self._balcon_command(voice, pitch),
+                self._balcon_command(voice, pitch, self.get_tts_volume()),
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,

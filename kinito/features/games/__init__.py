@@ -8,12 +8,25 @@ from kinito.features.games.hangman import HangmanGame
 from kinito.features.games.memory_ui import MemoryGame
 from kinito.features.games.minesweeper_ui import MinesweeperGame
 from kinito.features.games.number_guess import new_secret_number
+from kinito.features.games.scores import GameScoresStore
 from kinito.features.games.snake_ui import SnakeGame
 from kinito.features.games.tic_tac_toe import TicTacToeGame
 
 
 class GamesMixin:
     """Offer and launch built-in mini-games."""
+
+    def _init_game_scores(self) -> None:
+        """Load persistent mini-game highscores (call from app __init__)."""
+        self._game_scores = GameScoresStore()
+
+    def game_scores(self) -> GameScoresStore:
+        """Return the game-scores store, creating it lazily if needed."""
+        store = getattr(self, "_game_scores", None)
+        if store is None:
+            store = GameScoresStore()
+            self._game_scores = store
+        return store
 
     def offer_game_picker(self):
         """Ask the user which mini-game to play."""

@@ -289,6 +289,7 @@ class FloatingAssistant(
         self._startup_complete = False
         self._allow_random_questions = False
         self._settings = SettingsStore()
+        self._init_game_scores()
         self._screen_effects_enabled = self._settings.get("screen_effects_enabled", True)
         self._ambient_reminders_enabled = self._settings.get(
             "ambient_reminders_enabled", True
@@ -309,6 +310,7 @@ class FloatingAssistant(
         self._hand_window = None
         self._hand_photo_ref = None
         self._tts_enabled = self._settings.get("tts_enabled", True)
+        self._tts_volume = self._settings.get_int("tts_volume", 100)
         self._special_days_enabled = self._settings.get("special_days_enabled", True)
         self._emoji_picker_enabled = self._settings.get("emoji_picker_enabled", True)
         self._mood_system_enabled = self._settings.get("mood_system_enabled", True)
@@ -425,6 +427,7 @@ class FloatingAssistant(
             snoring_enabled=bool(getattr(self, "_snoring_enabled", True)),
             window_grab_enabled=bool(getattr(self, "_window_grab_enabled", True)),
             tts_enabled=bool(getattr(self, "_tts_enabled", True)),
+            tts_volume=int(getattr(self, "_tts_volume", 100)),
             special_days_enabled=bool(getattr(self, "_special_days_enabled", True)),
             emoji_picker_enabled=bool(getattr(self, "_emoji_picker_enabled", True)),
             mood_system_enabled=bool(getattr(self, "_mood_system_enabled", True)),

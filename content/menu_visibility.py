@@ -63,6 +63,11 @@ MENU_VISIBILITY_SECTIONS: tuple[tuple[str, tuple[MenuEntry, ...]], ...] = (
         "Settings",
         (
             (
+                "settings.turn_on_off",
+                "Turn on/off",
+                frozenset({dlg.BUTTON_TURN_ON_OFF}),
+            ),
+            (
                 "settings.screen_effects",
                 "Screen Effects",
                 frozenset(
@@ -139,6 +144,18 @@ MENU_VISIBILITY_SECTIONS: tuple[tuple[str, tuple[MenuEntry, ...]], ...] = (
                 "settings.tts",
                 "Speech (TTS)",
                 frozenset({dlg.BUTTON_TTS, dlg.BUTTON_TTS_ON, dlg.BUTTON_TTS_OFF}),
+            ),
+            (
+                "settings.tts_volume",
+                "TTS Volume",
+                frozenset(
+                    {
+                        dlg.BUTTON_TTS_VOLUME,
+                        dlg.BUTTON_TTS_VOLUME_SOFT,
+                        dlg.BUTTON_TTS_VOLUME_NORMAL,
+                        dlg.BUTTON_TTS_VOLUME_LOUD,
+                    }
+                ),
             ),
             (
                 "settings.emojis",

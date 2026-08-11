@@ -32,6 +32,8 @@ class MemoryGame:
         self.pairs_found = 0
         self.status_label: Label | None = None
         self.window = None
+        scores = app.game_scores() if hasattr(app, "game_scores") else None
+        self.best_moves = scores.memory_best_moves() if scores is not None else None
 
     def open(self):
         """Open the memory game window."""
@@ -52,7 +54,7 @@ class MemoryGame:
             pady=(0, 10),
         )
 
-        self.status_label = Label(main, text="Find all matching pairs!")
+        self.status_label = Label(main, text=self._status_idle_text())
         self.status_label.pack(side=tk.TOP, pady=8)
 
         grid = create_uniform_grid(main, GRID_SIZE, GRID_SIZE, uniform="memory")
@@ -72,6 +74,11 @@ class MemoryGame:
             )
             button.grid(row=row, column=col, padx=4, pady=4, sticky="nsew")
             self.buttons.append(button)
+
+    def _status_idle_text(self) -> str:
+        if self.best_moves is None:
+            return "Find all matching pairs!"
+        return f"Find all matching pairs!  Best: {self.best_moves} moves"
 
     def _expand_window_for_summary(self):
         """Grow the window after a win so status text and controls stay visible."""
@@ -99,7 +106,7 @@ class MemoryGame:
         for button in self.buttons:
             button.config(text=HIDDEN_TEXT, state="normal")
         if self.status_label:
-            self.status_label.config(text="Find all matching pairs!")
+            self.status_label.config(text=self._status_idle_text())
 
     def _flip_card(self, index: int):
         """Reveal a card at *index*."""
@@ -153,11 +160,36 @@ class MemoryGame:
             self.app.speak_game_line(dlg.pick_line(game_lines.MEMORY_HALF_LINES))
 
     def _on_win(self):
-        """Announce victory."""
+        """Announce victory and update the persistent best-move record."""
+        is_new_best = False
+        if hasattr(self.app, "game_scores"):
+            is_new_best = self.app.game_scores().record_memory_moves(self.moves)
+            self.best_moves = self.app.game_scores().memory_best_moves()
+        elif self.best_moves is None or self.moves < self.best_moves:
+            self.best_moves = self.moves
+            is_new_best = True
+
+        best = self.best_moves if self.best_moves is not None else self.moves
         if self.status_label:
-            self.status_label.config(text=f"All pairs found in {self.moves} moves!")
+            if is_new_best:
+                self.status_label.config(
+                    text=f"New best! {self.moves} moves (previous best beaten)"
+                )
+            else:
+                self.status_label.config(
+                    text=f"All pairs found in {self.moves} moves! Best: {best}"
+                )
         self._expand_window_for_summary()
-        line = dlg.pick_line(game_lines.MEMORY_WIN_LINES).format(moves=self.moves)
+        if is_new_best:
+            line = dlg.pick_line(game_lines.MEMORY_NEW_BEST_LINES).format(
+                moves=self.moves,
+                best=best,
+            )
+        else:
+            line = dlg.pick_line(game_lines.MEMORY_WIN_LINES).format(
+                moves=self.moves,
+                best=best,
+            )
         if hasattr(self.app, "on_game_outcome"):
             self.app.on_game_outcome("player_win")
         self.app.speak_game_line(line)

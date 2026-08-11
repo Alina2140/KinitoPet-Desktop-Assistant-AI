@@ -26,9 +26,15 @@ RPS_DRAW_LINES = [
 ]
 
 NUMBER_GUESS_WIN_LINES = [
-    "Correct! It was {answer}! You got it in {attempts} tries. Impressive.",
-    "{answer}! Right on the nose in {attempts} guesses. You're good at this.",
-    "Yes! {answer} was the number. Only {attempts} tries. I underestimated you.",
+    "Correct! It was {answer}! You got it in {attempts} tries. Best: {best}.",
+    "{answer}! Right on the nose in {attempts} guesses. Your record is {best}.",
+    "Yes! {answer} was the number. Only {attempts} tries. Best so far: {best}.",
+]
+
+NUMBER_GUESS_NEW_BEST_LINES = [
+    "New best! {answer} in {attempts} tries! Record: {best}. I'll remember that.",
+    "Personal best broken — {attempts} guesses for {answer}. Best is now {best}.",
+    "Record! {answer} in {attempts} tries. Your new best is {best}.",
 ]
 
 NUMBER_GUESS_HIGHER_LINES = [
@@ -82,9 +88,15 @@ MEMORY_HALF_LINES = [
 ]
 
 MEMORY_WIN_LINES = [
-    "All pairs found in {moves} moves! You win!",
-    "Perfect memory! {moves} moves. I'm impressed.",
-    "You cleared the board in {moves} moves. Champion!",
+    "All pairs found in {moves} moves! Best so far: {best}.",
+    "Perfect memory! {moves} moves. Your record is {best}.",
+    "You cleared the board in {moves} moves. Best remains {best}. Champion!",
+]
+
+MEMORY_NEW_BEST_LINES = [
+    "New best! {moves} moves! I'll remember that forever.",
+    "Record broken — {moves} moves! Your new best is {best}.",
+    "Personal best: {moves} moves! My circuits are taking notes.",
 ]
 
 GAME_CLOSED_LINES = [
@@ -141,9 +153,15 @@ TRIVIA_WRONG_LINES = [
 ]
 
 TRIVIA_ROUND_END_LINES = [
-    "Round over! You scored {score} out of {total}.",
-    "That's {score} out of {total} correct. Not bad. Not amazing.",
-    "Final score: {score}/{total}.",
+    "Round over! You scored {score} out of {total}. Best: {best}. Streak: {streak}.",
+    "That's {score}/{total}. Best so far is {best}. Win streak: {streak}.",
+    "Final score: {score}/{total}. Record: {best}. Streak: {streak}.",
+]
+
+TRIVIA_NEW_BEST_LINES = [
+    "New trivia best! {score}/{total}! Record: {best}. Streak: {streak}.",
+    "Personal best broken — {score} out of {total}. Best is now {best}. Streak: {streak}.",
+    "That's a new record: {score}/{total}! Best: {best}. Streak: {streak}.",
 ]
 
 BATTLESHIPS_FIRST_HIT_LINES = [
@@ -157,8 +175,14 @@ BATTLESHIPS_HIT_LINES = [
 ]
 
 BATTLESHIPS_WIN_LINES = [
-    "All ships sunk in {shots} shots! You win. I'll rebuild. Silently.",
-    "You got them all in {shots} tries! Fleet destroyed. Well played.",
+    "All ships sunk in {shots} shots! Best: {best}. I'll rebuild. Silently.",
+    "You got them all in {shots} tries! Fleet destroyed. Best so far: {best}.",
+]
+
+BATTLESHIPS_NEW_BEST_LINES = [
+    "New best! Fleet sunk in {shots} shots! Record: {best}. My navy is taking notes.",
+    "Personal best — {shots} shots! Best is now {best}. Rude. Impressive.",
+    "Record broken: {shots} shots to clear the map. Best: {best}.",
 ]
 
 BATTLESHIPS_LOSE_LINES = [
@@ -169,8 +193,8 @@ BATTLESHIPS_LOSE_LINES = [
 
 SNAKE_GAME_OVER_LINES = [
     "Game over! Score: {score}. Highscore: {highscore}. Slither better next time.",
-    "Bonk! You scored {score}. My highscore watch says {highscore}. Rematch?",
-    "Snake down at {score} points. Session best is {highscore}. I was rooting for you. Mostly.",
+    "Bonk! You scored {score}. Highscore watch says {highscore}. Rematch?",
+    "Snake down at {score} points. Best ever is {highscore}. I was rooting for you. Mostly.",
 ]
 
 SNAKE_NEW_HIGH_LINES = [

@@ -69,6 +69,8 @@ def apply_dialog_ui(app, spec: DialogSpec) -> None:
             buttons = modes_options_for(app)
         elif spec.marker == dlg.SETTINGS_MENU_MARKER:
             buttons = settings_options_for(app)
+        elif spec.marker == dlg.SETTINGS_TOGGLES_MARKER:
+            buttons = settings_toggles_options_for(app)
         elif spec.marker == dlg.ACTIONS_MENU_MARKER:
             buttons = actions_options_for(app)
         else:
@@ -132,7 +134,24 @@ def modes_options_for(app) -> list[str]:
 
 
 def settings_options_for(app) -> list[str]:
-    """Return Settings submenu labels showing each toggle's current state."""
+    """Return top-level Settings submenu labels."""
+    return _visible_menu_buttons(
+        app,
+        [
+            dlg.BUTTON_TURN_ON_OFF,
+            dlg.BUTTON_TTS_VOLUME,
+            dlg.BUTTON_RESET_MOOD,
+            dlg.BUTTON_MENU_BUTTONS,
+            dlg.BUTTON_REMEMBER,
+            dlg.BUTTON_FORGET,
+            dlg.BUTTON_SHOW_CREDITS,
+            dlg.BUTTON_BACK,
+        ],
+    )
+
+
+def settings_toggles_options_for(app) -> list[str]:
+    """Return Settings on/off toggle labels showing each feature's current state."""
     screen_effects_label = (
         dlg.BUTTON_SCREEN_EFFECTS_ON
         if getattr(app, "_screen_effects_enabled", True)
@@ -202,11 +221,6 @@ def settings_options_for(app) -> list[str]:
             emoji_label,
             special_days_label,
             mood_system_label,
-            dlg.BUTTON_RESET_MOOD,
-            dlg.BUTTON_MENU_BUTTONS,
-            dlg.BUTTON_REMEMBER,
-            dlg.BUTTON_FORGET,
-            dlg.BUTTON_SHOW_CREDITS,
             dlg.BUTTON_BACK,
         ],
     )
@@ -268,6 +282,11 @@ def _open_modes_menu(app) -> None:
 def _open_settings_menu(app) -> None:
     """Open the Settings submenu."""
     app.speak(dlg.SETTINGS_MENU_QUESTION, 45, True)
+
+
+def _open_settings_toggles_menu(app) -> None:
+    """Open the Settings on/off toggles submenu."""
+    app.speak(dlg.SETTINGS_TOGGLES_QUESTION, 45, True)
 
 
 def _open_actions_menu(app) -> None:
@@ -584,6 +603,7 @@ def _menu_action_handlers() -> dict[str, Handler]:
         dlg.BUTTON_TTS: lambda a: a.toggle_tts(),
         dlg.BUTTON_TTS_ON: lambda a: a.toggle_tts(),
         dlg.BUTTON_TTS_OFF: lambda a: a.toggle_tts(),
+        dlg.BUTTON_TTS_VOLUME: lambda a: a.offer_tts_volume_picker(),
         dlg.BUTTON_EMOJI: lambda a: a.toggle_emoji_picker_setting(),
         dlg.BUTTON_EMOJI_ON: lambda a: a.toggle_emoji_picker_setting(),
         dlg.BUTTON_EMOJI_OFF: lambda a: a.toggle_emoji_picker_setting(),
@@ -595,6 +615,7 @@ def _menu_action_handlers() -> dict[str, Handler]:
         dlg.BUTTON_MOOD_SYSTEM_OFF: lambda a: a.toggle_mood_system(),
         dlg.BUTTON_RESET_MOOD: lambda a: a.reset_mood(),
         dlg.BUTTON_MENU_BUTTONS: lambda a: a.open_menu_button_settings(),
+        dlg.BUTTON_TURN_ON_OFF: _open_settings_toggles_menu,
         dlg.BUTTON_SING_SONG: lambda a: a.say_random_poem(),
         dlg.BUTTON_FUN_FACT: lambda a: a.say_random_fact(),
         dlg.BUTTON_REMEMBER: lambda a: a.show_memory_summary(),
@@ -624,6 +645,18 @@ def _handle_modes_menu(app, response: str) -> None:
 def _handle_settings_menu(app, response: str) -> None:
     """Handle Settings submenu selections."""
     if getattr(app, "paused", False) or getattr(app, "_focus_mode", False):
+        return
+    action = _menu_action_handlers().get(response)
+    if action:
+        action(app)
+
+
+def _handle_settings_toggles_menu(app, response: str) -> None:
+    """Handle Settings on/off toggle selections."""
+    if getattr(app, "paused", False) or getattr(app, "_focus_mode", False):
+        return
+    if response == dlg.BUTTON_BACK:
+        _open_settings_menu(app)
         return
     action = _menu_action_handlers().get(response)
     if action:
@@ -841,6 +874,21 @@ def _handle_play_again(app, response: str) -> None:
         app.offer_quick_games()
 
 
+def _handle_tts_volume(app, response: str) -> None:
+    """Apply a TTS volume preset from the picker."""
+    volume_map = {
+        dlg.BUTTON_TTS_VOLUME_SOFT: dlg.TTS_VOLUME_SOFT,
+        dlg.BUTTON_TTS_VOLUME_NORMAL: dlg.TTS_VOLUME_NORMAL,
+        dlg.BUTTON_TTS_VOLUME_LOUD: dlg.TTS_VOLUME_LOUD,
+    }
+    if response == dlg.BUTTON_BACK:
+        _open_settings_menu(app)
+        return
+    volume = volume_map.get(response)
+    if volume is not None and hasattr(app, "set_tts_volume"):
+        app.set_tts_volume(volume)
+
+
 def _handle_coin_dice_mode(app, response: str) -> None:
     """Choose coin flip or dice roll."""
     if response == dlg.BUTTON_FLIP_COIN:
@@ -927,11 +975,30 @@ def _handle_true_false(app, response: str) -> None:
     app._trivia_current = None
 
     if app._trivia_round >= ROUND_SIZE:
-        line = dlg.pick_line(game_lines.TRIVIA_ROUND_END_LINES).format(
-            score=app._trivia_score,
-            total=ROUND_SIZE,
+        score = app._trivia_score
+        total = ROUND_SIZE
+        summary: dict = {"best": score, "streak": 0, "new_best": False}
+        scores_fn = getattr(app, "game_scores", None)
+        if callable(scores_fn):
+            store = scores_fn()
+            record = getattr(store, "record_trivia_score", None)
+            if callable(record):
+                recorded = record(score, total=total)
+                if isinstance(recorded, dict):
+                    summary = recorded
+        fmt = {
+            "score": score,
+            "total": total,
+            "best": summary.get("best", score),
+            "streak": summary.get("streak", 0),
+        }
+        pool = (
+            game_lines.TRIVIA_NEW_BEST_LINES
+            if summary.get("new_best")
+            else game_lines.TRIVIA_ROUND_END_LINES
         )
-        outcome = GAME_PLAYER_WIN if app._trivia_score >= 3 else GAME_KINITO_WIN
+        line = dlg.pick_line(pool).format(**fmt)
+        outcome = GAME_PLAYER_WIN if score >= 3 else GAME_KINITO_WIN
         _report_game_outcome(app, outcome)
         pack = getattr(app, "_trivia_pack", None)
         _offer_play_again(app, line, lambda a, p=pack: a.start_true_false_pack(p))
@@ -985,10 +1052,26 @@ def _handle_number_guess(app, response: str) -> None:
     if result == "correct":
         attempts = app._number_guess_attempts
         app._number_guess_target = None
-        line = dlg.pick_line(game_lines.NUMBER_GUESS_WIN_LINES).format(
-            answer=target,
-            attempts=attempts,
+        is_new_best = False
+        best = attempts
+        scores_fn = getattr(app, "game_scores", None)
+        if callable(scores_fn):
+            store = scores_fn()
+            record = getattr(store, "record_number_guess_attempts", None)
+            get_best = getattr(store, "number_guess_best_attempts", None)
+            if callable(record):
+                is_new_best = bool(record(attempts))
+            if callable(get_best):
+                recorded_best = get_best()
+                if isinstance(recorded_best, int):
+                    best = recorded_best
+        fmt = {"answer": target, "attempts": attempts, "best": best}
+        pool = (
+            game_lines.NUMBER_GUESS_NEW_BEST_LINES
+            if is_new_best
+            else game_lines.NUMBER_GUESS_WIN_LINES
         )
+        line = dlg.pick_line(pool).format(**fmt)
         _report_game_outcome(app, GAME_PLAYER_WIN)
         app.speak(line)
         return
@@ -1024,6 +1107,24 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
         dlg.SETTINGS_MENU_MARKER,
         DialogUI("buttons"),
         _handle_settings_menu,
+    ),
+    DialogSpec(
+        dlg.SETTINGS_TOGGLES_MARKER,
+        DialogUI("buttons"),
+        _handle_settings_toggles_menu,
+    ),
+    DialogSpec(
+        dlg.TTS_VOLUME_MARKER,
+        DialogUI(
+            "buttons",
+            buttons=(
+                dlg.BUTTON_TTS_VOLUME_SOFT,
+                dlg.BUTTON_TTS_VOLUME_NORMAL,
+                dlg.BUTTON_TTS_VOLUME_LOUD,
+                dlg.BUTTON_BACK,
+            ),
+        ),
+        _handle_tts_volume,
     ),
     DialogSpec(
         dlg.ACTIONS_MENU_MARKER,

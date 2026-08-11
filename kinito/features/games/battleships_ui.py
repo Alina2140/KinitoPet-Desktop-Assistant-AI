@@ -31,6 +31,8 @@ class BattleshipsGame:
         self.status_label: Label | None = None
         self.window = None
         self.commented_first_hit = False
+        scores = app.game_scores() if hasattr(app, "game_scores") else None
+        self.best_shots = scores.battleships_best_shots() if scores is not None else None
 
     def open(self):
         """Open the battleships game window."""
@@ -66,10 +68,20 @@ class BattleshipsGame:
 
     def _status_text(self) -> str:
         if self.state["finished"]:
-            return "Game over. S = ship. New Game to play again!"
+            if self.best_shots is None:
+                return "Game over. S = ship. New Game to play again!"
+            return (
+                f"Game over. S = ship. Best win: {self.best_shots} shots. "
+                "New Game to play again!"
+            )
         shots_left = shots_remaining(self.state)
         ships_left = ships_remaining(self.state)
-        return f"Shots left: {shots_left}. Ships left: {ships_left}. Click a cell to fire!"
+        if self.best_shots is None:
+            return f"Shots left: {shots_left}. Ships left: {ships_left}. Click a cell to fire!"
+        return (
+            f"Shots left: {shots_left}. Ships left: {ships_left}. "
+            f"Best: {self.best_shots} shots. Click a cell to fire!"
+        )
 
     def _reset(self):
         """Start a fresh game board."""
@@ -91,15 +103,36 @@ class BattleshipsGame:
     def _end_game(self, result: str):
         """Lock the board, reveal ships, and announce the outcome."""
         self._reveal_ships()
-        if self.status_label:
-            self.status_label.config(text=self._status_text())
 
         if result == "win":
-            line = dlg.pick_line(game_lines.BATTLESHIPS_WIN_LINES).format(
-                shots=len(self.state["shots"]),
+            shots = len(self.state["shots"])
+            is_new_best = False
+            if hasattr(self.app, "game_scores"):
+                is_new_best = self.app.game_scores().record_battleships_shots(shots)
+                self.best_shots = self.app.game_scores().battleships_best_shots()
+            elif self.best_shots is None or shots < self.best_shots:
+                self.best_shots = shots
+                is_new_best = True
+            best = self.best_shots if self.best_shots is not None else shots
+            if self.status_label:
+                if is_new_best:
+                    self.status_label.config(
+                        text=f"New best! Won in {shots} shots. S = ship."
+                    )
+                else:
+                    self.status_label.config(
+                        text=f"You win in {shots} shots! Best: {best}. S = ship."
+                    )
+            pool = (
+                game_lines.BATTLESHIPS_NEW_BEST_LINES
+                if is_new_best
+                else game_lines.BATTLESHIPS_WIN_LINES
             )
+            line = dlg.pick_line(pool).format(shots=shots, best=best)
             outcome = "player_win"
         else:
+            if self.status_label:
+                self.status_label.config(text=self._status_text())
             hits = len(self.state["hits"])
             line = dlg.pick_line(game_lines.BATTLESHIPS_LOSE_LINES).format(
                 hits=hits,

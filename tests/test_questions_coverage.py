@@ -137,231 +137,15 @@ def test_modes_options_default_and_focus_timer():
 
 
 def test_settings_and_actions_options():
-    from content.dialog_registry import actions_options_for, settings_options_for
+    from content.dialog_registry import (
+        actions_options_for,
+        settings_options_for,
+        settings_toggles_options_for,
+    )
 
     assert settings_options_for(_menu_app()) == [
-        dlg.BUTTON_SCREEN_EFFECTS_ON,
-        dlg.BUTTON_REMINDERS_ON,
-        dlg.BUTTON_APP_AWARENESS_ON,
-        dlg.BUTTON_SCREEN_COMMENTS_ON,
-        dlg.BUTTON_PAINT_RECALL_ON,
-        dlg.BUTTON_SNORING_ON,
-        dlg.BUTTON_WINDOW_PLAY_ON,
-        dlg.BUTTON_TTS_ON,
-        dlg.BUTTON_EMOJI_ON,
-        dlg.BUTTON_SPECIAL_DAYS_ON,
-        dlg.BUTTON_MOOD_SYSTEM_ON,
-        dlg.BUTTON_RESET_MOOD,
-        dlg.BUTTON_MENU_BUTTONS,
-        dlg.BUTTON_REMEMBER,
-        dlg.BUTTON_FORGET,
-        dlg.BUTTON_SHOW_CREDITS,
-        dlg.BUTTON_BACK,
-    ]
-    assert settings_options_for(_menu_app(ambient_reminders_enabled=False)) == [
-        dlg.BUTTON_SCREEN_EFFECTS_ON,
-        dlg.BUTTON_REMINDERS_OFF,
-        dlg.BUTTON_APP_AWARENESS_ON,
-        dlg.BUTTON_SCREEN_COMMENTS_ON,
-        dlg.BUTTON_PAINT_RECALL_ON,
-        dlg.BUTTON_SNORING_ON,
-        dlg.BUTTON_WINDOW_PLAY_ON,
-        dlg.BUTTON_TTS_ON,
-        dlg.BUTTON_EMOJI_ON,
-        dlg.BUTTON_SPECIAL_DAYS_ON,
-        dlg.BUTTON_MOOD_SYSTEM_ON,
-        dlg.BUTTON_RESET_MOOD,
-        dlg.BUTTON_MENU_BUTTONS,
-        dlg.BUTTON_REMEMBER,
-        dlg.BUTTON_FORGET,
-        dlg.BUTTON_SHOW_CREDITS,
-        dlg.BUTTON_BACK,
-    ]
-    assert settings_options_for(_menu_app(app_awareness_enabled=False)) == [
-        dlg.BUTTON_SCREEN_EFFECTS_ON,
-        dlg.BUTTON_REMINDERS_ON,
-        dlg.BUTTON_APP_AWARENESS_OFF,
-        dlg.BUTTON_SCREEN_COMMENTS_ON,
-        dlg.BUTTON_PAINT_RECALL_ON,
-        dlg.BUTTON_SNORING_ON,
-        dlg.BUTTON_WINDOW_PLAY_ON,
-        dlg.BUTTON_TTS_ON,
-        dlg.BUTTON_EMOJI_ON,
-        dlg.BUTTON_SPECIAL_DAYS_ON,
-        dlg.BUTTON_MOOD_SYSTEM_ON,
-        dlg.BUTTON_RESET_MOOD,
-        dlg.BUTTON_MENU_BUTTONS,
-        dlg.BUTTON_REMEMBER,
-        dlg.BUTTON_FORGET,
-        dlg.BUTTON_SHOW_CREDITS,
-        dlg.BUTTON_BACK,
-    ]
-    assert settings_options_for(_menu_app(screen_comments_enabled=False)) == [
-        dlg.BUTTON_SCREEN_EFFECTS_ON,
-        dlg.BUTTON_REMINDERS_ON,
-        dlg.BUTTON_APP_AWARENESS_ON,
-        dlg.BUTTON_SCREEN_COMMENTS_OFF,
-        dlg.BUTTON_PAINT_RECALL_ON,
-        dlg.BUTTON_SNORING_ON,
-        dlg.BUTTON_WINDOW_PLAY_ON,
-        dlg.BUTTON_TTS_ON,
-        dlg.BUTTON_EMOJI_ON,
-        dlg.BUTTON_SPECIAL_DAYS_ON,
-        dlg.BUTTON_MOOD_SYSTEM_ON,
-        dlg.BUTTON_RESET_MOOD,
-        dlg.BUTTON_MENU_BUTTONS,
-        dlg.BUTTON_REMEMBER,
-        dlg.BUTTON_FORGET,
-        dlg.BUTTON_SHOW_CREDITS,
-        dlg.BUTTON_BACK,
-    ]
-    assert settings_options_for(_menu_app(paint_recall_enabled=False)) == [
-        dlg.BUTTON_SCREEN_EFFECTS_ON,
-        dlg.BUTTON_REMINDERS_ON,
-        dlg.BUTTON_APP_AWARENESS_ON,
-        dlg.BUTTON_SCREEN_COMMENTS_ON,
-        dlg.BUTTON_PAINT_RECALL_OFF,
-        dlg.BUTTON_SNORING_ON,
-        dlg.BUTTON_WINDOW_PLAY_ON,
-        dlg.BUTTON_TTS_ON,
-        dlg.BUTTON_EMOJI_ON,
-        dlg.BUTTON_SPECIAL_DAYS_ON,
-        dlg.BUTTON_MOOD_SYSTEM_ON,
-        dlg.BUTTON_RESET_MOOD,
-        dlg.BUTTON_MENU_BUTTONS,
-        dlg.BUTTON_REMEMBER,
-        dlg.BUTTON_FORGET,
-        dlg.BUTTON_SHOW_CREDITS,
-        dlg.BUTTON_BACK,
-    ]
-    assert settings_options_for(_menu_app(screen_effects_enabled=False)) == [
-        dlg.BUTTON_SCREEN_EFFECTS_OFF,
-        dlg.BUTTON_REMINDERS_ON,
-        dlg.BUTTON_APP_AWARENESS_ON,
-        dlg.BUTTON_SCREEN_COMMENTS_ON,
-        dlg.BUTTON_PAINT_RECALL_ON,
-        dlg.BUTTON_SNORING_ON,
-        dlg.BUTTON_WINDOW_PLAY_ON,
-        dlg.BUTTON_TTS_ON,
-        dlg.BUTTON_EMOJI_ON,
-        dlg.BUTTON_SPECIAL_DAYS_ON,
-        dlg.BUTTON_MOOD_SYSTEM_ON,
-        dlg.BUTTON_RESET_MOOD,
-        dlg.BUTTON_MENU_BUTTONS,
-        dlg.BUTTON_REMEMBER,
-        dlg.BUTTON_FORGET,
-        dlg.BUTTON_SHOW_CREDITS,
-        dlg.BUTTON_BACK,
-    ]
-    assert settings_options_for(_menu_app(snoring_enabled=False)) == [
-        dlg.BUTTON_SCREEN_EFFECTS_ON,
-        dlg.BUTTON_REMINDERS_ON,
-        dlg.BUTTON_APP_AWARENESS_ON,
-        dlg.BUTTON_SCREEN_COMMENTS_ON,
-        dlg.BUTTON_PAINT_RECALL_ON,
-        dlg.BUTTON_SNORING_OFF,
-        dlg.BUTTON_WINDOW_PLAY_ON,
-        dlg.BUTTON_TTS_ON,
-        dlg.BUTTON_EMOJI_ON,
-        dlg.BUTTON_SPECIAL_DAYS_ON,
-        dlg.BUTTON_MOOD_SYSTEM_ON,
-        dlg.BUTTON_RESET_MOOD,
-        dlg.BUTTON_MENU_BUTTONS,
-        dlg.BUTTON_REMEMBER,
-        dlg.BUTTON_FORGET,
-        dlg.BUTTON_SHOW_CREDITS,
-        dlg.BUTTON_BACK,
-    ]
-    assert settings_options_for(_menu_app(window_grab_enabled=False)) == [
-        dlg.BUTTON_SCREEN_EFFECTS_ON,
-        dlg.BUTTON_REMINDERS_ON,
-        dlg.BUTTON_APP_AWARENESS_ON,
-        dlg.BUTTON_SCREEN_COMMENTS_ON,
-        dlg.BUTTON_PAINT_RECALL_ON,
-        dlg.BUTTON_SNORING_ON,
-        dlg.BUTTON_WINDOW_PLAY_OFF,
-        dlg.BUTTON_TTS_ON,
-        dlg.BUTTON_EMOJI_ON,
-        dlg.BUTTON_SPECIAL_DAYS_ON,
-        dlg.BUTTON_MOOD_SYSTEM_ON,
-        dlg.BUTTON_RESET_MOOD,
-        dlg.BUTTON_MENU_BUTTONS,
-        dlg.BUTTON_REMEMBER,
-        dlg.BUTTON_FORGET,
-        dlg.BUTTON_SHOW_CREDITS,
-        dlg.BUTTON_BACK,
-    ]
-    assert settings_options_for(_menu_app(tts_enabled=False)) == [
-        dlg.BUTTON_SCREEN_EFFECTS_ON,
-        dlg.BUTTON_REMINDERS_ON,
-        dlg.BUTTON_APP_AWARENESS_ON,
-        dlg.BUTTON_SCREEN_COMMENTS_ON,
-        dlg.BUTTON_PAINT_RECALL_ON,
-        dlg.BUTTON_SNORING_ON,
-        dlg.BUTTON_WINDOW_PLAY_ON,
-        dlg.BUTTON_TTS_OFF,
-        dlg.BUTTON_EMOJI_ON,
-        dlg.BUTTON_SPECIAL_DAYS_ON,
-        dlg.BUTTON_MOOD_SYSTEM_ON,
-        dlg.BUTTON_RESET_MOOD,
-        dlg.BUTTON_MENU_BUTTONS,
-        dlg.BUTTON_REMEMBER,
-        dlg.BUTTON_FORGET,
-        dlg.BUTTON_SHOW_CREDITS,
-        dlg.BUTTON_BACK,
-    ]
-
-    assert settings_options_for(_menu_app(special_days_enabled=False)) == [
-        dlg.BUTTON_SCREEN_EFFECTS_ON,
-        dlg.BUTTON_REMINDERS_ON,
-        dlg.BUTTON_APP_AWARENESS_ON,
-        dlg.BUTTON_SCREEN_COMMENTS_ON,
-        dlg.BUTTON_PAINT_RECALL_ON,
-        dlg.BUTTON_SNORING_ON,
-        dlg.BUTTON_WINDOW_PLAY_ON,
-        dlg.BUTTON_TTS_ON,
-        dlg.BUTTON_EMOJI_ON,
-        dlg.BUTTON_SPECIAL_DAYS_OFF,
-        dlg.BUTTON_MOOD_SYSTEM_ON,
-        dlg.BUTTON_RESET_MOOD,
-        dlg.BUTTON_MENU_BUTTONS,
-        dlg.BUTTON_REMEMBER,
-        dlg.BUTTON_FORGET,
-        dlg.BUTTON_SHOW_CREDITS,
-        dlg.BUTTON_BACK,
-    ]
-
-    assert settings_options_for(_menu_app(emoji_picker_enabled=False)) == [
-        dlg.BUTTON_SCREEN_EFFECTS_ON,
-        dlg.BUTTON_REMINDERS_ON,
-        dlg.BUTTON_APP_AWARENESS_ON,
-        dlg.BUTTON_SCREEN_COMMENTS_ON,
-        dlg.BUTTON_PAINT_RECALL_ON,
-        dlg.BUTTON_SNORING_ON,
-        dlg.BUTTON_WINDOW_PLAY_ON,
-        dlg.BUTTON_TTS_ON,
-        dlg.BUTTON_EMOJI_OFF,
-        dlg.BUTTON_SPECIAL_DAYS_ON,
-        dlg.BUTTON_MOOD_SYSTEM_ON,
-        dlg.BUTTON_RESET_MOOD,
-        dlg.BUTTON_MENU_BUTTONS,
-        dlg.BUTTON_REMEMBER,
-        dlg.BUTTON_FORGET,
-        dlg.BUTTON_SHOW_CREDITS,
-        dlg.BUTTON_BACK,
-    ]
-    assert settings_options_for(_menu_app(mood_system_enabled=False)) == [
-        dlg.BUTTON_SCREEN_EFFECTS_ON,
-        dlg.BUTTON_REMINDERS_ON,
-        dlg.BUTTON_APP_AWARENESS_ON,
-        dlg.BUTTON_SCREEN_COMMENTS_ON,
-        dlg.BUTTON_PAINT_RECALL_ON,
-        dlg.BUTTON_SNORING_ON,
-        dlg.BUTTON_WINDOW_PLAY_ON,
-        dlg.BUTTON_TTS_ON,
-        dlg.BUTTON_EMOJI_ON,
-        dlg.BUTTON_SPECIAL_DAYS_ON,
-        dlg.BUTTON_MOOD_SYSTEM_OFF,
+        dlg.BUTTON_TURN_ON_OFF,
+        dlg.BUTTON_TTS_VOLUME,
         dlg.BUTTON_RESET_MOOD,
         dlg.BUTTON_MENU_BUTTONS,
         dlg.BUTTON_REMEMBER,
@@ -370,8 +154,18 @@ def test_settings_and_actions_options():
         dlg.BUTTON_BACK,
     ]
     assert settings_options_for(
-        _menu_app(hidden_menu_buttons={"actions.hug", "main.chat"})
+        _menu_app(hidden_menu_buttons={"settings.turn_on_off", "main.chat"})
     ) == [
+        dlg.BUTTON_TTS_VOLUME,
+        dlg.BUTTON_RESET_MOOD,
+        dlg.BUTTON_MENU_BUTTONS,
+        dlg.BUTTON_REMEMBER,
+        dlg.BUTTON_FORGET,
+        dlg.BUTTON_SHOW_CREDITS,
+        dlg.BUTTON_BACK,
+    ]
+
+    assert settings_toggles_options_for(_menu_app()) == [
         dlg.BUTTON_SCREEN_EFFECTS_ON,
         dlg.BUTTON_REMINDERS_ON,
         dlg.BUTTON_APP_AWARENESS_ON,
@@ -383,13 +177,55 @@ def test_settings_and_actions_options():
         dlg.BUTTON_EMOJI_ON,
         dlg.BUTTON_SPECIAL_DAYS_ON,
         dlg.BUTTON_MOOD_SYSTEM_ON,
-        dlg.BUTTON_RESET_MOOD,
-        dlg.BUTTON_MENU_BUTTONS,
-        dlg.BUTTON_REMEMBER,
-        dlg.BUTTON_FORGET,
-        dlg.BUTTON_SHOW_CREDITS,
         dlg.BUTTON_BACK,
     ]
+    assert settings_toggles_options_for(_menu_app(screen_effects_enabled=False))[0] == (
+        dlg.BUTTON_SCREEN_EFFECTS_OFF
+    )
+    assert settings_toggles_options_for(_menu_app(ambient_reminders_enabled=False))[1] == (
+        dlg.BUTTON_REMINDERS_OFF
+    )
+    assert settings_toggles_options_for(_menu_app(app_awareness_enabled=False))[2] == (
+        dlg.BUTTON_APP_AWARENESS_OFF
+    )
+    assert settings_toggles_options_for(_menu_app(screen_comments_enabled=False))[3] == (
+        dlg.BUTTON_SCREEN_COMMENTS_OFF
+    )
+    assert settings_toggles_options_for(_menu_app(paint_recall_enabled=False))[4] == (
+        dlg.BUTTON_PAINT_RECALL_OFF
+    )
+    assert settings_toggles_options_for(_menu_app(snoring_enabled=False))[5] == (
+        dlg.BUTTON_SNORING_OFF
+    )
+    assert settings_toggles_options_for(_menu_app(window_grab_enabled=False))[6] == (
+        dlg.BUTTON_WINDOW_PLAY_OFF
+    )
+    assert settings_toggles_options_for(_menu_app(tts_enabled=False))[7] == dlg.BUTTON_TTS_OFF
+    assert settings_toggles_options_for(_menu_app(emoji_picker_enabled=False))[8] == (
+        dlg.BUTTON_EMOJI_OFF
+    )
+    assert settings_toggles_options_for(_menu_app(special_days_enabled=False))[9] == (
+        dlg.BUTTON_SPECIAL_DAYS_OFF
+    )
+    assert settings_toggles_options_for(_menu_app(mood_system_enabled=False))[10] == (
+        dlg.BUTTON_MOOD_SYSTEM_OFF
+    )
+    assert settings_toggles_options_for(
+        _menu_app(hidden_menu_buttons={"settings.snoring", "main.chat"})
+    ) == [
+        dlg.BUTTON_SCREEN_EFFECTS_ON,
+        dlg.BUTTON_REMINDERS_ON,
+        dlg.BUTTON_APP_AWARENESS_ON,
+        dlg.BUTTON_SCREEN_COMMENTS_ON,
+        dlg.BUTTON_PAINT_RECALL_ON,
+        dlg.BUTTON_WINDOW_PLAY_ON,
+        dlg.BUTTON_TTS_ON,
+        dlg.BUTTON_EMOJI_ON,
+        dlg.BUTTON_SPECIAL_DAYS_ON,
+        dlg.BUTTON_MOOD_SYSTEM_ON,
+        dlg.BUTTON_BACK,
+    ]
+
     assert dlg.BUTTON_CHAT not in menu_options_for(
         _menu_app(hidden_menu_buttons={"main.chat"})
     )

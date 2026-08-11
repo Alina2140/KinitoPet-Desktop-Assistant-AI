@@ -22,7 +22,14 @@ Settings
 --------
 Toggle preferences from the in-app Settings menu are saved here:
 
-- settings.json — screen effects, ambient reminders, app awareness
+- settings.json — screen effects, ambient reminders, app awareness, mood system, TTS volume, …
+
+Game scores
+-----------
+Highscores for selected mini-games (Snake, Memory, True or False, Number Guess, Battleships):
+
+- game_scores.json — snake highscore, memory best moves, trivia best/streak,
+  number-guess best attempts, battleships best shots
 
 These files are not in Git (personal data). You do not need to create them
 yourself — Kinito writes them on first save. The folder is created at startup.

@@ -31,12 +31,13 @@ DEAD_COLOR = "#94a3b8"
 
 
 class SnakeGame:
-    """Classic snake: arrow keys / WASD, score, session highscore, New Game."""
+    """Classic snake: arrow keys / WASD, score, persistent highscore, New Game."""
 
     def __init__(self, app):
         self.app = app
         self.state = new_game()
-        self.highscore = 0
+        scores = app.game_scores() if hasattr(app, "game_scores") else None
+        self.highscore = scores.snake_highscore() if scores is not None else 0
         self.window = None
         self.canvas: Canvas | None = None
         self.status_label: Label | None = None
@@ -166,9 +167,13 @@ class SnakeGame:
             return
         self._announced_game_over = True
         score = self.state["score"]
-        is_new_high = score > self.highscore
-        if is_new_high:
+        is_new_high = False
+        if hasattr(self.app, "game_scores"):
+            is_new_high = self.app.game_scores().record_snake_score(score)
+            self.highscore = self.app.game_scores().snake_highscore()
+        elif score > self.highscore:
             self.highscore = score
+            is_new_high = True
         if self.status_label:
             self.status_label.config(text=self._status_text())
 
@@ -189,7 +194,7 @@ class SnakeGame:
         self.app.speak_game_line(line)
 
     def _reset(self):
-        """Start a fresh round; keep session highscore."""
+        """Start a fresh round; keep the persistent highscore."""
         self._stop_loop()
         self.state = new_game()
         self._announced_game_over = False

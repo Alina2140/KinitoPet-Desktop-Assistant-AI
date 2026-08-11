@@ -233,6 +233,36 @@ def test_handle_quick_games_true_false_opens_pack_picker(mock_app):
     mock_app.start_true_false.assert_called_once()
 
 
+def test_handle_tts_volume_soft(mock_app):
+    question = dlg.TTS_VOLUME_QUESTION.format(volume=100)
+    spec = find_dialog_spec(question)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_TTS_VOLUME_SOFT)
+    mock_app.set_tts_volume.assert_called_once_with(dlg.TTS_VOLUME_SOFT)
+
+
+def test_handle_tts_volume_back_opens_settings(mock_app):
+    question = dlg.TTS_VOLUME_QUESTION.format(volume=70)
+    spec = find_dialog_spec(question)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_BACK)
+    mock_app.speak.assert_called()
+    spoken = mock_app.speak.call_args[0][0]
+    assert dlg.SETTINGS_MENU_MARKER.lower() in spoken.lower()
+
+
+def test_handle_settings_turn_on_off_opens_toggles(mock_app):
+    spec = find_dialog_spec(dlg.SETTINGS_MENU_QUESTION)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_TURN_ON_OFF)
+    spoken = mock_app.speak.call_args[0][0]
+    assert dlg.SETTINGS_TOGGLES_MARKER.lower() in spoken.lower()
+
+
+def test_handle_settings_toggles_back_opens_settings(mock_app):
+    spec = find_dialog_spec(dlg.SETTINGS_TOGGLES_QUESTION)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_BACK)
+    spoken = mock_app.speak.call_args[0][0]
+    assert dlg.SETTINGS_MENU_MARKER.lower() in spoken.lower()
+
+
 def test_game_picker_buttons_exclude_not_now():
     spec = find_dialog_spec(dlg.GAME_PICKER_QUESTION)
     assert dlg.BUTTON_NOT_NOW not in spec.ui.buttons

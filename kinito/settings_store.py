@@ -27,10 +27,28 @@ DEFAULT_BOOL_SETTINGS: dict[str, bool] = {
     "mood_system_enabled": True,
 }
 
+# Integer settings (clamped on load/save).
+DEFAULT_INT_SETTINGS: dict[str, int] = {
+    "tts_volume": 100,
+}
+
+TTS_VOLUME_MIN = 0
+TTS_VOLUME_MAX = 100
+TTS_VOLUME_DEFAULT = 100
+
 # Back-compat alias used by older tests/imports.
 DEFAULT_SETTINGS = DEFAULT_BOOL_SETTINGS
 
 HIDDEN_MENU_BUTTONS_KEY = "hidden_menu_buttons"
+
+
+def clamp_tts_volume(value: int | float) -> int:
+    """Clamp TTS volume to the supported 0–100 range."""
+    try:
+        volume = int(round(float(value)))
+    except (TypeError, ValueError):
+        return TTS_VOLUME_DEFAULT
+    return max(TTS_VOLUME_MIN, min(TTS_VOLUME_MAX, volume))
 
 
 def settings_file_path(directory: str | None = None) -> str:
@@ -65,6 +83,7 @@ class SettingsStore:
         return {
             "version": SETTINGS_VERSION,
             **DEFAULT_BOOL_SETTINGS,
+            **DEFAULT_INT_SETTINGS,
             HIDDEN_MENU_BUTTONS_KEY: [],
         }
 
@@ -100,6 +119,18 @@ class SettingsStore:
         for key in DEFAULT_BOOL_SETTINGS:
             value = raw.get(key, DEFAULT_BOOL_SETTINGS[key])
             data[key] = bool(value) if isinstance(value, bool) else DEFAULT_BOOL_SETTINGS[key]
+        for key, default in DEFAULT_INT_SETTINGS.items():
+            value = raw.get(key, default)
+            if key == "tts_volume":
+                data[key] = clamp_tts_volume(value if value is not None else default)
+            elif isinstance(value, bool):
+                data[key] = default
+            elif isinstance(value, int):
+                data[key] = value
+            elif isinstance(value, float) and value.is_integer():
+                data[key] = int(value)
+            else:
+                data[key] = default
         hidden = raw.get(HIDDEN_MENU_BUTTONS_KEY, [])
         if isinstance(hidden, list):
             data[HIDDEN_MENU_BUTTONS_KEY] = [
@@ -117,16 +148,39 @@ class SettingsStore:
             return default
         return bool(DEFAULT_BOOL_SETTINGS.get(key, False))
 
-    def update(self, **values: bool) -> None:
-        """Update known boolean settings and save immediately."""
+    def get_int(self, key: str, default: int | None = None) -> int:
+        """Return an integer setting, falling back to *default* or built-in default."""
+        if key in self._data and isinstance(self._data[key], int) and not isinstance(
+            self._data[key], bool
+        ):
+            value = self._data[key]
+            if key == "tts_volume":
+                return clamp_tts_volume(value)
+            return value
+        if default is not None:
+            return int(default)
+        return int(DEFAULT_INT_SETTINGS.get(key, 0))
+
+    def update(self, **values: Any) -> None:
+        """Update known boolean/int settings and save immediately."""
         changed = False
         for key, value in values.items():
-            if key not in DEFAULT_BOOL_SETTINGS:
-                continue
-            coerced = bool(value)
-            if self._data.get(key) != coerced:
-                self._data[key] = coerced
-                changed = True
+            if key in DEFAULT_BOOL_SETTINGS:
+                coerced = bool(value)
+                if self._data.get(key) != coerced:
+                    self._data[key] = coerced
+                    changed = True
+            elif key in DEFAULT_INT_SETTINGS:
+                if key == "tts_volume":
+                    coerced = clamp_tts_volume(value)
+                else:
+                    try:
+                        coerced = int(value)
+                    except (TypeError, ValueError):
+                        continue
+                if self._data.get(key) != coerced:
+                    self._data[key] = coerced
+                    changed = True
         if changed or not os.path.isfile(self._path):
             self.save()
 
