@@ -77,7 +77,7 @@ class SpeechChatMixin(EmojiPickerMixin):
         if self._has_active_speech_bubble():
             self._close_speech_bubble_impl()
 
-        self.play_sfx(starttalk_file_path)
+        self._play_bubble_sfx(starttalk_file_path)
         self.speech_bubble = self._new_speech_bubble_toplevel(dlg.CHAT_MODE_PROMPT)
         self._speech_bubble_ready = False
         self._speech_bubble_label = None
@@ -177,7 +177,7 @@ class SpeechChatMixin(EmojiPickerMixin):
         if self._has_active_speech_bubble():
             self._close_speech_bubble_impl()
 
-        self.play_sfx(starttalk_file_path)
+        self._play_bubble_sfx(starttalk_file_path)
         self.speech_bubble = self._new_speech_bubble_toplevel(self.CHAT_TITLE)
         self._speech_bubble_ready = False
         self._speech_bubble_label = None

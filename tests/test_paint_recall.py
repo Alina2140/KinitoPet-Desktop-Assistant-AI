@@ -35,6 +35,7 @@ def paint_recall(tmp_path):
     stub._paint_gallery_window = None
     stub._paint_detail_window = None
     stub._paint_recall_popup = None
+    stub._window_grab_active = False
     stub._last_paint_recall_at = 0.0
     stub._ollama_client = MagicMock()
     stub._ollama_client.is_available.return_value = False
@@ -64,10 +65,28 @@ def test_maybe_trigger_respects_cooldown(paint_recall):
 
 
 def test_maybe_trigger_schedules_on_hit(paint_recall):
-    with patch("kinito.features.paint.random.random", return_value=0.0):
+    paint_recall._last_paint_recall_at = 0.0
+    painting = paint_recall._list_painting_paths.return_value[0]
+    with (
+        patch("kinito.features.paint.time.monotonic", return_value=10_000.0),
+        patch("kinito.features.paint.random.random", return_value=0.0),
+        patch.object(
+            paint_recall,
+            "_list_painting_paths",
+            return_value=[painting],
+        ) as list_paths,
+        patch.object(paint_recall, "_is_paint_gallery_open", return_value=False),
+    ):
         assert paint_recall.maybe_trigger_paint_recall() is True
+    list_paths.assert_called_once()
     paint_recall.root.after.assert_called_once()
     assert paint_recall.root.after.call_args.args[1] == paint_recall._start_paint_recall
+
+
+def test_is_paint_gallery_open_ignores_non_toplevel(paint_recall):
+    paint_recall._paint_recall_popup = MagicMock()
+    paint_recall._paint_recall_popup.winfo_exists.return_value = True
+    assert paint_recall._is_paint_gallery_open() is False
 
 
 def test_worker_falls_back_without_vision(paint_recall):

@@ -2,12 +2,20 @@
 
 import os
 import subprocess
+import tempfile
 import threading
 import time
 import tkinter as tk
+import wave
 from tkinter import Toplevel
 
+import numpy as np
 import pygame
+
+try:
+    import sounddevice as sd
+except ImportError:  # optional at runtime; listed in requirements.txt
+    sd = None
 
 from content import dialogue as dlg
 from content.dialog_registry import (
@@ -588,6 +596,14 @@ class SpeechMixin:
                     pass
         self._tts_process = None
 
+        if getattr(self, "_tts_sd_active", False):
+            if sd is not None:
+                try:
+                    sd.stop()
+                except Exception:
+                    pass
+            self._tts_sd_active = False
+
         if engine is not None:
             try:
                 engine.stop()
@@ -647,6 +663,13 @@ class SpeechMixin:
 
         return clamp_tts_volume(getattr(self, "_tts_volume", 100))
 
+    def _play_bubble_sfx(self, file_path: str) -> None:
+        """Play a bubble open/close sound scaled to the TTS volume setting."""
+        if not hasattr(self, "play_sfx"):
+            return
+        volume = max(0.0, min(1.0, self.get_tts_volume() / 100.0))
+        self.play_sfx(file_path, volume=volume)
+
     def offer_tts_volume_picker(self) -> None:
         """Ask the user to pick a TTS volume preset."""
         from content import dialogue as dlg
@@ -673,11 +696,14 @@ class SpeechMixin:
         )
 
     @staticmethod
-    def _balcon_command(voice: str, pitch: int, volume: int = 100) -> list[str]:
-        """Build a balcon argv that reads speech text from stdin."""
-        from kinito.settings_store import clamp_tts_volume
+    def _balcon_command(voice: str, pitch: int, wav_path: str | None = None) -> list[str]:
+        """Build a balcon argv that reads speech text from stdin.
 
-        return [
+        When *wav_path* is set, synthesize to that file instead of speaking.
+        balcon ``-v`` is ignored by SAPI4 (TruVoice), so volume is handled
+        elsewhere.
+        """
+        command = [
             balconexe_directory,
             "-n",
             voice,
@@ -686,17 +712,89 @@ class SpeechMixin:
             "utf8",
             "-p",
             str(pitch),
-            "-v",
-            str(clamp_tts_volume(volume)),
         ]
+        if wav_path:
+            command.extend(["-w", wav_path])
+        return command
 
-    def _run_balcon_tts(self, voice: str, text: str, pitch: int, speech_epoch=None) -> bool:
-        """Run balcon for *text*, feeding the line via stdin to survive quotes."""
+    @staticmethod
+    def _scale_wav_pcm(data: np.ndarray, volume: float) -> np.ndarray:
+        """Return PCM samples attenuated by *volume* (0.0–1.0)."""
+        if volume >= 1.0:
+            return data
+        if data.dtype == np.uint8:
+            centered = data.astype(np.float32) - 128.0
+            scaled = centered * volume + 128.0
+            return np.clip(scaled, 0, 255).astype(np.uint8)
+        info = np.iinfo(data.dtype)
+        scaled = data.astype(np.float32) * volume
+        return np.clip(scaled, info.min, info.max).astype(data.dtype)
+
+    @staticmethod
+    def _load_wav_pcm(wav_path: str) -> tuple[np.ndarray, int]:
+        """Load a WAV file as PCM samples and sample rate."""
+        with wave.open(wav_path, "rb") as handle:
+            channels = handle.getnchannels()
+            sampwidth = handle.getsampwidth()
+            rate = handle.getframerate()
+            frames = handle.readframes(handle.getnframes())
+
+        dtype_by_width = {1: np.uint8, 2: np.int16, 4: np.int32}
+        dtype = dtype_by_width.get(sampwidth)
+        if dtype is None:
+            raise ValueError(f"Unsupported WAV sample width: {sampwidth}")
+
+        data = np.frombuffer(frames, dtype=dtype)
+        if channels > 1:
+            data = data.reshape(-1, channels)
+        return data, rate
+
+    def _play_tts_wav(self, wav_path: str, speech_epoch=None) -> bool:
+        """Play a synthesized WAV at TTS volume via sounddevice (native rate)."""
         if self._tts_interrupted(speech_epoch):
             return False
+        if sd is None:
+            return False
+        if not os.path.isfile(wav_path) or os.path.getsize(wav_path) <= 0:
+            return False
+
+        volume = max(0.0, min(1.0, self.get_tts_volume() / 100.0))
+        if volume <= 0.0:
+            return True
+
+        try:
+            data, rate = self._load_wav_pcm(wav_path)
+            data = self._scale_wav_pcm(data, volume)
+            self._tts_sd_active = True
+            sd.play(data, rate)
+            while True:
+                stream = sd.get_stream()
+                if stream is None or not getattr(stream, "active", False):
+                    break
+                if self._tts_interrupted(speech_epoch):
+                    sd.stop()
+                    return False
+                time.sleep(0.05)
+        except Exception:
+            return False
+        finally:
+            self._tts_sd_active = False
+
+        return not self._tts_interrupted(speech_epoch)
+
+    def _run_balcon_process(
+        self,
+        voice: str,
+        text: str,
+        pitch: int,
+        *,
+        wav_path: str | None = None,
+        speech_epoch=None,
+    ) -> tuple[bool, str]:
+        """Run balcon once; return (ok_for_voice, stderr)."""
         try:
             process = subprocess.Popen(
-                self._balcon_command(voice, pitch, self.get_tts_volume()),
+                self._balcon_command(voice, pitch, wav_path=wav_path),
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -704,7 +802,7 @@ class SpeechMixin:
                 encoding="utf-8",
             )
         except (OSError, subprocess.SubprocessError, ValueError):
-            return False
+            return False, ""
 
         self._tts_process = process
         try:
@@ -713,16 +811,54 @@ class SpeechMixin:
             except subprocess.TimeoutExpired:
                 process.kill()
                 process.communicate()
-                return False
+                return False, ""
         finally:
             self._tts_process = None
 
         if self._tts_interrupted(speech_epoch):
-            return False
+            return False, stderr or ""
         err = (stderr or "").lower()
-        # Some engines return non-zero even after audible playback; don't cascade
-        # into a different character voice because of that.
-        return not ("voice not selected" in err or "voice not found" in err)
+        if "voice not selected" in err or "voice not found" in err:
+            return False, stderr or ""
+        return True, stderr or ""
+
+    def _run_balcon_tts(self, voice: str, text: str, pitch: int, speech_epoch=None) -> bool:
+        """Speak via balcon, applying software volume only when below 100%.
+
+        Full volume uses balcon's direct output (original TruVoice character).
+        Softer presets render to WAV and play at native sample rate so pygame
+        does not resample the voice into a hollow/distant sound.
+        """
+        if self._tts_interrupted(speech_epoch):
+            return False
+
+        # Direct speak preserves the classic Kinito voice path.
+        if self.get_tts_volume() >= 100:
+            ok, _stderr = self._run_balcon_process(
+                voice, text, pitch, speech_epoch=speech_epoch
+            )
+            return ok and not self._tts_interrupted(speech_epoch)
+
+        wav_path = None
+        try:
+            fd, wav_path = tempfile.mkstemp(suffix=".wav", prefix="kinito_tts_")
+            os.close(fd)
+            ok, _stderr = self._run_balcon_process(
+                voice,
+                text,
+                pitch,
+                wav_path=wav_path,
+                speech_epoch=speech_epoch,
+            )
+            if not ok or self._tts_interrupted(speech_epoch):
+                return False
+            return self._play_tts_wav(wav_path, speech_epoch=speech_epoch)
+        finally:
+            if wav_path:
+                try:
+                    os.unlink(wav_path)
+                except OSError:
+                    pass
 
     def _voice_candidate_queue(self, voice_candidates):
         """Yield preferred voices first, then system fallbacks only if needed."""
@@ -910,7 +1046,7 @@ class SpeechMixin:
         if speech_epoch is not None:
             self._active_bubble_epoch = speech_epoch
 
-        self.play_sfx(starttalk_file_path)
+        self._play_bubble_sfx(starttalk_file_path)
         self.speech_bubble = self._new_speech_bubble_toplevel(text)
         self._speech_bubble_ready = False
         self._speech_bubble_label = None
@@ -1171,7 +1307,7 @@ class SpeechMixin:
             self._stop_active_tts()
         if self._has_active_speech_bubble():
             self.speech_bubble.destroy()
-            self.play_sfx(stoptalk_file_path)
+            self._play_bubble_sfx(stoptalk_file_path)
             self.talking = False
 
     def _new_speech_bubble_toplevel(self, title):

@@ -1083,7 +1083,7 @@ class PaintMixin:
     def _is_paint_gallery_open(self) -> bool:
         for attr in ("_paint_gallery_window", "_paint_detail_window", "_paint_recall_popup"):
             window = getattr(self, attr, None)
-            if window is None:
+            if not isinstance(window, Toplevel):
                 continue
             try:
                 if window.winfo_exists():

@@ -8,7 +8,7 @@ import sys
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 
-TITLE_KEEP_PX = 40
+TITLE_KEEP_PX = 100
 HAND_TUCK_FRACTION = 0.5
 USER_MOVE_TOLERANCE_PX = 24
 MIN_DRAG_MOVE_PX = 80
