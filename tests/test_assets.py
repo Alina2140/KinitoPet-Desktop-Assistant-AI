@@ -15,6 +15,7 @@ def test_assets_directory_is_under_project_root():
     [
         ("sprites_directory", os.path.join("GameAssets", "sprites")),
         ("icons_directory", os.path.join("GameAssets", "icons")),
+        ("music_player_directory", os.path.join("GameAssets", "musicPlayer")),
         ("sounds_directory", os.path.join("GameAssets", "sounds")),
         ("secret_images_directory", os.path.join("GameAssets", "SecretImages")),
         ("programs_directory", os.path.join("GameAssets", "Programs")),
@@ -71,6 +72,18 @@ def test_asset_subdirectories(directory_attr, relative_path):
         ("snoring_file_path", "snoring.mp3", "sounds_directory"),
         ("icon_path", "Icon.ico", "icons_directory"),
         ("favicon_path", "Favicon.png", "icons_directory"),
+        ("music_player_play_icon_path", "play.png", "music_player_directory"),
+        ("music_player_pause_icon_path", "pause.png", "music_player_directory"),
+        (
+            "music_player_skip_backward_icon_path",
+            "skip-backward.png",
+            "music_player_directory",
+        ),
+        (
+            "music_player_skip_forward_icon_path",
+            "skip-forward.png",
+            "music_player_directory",
+        ),
         ("timer_file_path", "Timer.mp3", "sounds_directory"),
         ("stoptalk_file_path", "StopTalking.mp3", "sounds_directory"),
         ("woosh_file_path", "Woosh.mp3", "sounds_directory"),

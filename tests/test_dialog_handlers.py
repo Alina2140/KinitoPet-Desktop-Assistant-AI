@@ -39,13 +39,7 @@ def test_handle_hug_yes(mock_app):
 def test_handle_music_player_yes(mock_app):
     spec = find_dialog_spec(dlg.MUSIC_PLAYER_QUESTIONS[0])
     handle_dialog_response(mock_app, spec, dlg.BUTTON_YES)
-    mock_app.ask_music_player_pick.assert_called_once()
-
-
-def test_handle_music_pick_declined(mock_app):
-    spec = find_dialog_spec(dlg.MUSIC_PLAYER_PICK_QUESTION)
-    handle_dialog_response(mock_app, spec, dlg.BUTTON_NOT_NOW)
-    mock_app.speak.assert_called_once()
+    mock_app.open_music_player.assert_called_once()
 
 
 def test_handle_color_text_response(mock_app):

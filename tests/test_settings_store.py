@@ -5,7 +5,7 @@ import os
 
 import pytest
 
-from kinito.settings_store import SettingsStore, clamp_tts_volume
+from kinito.settings_store import SettingsStore, clamp_music_volume, clamp_tts_volume
 
 
 def test_clamp_tts_volume():
@@ -13,6 +13,13 @@ def test_clamp_tts_volume():
     assert clamp_tts_volume(150) == 100
     assert clamp_tts_volume(-5) == 0
     assert clamp_tts_volume("nope") == 100
+
+
+def test_clamp_music_volume():
+    assert clamp_music_volume(40) == 40
+    assert clamp_music_volume(150) == 100
+    assert clamp_music_volume(-5) == 0
+    assert clamp_music_volume("nope") == 75
 
 
 @pytest.fixture
@@ -35,6 +42,8 @@ def test_defaults_when_missing(store):
     assert store.get("window_grab_enabled") is True
     assert store.get("tts_enabled") is True
     assert store.get_int("tts_volume") == 100
+    assert store.get_int("music_volume") == 75
+    assert store.get_music_folder() == ""
     assert store.get("special_days_enabled") is True
     assert store.get("emoji_picker_enabled") is True
     assert store.get("mood_system_enabled") is True
@@ -52,6 +61,8 @@ def test_update_and_reload_roundtrip(store, settings_dir):
         window_grab_enabled=False,
         tts_enabled=False,
         tts_volume=40,
+        music_volume=55,
+        music_folder=r"C:\Music",
         special_days_enabled=False,
         emoji_picker_enabled=False,
         mood_system_enabled=False,
@@ -67,6 +78,8 @@ def test_update_and_reload_roundtrip(store, settings_dir):
     assert reloaded.get("window_grab_enabled") is False
     assert reloaded.get("tts_enabled") is False
     assert reloaded.get_int("tts_volume") == 40
+    assert reloaded.get_int("music_volume") == 55
+    assert reloaded.get_music_folder() == r"C:\Music"
     assert reloaded.get("special_days_enabled") is False
     assert reloaded.get("emoji_picker_enabled") is False
     assert reloaded.get("mood_system_enabled") is False
@@ -78,6 +91,13 @@ def test_tts_volume_clamped(store):
     assert store.get_int("tts_volume") == 100
     store.update(tts_volume=-10)
     assert store.get_int("tts_volume") == 0
+
+
+def test_music_volume_clamped(store):
+    store.update(music_volume=250)
+    assert store.get_int("music_volume") == 100
+    store.update(music_volume=-10)
+    assert store.get_int("music_volume") == 0
 
 
 def test_invalid_file_falls_back_to_defaults(settings_dir):

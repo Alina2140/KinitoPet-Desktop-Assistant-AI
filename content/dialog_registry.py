@@ -140,6 +140,7 @@ def settings_options_for(app) -> list[str]:
         [
             dlg.BUTTON_TURN_ON_OFF,
             dlg.BUTTON_TTS_VOLUME,
+            dlg.BUTTON_MUSIC_FOLDER,
             dlg.BUTTON_RESET_MOOD,
             dlg.BUTTON_MENU_BUTTONS,
             dlg.BUTTON_REMEMBER,
@@ -604,6 +605,7 @@ def _menu_action_handlers() -> dict[str, Handler]:
         dlg.BUTTON_TTS_ON: lambda a: a.toggle_tts(),
         dlg.BUTTON_TTS_OFF: lambda a: a.toggle_tts(),
         dlg.BUTTON_TTS_VOLUME: lambda a: a.offer_tts_volume_picker(),
+        dlg.BUTTON_MUSIC_FOLDER: lambda a: a.root.after(0, a.choose_music_folder),
         dlg.BUTTON_EMOJI: lambda a: a.toggle_emoji_picker_setting(),
         dlg.BUTTON_EMOJI_ON: lambda a: a.toggle_emoji_picker_setting(),
         dlg.BUTTON_EMOJI_OFF: lambda a: a.toggle_emoji_picker_setting(),
@@ -621,7 +623,7 @@ def _menu_action_handlers() -> dict[str, Handler]:
         dlg.BUTTON_REMEMBER: lambda a: a.show_memory_summary(),
         dlg.BUTTON_FORGET: lambda a: a.forget_memory(),
         dlg.BUTTON_VISIT_WEBSITE: lambda a: a.ask_browser_category(),
-        dlg.BUTTON_PLAY_MUSIC: lambda a: a.ask_music_player_pick(),
+        dlg.BUTTON_PLAY_MUSIC: lambda a: a.open_music_player(),
         dlg.BUTTON_PLAY_GAME: lambda a: a.offer_game_picker(),
         dlg.BUTTON_PAINT: lambda a: a.offer_paint_picker(),
         dlg.BUTTON_GIVE_HUG: lambda a: a.give_hug(),
@@ -742,26 +744,6 @@ def _handle_browser_category(app, response: str) -> None:
         category = category_map.get(response)
     if category:
         app.open_allowed_site(category)
-
-
-def _handle_music_pick(app, response: str) -> None:
-    """Open file picker or play a random MP3 based on the user's choice."""
-    if response == dlg.BUTTON_NOT_NOW:
-        _speak_declined(app, dlg.MUSIC_PLAYER_DECLINED_LINES)
-    elif response == dlg.BUTTON_PICK_SONG:
-        app.root.after(0, app.pick_and_play_mp3)
-    elif response == dlg.BUTTON_CATEGORY_RANDOM:
-        app.play_random_mp3()
-
-
-def _handle_music_manage(app, response: str) -> None:
-    """Stop or replace the song that is currently playing."""
-    if response == dlg.BUTTON_STOP_MUSIC:
-        app.stop_user_music()
-    elif response == dlg.BUTTON_CHANGE_SONG:
-        app.root.after(0, app.pick_and_play_mp3)
-    elif response == dlg.BUTTON_CATEGORY_RANDOM:
-        app.play_random_mp3()
 
 
 def _handle_poem(app, response: str) -> None:
@@ -1323,26 +1305,6 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
         _handle_browser_category,
     ),
     DialogSpec(
-        dlg.MUSIC_PLAYER_PICK_MARKER,
-        DialogUI(
-            "buttons",
-            buttons=(dlg.BUTTON_PICK_SONG, dlg.BUTTON_CATEGORY_RANDOM, dlg.BUTTON_NOT_NOW),
-        ),
-        _handle_music_pick,
-    ),
-    DialogSpec(
-        dlg.MUSIC_MANAGE_PROMPT,
-        DialogUI(
-            "buttons",
-            buttons=(
-                dlg.BUTTON_STOP_MUSIC,
-                dlg.BUTTON_CHANGE_SONG,
-                dlg.BUTTON_CATEGORY_RANDOM,
-            ),
-        ),
-        _handle_music_manage,
-    ),
-    DialogSpec(
         dlg.STORY_QUESTION_MARKER,
         DialogUI("buttons", buttons=(dlg.BUTTON_SURE, dlg.BUTTON_NOT_NOW)),
         _handle_story,
@@ -1450,7 +1412,7 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
     DialogSpec(
         dlg.MUSIC_PLAYER_QUESTION_MARKER,
         DialogUI("buttons", buttons=(dlg.BUTTON_YES, dlg.BUTTON_NO)),
-        _yes_no(lambda a: a.ask_music_player_pick(), dlg.MUSIC_PLAYER_DECLINED_LINES),
+        _yes_no(lambda a: a.open_music_player(), dlg.MUSIC_PLAYER_DECLINED_LINES),
     ),
     DialogSpec(
         dlg.HUG_QUESTION_MARKER,

@@ -126,16 +126,8 @@ class ProgramsMixin:
             return 22
 
     def _assistant_controls_active(self) -> bool:
-        """Return True while reminder, focus-timer, or user-music controls should be visible."""
-        music_active = (
-            hasattr(self, "_user_music_controls_visible")
-            and self._user_music_controls_visible()
-        )
-        return (
-            self._reminder_is_active()
-            or self._focus_timer_is_active()
-            or music_active
-        )
+        """Return True while reminder or focus-timer controls should be visible."""
+        return self._reminder_is_active() or self._focus_timer_is_active()
 
     def _assistant_controls_window_height(self) -> int:
         """Return the assistant window height needed for sprite + control buttons."""
@@ -144,31 +136,22 @@ class ProgramsMixin:
         margin = self._REMINDER_COUNTDOWN_BOTTOM_MARGIN
         reminder_btn = getattr(self, "_reminder_countdown_btn", None)
         focus_btn = getattr(self, "_focus_timer_countdown_btn", None)
-        music_btn = getattr(self, "_music_control_btn", None)
         if self._reminder_is_active():
             height += gap + self._control_button_height(reminder_btn)
         if self._focus_timer_is_active():
             height += gap + self._control_button_height(focus_btn)
-        if hasattr(self, "_user_music_controls_visible") and self._user_music_controls_visible():
-            height += gap + self._control_button_height(music_btn)
         return height + margin
 
     def _sync_assistant_controls_layout(self):
-        """Resize the window and place reminder/focus/music buttons under the sprite."""
+        """Resize the window and place reminder/focus buttons under the sprite."""
         reminder_btn = getattr(self, "_reminder_countdown_btn", None)
         focus_btn = getattr(self, "_focus_timer_countdown_btn", None)
-        music_btn = getattr(self, "_music_control_btn", None)
         reminder_active = self._reminder_is_active()
         focus_active = self._focus_timer_is_active()
-        music_active = (
-            hasattr(self, "_user_music_controls_visible")
-            and self._user_music_controls_visible()
-        )
 
         for active, button in (
             (reminder_active, reminder_btn),
             (focus_active, focus_btn),
-            (music_active, music_btn),
         ):
             if not active and button is not None:
                 try:
@@ -200,10 +183,6 @@ class ProgramsMixin:
             if focus_active and focus_btn is not None:
                 self._update_focus_timer_countdown_button()
                 focus_btn.place(relx=0.5, y=y, anchor="n")
-                y += self._control_button_height(focus_btn) + self._REMINDER_COUNTDOWN_GAP
-            if music_active and music_btn is not None:
-                self._update_music_control_button()
-                music_btn.place(relx=0.5, y=y, anchor="n")
         except tk.TclError:
             pass
 

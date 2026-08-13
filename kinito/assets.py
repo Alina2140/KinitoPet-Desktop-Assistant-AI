@@ -24,6 +24,7 @@ sprites_thinking_directory = os.path.join(sprites_directory, "Thinking")
 sprites_hugging_directory = os.path.join(sprites_directory, "Hugging")
 sprites_hand_directory = os.path.join(sprites_directory, "Hand")
 icons_directory = os.path.join(assets_directory, "icons")
+music_player_directory = os.path.join(assets_directory, "musicPlayer")
 sounds_directory = os.path.join(assets_directory, "sounds")
 secret_images_directory = os.path.join(assets_directory, "SecretImages")
 programs_directory = os.path.join(assets_directory, "Programs")
@@ -100,6 +101,15 @@ sprite_path_hand_right = os.path.join(sprites_hand_directory, "HandToRight.png")
 
 icon_path = os.path.join(icons_directory, "Icon.ico")
 favicon_path = os.path.join(icons_directory, "Favicon.png")
+
+music_player_play_icon_path = os.path.join(music_player_directory, "play.png")
+music_player_pause_icon_path = os.path.join(music_player_directory, "pause.png")
+music_player_skip_backward_icon_path = os.path.join(
+    music_player_directory, "skip-backward.png"
+)
+music_player_skip_forward_icon_path = os.path.join(
+    music_player_directory, "skip-forward.png"
+)
 
 crash_image_path = os.path.join(crash_directory, "blueScreen.png")
 kinito_pet_url = "https://www.kinitopet.com/"

@@ -146,6 +146,7 @@ def test_settings_and_actions_options():
     assert settings_options_for(_menu_app()) == [
         dlg.BUTTON_TURN_ON_OFF,
         dlg.BUTTON_TTS_VOLUME,
+        dlg.BUTTON_MUSIC_FOLDER,
         dlg.BUTTON_RESET_MOOD,
         dlg.BUTTON_MENU_BUTTONS,
         dlg.BUTTON_REMEMBER,
@@ -157,6 +158,7 @@ def test_settings_and_actions_options():
         _menu_app(hidden_menu_buttons={"settings.turn_on_off", "main.chat"})
     ) == [
         dlg.BUTTON_TTS_VOLUME,
+        dlg.BUTTON_MUSIC_FOLDER,
         dlg.BUTTON_RESET_MOOD,
         dlg.BUTTON_MENU_BUTTONS,
         dlg.BUTTON_REMEMBER,

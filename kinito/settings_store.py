@@ -30,16 +30,22 @@ DEFAULT_BOOL_SETTINGS: dict[str, bool] = {
 # Integer settings (clamped on load/save).
 DEFAULT_INT_SETTINGS: dict[str, int] = {
     "tts_volume": 100,
+    "music_volume": 75,
 }
 
 TTS_VOLUME_MIN = 0
 TTS_VOLUME_MAX = 100
 TTS_VOLUME_DEFAULT = 100
 
+MUSIC_VOLUME_MIN = 0
+MUSIC_VOLUME_MAX = 100
+MUSIC_VOLUME_DEFAULT = 75
+
 # Back-compat alias used by older tests/imports.
 DEFAULT_SETTINGS = DEFAULT_BOOL_SETTINGS
 
 HIDDEN_MENU_BUTTONS_KEY = "hidden_menu_buttons"
+MUSIC_FOLDER_KEY = "music_folder"
 
 
 def clamp_tts_volume(value: int | float) -> int:
@@ -49,6 +55,15 @@ def clamp_tts_volume(value: int | float) -> int:
     except (TypeError, ValueError):
         return TTS_VOLUME_DEFAULT
     return max(TTS_VOLUME_MIN, min(TTS_VOLUME_MAX, volume))
+
+
+def clamp_music_volume(value: int | float) -> int:
+    """Clamp music volume to the supported 0–100 range."""
+    try:
+        volume = int(round(float(value)))
+    except (TypeError, ValueError):
+        return MUSIC_VOLUME_DEFAULT
+    return max(MUSIC_VOLUME_MIN, min(MUSIC_VOLUME_MAX, volume))
 
 
 def settings_file_path(directory: str | None = None) -> str:
@@ -85,6 +100,7 @@ class SettingsStore:
             **DEFAULT_BOOL_SETTINGS,
             **DEFAULT_INT_SETTINGS,
             HIDDEN_MENU_BUTTONS_KEY: [],
+            MUSIC_FOLDER_KEY: "",
         }
 
     def load(self) -> None:
@@ -123,6 +139,8 @@ class SettingsStore:
             value = raw.get(key, default)
             if key == "tts_volume":
                 data[key] = clamp_tts_volume(value if value is not None else default)
+            elif key == "music_volume":
+                data[key] = clamp_music_volume(value if value is not None else default)
             elif isinstance(value, bool):
                 data[key] = default
             elif isinstance(value, int):
@@ -138,6 +156,8 @@ class SettingsStore:
             ]
         else:
             data[HIDDEN_MENU_BUTTONS_KEY] = []
+        folder = raw.get(MUSIC_FOLDER_KEY, "")
+        data[MUSIC_FOLDER_KEY] = str(folder).strip() if isinstance(folder, str) else ""
         return data
 
     def get(self, key: str, default: bool | None = None) -> bool:
@@ -156,13 +176,22 @@ class SettingsStore:
             value = self._data[key]
             if key == "tts_volume":
                 return clamp_tts_volume(value)
+            if key == "music_volume":
+                return clamp_music_volume(value)
             return value
         if default is not None:
             return int(default)
         return int(DEFAULT_INT_SETTINGS.get(key, 0))
 
+    def get_str(self, key: str, default: str = "") -> str:
+        """Return a string setting such as the music folder path."""
+        value = self._data.get(key, default)
+        if isinstance(value, str):
+            return value
+        return default
+
     def update(self, **values: Any) -> None:
-        """Update known boolean/int settings and save immediately."""
+        """Update known boolean/int/string settings and save immediately."""
         changed = False
         for key, value in values.items():
             if key in DEFAULT_BOOL_SETTINGS:
@@ -173,11 +202,18 @@ class SettingsStore:
             elif key in DEFAULT_INT_SETTINGS:
                 if key == "tts_volume":
                     coerced = clamp_tts_volume(value)
+                elif key == "music_volume":
+                    coerced = clamp_music_volume(value)
                 else:
                     try:
                         coerced = int(value)
                     except (TypeError, ValueError):
                         continue
+                if self._data.get(key) != coerced:
+                    self._data[key] = coerced
+                    changed = True
+            elif key == MUSIC_FOLDER_KEY:
+                coerced = str(value).strip() if value is not None else ""
                 if self._data.get(key) != coerced:
                     self._data[key] = coerced
                     changed = True
@@ -198,3 +234,11 @@ class SettingsStore:
             return
         self._data[HIDDEN_MENU_BUTTONS_KEY] = cleaned
         self.save()
+
+    def get_music_folder(self) -> str:
+        """Return the persisted music playlist folder path."""
+        return self.get_str(MUSIC_FOLDER_KEY, "")
+
+    def set_music_folder(self, folder: str) -> None:
+        """Persist the music playlist folder path."""
+        self.update(**{MUSIC_FOLDER_KEY: folder})
