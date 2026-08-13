@@ -506,8 +506,6 @@ class MovementMixin:
             return False
         if getattr(self, "_ai_generating", False):
             return False
-        if getattr(self, "_focus_mode", False):
-            return False
         if getattr(self, "_is_game_active", lambda: False)():
             return False
         if getattr(self, "_chat_mode", False):
@@ -624,7 +622,7 @@ class MovementMixin:
         if getattr(self, "_hug_mode", False) or getattr(self, "_preserve_sprite", False):
             self._mouse_follow_state = "idle"
             return
-        if getattr(self, "_ai_generating", False) or getattr(self, "_focus_mode", False):
+        if getattr(self, "_ai_generating", False):
             self._mouse_follow_state = "idle"
             return
         if getattr(self, "_is_game_active", lambda: False)():

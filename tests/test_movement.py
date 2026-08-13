@@ -663,6 +663,32 @@ def test_can_look_at_mouse_blocked_during_chat(movement):
     assert movement._can_follow_mouse() is False
 
 
+def test_mouse_attention_allowed_during_focus_mode(movement):
+    _configure_mouse_attention(movement)
+    movement._focus_mode = True
+    assert movement._can_look_at_mouse() is True
+    assert movement._can_follow_mouse() is True
+
+
+def test_finish_mouse_think_starts_chase_in_focus_mode(movement):
+    _configure_mouse_attention(movement)
+    movement._focus_mode = True
+    movement._mouse_follow_state = "thinking"
+    movement.move_towards = MagicMock()
+    movement._finish_surf_movement = MagicMock()
+    movement._on_mouse_chase_finished = MagicMock()
+
+    with (
+        patch("kinito.movement.random.random", return_value=0.0),
+        patch("kinito.movement.threading.Thread") as mock_thread,
+    ):
+        mock_thread.return_value = MagicMock()
+        movement._finish_mouse_think(250, 240)
+
+    assert movement._mouse_follow_state == "chasing"
+    mock_thread.assert_called_once()
+
+
 def test_update_mouse_attention_looks_right(movement):
     _configure_mouse_attention(movement)
     # Outside follow radius (180) but inside look radius (280).
