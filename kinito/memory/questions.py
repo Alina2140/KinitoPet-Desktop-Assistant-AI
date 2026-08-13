@@ -17,6 +17,8 @@ class MemoryQuestion:
     ui: Literal["textbox", "yes_no"]
     topic: str
     save_as: str = SAVE_AS_NOTE
+    # For multi-value verify questions: the specific item that was mentioned.
+    context_value: str | None = None
 
 
 def verify_fact_key(save_as: str) -> str | None:

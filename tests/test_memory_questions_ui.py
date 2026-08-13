@@ -88,17 +88,59 @@ def test_verify_no_asks_for_updated_value(app):
         "yes_no",
         "verify_favorite_color",
         save_as=save_as_verify("favorite_colors"),
+        context_value="black",
     )
     app._pending_memory_question = spec
     app._handle_memory_question_response(dlg.BUTTON_NO)
 
-    assert app._memory.get_fact("favorite_colors") == "black"
+    # Rejected item is removed immediately for multi-value facts.
+    assert app._memory.get_fact("favorite_colors") is None
     assert app._pending_memory_question is not None
     assert app._pending_memory_question.save_as == "favorite_colors"
     assert "color" in app._pending_memory_question.question.lower()
 
     app._handle_memory_question_response("blue")
     assert app._memory.get_fact("favorite_colors") == "blue"
+    assert app._pending_memory_question is None
+
+
+def test_verify_no_keeps_other_hobbies_and_merges(app):
+    from kinito.memory.questions import save_as_verify
+
+    app._memory.set_fact("hobbies", "Drawing, Reading, Crochet")
+    spec = MemoryQuestion(
+        "Still enjoying Drawing these days?",
+        "yes_no",
+        "verify_hobby",
+        save_as=save_as_verify("hobbies"),
+        context_value="Drawing",
+    )
+    app._pending_memory_question = spec
+    app._handle_memory_question_response(dlg.BUTTON_NO)
+
+    assert app._memory.get_fact_values("hobbies") == ["Reading", "Crochet"]
+    assert app._pending_memory_question is not None
+
+    app._handle_memory_question_response("Knitting")
+    assert app._memory.get_fact_values("hobbies") == ["Reading", "Crochet", "Knitting"]
+
+
+def test_verify_update_rejects_placeholder_answers(app):
+    from kinito.memory.questions import save_as_verify
+
+    app._memory.set_fact("favorite_drink", "Tea")
+    spec = MemoryQuestion(
+        "Is Tea still your favorite drink?",
+        "yes_no",
+        "verify_favorite_drink",
+        save_as=save_as_verify("favorite_drink"),
+    )
+    app._pending_memory_question = spec
+    app._handle_memory_question_response(dlg.BUTTON_NO)
+    assert app._pending_memory_question is not None
+
+    app._handle_memory_question_response("no")
+    assert app._memory.get_fact("favorite_drink") == "Tea"
     assert app._pending_memory_question is None
 
 

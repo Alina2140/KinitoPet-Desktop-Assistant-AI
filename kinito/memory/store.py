@@ -20,6 +20,7 @@ from kinito.memory.fact_values import (
     compact_fact_storage,
     format_fact_values,
     normalize_fact_value_list,
+    should_reject_fact_value,
     split_fact_values,
 )
 from kinito.memory.validation import is_duplicate_of_existing_note, is_storable_note
@@ -258,12 +259,18 @@ class MemoryStore:
         if not trimmed_key or not isinstance(value, str):
             return
         if trimmed_key in MULTI_VALUE_FACT_KEYS:
-            values = split_fact_values(value)
+            values = [
+                item
+                for item in split_fact_values(value)
+                if not should_reject_fact_value(trimmed_key, item)
+            ]
             self._write_fact_values(trimmed_key, values, merge=False)
             return
 
         trimmed_value = value.strip()[:MAX_FACT_VALUE_LEN]
         if not trimmed_value:
+            return
+        if should_reject_fact_value(trimmed_key, trimmed_value):
             return
         if trimmed_key == "birthday":
             from content.birthday import BIRTHDAY_DECLINED, parse_birthday
@@ -334,6 +341,31 @@ class MemoryStore:
                 self.set_fact(trimmed_key, values[0])
             return
         self._write_fact_values(trimmed_key, values, merge=False)
+
+    def remove_fact_value(self, key: str, value: str) -> bool:
+        """Remove one item from a multi-value fact. Returns True if something changed."""
+        trimmed_key = key.strip()
+        if trimmed_key not in MULTI_VALUE_FACT_KEYS:
+            return False
+        target = value.strip().casefold()
+        if not target:
+            return False
+        existing = self.get_fact_values(trimmed_key)
+        remaining = [item for item in existing if item.casefold() != target]
+        if len(remaining) == len(existing):
+            return False
+        facts: dict[str, Any] = self._data["facts"]
+        if not remaining:
+            facts.pop(trimmed_key, None)
+            self.save()
+            return True
+        stored = compact_fact_storage(remaining)
+        if stored is None:
+            facts.pop(trimmed_key, None)
+        else:
+            facts[trimmed_key] = stored
+        self.save()
+        return True
 
     def _write_fact_values(self, key: str, values: list[str], *, merge: bool) -> None:
         cleaned = normalize_fact_value_list(values)
@@ -518,13 +550,23 @@ class MemoryStore:
                     if isinstance(value, list):
                         # Explicit list = full replacement (user corrected the set).
                         before = facts.get(key)
-                        self.replace_fact_values(key, normalize_fact_value_list(value))
+                        cleaned = [
+                            item
+                            for item in normalize_fact_value_list(value)
+                            if not should_reject_fact_value(key, item)
+                        ]
+                        self.replace_fact_values(key, cleaned)
                         if facts.get(key) != before:
                             changed = True
                     elif isinstance(value, str):
                         before = facts.get(key)
                         # Plain string adds/merges newly mentioned items.
-                        self.merge_fact_values(key, split_fact_values(value))
+                        cleaned = [
+                            item
+                            for item in split_fact_values(value)
+                            if not should_reject_fact_value(key, item)
+                        ]
+                        self.merge_fact_values(key, cleaned)
                         if facts.get(key) != before:
                             changed = True
                     continue
@@ -532,7 +574,7 @@ class MemoryStore:
                 if not isinstance(value, str):
                     continue
                 trimmed = value.strip()[:MAX_FACT_VALUE_LEN]
-                if not trimmed:
+                if not trimmed or should_reject_fact_value(key, trimmed):
                     continue
                 facts[key] = trimmed
                 changed = True

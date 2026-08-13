@@ -5,6 +5,7 @@ from __future__ import annotations
 from content import dialogue as dlg
 from content.memory_followups import FACT_UPDATE_PROMPTS
 from content.memory_keys import ALLOWED_FACT_KEYS, MULTI_VALUE_FACT_KEYS, PROTECTED_FACT_KEYS
+from kinito.memory.fact_values import is_placeholder_fact_answer, split_fact_values
 from kinito.memory.questions import SAVE_AS_NOTE, MemoryQuestion, verify_fact_key
 from kinito.memory.store import MemoryStore
 
@@ -109,21 +110,46 @@ class MemoryMixin:
         """Store a memory-question answer; may return a follow-up question."""
         fact_key = verify_fact_key(spec.save_as)
         if fact_key is not None:
-            return self._persist_verification_answer(fact_key, answer)
+            return self._persist_verification_answer(fact_key, answer, spec.context_value)
 
         if (
             spec.save_as != SAVE_AS_NOTE
             and spec.save_as in ALLOWED_FACT_KEYS
             and spec.save_as not in PROTECTED_FACT_KEYS
         ):
-            self._memory.set_fact(spec.save_as, answer)
+            self._apply_fact_update(spec.save_as, answer, topic=spec.topic)
             return None
 
         note = self._compact_memory_note(spec, answer)
         self._memory.add_note(note, source="question")
         return None
 
-    def _persist_verification_answer(self, fact_key: str, answer: str) -> MemoryQuestion | None:
+    def _apply_fact_update(self, fact_key: str, answer: str, *, topic: str) -> None:
+        """Write an updated fact without wiping multi-value lists on partial answers."""
+        if is_placeholder_fact_answer(answer) and not fact_key.startswith("likes_"):
+            # Decline / "none" after verify: keep remaining values as-is.
+            return
+
+        if fact_key in MULTI_VALUE_FACT_KEYS:
+            values = split_fact_values(answer)
+            if not values:
+                return
+            # Updates after verify append instead of replace, so answering
+            # "Crochet" does not erase Drawing/Reading.
+            if topic.startswith("update_"):
+                self._memory.merge_fact_values(fact_key, values)
+            else:
+                self._memory.set_fact(fact_key, answer)
+            return
+
+        self._memory.set_fact(fact_key, answer)
+
+    def _persist_verification_answer(
+        self,
+        fact_key: str,
+        answer: str,
+        context_value: str | None = None,
+    ) -> MemoryQuestion | None:
         """Handle yes/no confirmation of an existing fact; update instead of delete."""
         if answer == "yes":
             # Re-set the same value so the fact stays current without changing it.
@@ -146,6 +172,10 @@ class MemoryMixin:
         if fact_key not in ALLOWED_FACT_KEYS or fact_key in PROTECTED_FACT_KEYS:
             return None
 
+        # Multi-value verify asks about one item — drop only that item.
+        if fact_key in MULTI_VALUE_FACT_KEYS and context_value:
+            self._memory.remove_fact_value(fact_key, context_value)
+
         prompt = FACT_UPDATE_PROMPTS.get(
             fact_key,
             f"Got it! What should I remember instead for {fact_key.replace('_', ' ')}?",
@@ -155,6 +185,7 @@ class MemoryMixin:
             ui="textbox",
             topic=f"update_{fact_key}",
             save_as=fact_key,
+            context_value=context_value,
         )
 
     @staticmethod

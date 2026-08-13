@@ -3,7 +3,9 @@
 from kinito.memory.fact_values import (
     compact_fact_storage,
     format_fact_values,
+    is_placeholder_fact_answer,
     normalize_fact_value_list,
+    should_reject_fact_value,
     split_fact_values,
 )
 
@@ -51,3 +53,13 @@ def test_normalize_fact_value_list_from_mixed_input():
         "Reading",
         "Crochet",
     ]
+
+
+def test_placeholder_fact_answers():
+    assert is_placeholder_fact_answer("no")
+    assert is_placeholder_fact_answer("None")
+    assert not is_placeholder_fact_answer("Tea")
+    assert should_reject_fact_value("favorite_drink", "no")
+    assert should_reject_fact_value("hobbies", "none")
+    assert not should_reject_fact_value("likes_coffee", "no")
+    assert not should_reject_fact_value("plans_tonight", "no")

@@ -239,3 +239,25 @@ def test_pet_and_split_on_set_fact(store):
     store.set_fact("pets", "Lola and Mae")
     assert store.get_fact_values("pets") == ["Lola", "Mae"]
     assert store.get_fact("pets") == "Lola and Mae"
+
+
+def test_remove_fact_value_keeps_remaining_items(store):
+    store.set_fact("hobbies", "Drawing, Reading, Crochet")
+    assert store.remove_fact_value("hobbies", "Drawing") is True
+    assert store.get_fact_values("hobbies") == ["Reading", "Crochet"]
+    assert store.remove_fact_value("hobbies", "missing") is False
+
+
+def test_set_fact_rejects_placeholder_for_favorite_drink(store):
+    store.set_fact("favorite_drink", "Tea")
+    store.set_fact("favorite_drink", "no")
+    assert store.get_fact("favorite_drink") == "Tea"
+
+
+def test_apply_extraction_rejects_placeholder_favorite_drink(store):
+    store.set_fact("favorite_drink", "Tea")
+    store.apply_extraction(
+        update_facts={"favorite_drink": "no"},
+        allowed_fact_keys=frozenset({"favorite_drink"}),
+    )
+    assert store.get_fact("favorite_drink") == "Tea"

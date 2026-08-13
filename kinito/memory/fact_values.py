@@ -90,3 +90,56 @@ def compact_fact_storage(values: list[str]) -> str | list[str] | None:
     if len(cleaned) == 1:
         return cleaned[0]
     return cleaned
+
+
+# Answers that usually mean "decline / no update" rather than a real fact value.
+_PLACEHOLDER_FACT_ANSWERS = frozenset(
+    {
+        "no",
+        "yes",
+        "n",
+        "y",
+        "none",
+        "nothing",
+        "n/a",
+        "na",
+        "idk",
+        "dunno",
+        "nope",
+        "nah",
+        "skip",
+        "pass",
+        "-",
+        ".",
+        "?",
+        "private",
+    }
+)
+
+# Fact keys where "yes"/"no" (or similar) is a meaningful stored value.
+_FACT_KEYS_ALLOWING_PLACEHOLDERS = frozenset(
+    {
+        "likes_programming",
+        "likes_music",
+        "likes_coffee",
+        "likes_rain",
+        "likes_horror",
+        "likes_spicy_food",
+        "likes_staying_up_late",
+        "plans_tonight",
+        "partner_status",
+        "birthday",
+    }
+)
+
+
+def is_placeholder_fact_answer(text: str) -> bool:
+    """Return True for short decline-style answers that should not overwrite facts."""
+    return text.strip().casefold() in _PLACEHOLDER_FACT_ANSWERS
+
+
+def should_reject_fact_value(key: str, value: str) -> bool:
+    """Return True when *value* must not be written to *key*."""
+    if key.startswith("likes_") or key in _FACT_KEYS_ALLOWING_PLACEHOLDERS:
+        return False
+    return is_placeholder_fact_answer(value)

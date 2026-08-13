@@ -55,6 +55,7 @@ def test_pick_template_followup_can_verify_favorite_color(store):
     assert "black" in spec.question
     assert spec.ui == "yes_no"
     assert spec.save_as == "verify:favorite_colors"
+    assert spec.context_value == "black"
 
 
 def test_verify_followup_can_repeat_after_cooldown(store):

@@ -405,13 +405,13 @@ MEMORY_FOLLOWUPS: tuple[MemoryFollowup, ...] = (
 FACT_UPDATE_PROMPTS: dict[str, str] = {
     "favorite_colors": "Got it! What colors do you like now?",
     "favorite_food": "Okay! What's your favorite food now?",
-    "hobbies": "Fair enough! What hobbies are you into these days?",
+    "hobbies": "Did you start a new hobby? If so, which one?",
     "favorite_drink": "Noted! What's your favorite drink now?",
     "favorite_movie": "Alright! What's your favorite movie now?",
     "favorite_snacks": "Okay! What snacks do you like now?",
     "favorite_seasons": "Got it! Which seasons do you like best now?",
     "favorite_book": "Okay! What's a favorite book of yours now?",
-    "pets": "Got it! Do you have any pets now? If so, tell me about them.",
+    "pets": "Got it! Any pets to add? Tell me their names!",
     "user_names": "Got it! What should I call you now?",
     "job": "Okay! What do you do for work or school now?",
     "favorite_game": "Got it! What's your favorite game now?",
@@ -426,7 +426,7 @@ FACT_UPDATE_PROMPTS: dict[str, str] = {
     "wake_time": "Alright! What time do you usually wake up now?",
     "home_city": "Okay! What city or region are you in now?",
     "chronotype": "Got it! Early bird or night owl these days?",
-    "languages": "Okay! What languages do you speak now?",
+    "languages": "Did you learn another language? Which one is it?",
     "partner_status": "Got it — want to update that? Or say private.",
     "siblings": "Okay! Any update on siblings?",
     "important_person": "Got it! Who's someone important in your life now?",
@@ -434,16 +434,23 @@ FACT_UPDATE_PROMPTS: dict[str, str] = {
 }
 
 
-def _facts_for_followup_template(memory: MemoryStore, requires_fact: str) -> dict[str, str]:
-    """Build format kwargs; multi-value facts use one random item when possible."""
+def _facts_for_followup_template(
+    memory: MemoryStore, requires_fact: str
+) -> tuple[dict[str, str], str | None]:
+    """Build format kwargs; multi-value facts use one random item when possible.
+
+    Returns ``(facts, context_value)`` where *context_value* is the chosen item
+    for multi-value facts (else None).
+    """
     facts = memory.facts_dict()
     if requires_fact not in MULTI_VALUE_FACT_KEYS:
-        return facts
+        return facts, None
     values = memory.get_fact_values(requires_fact)
     if not values:
-        return facts
+        return facts, None
     # Speak about one item so lines stay natural with several hobbies/pets.
-    return {**facts, requires_fact: random.choice(values)}
+    chosen = random.choice(values)
+    return {**facts, requires_fact: chosen}, chosen
 
 
 def pick_template_followup(memory: MemoryStore) -> MemoryQuestion | None:
@@ -470,7 +477,9 @@ def pick_template_followup(memory: MemoryStore) -> MemoryQuestion | None:
             and value.strip().lower() in {"no", "n", "false", "0"}
         ):
             continue
-        facts = _facts_for_followup_template(memory, followup.requires_fact)
+        facts, context_value = _facts_for_followup_template(
+            memory, followup.requires_fact
+        )
         template = random.choice(followup.templates)
         try:
             question = template.format(**facts)
@@ -485,6 +494,7 @@ def pick_template_followup(memory: MemoryStore) -> MemoryQuestion | None:
                 ui=followup.ui,
                 topic=followup.topic,
                 save_as=followup.save_as,
+                context_value=context_value if is_verify else None,
             )
         )
 
