@@ -1312,9 +1312,14 @@ class SpeechMixin:
 
     def _new_speech_bubble_toplevel(self, title):
         """Create a hidden speech-bubble window parked off-screen."""
+        # Avoid transient() on an overrideredirect root — Windows relocates the parent.
+        pin = getattr(self, "_pin_assistant_screen_position", None)
+        pinned = pin() if callable(pin) else None
         bubble = Toplevel(self.root)
-        bubble.transient(self.root)
-        bubble.withdraw()
+        try:
+            bubble.withdraw()
+        except tk.TclError:
+            pass
         bubble.geometry(self.BUBBLE_OFF_SCREEN_GEOMETRY)
         bubble.configure(bg=self.BUBBLE_TRANSPARENT_BG)
         bubble.overrideredirect(True)
@@ -1326,6 +1331,9 @@ class SpeechMixin:
             pass
         bubble.wm_attributes("-topmost", True)
         bubble.wm_title(title)
+        restore = getattr(self, "_restore_assistant_screen_position", None)
+        if pinned is not None and callable(restore):
+            restore(*pinned)
         return bubble
 
     def _speech_bubble_reveal_delay_ms(self):

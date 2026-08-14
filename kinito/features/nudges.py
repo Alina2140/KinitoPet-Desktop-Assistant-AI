@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import random
+import sys
 import time
 import tkinter as tk
 from tkinter import Canvas, Frame, Label, Toplevel
@@ -54,6 +55,8 @@ class NudgesMixin:
         if self.paused or getattr(self, "_is_position_locked_by_user", lambda: self.is_dragging)() or self._camera_active or self._browser_active:
             return False
         if getattr(self, "_is_busy_with_speech", lambda: False)():
+            return False
+        if self._nudge_popup_is_open():
             return False
         last_at = getattr(self, "_last_nudge_at", 0.0)
         if time.monotonic() - last_at < self.NUDGE_COOLDOWN_SECONDS:
@@ -115,8 +118,78 @@ class NudgesMixin:
             return
         if not getattr(self, "_ambient_reminders_enabled", True):
             return
+        existing = getattr(self, "_nudge_popup", None)
+        if existing is not None:
+            try:
+                if existing.winfo_exists():
+                    return
+            except tk.TclError:
+                self._nudge_popup = None
         text = self._pick_ambient_nudge_text()
         self.show_popup_text(text, title="KinitoPET")
+
+    def _nudge_popup_is_open(self) -> bool:
+        """Return True while a nudge dialog is still on screen."""
+        existing = getattr(self, "_nudge_popup", None)
+        if existing is None:
+            return False
+        try:
+            return bool(existing.winfo_exists())
+        except tk.TclError:
+            self._nudge_popup = None
+            return False
+
+    def _pin_assistant_screen_position(self) -> tuple[int, int]:
+        """Remember Kinito's logical position so Toplevel creation cannot teleport him."""
+        try:
+            pinned_x = int(getattr(self, "x", self.root.winfo_x()))
+            pinned_y = int(getattr(self, "y", self.root.winfo_y()))
+        except (tk.TclError, TypeError, ValueError):
+            pinned_x, pinned_y = 0, 0
+        self.x = pinned_x
+        self.y = pinned_y
+        return pinned_x, pinned_y
+
+    def _restore_assistant_screen_position(self, pinned_x: int, pinned_y: int) -> None:
+        """Re-apply *pinned_x*/*pinned_y* to the overrideredirect root window."""
+        self.x = int(pinned_x)
+        self.y = int(pinned_y)
+        try:
+            if not self.root.winfo_exists():
+                return
+            self.root.geometry(f"+{self.x}+{self.y}")
+        except tk.TclError:
+            pass
+
+    @staticmethod
+    def _deiconify_nudge_popup_noactivate(popup: tk.Toplevel) -> None:
+        """Show *popup* without stealing focus from Kinito's root window."""
+        try:
+            popup.wm_attributes("-topmost", True)
+            popup.deiconify()
+        except tk.TclError:
+            return
+        if sys.platform != "win32":
+            return
+        try:
+            import ctypes
+
+            hwnd = int(popup.winfo_id())
+            parent = ctypes.windll.user32.GetParent(hwnd)
+            if parent:
+                hwnd = parent
+            # HWND_TOPMOST + NOMOVE/NOSIZE/NOACTIVATE
+            ctypes.windll.user32.SetWindowPos(
+                hwnd,
+                -1,
+                0,
+                0,
+                0,
+                0,
+                0x0002 | 0x0001 | 0x0010,
+            )
+        except (OSError, AttributeError, ValueError, TypeError, tk.TclError):
+            pass
 
     @staticmethod
     def _pick_nudge_font(root: tk.Misc, candidates: tuple[tuple[str, int], ...]) -> tuple:
@@ -265,13 +338,34 @@ class NudgesMixin:
         auto_close_ms = (
             self.NUDGE_POPUP_AUTO_CLOSE_MS if auto_close_ms is None else auto_close_ms
         )
+        if self._nudge_popup_is_open():
+            return
+
+        # Creating a Toplevel under an overrideredirect root can teleport Kinito
+        # on Windows; pin and restore his logical screen position around setup.
+        pinned_x, pinned_y = self._pin_assistant_screen_position()
 
         popup = Toplevel(self.root)
+        self._nudge_popup = popup
+        try:
+            popup.withdraw()
+        except tk.TclError:
+            pass
+        try:
+            popup.attributes("-alpha", 0.0)
+        except tk.TclError:
+            pass
+        # Park off-screen until sized, so Windows never flashes a default frame.
+        popup.geometry("-10000-10000")
         popup.title(title)
         apply_window_icon(popup)
-        popup.wm_attributes("-topmost", True)
         popup.configure(bg=self._NUDGE_BG)
         popup.resizable(False, False)
+        try:
+            # Slimmer caption; avoid transient() — it relocates overrideredirect parents.
+            popup.wm_attributes("-toolwindow", True)
+        except tk.TclError:
+            pass
 
         msg_font = self._pick_nudge_font(popup, self._NUDGE_MSG_FONT_CANDIDATES)
         btn_font = self._pick_nudge_font(popup, self._NUDGE_BTN_FONT_CANDIDATES)
@@ -313,10 +407,13 @@ class NudgesMixin:
         ).pack(fill="x", side="top")
 
         def _handle_close():
+            if getattr(self, "_nudge_popup", None) is popup:
+                self._nudge_popup = None
             try:
                 popup.destroy()
             except tk.TclError:
                 pass
+            self._restore_assistant_screen_position(pinned_x, pinned_y)
 
         button_row = Frame(footer, bg=self._NUDGE_FOOTER_BG)
         button_row.pack(fill="x", padx=12, pady=10)
@@ -364,5 +461,18 @@ class NudgesMixin:
         popup.geometry(f"{int(needed_w)}x{int(needed_h)}+{int(x)}+{int(y)}")
 
         popup.protocol("WM_DELETE_WINDOW", _handle_close)
+        self._deiconify_nudge_popup_noactivate(popup)
+        try:
+            popup.attributes("-alpha", 1.0)
+        except tk.TclError:
+            pass
+        self._restore_assistant_screen_position(pinned_x, pinned_y)
+        # Windows may move the borderless root asynchronously after the popup maps.
+        try:
+            self.root.after(1, lambda: self._restore_assistant_screen_position(pinned_x, pinned_y))
+            self.root.after(50, lambda: self._restore_assistant_screen_position(pinned_x, pinned_y))
+        except tk.TclError:
+            pass
+
         if auto_close_ms > 0:
             popup.after(auto_close_ms, _handle_close)

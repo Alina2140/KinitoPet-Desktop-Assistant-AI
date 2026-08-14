@@ -270,6 +270,33 @@ def list_monitor_rects(
     return [(0, 0, 1920, 1080)]
 
 
+def primary_monitor_rect(
+    fallback: tuple[int, int, int, int] | None = None,
+) -> tuple[int, int, int, int]:
+    """Return ``(x, y, width, height)`` for the primary monitor.
+
+    On Windows the primary display origin is ``(0, 0)``.
+    """
+    monitors = list_monitor_rects(fallback=fallback)
+    for mx, my, mw, mh in monitors:
+        if mx == 0 and my == 0 and mw > 0 and mh > 0:
+            return mx, my, mw, mh
+    for mx, my, mw, mh in monitors:
+        if mx <= 0 < mx + mw and my <= 0 < my + mh:
+            return mx, my, mw, mh
+    return monitors[0]
+
+
+def centered_origin_on_rect(
+    window_w: int,
+    window_h: int,
+    rect: tuple[int, int, int, int],
+) -> tuple[int, int]:
+    """Return top-left so *window_w*×*window_h* is centered inside *rect*."""
+    mx, my, mw, mh = rect
+    return mx + (int(mw) - int(window_w)) // 2, my + (int(mh) - int(window_h)) // 2
+
+
 def random_fully_visible_origin(
     window_w: int,
     window_h: int,

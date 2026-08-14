@@ -111,12 +111,12 @@ class FloatingAssistant(
     NudgesMixin,
     WindowGrabMixin,
     ScreenCommentsMixin,
+    PaintMixin,
     MenuSettingsMixin,
     MovementMixin,
     MoodMixin,
     HugMixin,
     ContentMixin,
-    PaintMixin,
     GamesMixin,
     MusicMixin,
     ProgramsMixin,
@@ -299,6 +299,9 @@ class FloatingAssistant(
             "screen_comments_enabled", True
         )
         self._last_screen_comment_at = 0.0
+        self._last_ad_popup_at = 0.0
+        self._last_glitch_at = 0.0
+        self._last_blue_screen_at = 0.0
         self._paint_recall_enabled = self._settings.get("paint_recall_enabled", True)
         self._last_paint_recall_at = 0.0
         self._paint_recall_popup = None
@@ -575,6 +578,21 @@ class FloatingAssistant(
 
         return 0, 0, self.root.winfo_screenwidth(), self.root.winfo_screenheight()
 
+    def _query_primary_screen_rect(self):
+        """Return the primary monitor as (x, y, width, height) for centering UI."""
+        from kinito.window_targets import primary_monitor_rect
+
+        try:
+            fallback = (
+                0,
+                0,
+                int(self.root.winfo_screenwidth()),
+                int(self.root.winfo_screenheight()),
+            )
+        except tk.TclError:
+            fallback = (0, 0, 1920, 1080)
+        return primary_monitor_rect(fallback=fallback)
+
     def get_screen_bounds(self, window_w=None, window_h=None):
         """Return (min_x, min_y, max_x, max_y) for keeping a window on the virtual screen."""
         if window_w is None or window_h is None:
@@ -775,9 +793,19 @@ class FloatingAssistant(
         )
 
     def center_position_on_screen(self):
-        """Return the top-left position that centers the assistant on screen."""
-        min_x, min_y, max_x, max_y = self.get_screen_bounds()
-        return (min_x + max_x) // 2, (min_y + max_y) // 2
+        """Return the top-left that centers the assistant on the primary monitor."""
+        window_w, window_h = self._window_screen_size()
+        return self._centered_origin_on_primary(window_w, window_h)
+
+    def _centered_origin_on_primary(self, window_w: int, window_h: int) -> tuple[int, int]:
+        """Return top-left coords that center a *window_w*×*window_h* on the primary monitor."""
+        from kinito.window_targets import centered_origin_on_rect
+
+        return centered_origin_on_rect(
+            window_w,
+            window_h,
+            self._query_primary_screen_rect(),
+        )
 
     def random_position_on_screen(self):
         """Pick a random on-screen position for autonomous movement."""

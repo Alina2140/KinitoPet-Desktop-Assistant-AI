@@ -1161,14 +1161,18 @@ class PaintMixin:
             return
 
         self.root.update_idletasks()
-        vroot_x = self.root.winfo_vrootx()
-        vroot_y = self.root.winfo_vrooty()
-        vroot_w = self.root.winfo_vrootwidth()
-        vroot_h = self.root.winfo_vrootheight()
+        query = getattr(self, "_query_primary_screen_rect", None)
+        if callable(query):
+            screen_x, screen_y, screen_w, screen_h = query()
+        else:
+            screen_x = self.root.winfo_vrootx()
+            screen_y = self.root.winfo_vrooty()
+            screen_w = self.root.winfo_vrootwidth()
+            screen_h = self.root.winfo_vrootheight()
 
         img_w, img_h = img.size
-        max_w = max(int(vroot_w * 0.55), 1)
-        max_h = max(int(vroot_h * 0.55), 1)
+        max_w = max(int(screen_w * 0.55), 1)
+        max_h = max(int(screen_h * 0.55), 1)
         scale = min(1.0, max_w / max(img_w, 1), max_h / max(img_h, 1))
         width = max(1, int(img_w * scale))
         height = max(1, int(img_h * scale))
@@ -1187,8 +1191,12 @@ class PaintMixin:
         label.image = tk_img
         label.pack(fill="both", expand=True)
 
-        x = vroot_x + (vroot_w - width) // 2
-        y = vroot_y + (vroot_h - height) // 2
+        center = getattr(self, "_centered_origin_on_primary", None)
+        if callable(center):
+            x, y = center(width, height)
+        else:
+            x = screen_x + (screen_w - width) // 2
+            y = screen_y + (screen_h - height) // 2
         popup.geometry(f"{width}x{height}+{int(x)}+{int(y)}")
 
         def _handle_close():

@@ -65,6 +65,15 @@ def test_maybe_trigger_screen_glitch_skips_on_miss(glitch):
     glitch.root.after.assert_not_called()
 
 
+def test_maybe_trigger_screen_glitch_respects_cooldown(glitch):
+    import time
+
+    glitch._last_glitch_at = time.monotonic()
+    with patch("kinito.features.glitch.random.random", return_value=0.0):
+        assert glitch.maybe_trigger_screen_glitch() is False
+    glitch.root.after.assert_not_called()
+
+
 def test_maybe_trigger_blue_screen_schedules_on_hit(glitch):
     with (
         patch("kinito.features.glitch.os.path.isfile", return_value=True),

@@ -634,17 +634,15 @@ class MusicMixin:
         self._refresh_music_player_ui()
 
     def _center_music_player(self, window: tk.Toplevel) -> None:
-        """Place the player near the center of the virtual desktop."""
+        """Place the player in the center of the primary monitor."""
         try:
             self.root.update_idletasks()
-            vroot_x = self.root.winfo_vrootx()
-            vroot_y = self.root.winfo_vrooty()
-            vroot_w = self.root.winfo_vrootwidth()
-            vroot_h = self.root.winfo_vrootheight()
-        except tk.TclError:
+            x, y = self._centered_origin_on_primary(
+                self._MUSIC_PLAYER_WIDTH,
+                self._MUSIC_PLAYER_HEIGHT,
+            )
+        except (tk.TclError, AttributeError):
             return
-        x = vroot_x + (vroot_w - self._MUSIC_PLAYER_WIDTH) // 2
-        y = vroot_y + (vroot_h - self._MUSIC_PLAYER_HEIGHT) // 2
         window.geometry(
             f"{self._MUSIC_PLAYER_WIDTH}x{self._MUSIC_PLAYER_HEIGHT}+{int(x)}+{int(y)}"
         )

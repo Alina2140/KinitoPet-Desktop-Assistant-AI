@@ -49,12 +49,16 @@ class MenuSettingsMixin:
         window.geometry(f"{self.MENU_SETTINGS_WIDTH}x{self.MENU_SETTINGS_HEIGHT}")
 
         self.root.update_idletasks()
-        vroot_x = self.root.winfo_vrootx()
-        vroot_y = self.root.winfo_vrooty()
-        vroot_w = self.root.winfo_vrootwidth()
-        vroot_h = self.root.winfo_vrootheight()
-        x = vroot_x + (vroot_w - self.MENU_SETTINGS_WIDTH) // 2
-        y = vroot_y + (vroot_h - self.MENU_SETTINGS_HEIGHT) // 2
+        center = getattr(self, "_centered_origin_on_primary", None)
+        if callable(center):
+            x, y = center(self.MENU_SETTINGS_WIDTH, self.MENU_SETTINGS_HEIGHT)
+        else:
+            vroot_x = self.root.winfo_vrootx()
+            vroot_y = self.root.winfo_vrooty()
+            vroot_w = self.root.winfo_vrootwidth()
+            vroot_h = self.root.winfo_vrootheight()
+            x = vroot_x + (vroot_w - self.MENU_SETTINGS_WIDTH) // 2
+            y = vroot_y + (vroot_h - self.MENU_SETTINGS_HEIGHT) // 2
         window.geometry(
             f"{self.MENU_SETTINGS_WIDTH}x{self.MENU_SETTINGS_HEIGHT}+{int(x)}+{int(y)}"
         )

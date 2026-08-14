@@ -1,17 +1,20 @@
 """Tests for window geometry helpers used by window grab."""
 
 import random
+from unittest.mock import patch
 
 from kinito.window_targets import (
     SIDE_LEFT,
     SIDE_RIGHT,
     WindowRect,
+    centered_origin_on_rect,
     choose_grab_side,
     clamp_window_origin,
     hand_sprite_for_side,
     hand_tuck_geometry,
     pick_window_target,
     position_diverged,
+    primary_monitor_rect,
     random_fully_visible_origin,
 )
 
@@ -52,6 +55,21 @@ def test_random_fully_visible_origin_handles_oversized_window():
         rng=random.Random(1),
     )
     assert (x, y) == (10, 10)
+
+
+def test_primary_monitor_rect_prefers_origin_monitor():
+    with patch("kinito.window_targets.list_monitor_rects") as listed:
+        listed.return_value = [
+            (-1920, 105, 1536, 960),
+            (0, 0, 2560, 1440),
+            (2560, 0, 2560, 1440),
+        ]
+        assert primary_monitor_rect() == (0, 0, 2560, 1440)
+
+
+def test_centered_origin_on_rect():
+    assert centered_origin_on_rect(200, 100, (0, 0, 2560, 1440)) == (1180, 670)
+    assert centered_origin_on_rect(400, 300, (-1920, 0, 1920, 1080)) == (-1920 + 760, 390)
 
 
 def test_choose_grab_side_prefers_nearer_edge():

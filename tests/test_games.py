@@ -607,6 +607,9 @@ def test_game_window_close_shows_speech_bubble():
     app.root.winfo_vrooty.return_value = 0
     app.root.winfo_vrootwidth.return_value = 1920
     app.root.winfo_vrootheight.return_value = 1080
+    app.root.winfo_screenwidth.return_value = 1920
+    app.root.winfo_screenheight.return_value = 1080
+    app._centered_origin_on_primary = MagicMock(return_value=(760, 290))
 
     window = MagicMock()
     with (

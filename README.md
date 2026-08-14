@@ -33,11 +33,14 @@ A free, open-source desktop companion inspired by **KinitoPET**. Kinito lives on
 | **Right-click menu** | Grouped Modes / Settings / Actions, plus chat and goodbye |
 | **Safe browser** | Opens whitelisted HTTPS sites in a small window (or your default browser) |
 | **Camera** | Optional webcam view (requires OpenCV) |
-| **Music player** | Play MP3s from your PC |
+| **Music player** | Folder playlist with play/pause, skip, volume, shuffle & repeat |
 | **Hug** | Hug sprites + sweet lines |
 | **Idle animations** | Blinking, reading, fancy hat mode, sleep sprites |
 | **Reminders** | Timer with sound after X minutes |
-| **Mini-games** | Tic-tac-toe, memory, battleships, snake, connect four, hangman, minesweeper, RPS, trivia, and more (right-click → **Actions** → **Play Game**) |
+| **Ambient nudges** | Occasional Windows-style reminder popups (hydrate, stretch, …); toggle in Settings |
+| **Screen comments** | Rare comments on what’s on screen (Ollama vision optional); toggle in Settings |
+| **Persistent memory** | Remembers facts about you; edit or clear them in Settings |
+| **Mini-games** | Tic-tac-toe, memory, battleships, snake, tetris, connect four, hangman, minesweeper, RPS, trivia, and more (right-click → **Actions** → **Play Game**) |
 | **Paint** | Retro drawing window; save PNGs and browse them (right-click → **Actions** → **Paint**) |
 
 ---
@@ -96,7 +99,7 @@ For a **full beginner walkthrough** (screenshots-level detail), see **[docs/INST
 Top level:
 
 - **Modes** — Sleep / Wake up, Focus / Unfocus, Focus Timer
-- **Settings** — Screen Effects, Memories, Forget, Credits
+- **Settings** — toggles, music folder, Memories, Forget, Credits, and more
 - **Actions** — Reminder, Tell Time, Sing, Fun Fact, Visit Website, Play Music, Play Game, Paint, Hug
 - **Chat** — free-form conversation with a local Ollama model (see below)
 - **Goodbye** — farewell line, then closes the app
@@ -108,17 +111,21 @@ Submenus (same pattern as **Play Game**):
 - **Modes → Sleep / Wake up** — nap mode (sleep animations); label switches while sleeping
 - **Modes → Focus / Unfocus** — quiet mode; label switches while active
 - **Modes → Focus Timer** — set / adjust / end a focus countdown (focus mode only)
-- **Settings → Screen Effects** — toggle rare glitch effects
-- **Settings → Memories** — hear a summary of saved memory
-- **Settings → Forget** — clear saved memory
+- **Settings → Turn On/Off** — feature toggles (Screen Effects, ambient Reminders, App Awareness, Screen Comments, Paint Recall, Snoring, Window Play, TTS, Emoji picker, Special Days, Mood, …)
+- **Settings → TTS Volume** — adjust speech volume
+- **Settings → Music Folder** — choose the folder for the music player playlist
+- **Settings → Reset Mood** — reset Kinito’s mood system (when enabled)
+- **Settings → Menu Buttons** — show/hide individual menu entries
+- **Settings → Memories** — open an editor for saved facts and notes (`memory.json`); edit values, delete rows, then **Save**
+- **Settings → Forget** — clear all saved memory after a confirmation dialog
 - **Settings → Credits** — attribution links
 - **Actions → Set Reminder** — type minutes (e.g. `15`); Kinito reminds you with sound + speech
 - **Actions → Tell Time** — speaks the current time
 - **Actions → Sing** — recites a random poem (some include background music)
 - **Actions → Fun Fact** — random fact
 - **Actions → Visit Website** — pick a category (Animals, Knowledge, Games, Horror, Surprise Me)
-- **Actions → Play Music** — pick an MP3 or play a random one from your Music/Downloads folders
-- **Actions → Play Game** — mini-games (quick games and board games)
+- **Actions → Play Music** — open Kinito’s music player for the chosen music folder (play/pause, skip, volume, shuffle, repeat)
+- **Actions → Play Game** — mini-games (quick games and board games, including Snake and Tetris)
 - **Actions → Paint** — draw (pencil, eraser, spray, shapes) or view saved PNGs
 - **Actions → Hug** — hug pose sprites + hug line
 
@@ -131,6 +138,8 @@ While idle, Kinito may:
 - Offer to open the camera, browser, music, or a hug
 - Read a short story or wisdom quote
 - Do a “fancy” show with a top hat sprite
+- Show an **ambient nudge** as a small Windows-style popup (wellness or clingy reminders; random screen position, always fully visible). Toggle under **Settings → Turn On/Off → Reminders**
+- Occasionally comment on the screen (**Screen Comments**; uses Ollama vision when available, otherwise a short fallback line)
 
 Click the buttons in the speech bubble to respond. Press **Enter** in text boxes to submit.
 
@@ -237,8 +246,8 @@ Kinito can remember personal facts across sessions — no database required.
 
 These files are local only (listed in `.gitignore`) and are not uploaded to Git. You do **not** need to create them manually — Kinito creates `memory.json` and `notes.txt` automatically the first time something is saved (e.g. when you answer a name question or a memory follow-up). After cloning the repo, the `UserMedia/` folder already exists; your personal memory starts empty until you use the app.
 
-Right-click Kinito → **Settings** → **Memories** to hear a summary.  
-Right-click Kinito → **Settings** → **Forget** to clear saved memory.
+Right-click Kinito → **Settings** → **Memories** to open the memory editor (view, edit, or delete individual facts and notes, then **Save**).  
+Right-click Kinito → **Settings** → **Forget** to clear saved memory — you will be asked to confirm first.
 
 Dialog-based memory works without Ollama. Chat note extraction requires Ollama.
 
@@ -262,8 +271,12 @@ GameAssets/
 │   └── Hugging/
 ├── Timer.mp3, Woosh.mp3, StartTalking.mp3, ...       # Sounds
 ├── Programs/balcon.exe                               # Windows TTS (optional fallback: pyttsx3)
+├── musicPlayer/                                      # Music player control icons
 ├── SecretImages/                                     # Optional images for easter egg
 └── UserMedia/                                        # Personal data (gitignored)
+    ├── memory.json                                   # Saved facts & notes (auto-created)
+    ├── notes.txt                                     # Human-readable notes mirror
+    ├── settings.json                                 # Local app settings
     └── paintings/                                    # Saved Paint PNGs
 ```
 

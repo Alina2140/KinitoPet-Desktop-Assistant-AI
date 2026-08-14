@@ -183,6 +183,35 @@ def test_show_popup_text_uses_random_on_screen_position(nudges):
         root.destroy()
 
 
+def test_maybe_trigger_ambient_reminder_skips_when_popup_open(nudges):
+    nudges._nudge_popup = MagicMock()
+    nudges._nudge_popup.winfo_exists.return_value = True
+    with (
+        patch("kinito.features.nudges.time.monotonic", return_value=5000.0),
+        patch("kinito.features.nudges.random.random", return_value=0.0),
+    ):
+        assert nudges.maybe_trigger_ambient_reminder() is False
+    nudges.root.after.assert_not_called()
+
+
+def test_present_ambient_nudge_skips_when_popup_open(nudges):
+    nudges._nudge_popup = MagicMock()
+    nudges._nudge_popup.winfo_exists.return_value = True
+    nudges.show_popup_text = MagicMock()
+    nudges._present_ambient_nudge()
+    nudges.show_popup_text.assert_not_called()
+
+
+def test_restore_assistant_screen_position_rewrites_root_geometry(nudges):
+    nudges.x = 10
+    nudges.y = 20
+    nudges.root.winfo_exists.return_value = True
+    nudges._restore_assistant_screen_position(111, 222)
+    assert nudges.x == 111
+    assert nudges.y == 222
+    nudges.root.geometry.assert_called_with("+111+222")
+
+
 def test_pick_ambient_nudge_text_can_use_app_awareness(nudges):
     from kinito.app_context import AppSnapshot
 

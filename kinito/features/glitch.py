@@ -3,6 +3,7 @@
 import os
 import random
 import sys
+import time
 import tkinter as tk
 from tkinter import Toplevel
 
@@ -17,8 +18,10 @@ class GlitchMixin:
     GLITCH_CHANCE = 1 / 1000
     GLITCH_DURATION_MS = 2000
     GLITCH_NOISE_SCALE = 6
+    GLITCH_COOLDOWN_SECONDS = 180
     BLUE_SCREEN_CHANCE = 1 / 1000
     BLUE_SCREEN_DURATION_MS = 2000
+    BLUE_SCREEN_COOLDOWN_SECONDS = 300
 
     def _overlay_virtual_screen_rect(self):
         """Return (x, y, width, height) covering the full virtual desktop."""
@@ -70,8 +73,12 @@ class GlitchMixin:
             return False
         if self.paused or getattr(self, "_is_position_locked_by_user", lambda: self.is_dragging)() or self._camera_active or self._browser_active:
             return False
+        last_at = getattr(self, "_last_glitch_at", 0.0)
+        if time.monotonic() - last_at < self.GLITCH_COOLDOWN_SECONDS:
+            return False
         if random.random() >= self.GLITCH_CHANCE:
             return False
+        self._last_glitch_at = time.monotonic()
         self.root.after(0, self._flash_screen_glitch)
         return True
 
@@ -87,8 +94,12 @@ class GlitchMixin:
             return False
         if not os.path.isfile(crash_image_path):
             return False
+        last_at = getattr(self, "_last_blue_screen_at", 0.0)
+        if time.monotonic() - last_at < self.BLUE_SCREEN_COOLDOWN_SECONDS:
+            return False
         if random.random() >= self.BLUE_SCREEN_CHANCE:
             return False
+        self._last_blue_screen_at = time.monotonic()
         self.root.after(0, self._flash_blue_screen)
         return True
 

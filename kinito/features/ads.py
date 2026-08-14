@@ -2,6 +2,7 @@
 
 import random
 import threading
+import time
 
 from content.ads_lines import AD_SURPRISE_LINES
 from kinito.assets import ads_directory, list_image_files
@@ -11,6 +12,7 @@ class AdsMixin:
     """Occasionally show a small ad window with feigned surprise."""
 
     AD_POPUP_CHANCE = 1 / 500
+    AD_POPUP_COOLDOWN_SECONDS = 300
 
     def maybe_trigger_random_ad(self) -> bool:
         """Roll for a rare ad popup; schedule on the Tk main thread if it hits."""
@@ -22,8 +24,12 @@ class AdsMixin:
             return False
         if self.paused or getattr(self, "_is_position_locked_by_user", lambda: self.is_dragging)() or self._camera_active or self._browser_active:
             return False
+        last_at = getattr(self, "_last_ad_popup_at", 0.0)
+        if time.monotonic() - last_at < self.AD_POPUP_COOLDOWN_SECONDS:
+            return False
         if random.random() >= self.AD_POPUP_CHANCE:
             return False
+        self._last_ad_popup_at = time.monotonic()
         self.root.after(0, self._show_random_ad_popup)
         return True
 

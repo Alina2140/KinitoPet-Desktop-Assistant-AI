@@ -76,8 +76,12 @@ class CameraMixin:
             vroot_y = self.root.winfo_vrooty()
             vroot_w = self.root.winfo_vrootwidth()
             vroot_h = self.root.winfo_vrootheight()
-            x = vroot_x + (vroot_w - 660) // 2
-            y = vroot_y + (vroot_h - 520) // 2
+            center = getattr(self, "_centered_origin_on_primary", None)
+            if callable(center):
+                x, y = center(660, 520)
+            else:
+                x = vroot_x + (vroot_w - 660) // 2
+                y = vroot_y + (vroot_h - 520) // 2
             self._camera_window.geometry(f"660x520+{x}+{y}")
 
             self._camera_line_timer = None

@@ -522,15 +522,19 @@ class ProgramsMixin:
             return
 
         self.root.update_idletasks()
-        vroot_x = self.root.winfo_vrootx()
-        vroot_y = self.root.winfo_vrooty()
-        vroot_w = self.root.winfo_vrootwidth()
-        vroot_h = self.root.winfo_vrootheight()
+        query = getattr(self, "_query_primary_screen_rect", None)
+        if callable(query):
+            screen_x, screen_y, screen_w, screen_h = query()
+        else:
+            screen_x = self.root.winfo_vrootx()
+            screen_y = self.root.winfo_vrooty()
+            screen_w = self.root.winfo_vrootwidth()
+            screen_h = self.root.winfo_vrootheight()
 
         img_w, img_h = img.size
         if width is None or height is None:
-            max_w = max(int(vroot_w * max_width_ratio), 1)
-            max_h = max(int(vroot_h * max_height_ratio), 1)
+            max_w = max(int(screen_w * max_width_ratio), 1)
+            max_h = max(int(screen_h * max_height_ratio), 1)
             scale = min(1.0, max_w / max(img_w, 1), max_h / max(img_h, 1))
             width = max(1, int(img_w * scale))
             height = max(1, int(img_h * scale))
@@ -556,8 +560,12 @@ class ProgramsMixin:
         label.pack(fill="both", expand=True)
 
         if x is None or y is None:
-            x = vroot_x + (vroot_w - width) // 2
-            y = vroot_y + (vroot_h - height) // 2
+            center = getattr(self, "_centered_origin_on_primary", None)
+            if callable(center):
+                x, y = center(width, height)
+            else:
+                x = screen_x + (screen_w - width) // 2
+                y = screen_y + (screen_h - height) // 2
         popup.geometry(f"{width}x{height}+{int(x)}+{int(y)}")
 
         def _handle_close():
@@ -595,8 +603,12 @@ class ProgramsMixin:
         vroot_y = self.root.winfo_vrooty()
         vroot_w = self.root.winfo_vrootwidth()
         vroot_h = self.root.winfo_vrootheight()
-        x = vroot_x + (vroot_w - 800) // 2
-        y = vroot_y + (vroot_h - 600) // 2
+        center = getattr(self, "_centered_origin_on_primary", None)
+        if callable(center):
+            x, y = center(800, 600)
+        else:
+            x = vroot_x + (vroot_w - 800) // 2
+            y = vroot_y + (vroot_h - 600) // 2
         image_window.geometry(f"800x600+{x}+{y}")
 
         image_window.wait_window(image_window)

@@ -36,14 +36,41 @@ def create_uniform_grid(
 
 
 def center_toplevel(app, window, width: int, height: int) -> None:
-    """Position *window* centered on the virtual screen."""
+    """Position *window* centered on the primary monitor."""
+    from kinito.window_targets import centered_origin_on_rect, primary_monitor_rect
+
     app.root.update_idletasks()
-    vroot_x = app.root.winfo_vrootx()
-    vroot_y = app.root.winfo_vrooty()
-    vroot_w = app.root.winfo_vrootwidth()
-    vroot_h = app.root.winfo_vrootheight()
-    x = vroot_x + (vroot_w - width) // 2
-    y = vroot_y + (vroot_h - height) // 2
+    x = y = None
+    center = getattr(app, "_centered_origin_on_primary", None)
+    if callable(center):
+        try:
+            origin = center(width, height)
+        except Exception:
+            origin = None
+        if (
+            isinstance(origin, tuple)
+            and len(origin) == 2
+            and all(isinstance(value, (int, float)) for value in origin)
+        ):
+            x, y = int(origin[0]), int(origin[1])
+    if x is None or y is None:
+        try:
+            fallback = (
+                0,
+                0,
+                int(app.root.winfo_screenwidth()),
+                int(app.root.winfo_screenheight()),
+            )
+        except (tk.TclError, AttributeError, TypeError, ValueError):
+            fallback = (
+                int(app.root.winfo_vrootx()),
+                int(app.root.winfo_vrooty()),
+                int(app.root.winfo_vrootwidth()),
+                int(app.root.winfo_vrootheight()),
+            )
+        x, y = centered_origin_on_rect(
+            width, height, primary_monitor_rect(fallback=fallback)
+        )
     window.geometry(f"{width}x{height}+{x}+{y}")
 
 

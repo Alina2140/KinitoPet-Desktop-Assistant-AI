@@ -58,6 +58,10 @@ def test_maybe_trigger_respects_cooldown(screen_comments):
         assert screen_comments.maybe_trigger_screen_comment() is False
 
 
+def test_screen_comment_cooldown_is_nudge_scale():
+    assert ScreenCommentsMixin.SCREEN_COMMENT_COOLDOWN_SECONDS >= 300
+
+
 def test_maybe_trigger_schedules_on_hit(screen_comments):
     with patch("kinito.features.screen_comments.random.random", return_value=0.0):
         assert screen_comments.maybe_trigger_screen_comment() is True
