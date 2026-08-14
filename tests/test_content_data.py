@@ -6,6 +6,7 @@ import pytest
 
 from content import dialogue as dlg
 from content.allowed_sites import ALLOWED_SITES
+from content.app_lines import APP_AWARE_IDLE_LINES, APP_AWARE_NUDGE_LINES
 from content.browser_lines import BROWSER_LINES, HORROR_BROWSER_LINES
 from content.camera_lines import CAMERA_LINES
 from content.facts import FACTS, KINITO_FACT_WEIGHT, KINITO_FACTS, get_random_fact
@@ -13,7 +14,11 @@ from content.fancy_lines import FANCY_LINES
 from content.goodbye_lines import GOODBYE_LINES
 from content.hug_lines import HUG_ASK_LINES, HUG_LINES
 from content.music_player_lines import MUSIC_PLAYER_LINES
-from content.nudge_lines import CREEPY_NUDGE_LINES, WELLNESS_NUDGE_LINES
+from content.nudge_lines import (
+    CREEPY_NUDGE_LINES,
+    PLAY_INVITE_NUDGE_LINES,
+    WELLNESS_NUDGE_LINES,
+)
 from content.paint_lines import (
     PAINT_CLOSE_LINES,
     PAINT_GALLERY_EMPTY_LINES,
@@ -59,6 +64,9 @@ def _assert_non_empty_strings(items, *, min_length=1):
         (PAINT_RENAME_LINES, "paint_rename"),
         (WELLNESS_NUDGE_LINES, "wellness_nudge"),
         (CREEPY_NUDGE_LINES, "creepy_nudge"),
+        (PLAY_INVITE_NUDGE_LINES, "play_invite_nudge"),
+        (APP_AWARE_NUDGE_LINES, "app_aware_nudge"),
+        (APP_AWARE_IDLE_LINES, "app_aware_idle"),
         (BROWSER_LINES, "browser"),
         (HORROR_BROWSER_LINES, "horror_browser"),
         (CAMERA_LINES, "camera"),
@@ -68,6 +76,14 @@ def _assert_non_empty_strings(items, *, min_length=1):
 )
 def test_content_pools_are_non_empty(pool, name):
     _assert_non_empty_strings(pool, min_length=10)
+
+
+def test_app_aware_lines_support_placeholders():
+    for line in (*APP_AWARE_NUDGE_LINES, *APP_AWARE_IDLE_LINES):
+        formatted = line.format(active_app="Chrome", open_apps="Chrome, Discord")
+        assert "{active_app}" not in formatted
+        assert "{open_apps}" not in formatted
+        assert "Chrome" in formatted or "Discord" in formatted
 
 
 def test_poems_have_required_fields():
