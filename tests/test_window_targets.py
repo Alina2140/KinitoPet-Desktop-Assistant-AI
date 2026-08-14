@@ -1,5 +1,7 @@
 """Tests for window geometry helpers used by window grab."""
 
+import random
+
 from kinito.window_targets import (
     SIDE_LEFT,
     SIDE_RIGHT,
@@ -10,6 +12,7 @@ from kinito.window_targets import (
     hand_tuck_geometry,
     pick_window_target,
     position_diverged,
+    random_fully_visible_origin,
 )
 
 
@@ -28,6 +31,27 @@ def test_clamp_window_origin_keeps_title_strip_on_dual_monitor():
 def test_clamp_window_origin_inside_stays():
     virtual = (0, 0, 1920, 1080)
     assert clamp_window_origin(100, 200, 400, 300, virtual) == (100, 200)
+
+
+def test_random_fully_visible_origin_stays_on_chosen_monitor():
+    monitors = [(-1920, 0, 1920, 1080), (0, 0, 1920, 1080)]
+    rng = random.Random(7)
+    for _ in range(40):
+        x, y = random_fully_visible_origin(320, 140, monitors=monitors, margin=16, rng=rng)
+        on_left = -1920 + 16 <= x <= -1920 + 1920 - 320 - 16 and 16 <= y <= 1080 - 140 - 16
+        on_right = 16 <= x <= 1920 - 320 - 16 and 16 <= y <= 1080 - 140 - 16
+        assert on_left or on_right
+
+
+def test_random_fully_visible_origin_handles_oversized_window():
+    x, y = random_fully_visible_origin(
+        5000,
+        5000,
+        monitors=[(0, 0, 800, 600)],
+        margin=10,
+        rng=random.Random(1),
+    )
+    assert (x, y) == (10, 10)
 
 
 def test_choose_grab_side_prefers_nearer_edge():

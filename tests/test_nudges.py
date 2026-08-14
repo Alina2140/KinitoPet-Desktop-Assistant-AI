@@ -1,3 +1,4 @@
+import tkinter as tk
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -8,6 +9,16 @@ from kinito.features.nudges import NudgesMixin
 
 class NudgeStub(NudgesMixin):
     pass
+
+
+def _require_tk_root() -> tk.Tk:
+    """Return a withdrawn Tk root, or skip when Tcl/Tk is unavailable."""
+    try:
+        root = tk.Tk()
+        root.withdraw()
+        return root
+    except tk.TclError as exc:
+        pytest.skip(f"No usable Tcl/Tk display: {exc}")
 
 
 @pytest.fixture
@@ -79,26 +90,97 @@ def test_maybe_trigger_ambient_reminder_skips_on_miss(nudges):
     nudges.root.after.assert_not_called()
 
 
-def test_present_ambient_nudge_uses_bubble(nudges):
-    with (
-        patch.object(nudges, "_pick_ambient_nudge_text", return_value="Drink water!"),
-        patch("kinito.features.nudges.random.random", return_value=0.9),
-    ):
-        nudges._present_ambient_nudge()
-    nudges.speak.assert_called_once_with("Drink water!")
-    nudges.show_popup_text.assert_not_called()
-
-
-def test_present_ambient_nudge_uses_popup(nudges):
-    with (
-        patch.object(nudges, "_pick_ambient_nudge_text", return_value="I am watching."),
-        patch("kinito.features.nudges.random.random", return_value=0.1),
-    ):
-        # Restore real show_popup_text path via MagicMock already on stub
+def test_present_ambient_nudge_uses_windows_popup(nudges):
+    with patch.object(nudges, "_pick_ambient_nudge_text", return_value="I am watching."):
         nudges.show_popup_text = MagicMock()
         nudges._present_ambient_nudge()
     nudges.show_popup_text.assert_called_once_with("I am watching.", title="KinitoPET")
     nudges.speak.assert_not_called()
+
+
+def test_show_popup_text_builds_windows_style_dialog(nudges):
+    root = _require_tk_root()
+    nudges.root = root
+    try:
+        nudges.show_popup_text = NudgesMixin.show_popup_text.__get__(nudges, NudgeStub)
+        nudges.show_popup_text("Drink some water.", title="KinitoPET", auto_close_ms=0)
+        popups = [child for child in root.winfo_children() if isinstance(child, tk.Toplevel)]
+        assert len(popups) == 1
+        popup = popups[0]
+        assert popup.title() == "KinitoPET"
+        assert popup.wm_attributes("-topmost") == 1
+        labels = []
+
+        def _collect(widget):
+            if isinstance(widget, tk.Label):
+                labels.append(widget)
+            for child in widget.winfo_children():
+                _collect(child)
+
+        _collect(popup)
+        message = next(label for label in labels if label.cget("text") == "Drink some water.")
+        assert "Segoe UI" in str(message.cget("font"))
+        assert any(getattr(widget, "_nudge_ok_text", None) == "OK" for widget in labels)
+        popup.update_idletasks()
+        # Compact: shorter than the old fixed 420x180 popup.
+        assert popup.winfo_width() <= 400
+        assert popup.winfo_height() <= 170
+        popup.destroy()
+    finally:
+        root.destroy()
+
+
+def test_show_popup_text_grows_for_long_messages(nudges):
+    root = _require_tk_root()
+    nudges.root = root
+    try:
+        nudges.show_popup_text = NudgesMixin.show_popup_text.__get__(nudges, NudgeStub)
+        short = "Hi."
+        long = (
+            "Don't forget to hydrate! Water is your friend. "
+            "I'm your friend too. Drink both. Stay a while."
+        )
+        nudges.show_popup_text(short, title="KinitoPET", auto_close_ms=0)
+        short_popup = next(
+            child for child in root.winfo_children() if isinstance(child, tk.Toplevel)
+        )
+        short_popup.update_idletasks()
+        short_w = short_popup.winfo_width()
+        short_popup.destroy()
+
+        nudges.show_popup_text(long, title="KinitoPET", auto_close_ms=0)
+        long_popup = next(
+            child for child in root.winfo_children() if isinstance(child, tk.Toplevel)
+        )
+        long_popup.update_idletasks()
+        long_w = long_popup.winfo_width()
+        long_h = long_popup.winfo_height()
+        long_popup.destroy()
+
+        assert short_w < long_w or long_h > 120
+    finally:
+        root.destroy()
+
+
+def test_show_popup_text_uses_random_on_screen_position(nudges):
+    root = _require_tk_root()
+    nudges.root = root
+    try:
+        nudges.show_popup_text = NudgesMixin.show_popup_text.__get__(nudges, NudgeStub)
+        with patch(
+            "kinito.features.nudges.random_fully_visible_origin",
+            return_value=(123, 456),
+        ) as place:
+            nudges.show_popup_text("Hello there.", title="KinitoPET", auto_close_ms=0)
+        place.assert_called_once()
+        popup = next(
+            child for child in root.winfo_children() if isinstance(child, tk.Toplevel)
+        )
+        geom = popup.geometry()
+        assert geom.endswith("+123+456")
+        popup.destroy()
+    finally:
+        root.destroy()
 
 
 def test_pick_ambient_nudge_text_can_use_app_awareness(nudges):

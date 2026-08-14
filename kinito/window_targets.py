@@ -217,6 +217,86 @@ def virtual_screen_rect_windows() -> tuple[int, int, int, int] | None:
         return None
 
 
+def list_monitor_rects(
+    fallback: tuple[int, int, int, int] | None = None,
+) -> list[tuple[int, int, int, int]]:
+    """Return ``(x, y, width, height)`` for each connected monitor.
+
+    Falls back to *fallback* or the Windows virtual desktop / a single 1920x1080
+    screen when monitor enumeration is unavailable.
+    """
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            from ctypes import wintypes
+
+            user32 = ctypes.windll.user32
+            monitors: list[tuple[int, int, int, int]] = []
+
+            class RECT(ctypes.Structure):
+                _fields_ = [
+                    ("left", wintypes.LONG),
+                    ("top", wintypes.LONG),
+                    ("right", wintypes.LONG),
+                    ("bottom", wintypes.LONG),
+                ]
+
+            MonitorEnumProc = ctypes.WINFUNCTYPE(
+                wintypes.BOOL,
+                wintypes.HMONITOR,
+                wintypes.HDC,
+                ctypes.POINTER(RECT),
+                wintypes.LPARAM,
+            )
+
+            def _callback(_monitor, _dc, rect_ptr, _data):
+                rect = rect_ptr.contents
+                width = int(rect.right - rect.left)
+                height = int(rect.bottom - rect.top)
+                if width > 0 and height > 0:
+                    monitors.append((int(rect.left), int(rect.top), width, height))
+                return True
+
+            if user32.EnumDisplayMonitors(0, 0, MonitorEnumProc(_callback), 0) and monitors:
+                return monitors
+        except (OSError, AttributeError, ValueError, TypeError):
+            pass
+
+    if fallback is not None:
+        return [fallback]
+    virtual = virtual_screen_rect_windows()
+    if virtual is not None:
+        return [virtual]
+    return [(0, 0, 1920, 1080)]
+
+
+def random_fully_visible_origin(
+    window_w: int,
+    window_h: int,
+    *,
+    monitors: list[tuple[int, int, int, int]] | None = None,
+    margin: int = 16,
+    rng: random.Random | None = None,
+) -> tuple[int, int]:
+    """Pick a random top-left so *window_w*×*window_h* fits fully on one monitor."""
+    chooser = rng if rng is not None else random
+    rects = list(monitors) if monitors else list_monitor_rects()
+    candidates: list[tuple[int, int, int, int]] = []
+    for mx, my, mw, mh in rects:
+        min_x = mx + margin
+        min_y = my + margin
+        max_x = mx + mw - int(window_w) - margin
+        max_y = my + mh - int(window_h) - margin
+        if max_x >= min_x and max_y >= min_y:
+            candidates.append((min_x, min_y, max_x, max_y))
+    if not candidates:
+        # Window larger than every monitor: pin to the first monitor's margin.
+        mx, my, _mw, _mh = rects[0] if rects else (0, 0, 1920, 1080)
+        return mx + margin, my + margin
+    min_x, min_y, max_x, max_y = chooser.choice(candidates)
+    return chooser.randint(min_x, max_x), chooser.randint(min_y, max_y)
+
+
 def _tk_hwnd(window) -> int | None:
     """Resolve a Tk window to its top-level Win32 HWND."""
     if sys.platform != "win32":
