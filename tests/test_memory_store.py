@@ -248,6 +248,31 @@ def test_remove_fact_value_keeps_remaining_items(store):
     assert store.remove_fact_value("hobbies", "missing") is False
 
 
+def test_delete_fact_removes_key(store, memory_dir):
+    store.set_fact("favorite_drink", "Cherry Coke")
+    store.set_fact("hobbies", "Drawing")
+    assert store.delete_fact("favorite_drink") is True
+    assert store.get_fact("favorite_drink") is None
+    assert store.get_fact("hobbies") == "Drawing"
+    assert store.delete_fact("favorite_drink") is False
+    reloaded = MemoryStore(directory=memory_dir)
+    assert reloaded.get_fact("favorite_drink") is None
+    assert reloaded.get_fact("hobbies") == "Drawing"
+
+
+def test_notes_list_and_replace_notes(store, memory_dir):
+    store.add_note("Likes jazz nights")
+    store.add_note("Works late sometimes")
+    notes = store.notes_list()
+    assert len(notes) == 2
+    assert notes[0]["text"] == "Likes jazz nights"
+
+    store.replace_notes(["Only this note remains", "", "Only this note remains"])
+    assert [note["text"] for note in store.notes_list()] == ["Only this note remains"]
+    reloaded = MemoryStore(directory=memory_dir)
+    assert [note["text"] for note in reloaded.notes_list()] == ["Only this note remains"]
+
+
 def test_set_fact_rejects_placeholder_for_favorite_drink(store):
     store.set_fact("favorite_drink", "Tea")
     store.set_fact("favorite_drink", "no")

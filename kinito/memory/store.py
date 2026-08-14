@@ -367,6 +367,18 @@ class MemoryStore:
         self.save()
         return True
 
+    def delete_fact(self, key: str) -> bool:
+        """Remove an entire fact key. Returns True if something changed."""
+        trimmed_key = key.strip()
+        if not trimmed_key:
+            return False
+        facts: dict[str, Any] = self._data["facts"]
+        if trimmed_key not in facts:
+            return False
+        facts.pop(trimmed_key, None)
+        self.save()
+        return True
+
     def _write_fact_values(self, key: str, values: list[str], *, merge: bool) -> None:
         cleaned = normalize_fact_value_list(values)
         if not cleaned:
@@ -525,6 +537,36 @@ class MemoryStore:
                 self.save()
                 return True
         return False
+
+    def notes_list(self) -> list[dict[str, str]]:
+        """Return a shallow copy of stored notes for UI display."""
+        notes: list[dict[str, str]] = self._data.get("notes") or []
+        return [dict(note) for note in notes if isinstance(note, dict)]
+
+    def replace_notes(self, texts: list[str], *, source: str = "editor") -> None:
+        """Replace all notes with *texts* (empty strings skipped) and save once."""
+        cleaned: list[dict[str, str]] = []
+        today = date.today().isoformat()
+        seen: set[str] = set()
+        for text in texts:
+            trimmed = text.strip()[:MAX_NOTE_LEN]
+            if not trimmed:
+                continue
+            key = trimmed.casefold()
+            if key in seen:
+                continue
+            seen.add(key)
+            cleaned.append(
+                {
+                    "text": trimmed,
+                    "source": source.strip() or "editor",
+                    "created": today,
+                }
+            )
+            if len(cleaned) >= MAX_NOTES_STORED:
+                break
+        self._data["notes"] = cleaned
+        self.save()
 
     def apply_extraction(
         self,

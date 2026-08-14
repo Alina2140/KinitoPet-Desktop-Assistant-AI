@@ -819,6 +819,13 @@ MEMORY_FORGOTTEN_LINE = (
 MEMORY_EMPTY_LINE = (
     "I don't have anything saved about you yet. Tell me about yourself! I'll listen carefully."
 )
+MEMORY_SAVED_LINE = (
+    "Saved! Your memories are tucked away again. Carefully. Permanently. Mostly."
+)
+MEMORY_FORGET_CONFIRM_TITLE = "Forget everything?"
+MEMORY_FORGET_CONFIRM_MESSAGE = (
+    "Delete all saved facts and notes about you?\nThis cannot be undone."
+)
 MEMORY_ANSWER_ACK_LINES = [
     "Got it! I'll keep that in mind.",
     "Noted! I'll remember that.",

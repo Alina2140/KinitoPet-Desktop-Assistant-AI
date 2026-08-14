@@ -620,7 +620,7 @@ def _menu_action_handlers() -> dict[str, Handler]:
         dlg.BUTTON_TURN_ON_OFF: _open_settings_toggles_menu,
         dlg.BUTTON_SING_SONG: lambda a: a.say_random_poem(),
         dlg.BUTTON_FUN_FACT: lambda a: a.say_random_fact(),
-        dlg.BUTTON_REMEMBER: lambda a: a.show_memory_summary(),
+        dlg.BUTTON_REMEMBER: lambda a: a.open_memory_editor(),
         dlg.BUTTON_FORGET: lambda a: a.forget_memory(),
         dlg.BUTTON_VISIT_WEBSITE: lambda a: a.ask_browser_category(),
         dlg.BUTTON_PLAY_MUSIC: lambda a: a.open_music_player(),
