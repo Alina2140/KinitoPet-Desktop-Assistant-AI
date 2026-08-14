@@ -18,6 +18,7 @@ from kinito.features.games import connect_four as c4
 from kinito.features.games import hangman as hangman_game
 from kinito.features.games import minesweeper as ms
 from kinito.features.games import snake as snake_game
+from kinito.features.games import tetris as tetris_game
 from kinito.features.games.battleships import (
     GRID_SIZE,
     MAX_SHOTS,
@@ -55,6 +56,26 @@ from kinito.features.games.snake import (
     queue_direction,
     step,
     tick_delay_ms,
+)
+from kinito.features.games.tetris import (
+    BASE_DELAY_MS as TETRIS_BASE_DELAY_MS,
+)
+from kinito.features.games.tetris import (
+    COLS,
+    LINE_SCORES,
+    MIN_DELAY_MS as TETRIS_MIN_DELAY_MS,
+    PIECE_TYPES,
+    ROWS,
+    hard_drop,
+    move,
+    rotate,
+    soft_drop,
+)
+from kinito.features.games.tetris import (
+    step as tetris_step,
+)
+from kinito.features.games.tetris import (
+    tick_delay_ms as tetris_tick_delay_ms,
 )
 from kinito.features.games.tic_tac_toe import (
     EMPTY,
@@ -641,3 +662,117 @@ def test_is_game_active_false_when_idle():
     app._trivia_round = ROUND_SIZE
     app._trivia_used = set(TRIVIA_QUESTIONS[:ROUND_SIZE])
     assert app._is_game_active() is False
+
+
+def test_tetris_move_blocked_by_wall():
+    state = tetris_game.new_game(rng=random.Random(0))
+    active = state["active"]
+    # Horizontal I: cells at ox..ox+3
+    active["type"] = "I"
+    active["rotation"] = 0
+    active["x"] = 0
+    active["y"] = 5
+    assert move(state, -1) == "noop"
+    assert active["x"] == 0
+    active["x"] = COLS - 4
+    assert move(state, 1) == "noop"
+    assert active["x"] == COLS - 4
+    assert move(state, -1) == "ok"
+    assert active["x"] == COLS - 5
+
+
+def test_tetris_rotate_o_is_noop_and_t_rotates():
+    state = tetris_game.new_game(rng=random.Random(1))
+    active = state["active"]
+    active["type"] = "O"
+    active["rotation"] = 0
+    active["x"] = 3
+    active["y"] = 5
+    assert rotate(state) == "noop"
+    assert active["rotation"] == 0
+
+    active["type"] = "T"
+    assert rotate(state) == "ok"
+    assert active["rotation"] == 1
+    assert rotate(state) == "ok"
+    assert active["rotation"] == 2
+
+
+def test_tetris_soft_drop_scores_and_moves():
+    state = tetris_game.new_game(rng=random.Random(2))
+    y_before = state["active"]["y"]
+    score_before = state["score"]
+    assert soft_drop(state) == "ok"
+    assert state["active"]["y"] == y_before + 1
+    assert state["score"] == score_before + 1
+
+
+def test_tetris_hard_drop_locks_and_spawns_next():
+    state = tetris_game.new_game(rng=random.Random(3))
+    next_type = state["next_type"]
+    result = hard_drop(state)
+    assert result == "locked"
+    assert state["alive"] is True
+    assert state["active"] is not None
+    assert state["active"]["type"] == next_type
+    locked = sum(1 for row in state["board"] for cell in row if cell is not None)
+    assert locked == 4
+
+
+def test_tetris_line_clear_updates_score_lines_level():
+    state = tetris_game.new_game(rng=random.Random(4))
+    # Horizontal I uses local y+1 — one soft_drop then lock onto a full bottom row.
+    state["board"][ROWS - 1] = ["#aaa"] * COLS
+    state["active"] = {"type": "I", "rotation": 0, "x": 3, "y": ROWS - 4}
+    state["next_type"] = "T"
+    state["bag"] = list(PIECE_TYPES)
+    state["score"] = 0
+    state["lines"] = 0
+    state["level"] = 1
+    assert soft_drop(state) == "ok"
+    assert state["active"]["y"] == ROWS - 3
+    state["score"] = 0  # ignore soft-drop bonus for clear-score assert
+    result = soft_drop(state)
+    assert result == "locked"
+    assert state["lines"] == 1
+    assert state["score"] == LINE_SCORES[1] * 1
+    assert state["level"] == 1
+
+
+def test_tetris_spawn_blocked_ends_game():
+    state = tetris_game.new_game(rng=random.Random(5))
+    # Block spawn cells without creating full lines (gap in column 0 every row).
+    for y in range(ROWS):
+        state["board"][y][0] = None
+        for x in range(1, COLS):
+            state["board"][y][x] = "#111"
+    state["active"] = {"type": "O", "rotation": 0, "x": 3, "y": ROWS - 2}
+    for x, y in tetris_game.cells_for("O", 0, 3, ROWS - 2):
+        state["board"][y][x] = None
+    state["next_type"] = "T"
+    state["bag"] = ["I", "J", "L", "S", "Z"]
+    assert soft_drop(state) == "dead"
+    assert state["alive"] is False
+
+
+def test_tetris_tick_delay_decreases_with_floor():
+    assert tetris_tick_delay_ms(1) == TETRIS_BASE_DELAY_MS
+    assert tetris_tick_delay_ms(5) < TETRIS_BASE_DELAY_MS
+    assert tetris_tick_delay_ms(100) == TETRIS_MIN_DELAY_MS
+
+
+def test_tetris_bag_delivers_all_seven_before_repeat():
+    state = tetris_game.new_game(rng=random.Random(6))
+    seen = [state["active"]["type"], state["next_type"]]
+    while state["bag"]:
+        seen.append(state["bag"].pop())
+    assert sorted(seen) == sorted(PIECE_TYPES)
+    tetris_game._refill_bag(state)
+    assert sorted(state["bag"]) == sorted(PIECE_TYPES)
+
+
+def test_tetris_step_moves_down():
+    state = tetris_game.new_game(rng=random.Random(7))
+    y_before = state["active"]["y"]
+    assert tetris_step(state) == "ok"
+    assert state["active"]["y"] == y_before + 1

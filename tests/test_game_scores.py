@@ -26,6 +26,7 @@ def store(scores_dir):
 
 def test_defaults_when_missing(store):
     assert store.snake_highscore() == 0
+    assert store.tetris_highscore() == 0
     assert store.memory_best_moves() is None
     assert store.number_guess_best_attempts() is None
     assert store.battleships_best_shots() is None
@@ -43,6 +44,16 @@ def test_record_snake_score_persists(store, scores_dir):
     assert store.record_snake_score(20) is True
     reloaded = GameScoresStore(directory=scores_dir)
     assert reloaded.snake_highscore() == 20
+
+
+def test_record_tetris_score_persists(store, scores_dir):
+    assert store.record_tetris_score(1200) is True
+    assert store.tetris_highscore() == 1200
+    assert store.record_tetris_score(800) is False
+    assert store.tetris_highscore() == 1200
+    assert store.record_tetris_score(2400) is True
+    reloaded = GameScoresStore(directory=scores_dir)
+    assert reloaded.tetris_highscore() == 2400
 
 
 def test_record_memory_moves_keeps_lowest(store, scores_dir):

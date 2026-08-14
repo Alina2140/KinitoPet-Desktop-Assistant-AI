@@ -15,6 +15,7 @@ SCORES_FILENAME = "game_scores.json"
 # Integer scores; 0 means "no record yet" for lower-is-better keys.
 DEFAULT_SCORES: dict[str, int] = {
     "snake_highscore": 0,
+    "tetris_highscore": 0,
     "memory_best_moves": 0,
     "trivia_best_score": 0,
     "trivia_streak": 0,
@@ -123,6 +124,20 @@ class GameScoresStore:
         if score <= current:
             return False
         self._data["snake_highscore"] = score
+        self.save()
+        return True
+
+    def tetris_highscore(self) -> int:
+        """Return the best Tetris score."""
+        return self.get("tetris_highscore")
+
+    def record_tetris_score(self, score: int) -> bool:
+        """Update Tetris highscore if *score* is higher. Return True on new best."""
+        score = max(0, int(score))
+        current = self.tetris_highscore()
+        if score <= current:
+            return False
+        self._data["tetris_highscore"] = score
         self.save()
         return True
 

@@ -203,6 +203,18 @@ SNAKE_NEW_HIGH_LINES = [
     "Highscore: {score}! My circuits are mildly jealous.",
 ]
 
+TETRIS_GAME_OVER_LINES = [
+    "Game over! Score: {score}, level {level}, {lines} lines. Highscore: {highscore}. Stack smarter next time.",
+    "Blocks win this round. You scored {score} (level {level}). Best is {highscore}. Rematch?",
+    "Topped out at {score} points, level {level}. Highscore watch says {highscore}. I almost cleared that for you.",
+]
+
+TETRIS_NEW_HIGH_LINES = [
+    "New Tetris highscore! {score}! Level {level}, {lines} lines — I'll file that under impressive.",
+    "Record broken — {score}! Those lines sang. Highscore locked in.",
+    "Highscore: {score}! My tetriminos tip their hats. Reluctantly.",
+]
+
 CONNECT_FOUR_PLAYER_WIN_LINES = [
     "Four in a row! You win. I'll study your gravity tricks.",
     "You connected four! Victory is yours. Rematch someday?",
