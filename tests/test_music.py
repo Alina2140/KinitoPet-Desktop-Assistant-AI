@@ -137,7 +137,7 @@ def test_clamp_music_volume():
     assert clamp_music_volume(-5) == 0
 
 
-def test_track_finished_advances_then_stops(music, tmp_path):
+def test_track_finished_advances_then_wraps(music, tmp_path):
     a = tmp_path / "a.mp3"
     b = tmp_path / "b.mp3"
     a.write_bytes(b"x")
@@ -155,8 +155,49 @@ def test_track_finished_advances_then_stops(music, tmp_path):
     music._user_music_path = str(b)
     music._play_playlist_index.reset_mock()
     music._on_user_track_finished()
-    music._play_playlist_index.assert_not_called()
-    assert music._user_music_path == str(b)
+    music._play_playlist_index.assert_called_once_with(0, announce=False)
+
+
+def test_track_finished_repeats_one(music, tmp_path):
+    a = tmp_path / "a.mp3"
+    b = tmp_path / "b.mp3"
+    a.write_bytes(b"x")
+    b.write_bytes(b"x")
+    music._music_folder = str(tmp_path)
+    music._reload_music_playlist()
+    music._music_index = 0
+    music._music_repeat_mode = MusicMixin._MUSIC_REPEAT_ONE
+    music._play_playlist_index = MagicMock()
+
+    music._on_user_track_finished()
+    music._play_playlist_index.assert_called_once_with(0, announce=False)
+
+
+def test_toggle_music_shuffle_and_repeat(music):
+    assert music._music_shuffle is False
+    assert music._music_repeat_mode == MusicMixin._MUSIC_REPEAT_ALL
+    music.toggle_music_shuffle()
+    assert music._music_shuffle is True
+    music.toggle_music_repeat()
+    assert music._music_repeat_mode == MusicMixin._MUSIC_REPEAT_ONE
+    music.toggle_music_repeat()
+    assert music._music_repeat_mode == MusicMixin._MUSIC_REPEAT_ALL
+
+
+def test_next_track_uses_shuffle(music, tmp_path):
+    a = tmp_path / "a.mp3"
+    b = tmp_path / "b.mp3"
+    c = tmp_path / "c.mp3"
+    for path in (a, b, c):
+        path.write_bytes(b"x")
+    music._music_folder = str(tmp_path)
+    music._reload_music_playlist()
+    music._music_index = 0
+    music._music_shuffle = True
+    music.play_user_mp3 = MagicMock()
+    with patch("kinito.features.music.random.choice", return_value=2):
+        music.play_next_track()
+    music.play_user_mp3.assert_called_with(str(c), announce=False)
 
 
 def test_music_poll_waits_before_advancing(music):

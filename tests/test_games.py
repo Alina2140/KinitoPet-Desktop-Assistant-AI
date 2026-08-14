@@ -63,13 +63,15 @@ from kinito.features.games.tetris import (
 from kinito.features.games.tetris import (
     COLS,
     LINE_SCORES,
-    MIN_DELAY_MS as TETRIS_MIN_DELAY_MS,
     PIECE_TYPES,
     ROWS,
     hard_drop,
     move,
     rotate,
     soft_drop,
+)
+from kinito.features.games.tetris import (
+    MIN_DELAY_MS as TETRIS_MIN_DELAY_MS,
 )
 from kinito.features.games.tetris import (
     step as tetris_step,
@@ -100,8 +102,8 @@ def test_rps_paper_beats_rock():
 
 
 def test_rps_draw():
-    for move in MOVES:
-        assert rps_winner(move, move) is None
+    for rps_move in MOVES:
+        assert rps_winner(rps_move, rps_move) is None
 
 
 def test_rps_kinito_wins():

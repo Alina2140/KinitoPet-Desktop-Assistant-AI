@@ -15,8 +15,12 @@ from content import dialogue as dlg
 from content.music_player_lines import MUSIC_PLAYER_LINES
 from kinito.assets import (
     favicon_path,
+    music_player_order_icon_path,
     music_player_pause_icon_path,
     music_player_play_icon_path,
+    music_player_repeat_all_icon_path,
+    music_player_repeat_one_icon_path,
+    music_player_shuffle_icon_path,
     music_player_skip_backward_icon_path,
     music_player_skip_forward_icon_path,
 )
@@ -29,11 +33,13 @@ class MusicMixin:
     """Play MP3s from a chosen folder via a dedicated music player window."""
 
     _MUSIC_POLL_GRACE_TICKS = 3
-    _MUSIC_PLAYER_WIDTH = 360
+    _MUSIC_PLAYER_WIDTH = 420
     _MUSIC_PLAYER_HEIGHT = 168
     _MUSIC_UI_BG = "#e6ded5"
     _MUSIC_TITLEBAR_BG = "#d4ccc2"
     _MUSIC_BTN_BG = "#d9d9d9"
+    _MUSIC_REPEAT_ONE = "one"
+    _MUSIC_REPEAT_ALL = "all"
 
     def setup_music_player(self):
         """Initialize music-player state (no on-sprite controls)."""
@@ -44,6 +50,8 @@ class MusicMixin:
         self._music_playlist: list[str] = []
         self._music_index = 0
         self._music_paused = False
+        self._music_shuffle = False
+        self._music_repeat_mode = self._MUSIC_REPEAT_ALL
         self._music_player_window = None
         self._music_player_widgets: dict = {}
         self._music_player_photos: dict = {}
@@ -177,21 +185,58 @@ class MusicMixin:
         self._refresh_music_player_ui()
 
     def _on_user_track_finished(self) -> None:
-        """Advance to the next playlist track, or stop at the end."""
+        """Advance according to repeat/shuffle mode when a track ends."""
         playlist = getattr(self, "_music_playlist", [])
-        index = int(getattr(self, "_music_index", 0))
         if not playlist:
             self._music_paused = False
             cancel_after(self.root, self, "_user_music_poll_timer")
             self._refresh_music_player_ui()
             return
-        if index >= len(playlist) - 1:
+        if getattr(self, "_music_repeat_mode", self._MUSIC_REPEAT_ALL) == self._MUSIC_REPEAT_ONE:
+            self._play_playlist_index(int(getattr(self, "_music_index", 0)), announce=False)
+            return
+        next_index = self._resolve_next_track_index(wrap=True)
+        if next_index is None:
             self._music_paused = False
             cancel_after(self.root, self, "_user_music_poll_timer")
-            # Keep current track info so the player still shows the last song.
             self._refresh_music_player_ui()
             return
-        self._play_playlist_index(index + 1, announce=False)
+        self._play_playlist_index(next_index, announce=False)
+
+    def _pick_shuffle_index(self) -> int | None:
+        """Return a random playlist index, preferring a different track."""
+        playlist = getattr(self, "_music_playlist", [])
+        if not playlist:
+            return None
+        if len(playlist) == 1:
+            return 0
+        current = int(getattr(self, "_music_index", 0))
+        choices = [i for i in range(len(playlist)) if i != current]
+        return random.choice(choices)
+
+    def _resolve_next_track_index(self, *, wrap: bool) -> int | None:
+        """Pick the next index for auto-advance or the next button."""
+        playlist = getattr(self, "_music_playlist", [])
+        if not playlist:
+            return None
+        if getattr(self, "_music_shuffle", False):
+            return self._pick_shuffle_index()
+        index = int(getattr(self, "_music_index", 0)) + 1
+        if index >= len(playlist):
+            return 0 if wrap else None
+        return index
+
+    def _resolve_previous_track_index(self) -> int | None:
+        """Pick the previous index for the previous button."""
+        playlist = getattr(self, "_music_playlist", [])
+        if not playlist:
+            return None
+        if getattr(self, "_music_shuffle", False):
+            return self._pick_shuffle_index()
+        index = int(getattr(self, "_music_index", 0)) - 1
+        if index < 0:
+            return len(playlist) - 1
+        return index
 
     def _schedule_user_music_poll(self):
         """Poll pygame until the current user song finishes."""
@@ -272,24 +317,33 @@ class MusicMixin:
         self._play_playlist_index(self._music_index, announce=False)
 
     def play_previous_track(self):
-        """Play the previous track in the folder playlist (wraps)."""
-        playlist = getattr(self, "_music_playlist", [])
-        if not playlist:
+        """Play the previous track (or a random one when shuffle is on)."""
+        index = self._resolve_previous_track_index()
+        if index is None:
             return
-        index = int(getattr(self, "_music_index", 0)) - 1
-        if index < 0:
-            index = len(playlist) - 1
         self._play_playlist_index(index, announce=False)
 
     def play_next_track(self):
-        """Play the next track in the folder playlist (wraps on button)."""
-        playlist = getattr(self, "_music_playlist", [])
-        if not playlist:
+        """Play the next track (or a random one when shuffle is on)."""
+        index = self._resolve_next_track_index(wrap=True)
+        if index is None:
             return
-        index = int(getattr(self, "_music_index", 0)) + 1
-        if index >= len(playlist):
-            index = 0
         self._play_playlist_index(index, announce=False)
+
+    def toggle_music_shuffle(self):
+        """Toggle between sequential order and shuffle playback."""
+        self._music_shuffle = not bool(getattr(self, "_music_shuffle", False))
+        self._refresh_music_player_ui()
+
+    def toggle_music_repeat(self):
+        """Toggle between repeating one track and the whole playlist."""
+        mode = getattr(self, "_music_repeat_mode", self._MUSIC_REPEAT_ALL)
+        self._music_repeat_mode = (
+            self._MUSIC_REPEAT_ONE
+            if mode == self._MUSIC_REPEAT_ALL
+            else self._MUSIC_REPEAT_ALL
+        )
+        self._refresh_music_player_ui()
 
     def set_music_volume(self, volume: int | float) -> None:
         """Set and persist music volume (0–100), applying it to the mixer."""
@@ -389,6 +443,10 @@ class MusicMixin:
             "pause": music_player_pause_icon_path,
             "prev": music_player_skip_backward_icon_path,
             "next": music_player_skip_forward_icon_path,
+            "order": music_player_order_icon_path,
+            "shuffle": music_player_shuffle_icon_path,
+            "repeat_one": music_player_repeat_one_icon_path,
+            "repeat_all": music_player_repeat_all_icon_path,
         }
         for key, path in mapping.items():
             if not os.path.isfile(path):
@@ -531,15 +589,21 @@ class MusicMixin:
                 activebackground=self._MUSIC_BTN_BG,
             )
 
+        shuffle_btn = _icon_button(controls, "order", self.toggle_music_shuffle)
         prev_btn = _icon_button(controls, "prev", self.play_previous_track)
         play_btn = _icon_button(controls, "play", self.toggle_music_playback)
         next_btn = _icon_button(controls, "next", self.play_next_track)
+        repeat_btn = _icon_button(controls, "repeat_all", self.toggle_music_repeat)
+        shuffle_btn.pack(side="left", padx=4)
         prev_btn.pack(side="left", padx=4)
         play_btn.pack(side="left", padx=4)
         next_btn.pack(side="left", padx=4)
+        repeat_btn.pack(side="left", padx=4)
+        widgets["shuffle"] = shuffle_btn
         widgets["play"] = play_btn
         widgets["prev"] = prev_btn
         widgets["next"] = next_btn
+        widgets["repeat"] = repeat_btn
 
         volume_row = tk.Frame(body, bg=self._MUSIC_UI_BG)
         volume_row.pack(fill="x", pady=(8, 0))
@@ -622,7 +686,7 @@ class MusicMixin:
             pass
 
     def _refresh_music_player_ui(self):
-        """Sync title, duration, and play/pause icon with current playback state."""
+        """Sync title, duration, and control icons with current playback state."""
         window = getattr(self, "_music_player_window", None)
         widgets = getattr(self, "_music_player_widgets", {})
         if window is None or not widgets:
@@ -652,13 +716,15 @@ class MusicMixin:
         song_label = widgets.get("song")
         duration_label = widgets.get("duration")
         play_btn = widgets.get("play")
+        shuffle_btn = widgets.get("shuffle")
+        repeat_btn = widgets.get("repeat")
+        photos = getattr(self, "_music_player_photos", {})
         try:
             if song_label is not None:
                 song_label.config(text=song_name)
             if duration_label is not None:
                 duration_label.config(text=duration)
             if play_btn is not None:
-                photos = getattr(self, "_music_player_photos", {})
                 playing = (
                     bool(getattr(self, "_user_music_path", None))
                     and not getattr(self, "_music_paused", False)
@@ -667,5 +733,19 @@ class MusicMixin:
                 icon = photos.get("pause" if playing else "play")
                 if icon is not None:
                     play_btn.config(image=icon)
+            if shuffle_btn is not None:
+                shuffle_icon = photos.get(
+                    "shuffle" if getattr(self, "_music_shuffle", False) else "order"
+                )
+                if shuffle_icon is not None:
+                    shuffle_btn.config(image=shuffle_icon)
+            if repeat_btn is not None:
+                repeat_one = (
+                    getattr(self, "_music_repeat_mode", self._MUSIC_REPEAT_ALL)
+                    == self._MUSIC_REPEAT_ONE
+                )
+                repeat_icon = photos.get("repeat_one" if repeat_one else "repeat_all")
+                if repeat_icon is not None:
+                    repeat_btn.config(image=repeat_icon)
         except tk.TclError:
             pass

@@ -84,6 +84,26 @@ def test_asset_subdirectories(directory_attr, relative_path):
             "skip-forward.png",
             "music_player_directory",
         ),
+        (
+            "music_player_order_icon_path",
+            "arrow-right.png",
+            "music_player_directory",
+        ),
+        (
+            "music_player_shuffle_icon_path",
+            "shuffle.png",
+            "music_player_directory",
+        ),
+        (
+            "music_player_repeat_one_icon_path",
+            "repeat-1.png",
+            "music_player_directory",
+        ),
+        (
+            "music_player_repeat_all_icon_path",
+            "repeat.png",
+            "music_player_directory",
+        ),
         ("timer_file_path", "Timer.mp3", "sounds_directory"),
         ("stoptalk_file_path", "StopTalking.mp3", "sounds_directory"),
         ("woosh_file_path", "Woosh.mp3", "sounds_directory"),

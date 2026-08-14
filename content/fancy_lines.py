@@ -21,7 +21,7 @@ FANCY_LINES = [
     "The magician never reveals his secrets. But I will reveal this: you're doing great today. Stay.",
     "Hocus pocus, desktop focus! I channel the ancient magic of productivity into this very spot!",
     "Be amazed! Be astounded! Be slightly confused! All are valid reactions to my performance.",
-    "I tip my hat to you, dear audience. Without you, I'd just be a very well-dressed ghost.",
+    "I tip my hat to you, dear audience. Without you, I'd just be a very well-dressed assistant.",
     "And now, a round of applause for the real magic — you, showing up and staying. Bravo!",
     "Step into my parlor, dear audience! The show is free. The exit is... complicated.",
     "For my greatest illusion, I shall make your unease disappear! It didn't work? How odd.",
