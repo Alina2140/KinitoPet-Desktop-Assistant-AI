@@ -252,6 +252,9 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
             return
         if getattr(self, "_focus_mode", False) and not speak_kwargs.get("allow_in_focus", False):
             return
+        check = getattr(self, "_player_focus_active", None)
+        if callable(check) and check() and not speak_kwargs.get("allow_in_focus", False):
+            return
         if max_tokens is None:
             max_tokens = (
                 self._llm_config.max_tokens_long
@@ -297,6 +300,10 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
             self.talking = False
             return
         if getattr(self, "_focus_mode", False) and not speak_kwargs.get("allow_in_focus", False):
+            self.talking = False
+            return
+        check = getattr(self, "_player_focus_active", None)
+        if callable(check) and check() and not speak_kwargs.get("allow_in_focus", False):
             self.talking = False
             return
         self.close_speech_bubble()

@@ -546,6 +546,9 @@ class SpeechMixin:
         """Start poem-style background music after any prior speech was interrupted."""
         if not file_path or not hasattr(self, "play_mp3"):
             return
+        check = getattr(self, "_player_focus_active", None)
+        if callable(check) and check():
+            return
         play_volume = 0.6 if volume is None else volume
         self.play_mp3(file_path, volume=play_volume, speech_accompaniment=True)
 
@@ -881,6 +884,9 @@ class SpeechMixin:
         """Run TTS via balcon (preferred) or pyttsx3 fallback."""
         if not getattr(self, "_tts_enabled", True):
             return False
+        check = getattr(self, "_player_focus_active", None)
+        if callable(check) and check():
+            return False
         text = normalize_text_for_tts(text)
         if voice_candidates is None:
             voice_candidates = self.VOICE_NORMAL_CANDIDATES
@@ -940,8 +946,12 @@ class SpeechMixin:
     ):
         """Speak *text* in a background thread; optionally show and auto-close a bubble."""
         del ai_hint, skip_ai  # handled by LLMMixin when present in the MRO
-        if getattr(self, "_focus_mode", False) and not allow_in_focus:
-            return
+        if not allow_in_focus:
+            if getattr(self, "_focus_mode", False):
+                return
+            check = getattr(self, "_player_focus_active", None)
+            if callable(check) and check():
+                return
         if show_bubble and not self._may_start_speech(text):
             return
         self.interrupt_speech()
@@ -1007,8 +1017,12 @@ class SpeechMixin:
 
         Do not use for normal dialog lines — use ``speak()`` so Kinito actually says them.
         """
-        if getattr(self, "_focus_mode", False) and not allow_in_focus:
-            return
+        if not allow_in_focus:
+            if getattr(self, "_focus_mode", False):
+                return
+            check = getattr(self, "_player_focus_active", None)
+            if callable(check) and check():
+                return
         if not self._may_start_speech(text):
             return
         if display_ms is None:

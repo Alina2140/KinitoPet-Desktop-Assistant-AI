@@ -41,6 +41,7 @@ def test_defaults_when_missing(store):
     assert store.get("snoring_enabled") is True
     assert store.get("window_grab_enabled") is True
     assert store.get("tts_enabled") is True
+    assert store.get("player_focus_enabled") is True
     assert store.get_int("tts_volume") == 100
     assert store.get_int("music_volume") == 75
     assert store.get_music_folder() == ""
@@ -60,6 +61,7 @@ def test_update_and_reload_roundtrip(store, settings_dir):
         snoring_enabled=False,
         window_grab_enabled=False,
         tts_enabled=False,
+        player_focus_enabled=False,
         tts_volume=40,
         music_volume=55,
         music_folder=r"C:\Music",
@@ -77,6 +79,7 @@ def test_update_and_reload_roundtrip(store, settings_dir):
     assert reloaded.get("snoring_enabled") is False
     assert reloaded.get("window_grab_enabled") is False
     assert reloaded.get("tts_enabled") is False
+    assert reloaded.get("player_focus_enabled") is False
     assert reloaded.get_int("tts_volume") == 40
     assert reloaded.get_int("music_volume") == 55
     assert reloaded.get_music_folder() == r"C:\Music"

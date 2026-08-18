@@ -47,6 +47,7 @@ def _menu_app(**kwargs):
     app._snoring_enabled = kwargs.get("snoring_enabled", True)
     app._window_grab_enabled = kwargs.get("window_grab_enabled", True)
     app._tts_enabled = kwargs.get("tts_enabled", True)
+    app._player_focus_enabled = kwargs.get("player_focus_enabled", True)
     app._special_days_enabled = kwargs.get("special_days_enabled", True)
     app._emoji_picker_enabled = kwargs.get("emoji_picker_enabled", True)
     app._mood_system_enabled = kwargs.get("mood_system_enabled", True)
@@ -176,6 +177,7 @@ def test_settings_and_actions_options():
         dlg.BUTTON_SNORING_ON,
         dlg.BUTTON_WINDOW_PLAY_ON,
         dlg.BUTTON_TTS_ON,
+        dlg.BUTTON_PLAYER_FOCUS_ON,
         dlg.BUTTON_EMOJI_ON,
         dlg.BUTTON_SPECIAL_DAYS_ON,
         dlg.BUTTON_MOOD_SYSTEM_ON,
@@ -203,13 +205,16 @@ def test_settings_and_actions_options():
         dlg.BUTTON_WINDOW_PLAY_OFF
     )
     assert settings_toggles_options_for(_menu_app(tts_enabled=False))[7] == dlg.BUTTON_TTS_OFF
-    assert settings_toggles_options_for(_menu_app(emoji_picker_enabled=False))[8] == (
+    assert settings_toggles_options_for(_menu_app(player_focus_enabled=False))[8] == (
+        dlg.BUTTON_PLAYER_FOCUS_OFF
+    )
+    assert settings_toggles_options_for(_menu_app(emoji_picker_enabled=False))[9] == (
         dlg.BUTTON_EMOJI_OFF
     )
-    assert settings_toggles_options_for(_menu_app(special_days_enabled=False))[9] == (
+    assert settings_toggles_options_for(_menu_app(special_days_enabled=False))[10] == (
         dlg.BUTTON_SPECIAL_DAYS_OFF
     )
-    assert settings_toggles_options_for(_menu_app(mood_system_enabled=False))[10] == (
+    assert settings_toggles_options_for(_menu_app(mood_system_enabled=False))[11] == (
         dlg.BUTTON_MOOD_SYSTEM_OFF
     )
     assert settings_toggles_options_for(
@@ -222,6 +227,7 @@ def test_settings_and_actions_options():
         dlg.BUTTON_PAINT_RECALL_ON,
         dlg.BUTTON_WINDOW_PLAY_ON,
         dlg.BUTTON_TTS_ON,
+        dlg.BUTTON_PLAYER_FOCUS_ON,
         dlg.BUTTON_EMOJI_ON,
         dlg.BUTTON_SPECIAL_DAYS_ON,
         dlg.BUTTON_MOOD_SYSTEM_ON,

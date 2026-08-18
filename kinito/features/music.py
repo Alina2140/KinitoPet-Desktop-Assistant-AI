@@ -60,6 +60,46 @@ class MusicMixin:
             self._music_folder = ""
         if not hasattr(self, "_music_volume"):
             self._music_volume = 75
+        if not hasattr(self, "_player_focus_enabled"):
+            self._player_focus_enabled = True
+
+    def _is_music_player_open(self) -> bool:
+        """Return True while the music player window exists."""
+        window = getattr(self, "_music_player_window", None)
+        if window is None:
+            return False
+        try:
+            return bool(window.winfo_exists())
+        except tk.TclError:
+            return False
+
+    def _player_focus_active(self) -> bool:
+        """True when Player Focus is enabled and the music player is open."""
+        if not getattr(self, "_player_focus_enabled", True):
+            return False
+        return self._is_music_player_open()
+
+    def _silence_for_player_focus(self) -> None:
+        """Stop talking when Player Focus applies to the open player."""
+        if not self._player_focus_active():
+            return
+        interrupt = getattr(self, "interrupt_speech", None)
+        if callable(interrupt):
+            interrupt()
+
+    def toggle_player_focus(self):
+        """Enable or disable quiet mode while the music player is open."""
+        self._player_focus_enabled = not getattr(self, "_player_focus_enabled", True)
+        if hasattr(self, "_persist_settings"):
+            self._persist_settings()
+        if self._player_focus_active():
+            self._silence_for_player_focus()
+        lines = (
+            dlg.PLAYER_FOCUS_ON_LINES
+            if self._player_focus_enabled
+            else dlg.PLAYER_FOCUS_OFF_LINES
+        )
+        self.speak(dlg.pick_line(lines), skip_ai=True, allow_in_focus=True)
 
     def ask_music_player_pick(self):
         """Open the music player (menu entry compatibility)."""
@@ -471,6 +511,7 @@ class MusicMixin:
                     existing.lift()
                     existing.focus_force()
                     self._refresh_music_player_ui()
+                    self._silence_for_player_focus()
                     return
             except tk.TclError:
                 self._music_player_window = None
@@ -632,6 +673,7 @@ class MusicMixin:
         self._music_player_widgets = widgets
         window.protocol("WM_DELETE_WINDOW", self._close_music_player_window)
         self._refresh_music_player_ui()
+        self._silence_for_player_focus()
 
     def _center_music_player(self, window: tk.Toplevel) -> None:
         """Place the player in the center of the primary monitor."""

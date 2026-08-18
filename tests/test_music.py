@@ -265,3 +265,45 @@ def test_offer_random_music_asks_first(music):
 def test_format_track_duration():
     assert MusicMixin._format_track_duration(65) == "1:05"
     assert MusicMixin._format_track_duration(None) == "--:--"
+
+
+def test_player_focus_active_requires_open_player(music):
+    music._player_focus_enabled = True
+    assert music._player_focus_active() is False
+
+    window = MagicMock()
+    window.winfo_exists.return_value = True
+    music._music_player_window = window
+    assert music._player_focus_active() is True
+
+    music._player_focus_enabled = False
+    assert music._player_focus_active() is False
+
+
+def test_toggle_player_focus_persists_and_confirms(music):
+    music._player_focus_enabled = True
+    with patch("kinito.features.music.dlg.pick_line", return_value="Quiet off."):
+        music.toggle_player_focus()
+    assert music._player_focus_enabled is False
+    music._persist_settings.assert_called()
+    music.speak.assert_called_once_with("Quiet off.", skip_ai=True, allow_in_focus=True)
+
+
+def test_silence_for_player_focus_interrupts_speech(music):
+    music.interrupt_speech = MagicMock()
+    music._player_focus_enabled = True
+    window = MagicMock()
+    window.winfo_exists.return_value = True
+    music._music_player_window = window
+    music._silence_for_player_focus()
+    music.interrupt_speech.assert_called_once()
+
+
+def test_silence_for_player_focus_skips_when_disabled(music):
+    music.interrupt_speech = MagicMock()
+    music._player_focus_enabled = False
+    window = MagicMock()
+    window.winfo_exists.return_value = True
+    music._music_player_window = window
+    music._silence_for_player_focus()
+    music.interrupt_speech.assert_not_called()

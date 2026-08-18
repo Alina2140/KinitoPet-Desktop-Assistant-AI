@@ -193,6 +193,11 @@ def settings_toggles_options_for(app) -> list[str]:
         if getattr(app, "_tts_enabled", True)
         else dlg.BUTTON_TTS_OFF
     )
+    player_focus_label = (
+        dlg.BUTTON_PLAYER_FOCUS_ON
+        if getattr(app, "_player_focus_enabled", True)
+        else dlg.BUTTON_PLAYER_FOCUS_OFF
+    )
     emoji_label = (
         dlg.BUTTON_EMOJI_ON
         if getattr(app, "_emoji_picker_enabled", True)
@@ -219,6 +224,7 @@ def settings_toggles_options_for(app) -> list[str]:
             snoring_label,
             window_play_label,
             tts_label,
+            player_focus_label,
             emoji_label,
             special_days_label,
             mood_system_label,
@@ -604,6 +610,9 @@ def _menu_action_handlers() -> dict[str, Handler]:
         dlg.BUTTON_TTS: lambda a: a.toggle_tts(),
         dlg.BUTTON_TTS_ON: lambda a: a.toggle_tts(),
         dlg.BUTTON_TTS_OFF: lambda a: a.toggle_tts(),
+        dlg.BUTTON_PLAYER_FOCUS: lambda a: a.toggle_player_focus(),
+        dlg.BUTTON_PLAYER_FOCUS_ON: lambda a: a.toggle_player_focus(),
+        dlg.BUTTON_PLAYER_FOCUS_OFF: lambda a: a.toggle_player_focus(),
         dlg.BUTTON_TTS_VOLUME: lambda a: a.offer_tts_volume_picker(),
         dlg.BUTTON_MUSIC_FOLDER: lambda a: a.root.after(0, a.choose_music_folder),
         dlg.BUTTON_EMOJI: lambda a: a.toggle_emoji_picker_setting(),

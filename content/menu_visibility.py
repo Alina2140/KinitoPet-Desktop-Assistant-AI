@@ -146,6 +146,17 @@ MENU_VISIBILITY_SECTIONS: tuple[tuple[str, tuple[MenuEntry, ...]], ...] = (
                 frozenset({dlg.BUTTON_TTS, dlg.BUTTON_TTS_ON, dlg.BUTTON_TTS_OFF}),
             ),
             (
+                "settings.player_focus",
+                "Player Focus",
+                frozenset(
+                    {
+                        dlg.BUTTON_PLAYER_FOCUS,
+                        dlg.BUTTON_PLAYER_FOCUS_ON,
+                        dlg.BUTTON_PLAYER_FOCUS_OFF,
+                    }
+                ),
+            ),
+            (
                 "settings.tts_volume",
                 "TTS Volume",
                 frozenset(

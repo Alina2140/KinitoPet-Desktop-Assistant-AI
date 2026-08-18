@@ -161,6 +161,15 @@ def test_play_sfx_skips_missing_file(goodbye_app):
     goodbye_app.play_sfx("definitely/not/a/file.mp3")
 
 
+def test_play_sfx_skips_when_player_focus_is_active(goodbye_app, tmp_path):
+    goodbye_app._player_focus_active = MagicMock(return_value=True)
+    mp3 = tmp_path / "test.mp3"
+    mp3.write_bytes(b"not a real mp3")
+    with patch("kinito.app.pygame.mixer.Sound") as sound_cls:
+        goodbye_app.play_sfx(str(mp3))
+    sound_cls.assert_not_called()
+
+
 def test_play_sfx_swallows_pygame_errors(goodbye_app, tmp_path):
     import pygame
 

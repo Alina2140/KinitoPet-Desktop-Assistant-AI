@@ -313,6 +313,7 @@ class FloatingAssistant(
         self._hand_window = None
         self._hand_photo_ref = None
         self._tts_enabled = self._settings.get("tts_enabled", True)
+        self._player_focus_enabled = self._settings.get("player_focus_enabled", True)
         self._tts_volume = self._settings.get_int("tts_volume", 100)
         self._music_volume = self._settings.get_int("music_volume", 75)
         self._music_folder = self._settings.get_music_folder()
@@ -432,6 +433,7 @@ class FloatingAssistant(
             snoring_enabled=bool(getattr(self, "_snoring_enabled", True)),
             window_grab_enabled=bool(getattr(self, "_window_grab_enabled", True)),
             tts_enabled=bool(getattr(self, "_tts_enabled", True)),
+            player_focus_enabled=bool(getattr(self, "_player_focus_enabled", True)),
             tts_volume=int(getattr(self, "_tts_volume", 100)),
             music_volume=int(getattr(self, "_music_volume", 75)),
             music_folder=str(getattr(self, "_music_folder", "") or ""),
@@ -511,6 +513,7 @@ class FloatingAssistant(
             self._startup_complete
             and self._allow_random_questions
             and not getattr(self, "_focus_mode", False)
+            and not self._player_sounds_muted()
             and not self._is_game_active()
             and not self.moving
             and not self._is_busy_with_speech()
@@ -991,8 +994,15 @@ class FloatingAssistant(
         except pygame.error:
             pass
 
+    def _player_sounds_muted(self) -> bool:
+        """True when Player Focus is on and the music player window is open."""
+        check = getattr(self, "_player_focus_active", None)
+        return callable(check) and bool(check())
+
     def play_sfx(self, file_path, volume=1.0):
         """Play a short sound effect without interrupting background music."""
+        if self._player_sounds_muted():
+            return
         if not os.path.isfile(file_path):
             return
         try:
@@ -1009,6 +1019,8 @@ class FloatingAssistant(
 
     def play_mp3(self, file_path, volume=1.0, *, speech_accompaniment=False):
         """Play an MP3 file via pygame mixer; silently skip missing or broken files."""
+        if speech_accompaniment and self._player_sounds_muted():
+            return
         if not os.path.isfile(file_path):
             return
         try:

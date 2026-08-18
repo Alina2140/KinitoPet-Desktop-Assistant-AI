@@ -1119,6 +1119,10 @@ class MovementMixin:
                 random.random() < speech_chance
                 and self._allow_random_questions
                 and not getattr(self, "_focus_mode", False)
+                and not (
+                    callable(getattr(self, "_player_focus_active", None))
+                    and self._player_focus_active()
+                )
                 and not getattr(self, "_is_game_active", lambda: False)()
             ):
                 if random.random() < menu_chance:
