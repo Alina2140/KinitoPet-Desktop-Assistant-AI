@@ -118,6 +118,7 @@ _SHAPE_GLYPHS = {
 _UI_BG = "#e6ded5"
 _CANVAS_BG = "#ffffff"
 _SELECTED_BG = "#ffff80"
+_BRUSH_CURSOR_TAG = "brush_cursor"
 _THUMB_SIZE = (96, 72)
 _GALLERY_COLS = 3
 
@@ -240,6 +241,7 @@ class PaintWindow:
         self._last_xy: tuple[int, int] | None = None
         self._shape_start: tuple[int, int] | None = None
         self._preview_id: int | None = None
+        self._cursor_xy: tuple[int, int] | None = None
         self._tool_buttons: dict[str, Button] = {}
         self._tool_icons: dict[str, ImageTk.PhotoImage] = {}
         self._tip_buttons: list[tuple[Button, str, int]] = []
@@ -354,12 +356,15 @@ class PaintWindow:
             height=self.CANVAS_H,
             bg=_CANVAS_BG,
             highlightthickness=0,
-            cursor="crosshair",
+            cursor="none",
         )
         self.canvas.pack(padx=2, pady=2)
         self.canvas.bind("<ButtonPress-1>", self._on_press)
         self.canvas.bind("<B1-Motion>", self._on_drag)
         self.canvas.bind("<ButtonRelease-1>", self._on_release)
+        self.canvas.bind("<Motion>", self._on_cursor_move)
+        self.canvas.bind("<Enter>", self._on_cursor_move)
+        self.canvas.bind("<Leave>", self._on_cursor_leave)
 
         palette = Frame(right, bg=_UI_BG, bd=2, relief=tk.SUNKEN)
         palette.pack(fill=tk.X, pady=(6, 6))
@@ -442,6 +447,7 @@ class PaintWindow:
     def _set_tool(self, tool: str) -> None:
         self._tool = tool
         self._refresh_tool_highlights()
+        self._redraw_brush_cursor()
 
     def _set_tip(self, shape: str, size: int) -> None:
         self._tip_shape = shape
@@ -450,12 +456,14 @@ class PaintWindow:
         if self._tool in _SHAPE_TOOLS or self._tool == "fill":
             self._tool = "pencil"
         self._refresh_tool_highlights()
+        self._redraw_brush_cursor()
 
     def _set_shape_tool(self, tool: str, size: int) -> None:
         """Select a shape tool (line/circle/rect) with a stroke thickness."""
         self._tool = tool
         self._tip_size = size
         self._refresh_tool_highlights()
+        self._redraw_brush_cursor()
 
     def _refresh_tool_highlights(self) -> None:
         for tool_id, btn in self._tool_buttons.items():
@@ -505,6 +513,7 @@ class PaintWindow:
         self._preview_id = None
         self._canvas_photo = ImageTk.PhotoImage(self._image)
         self.canvas.create_image(0, 0, anchor=tk.NW, image=self._canvas_photo)
+        self._redraw_brush_cursor()
 
     def _flood_fill_at(self, x: int, y: int) -> None:
         """Paint-bucket fill from (x, y) with the active color."""
@@ -530,6 +539,7 @@ class PaintWindow:
                 x - half, y - half, x + half, y + half, fill=color, outline=color
             )
             self._draw.rectangle((x - half, y - half, x + half, y + half), fill=rgb)
+        self._raise_brush_cursor()
 
     def _stroke_to(self, x: int, y: int) -> None:
         if self._last_xy is None:
@@ -571,6 +581,64 @@ class PaintWindow:
             self.canvas.delete(self._preview_id)
         self._preview_id = None
 
+    def _clear_brush_cursor(self) -> None:
+        if self.canvas is None:
+            return
+        self.canvas.delete(_BRUSH_CURSOR_TAG)
+
+    def _raise_brush_cursor(self) -> None:
+        if self.canvas is None:
+            return
+        self.canvas.tag_raise(_BRUSH_CURSOR_TAG)
+
+    def _on_cursor_move(self, event) -> None:
+        self._cursor_xy = self._clamp(event.x, event.y)
+        self._redraw_brush_cursor()
+
+    def _on_cursor_leave(self, _event) -> None:
+        if self._drawing:
+            return
+        self._cursor_xy = None
+        self._clear_brush_cursor()
+
+    def _redraw_brush_cursor(self) -> None:
+        """Draw a black-on-white brush outline so it stays visible on any fill."""
+        if self.canvas is None or self._cursor_xy is None:
+            return
+        x, y = self._cursor_xy
+        self._clear_brush_cursor()
+        if self._tool == "fill" or self._tool in _SHAPE_TOOLS:
+            arm = 7
+            self.canvas.create_line(
+                x - arm, y, x + arm, y, fill="white", width=3, tags=_BRUSH_CURSOR_TAG
+            )
+            self.canvas.create_line(
+                x, y - arm, x, y + arm, fill="white", width=3, tags=_BRUSH_CURSOR_TAG
+            )
+            self.canvas.create_line(
+                x - arm, y, x + arm, y, fill="black", width=1, tags=_BRUSH_CURSOR_TAG
+            )
+            self.canvas.create_line(
+                x, y - arm, x, y + arm, fill="black", width=1, tags=_BRUSH_CURSOR_TAG
+            )
+            return
+        half = max(1, self._tip_size // 2)
+        box = (x - half, y - half, x + half, y + half)
+        if self._tip_shape == "rect":
+            self.canvas.create_rectangle(
+                *box, outline="white", width=3, tags=_BRUSH_CURSOR_TAG
+            )
+            self.canvas.create_rectangle(
+                *box, outline="black", width=1, tags=_BRUSH_CURSOR_TAG
+            )
+        else:
+            self.canvas.create_oval(
+                *box, outline="white", width=3, tags=_BRUSH_CURSOR_TAG
+            )
+            self.canvas.create_oval(
+                *box, outline="black", width=1, tags=_BRUSH_CURSOR_TAG
+            )
+
     def _preview_shape(self, x0: int, y0: int, x1: int, y1: int) -> None:
         assert self.canvas is not None
         self._clear_preview()
@@ -588,6 +656,7 @@ class PaintWindow:
             self._preview_id = self.canvas.create_rectangle(
                 x0, y0, x1, y1, outline=color, width=width
             )
+        self._raise_brush_cursor()
 
     def _commit_shape(self, x0: int, y0: int, x1: int, y1: int) -> None:
         assert self.canvas is not None
@@ -609,14 +678,17 @@ class PaintWindow:
                 left, top, right, bottom, outline=color, width=width
             )
             self._draw.rectangle((left, top, right, bottom), outline=rgb, width=width)
+        self._raise_brush_cursor()
 
     def _on_press(self, event) -> None:
         x, y = self._clamp(event.x, event.y)
+        self._cursor_xy = (x, y)
         self._drawing = True
         self._last_xy = (x, y)
         self._last_spray_xy = None
         if self._tool in _SHAPE_TOOLS:
             self._shape_start = (x, y)
+            self._redraw_brush_cursor()
             return
         if self._tool == "fill":
             self._flood_fill_at(x, y)
@@ -627,6 +699,7 @@ class PaintWindow:
         else:
             self._stamp(x, y)
         self._dirty = True
+        self._redraw_brush_cursor()
 
     def _on_drag(self, event) -> None:
         if not self._drawing:
@@ -634,30 +707,37 @@ class PaintWindow:
         if self._tool == "fill":
             return
         x, y = self._clamp(event.x, event.y)
+        self._cursor_xy = (x, y)
         if self._tool in _SHAPE_TOOLS and self._shape_start is not None:
             self._preview_shape(self._shape_start[0], self._shape_start[1], x, y)
+            self._redraw_brush_cursor()
             return
         if self._tool == "spray":
             self._spray_at(x, y)
         else:
             self._stroke_to(x, y)
         self._dirty = True
+        self._redraw_brush_cursor()
 
     def _on_release(self, event) -> None:
         if not self._drawing:
             return
         x, y = self._clamp(event.x, event.y)
+        self._cursor_xy = (x, y)
         self._drawing = False
         if self._tool == "fill":
             self._last_xy = None
+            self._redraw_brush_cursor()
             return
         if self._tool in _SHAPE_TOOLS and self._shape_start is not None:
             self._commit_shape(self._shape_start[0], self._shape_start[1], x, y)
             self._shape_start = None
             self._dirty = True
+            self._redraw_brush_cursor()
             return
         self._last_xy = None
         self._last_spray_xy = None
+        self._redraw_brush_cursor()
 
     def clear_canvas(self) -> None:
         """Reset canvas and backing image to white."""
@@ -667,6 +747,7 @@ class PaintWindow:
         self._draw = ImageDraw.Draw(self._image)
         self._dirty = False
         self._saved_name = None
+        self._redraw_brush_cursor()
         if self.window is not None:
             try:
                 self.window.title("untitled - Paint")

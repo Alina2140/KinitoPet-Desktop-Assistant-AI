@@ -117,6 +117,42 @@ def test_paint_window_eraser_uses_white():
     assert window._image.getpixel((10, 10)) == (255, 255, 255)
 
 
+def test_brush_cursor_uses_black_and_white_outlines():
+    app = MagicMock()
+    window = PaintWindow(app)
+    window.canvas = MagicMock()
+    window._cursor_xy = (40, 40)
+    window._set_tool("pencil")
+    window._set_tip("circle", 10)
+    window._redraw_brush_cursor()
+    outlines = [call.kwargs.get("outline") for call in window.canvas.create_oval.call_args_list]
+    assert "white" in outlines
+    assert "black" in outlines
+    window.canvas.delete.assert_called_with("brush_cursor")
+
+
+def test_brush_cursor_stays_on_top_after_stamp():
+    app = MagicMock()
+    window = PaintWindow(app)
+    window.canvas = MagicMock()
+    window._cursor_xy = (20, 20)
+    window._redraw_brush_cursor()
+    window.canvas.tag_raise.reset_mock()
+    window._stamp(20, 20)
+    window.canvas.tag_raise.assert_called_with("brush_cursor")
+
+
+def test_brush_cursor_hidden_when_leaving_canvas():
+    app = MagicMock()
+    window = PaintWindow(app)
+    window.canvas = MagicMock()
+    window._cursor_xy = (10, 10)
+    window._drawing = False
+    window._on_cursor_leave(MagicMock())
+    assert window._cursor_xy is None
+    window.canvas.delete.assert_called_with("brush_cursor")
+
+
 def test_paint_window_commit_shapes():
     app = MagicMock()
     window = PaintWindow(app)
