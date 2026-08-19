@@ -256,3 +256,9 @@ MINESWEEPER_LOSE_LINES = [
     "Kaboom. Game over. Flagging is your friend. Next time.",
     "You hit a mine! Don't feel bad. Explosions are educational.",
 ]
+
+COLOR_GUESS_WIN_LINES = [
+    "Correct! {color} — you've got an eye for hex.",
+    "{color}! Nailed it. Color vision: approved.",
+    "Right color! {color} matched perfectly. Impressive.",
+]

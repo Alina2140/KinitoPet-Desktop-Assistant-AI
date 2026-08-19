@@ -135,6 +135,12 @@ def test_handle_board_games_minesweeper(mock_app):
     mock_app.start_minesweeper.assert_called_once()
 
 
+def test_handle_board_games_color_guess(mock_app):
+    spec = find_dialog_spec(dlg.BOARD_GAMES_QUESTION)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_GAME_COLOR_GUESS)
+    mock_app.start_color_guess.assert_called_once()
+
+
 def test_handle_board_games_back(mock_app):
     spec = find_dialog_spec(dlg.BOARD_GAMES_QUESTION)
     handle_dialog_response(mock_app, spec, dlg.BUTTON_BACK)
@@ -369,6 +375,12 @@ def test_handle_menu_toggle_special_days(mock_app):
     spec = find_dialog_spec(dlg.SETTINGS_MENU_QUESTION)
     handle_dialog_response(mock_app, spec, dlg.BUTTON_SPECIAL_DAYS_ON)
     mock_app.toggle_special_days.assert_called_once()
+
+
+def test_handle_menu_toggle_color_guess_voice(mock_app):
+    spec = find_dialog_spec(dlg.SETTINGS_MENU_QUESTION)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_COLOR_GUESS_VOICE_ON)
+    mock_app.toggle_color_guess_voice.assert_called_once()
 
 
 def test_handle_menu_open_menu_buttons(mock_app):

@@ -14,6 +14,7 @@ from content.trivia_questions import (
     check_answer,
     pick_random_question,
 )
+from kinito.features.games import color_guess as cg
 from kinito.features.games import connect_four as c4
 from kinito.features.games import hangman as hangman_game
 from kinito.features.games import minesweeper as ms
@@ -781,3 +782,42 @@ def test_tetris_step_moves_down():
     y_before = state["active"]["y"]
     assert tetris_step(state) == "ok"
     assert state["active"]["y"] == y_before + 1
+
+
+def test_color_guess_new_round_has_unique_colors():
+    rng = random.Random(42)
+    for count in cg.DIFFICULTIES:
+        state = cg.new_round(count, rng=rng)
+        assert len(state["colors"]) == count
+        assert len(set(state["colors"])) == count
+        assert state["target_hex"] == state["colors"][state["target_index"]]
+        assert state["status"] == "playing"
+        assert state["removed"] == set()
+
+
+def test_color_guess_wrong_guess_removes_only_that_index():
+    state = cg.new_round(5, rng=random.Random(1))
+    wrong = next(i for i in range(5) if i != state["target_index"])
+    assert cg.apply_guess(state, wrong) == "wrong"
+    assert wrong in state["removed"]
+    assert state["status"] == "playing"
+
+
+def test_color_guess_correct_sets_won():
+    state = cg.new_round(5, rng=random.Random(2))
+    target = state["target_index"]
+    assert cg.apply_guess(state, target) == "correct"
+    assert state["status"] == "won"
+
+
+def test_color_guess_ignored_after_win_or_invalid():
+    state = cg.new_round(5, rng=random.Random(3))
+    cg.apply_guess(state, state["target_index"])
+    assert cg.apply_guess(state, 0) == "ignored"
+    assert cg.apply_guess(state, -1) == "ignored"
+    assert cg.apply_guess(state, 99) == "ignored"
+
+    state = cg.new_round(5, rng=random.Random(4))
+    wrong = next(i for i in range(5) if i != state["target_index"])
+    cg.apply_guess(state, wrong)
+    assert cg.apply_guess(state, wrong) == "ignored"

@@ -17,6 +17,10 @@ def test_menu_button_id_for_known_labels():
     assert menu_button_id_for_label(dlg.BUTTON_PLAYER_FOCUS_OFF) == "settings.player_focus"
     assert menu_button_id_for_label(dlg.BUTTON_EMOJI_OFF) == "settings.emojis"
     assert menu_button_id_for_label(dlg.BUTTON_SPECIAL_DAYS_OFF) == "settings.special_days"
+    assert (
+        menu_button_id_for_label(dlg.BUTTON_COLOR_GUESS_VOICE_OFF)
+        == "settings.color_guess_voice"
+    )
 
 
 def test_filter_hides_optional_keeps_locked():

@@ -213,6 +213,11 @@ def settings_toggles_options_for(app) -> list[str]:
         if getattr(app, "_mood_system_enabled", True)
         else dlg.BUTTON_MOOD_SYSTEM_OFF
     )
+    color_guess_voice_label = (
+        dlg.BUTTON_COLOR_GUESS_VOICE_ON
+        if getattr(app, "_color_guess_voice_enabled", True)
+        else dlg.BUTTON_COLOR_GUESS_VOICE_OFF
+    )
     return _visible_menu_buttons(
         app,
         [
@@ -228,6 +233,7 @@ def settings_toggles_options_for(app) -> list[str]:
             emoji_label,
             special_days_label,
             mood_system_label,
+            color_guess_voice_label,
             dlg.BUTTON_BACK,
         ],
     )
@@ -624,6 +630,9 @@ def _menu_action_handlers() -> dict[str, Handler]:
         dlg.BUTTON_MOOD_SYSTEM: lambda a: a.toggle_mood_system(),
         dlg.BUTTON_MOOD_SYSTEM_ON: lambda a: a.toggle_mood_system(),
         dlg.BUTTON_MOOD_SYSTEM_OFF: lambda a: a.toggle_mood_system(),
+        dlg.BUTTON_COLOR_GUESS_VOICE: lambda a: a.toggle_color_guess_voice(),
+        dlg.BUTTON_COLOR_GUESS_VOICE_ON: lambda a: a.toggle_color_guess_voice(),
+        dlg.BUTTON_COLOR_GUESS_VOICE_OFF: lambda a: a.toggle_color_guess_voice(),
         dlg.BUTTON_RESET_MOOD: lambda a: a.reset_mood(),
         dlg.BUTTON_MENU_BUTTONS: lambda a: a.open_menu_button_settings(),
         dlg.BUTTON_TURN_ON_OFF: _open_settings_toggles_menu,
@@ -844,6 +853,7 @@ def _handle_board_games(app, response: str) -> None:
         dlg.BUTTON_GAME_CONNECT_FOUR: lambda a: a.start_connect_four(),
         dlg.BUTTON_GAME_HANGMAN: lambda a: a.start_hangman(),
         dlg.BUTTON_GAME_MINESWEEPER: lambda a: a.start_minesweeper(),
+        dlg.BUTTON_GAME_COLOR_GUESS: lambda a: a.start_color_guess(),
     }
     action = actions.get(response)
     if action:
@@ -1162,6 +1172,7 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
                 dlg.BUTTON_GAME_CONNECT_FOUR,
                 dlg.BUTTON_GAME_HANGMAN,
                 dlg.BUTTON_GAME_MINESWEEPER,
+                dlg.BUTTON_GAME_COLOR_GUESS,
                 dlg.BUTTON_BACK,
             ),
         ),

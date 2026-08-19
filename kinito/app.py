@@ -320,6 +320,9 @@ class FloatingAssistant(
         self._special_days_enabled = self._settings.get("special_days_enabled", True)
         self._emoji_picker_enabled = self._settings.get("emoji_picker_enabled", True)
         self._mood_system_enabled = self._settings.get("mood_system_enabled", True)
+        self._color_guess_voice_enabled = self._settings.get(
+            "color_guess_voice_enabled", True
+        )
         self._hidden_menu_buttons = self._settings.get_hidden_menu_buttons()
         self._menu_settings_window = None
         self._init_app_awareness(
@@ -440,6 +443,9 @@ class FloatingAssistant(
             special_days_enabled=bool(getattr(self, "_special_days_enabled", True)),
             emoji_picker_enabled=bool(getattr(self, "_emoji_picker_enabled", True)),
             mood_system_enabled=bool(getattr(self, "_mood_system_enabled", True)),
+            color_guess_voice_enabled=bool(
+                getattr(self, "_color_guess_voice_enabled", True)
+            ),
         )
         store.set_hidden_menu_buttons(getattr(self, "_hidden_menu_buttons", set()))
 

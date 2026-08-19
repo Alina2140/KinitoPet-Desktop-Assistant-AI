@@ -3,6 +3,7 @@
 from content import dialogue as dlg
 from content.trivia_questions import ROUND_SIZE
 from kinito.features.games.battleships_ui import BattleshipsGame
+from kinito.features.games.color_guess_ui import ColorGuessGame
 from kinito.features.games.connect_four import ConnectFourGame
 from kinito.features.games.hangman import HangmanGame
 from kinito.features.games.memory_ui import MemoryGame
@@ -52,6 +53,22 @@ class GamesMixin:
     def speak_game_line(self, line, *, show_bubble=True):
         """Speak a game comment with TTS and show Kinito's speech bubble."""
         self.speak(line, show_bubble=show_bubble, skip_ai=True)
+
+    def is_color_guess_voice_enabled(self) -> bool:
+        """Return whether Color Guess should speak a line on correct picks."""
+        return bool(getattr(self, "_color_guess_voice_enabled", True))
+
+    def toggle_color_guess_voice(self) -> None:
+        """Enable or disable spoken Color Guess win commentary."""
+        self._color_guess_voice_enabled = not self.is_color_guess_voice_enabled()
+        if hasattr(self, "_persist_settings"):
+            self._persist_settings()
+        lines = (
+            dlg.COLOR_GUESS_VOICE_ON_LINES
+            if self._color_guess_voice_enabled
+            else dlg.COLOR_GUESS_VOICE_OFF_LINES
+        )
+        self.speak(dlg.pick_line(lines), skip_ai=True)
 
     def _is_game_active(self) -> bool:
         """Return True while any mini-game is in progress."""
@@ -192,3 +209,9 @@ class GamesMixin:
         if hasattr(self, "note_user_attention"):
             self.note_user_attention()
         self.root.after(0, lambda: MinesweeperGame(self).open())
+
+    def start_color_guess(self):
+        """Open a color guessing game window."""
+        if hasattr(self, "note_user_attention"):
+            self.note_user_attention()
+        self.root.after(0, lambda: ColorGuessGame(self).open())
