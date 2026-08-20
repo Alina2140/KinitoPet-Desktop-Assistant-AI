@@ -246,6 +246,7 @@ def actions_options_for(app) -> list[str]:
         [
             dlg.BUTTON_SET_REMINDER,
             dlg.BUTTON_TELL_TIME,
+            dlg.BUTTON_KNOWN_SINCE,
             dlg.BUTTON_SING_SONG,
             dlg.BUTTON_FUN_FACT,
             dlg.BUTTON_VISIT_WEBSITE,
@@ -646,6 +647,7 @@ def _menu_action_handlers() -> dict[str, Handler]:
         dlg.BUTTON_PAINT: lambda a: a.offer_paint_picker(),
         dlg.BUTTON_GIVE_HUG: lambda a: a.give_hug(),
         dlg.BUTTON_TELL_TIME: lambda a: a.print_current_datetime(),
+        dlg.BUTTON_KNOWN_SINCE: lambda a: a.say_known_since(),
         dlg.BUTTON_SHOW_CREDITS: lambda a: a.show_credits(),
         dlg.BUTTON_BACK: _open_main_menu,
     }

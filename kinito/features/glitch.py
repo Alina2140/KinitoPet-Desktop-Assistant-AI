@@ -74,7 +74,7 @@ class GlitchMixin:
         if self.paused or getattr(self, "_is_position_locked_by_user", lambda: self.is_dragging)() or self._camera_active or self._browser_active:
             return False
         last_at = getattr(self, "_last_glitch_at", 0.0)
-        if time.monotonic() - last_at < self.GLITCH_COOLDOWN_SECONDS:
+        if last_at > 0 and time.monotonic() - last_at < self.GLITCH_COOLDOWN_SECONDS:
             return False
         if random.random() >= self.GLITCH_CHANCE:
             return False
@@ -95,7 +95,7 @@ class GlitchMixin:
         if not os.path.isfile(crash_image_path):
             return False
         last_at = getattr(self, "_last_blue_screen_at", 0.0)
-        if time.monotonic() - last_at < self.BLUE_SCREEN_COOLDOWN_SECONDS:
+        if last_at > 0 and time.monotonic() - last_at < self.BLUE_SCREEN_COOLDOWN_SECONDS:
             return False
         if random.random() >= self.BLUE_SCREEN_CHANCE:
             return False

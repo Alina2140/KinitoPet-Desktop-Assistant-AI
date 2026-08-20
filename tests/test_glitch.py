@@ -83,6 +83,17 @@ def test_maybe_trigger_blue_screen_schedules_on_hit(glitch):
     glitch.root.after.assert_called_once_with(0, glitch._flash_blue_screen)
 
 
+def test_maybe_trigger_blue_screen_allows_zero_sentinel_on_fresh_boot(glitch):
+    """0.0 means never triggered — must not collide with low uptime clocks."""
+    glitch._last_blue_screen_at = 0.0
+    with (
+        patch("kinito.features.glitch.os.path.isfile", return_value=True),
+        patch("kinito.features.glitch.random.random", return_value=0.0),
+        patch("kinito.features.glitch.time.monotonic", return_value=60.0),
+    ):
+        assert glitch.maybe_trigger_blue_screen() is True
+
+
 def test_maybe_trigger_blue_screen_skips_when_image_missing(glitch):
     with patch("kinito.features.glitch.os.path.isfile", return_value=False):
         assert glitch.maybe_trigger_blue_screen() is False

@@ -393,7 +393,7 @@ class MoodMixin:
         if now - last_attention < self.MOOD_NEGLECT_SECONDS:
             return
         last_neglect = float(getattr(self, "_last_neglect_mood_at", 0.0))
-        if now - last_neglect < self.MOOD_NEGLECT_COOLDOWN_SECONDS:
+        if last_neglect > 0 and now - last_neglect < self.MOOD_NEGLECT_COOLDOWN_SECONDS:
             return
 
         source = rng or random

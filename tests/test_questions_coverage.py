@@ -246,6 +246,7 @@ def test_settings_and_actions_options():
     assert actions_options_for(_menu_app(hidden_menu_buttons={"actions.hug"})) == [
         dlg.BUTTON_SET_REMINDER,
         dlg.BUTTON_TELL_TIME,
+        dlg.BUTTON_KNOWN_SINCE,
         dlg.BUTTON_SING_SONG,
         dlg.BUTTON_FUN_FACT,
         dlg.BUTTON_VISIT_WEBSITE,
@@ -257,6 +258,7 @@ def test_settings_and_actions_options():
     assert actions_options_for(_menu_app()) == [
         dlg.BUTTON_SET_REMINDER,
         dlg.BUTTON_TELL_TIME,
+        dlg.BUTTON_KNOWN_SINCE,
         dlg.BUTTON_SING_SONG,
         dlg.BUTTON_FUN_FACT,
         dlg.BUTTON_VISIT_WEBSITE,

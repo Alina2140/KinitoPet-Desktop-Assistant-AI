@@ -97,7 +97,7 @@ PAUSE_BY_MOOD: dict[str, list[str]] = {
     "sad": [
         "I think I'll just... rest for a bit.",
         "Going quiet for a while. Still here though.",
-        "Sleep sounds softer than thinking right now.",
+        "Sleep sounds easier than thinking right now.",
     ],
 }
 
@@ -231,7 +231,7 @@ STATUS_BY_MOOD: dict[str, list[str]] = {
     ],
     "sad": [
         "I'm feeling a bit sad... company helps.",
-        "Mood: soft and blue. A hug would not be refused.",
+        "Mood: sorrowfull and blue. A hug would not be refused.",
         "I'm down today. Still here though. Still your friend.",
     ],
     "angry": [

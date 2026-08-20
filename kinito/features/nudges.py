@@ -59,7 +59,7 @@ class NudgesMixin:
         if self._nudge_popup_is_open():
             return False
         last_at = getattr(self, "_last_nudge_at", 0.0)
-        if time.monotonic() - last_at < self.NUDGE_COOLDOWN_SECONDS:
+        if last_at > 0 and time.monotonic() - last_at < self.NUDGE_COOLDOWN_SECONDS:
             return False
         chance = self.NUDGE_CHANCE
         if hasattr(self, "mood_nudge_mult"):

@@ -206,6 +206,39 @@ class ContentMixin:
         self.speak(line, skip_ai=True)
         return True
 
+    def say_known_since(self) -> None:
+        """Say how long Kinito and the user have known each other (Actions menu)."""
+        from content.friendship import (
+            ensure_first_met,
+            format_friendship_duration,
+            pick_friendship_duration_line,
+        )
+
+        memory = getattr(self, "_memory", None)
+        if memory is None:
+            self.speak(
+                "I've always known you. Time is weird when you're made of code.",
+                skip_ai=True,
+            )
+            return
+        stored = ensure_first_met(memory)
+        duration = format_friendship_duration(stored)
+        if not duration:
+            self.speak(
+                "I've always known you. Time is weird when you're made of code.",
+                skip_ai=True,
+            )
+            return
+        name = None
+        if hasattr(self, "chat_user_label"):
+            name = self.chat_user_label()
+        line = pick_friendship_duration_line(
+            dlg.FRIENDSHIP_DURATION_LINES,
+            duration=duration,
+            name=name,
+        )
+        self.speak(line, skip_ai=True)
+
     def say_random_poem(self):
         """Recite a random poem in Kinito's normal voice, optionally with background music."""
         poem = random.choice(POEMS)

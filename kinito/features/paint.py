@@ -1141,7 +1141,7 @@ class PaintMixin:
         if not paths:
             return False
         last_at = getattr(self, "_last_paint_recall_at", 0.0)
-        if time.monotonic() - last_at < self.PAINT_RECALL_COOLDOWN_SECONDS:
+        if last_at > 0 and time.monotonic() - last_at < self.PAINT_RECALL_COOLDOWN_SECONDS:
             return False
         if random.random() >= self.PAINT_RECALL_CHANCE:
             return False

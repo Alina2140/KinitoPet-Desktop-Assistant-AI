@@ -39,7 +39,7 @@ class ScreenCommentsMixin:
         if getattr(self, "_is_busy_with_speech", lambda: False)():
             return False
         last_at = getattr(self, "_last_screen_comment_at", 0.0)
-        if time.monotonic() - last_at < self.SCREEN_COMMENT_COOLDOWN_SECONDS:
+        if last_at > 0 and time.monotonic() - last_at < self.SCREEN_COMMENT_COOLDOWN_SECONDS:
             return False
         if random.random() >= self.SCREEN_COMMENT_CHANCE:
             return False

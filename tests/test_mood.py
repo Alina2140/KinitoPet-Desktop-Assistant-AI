@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import random
 import time
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from content import dialogue as dlg
 from content import llm_prompts as prompts
@@ -262,6 +262,21 @@ def test_neglect_shifts_when_ignored():
     host._last_neglect_mood_at = 0.0
     random.seed(0)
     host.maybe_neglect_mood(rng=random.Random(0))
+    assert host.get_mood() in {MOOD_BORED, MOOD_SAD}
+
+
+def test_neglect_allows_zero_sentinel_on_fresh_boot():
+    """0.0 means never neglected — must not collide with low uptime clocks."""
+    host = _MoodHost()
+    host.set_mood(MOOD_NEUTRAL, 0.0)
+    host.paused = False
+    host._focus_mode = False
+    host._is_game_active = lambda: False
+    host._is_busy_with_speech = lambda: False
+    host._last_neglect_mood_at = 0.0
+    with patch("kinito.features.mood.time.monotonic", return_value=120.0):
+        host._last_user_attention_at = 120.0 - (host.MOOD_NEGLECT_SECONDS + 1)
+        host.maybe_neglect_mood(rng=random.Random(0))
     assert host.get_mood() in {MOOD_BORED, MOOD_SAD}
 
 

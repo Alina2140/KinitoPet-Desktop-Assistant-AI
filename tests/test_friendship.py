@@ -103,6 +103,25 @@ def test_maybe_mention_friendship_duration_speaks_and_cools_down(friendship_app)
     friendship_app.speak.assert_not_called()
 
 
+def test_say_known_since_speaks_duration(friendship_app):
+    friendship_app._memory.set_fact("first_met", "2026-07-01")
+    friendship_app.say_known_since()
+    friendship_app.speak.assert_called_once()
+    spoken = friendship_app.speak.call_args[0][0]
+    assert any(
+        word in spoken
+        for word in ("day", "days", "week", "weeks", "month", "months", "year", "years", "today")
+    )
+
+
+def test_say_known_since_works_without_cooldown(friendship_app):
+    friendship_app._memory.set_fact("first_met", "2026-07-01")
+    friendship_app.say_known_since()
+    friendship_app.speak.reset_mock()
+    friendship_app.say_known_since()
+    friendship_app.speak.assert_called_once()
+
+
 def test_maybe_announce_met_anniversary(friendship_app):
     friendship_app._memory.set_fact("first_met", "2025-08-06")
     # Freeze "today" by patching helpers via stored date matching system date —

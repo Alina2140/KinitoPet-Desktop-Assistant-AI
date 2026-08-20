@@ -741,7 +741,7 @@ class MovementMixin:
         if getattr(self, "talking", False):
             return
         last_at = float(getattr(self, "_last_snore_at", 0.0))
-        if time.monotonic() - last_at < self.SNORING_COOLDOWN_SECONDS:
+        if last_at > 0 and time.monotonic() - last_at < self.SNORING_COOLDOWN_SECONDS:
             return
         if random.random() >= self.SNORING_CHANCE:
             return

@@ -311,6 +311,12 @@ def test_handle_menu_tell_time(mock_app):
     mock_app.print_current_datetime.assert_called_once()
 
 
+def test_handle_menu_known_since(mock_app):
+    spec = find_dialog_spec(dlg.ACTIONS_MENU_QUESTION)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_KNOWN_SINCE)
+    mock_app.say_known_since.assert_called_once()
+
+
 def test_handle_menu_toggle_screen_effects(mock_app):
     spec = find_dialog_spec(dlg.SETTINGS_MENU_QUESTION)
     handle_dialog_response(mock_app, spec, dlg.BUTTON_SCREEN_EFFECTS_ON)

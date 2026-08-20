@@ -236,6 +236,7 @@ MENU_VISIBILITY_SECTIONS: tuple[tuple[str, tuple[MenuEntry, ...]], ...] = (
                 frozenset({dlg.BUTTON_SET_REMINDER}),
             ),
             ("actions.time", "Tell Time", frozenset({dlg.BUTTON_TELL_TIME})),
+            ("actions.known_since", "Known Since", frozenset({dlg.BUTTON_KNOWN_SINCE})),
             ("actions.sing", "Sing", frozenset({dlg.BUTTON_SING_SONG})),
             ("actions.fact", "Fun Fact", frozenset({dlg.BUTTON_FUN_FACT})),
             (

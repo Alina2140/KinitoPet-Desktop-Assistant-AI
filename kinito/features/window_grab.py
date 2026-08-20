@@ -81,7 +81,7 @@ class WindowGrabMixin:
         if getattr(self, "_is_busy_with_speech", lambda: False)():
             return False
         last_at = getattr(self, "_last_window_grab_at", 0.0)
-        if time.monotonic() - last_at < self.WINDOW_GRAB_COOLDOWN_SECONDS:
+        if last_at > 0 and time.monotonic() - last_at < self.WINDOW_GRAB_COOLDOWN_SECONDS:
             return False
         grab_chance = self.WINDOW_GRAB_CHANCE
         if hasattr(self, "mood_window_grab_mult"):

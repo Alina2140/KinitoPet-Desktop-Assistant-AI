@@ -69,6 +69,16 @@ def test_maybe_trigger_schedules_on_hit(screen_comments):
     assert screen_comments.root.after.call_args.args[1] == screen_comments._start_screen_comment
 
 
+def test_maybe_trigger_allows_zero_sentinel_on_fresh_boot(screen_comments):
+    """0.0 means never triggered — must not collide with low uptime clocks."""
+    screen_comments._last_screen_comment_at = 0.0
+    with (
+        patch("kinito.features.screen_comments.random.random", return_value=0.0),
+        patch("kinito.features.screen_comments.time.monotonic", return_value=60.0),
+    ):
+        assert screen_comments.maybe_trigger_screen_comment() is True
+
+
 def test_capture_does_not_save_or_store_on_self(screen_comments):
     fake_image = MagicMock()
     fake_image.convert.return_value = fake_image

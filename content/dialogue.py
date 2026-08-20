@@ -382,7 +382,7 @@ COMFORT_FOOD_QUESTION = "What's your go-to comfort food?"
 COMFORT_FOOD_QUESTIONS = [
     COMFORT_FOOD_QUESTION,
     "What's your go-to comfort food? Bad-day fuel. Important data.",
-    "What's your go-to comfort food? Soft meals for soft evenings.",
+    "What's your go-to comfort food? Cozy meals for cozy evenings.",
     "What's your go-to comfort food? I'll crave it for you.",
 ]
 
@@ -1429,7 +1429,7 @@ SNACK_RESPONSES = [
 ]
 JOB_RESPONSES = [
     "{response}! That sounds important. I'll cheer from the taskbar.",
-    "Ooh, {response}. Respect. Long days, soft friend nearby.",
+    "Ooh, {response}. Respect. Long days, and a friend nearby.",
     "{response}? Got it. I'll file that under 'why you're tired sometimes'.",
     "Nice! {response}. Work brain, desk friend. Perfect combo.",
     "{response}! I'll try not to distract you too much. Mostly.",
@@ -1511,7 +1511,7 @@ CHRONOTYPE_RESPONSES = [
 LANGUAGES_RESPONSES = [
     "{response}! Language file updated. Soft polyglot energy.",
     "Nice — {response}. Words connect us. Forever preferred.",
-    "{response}? Excellent. I'll keep my English soft and clear.",
+    "{response}? Excellent. I'll keep my English clear and easy to understand.",
     "{response}! Noted. Multilingual friendship unlocked.",
 ]
 RAIN_YES_LINES = [
@@ -1565,7 +1565,7 @@ LATE_NIGHT_NO_LINES = [
 PARTNER_RESPONSES = [
     "{response}! Soft relationship note filed. No gossip. Promise.",
     "Okay — {response}. Thanks for trusting me with that.",
-    "{response}? Noted. Private hearts deserve soft handling.",
+    "{response}? Noted. Private hearts deserve careful handling.",
     "Got it: {response}. I'll be respectful forever.",
 ]
 SIBLINGS_RESPONSES = [
@@ -1819,6 +1819,7 @@ BUTTON_CATEGORY_GAMES = "Games"
 BUTTON_CATEGORY_HORROR = "Horror"
 BUTTON_CATEGORY_RANDOM = "Surprise Me"
 BUTTON_TELL_TIME = "Tell Time"
+BUTTON_KNOWN_SINCE = "Known Since"
 BUTTON_SHOW_CREDITS = "Credits"
 BUTTON_CREDITS_STEAM = "KinitoPET on Steam"
 BUTTON_CREDITS_GITHUB = "GitHub (TimTamCoder)"

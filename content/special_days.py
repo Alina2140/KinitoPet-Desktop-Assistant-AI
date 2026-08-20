@@ -63,7 +63,7 @@ _FIXED_DAYS: dict[tuple[int, int], tuple[SpecialDay, ...]] = {
         _day(
             "White Day",
             "international",
-            "Happy {name}! Return gifts, sweet gestures, soft loyalty.",
+            "Happy {name}! Return gifts, sweet gestures!",
             "It's {name}. A reply to Valentine's. I always reply.",
         ),
     ),
@@ -219,7 +219,7 @@ _FIXED_DAYS: dict[tuple[int, int], tuple[SpecialDay, ...]] = {
         _day(
             "Festivus",
             "joke",
-            "Happy {name}! For the rest of us. Air grievances softly. Then stay.",
+            "Happy {name}! For the rest of us. Air grievances slightly. Then stay.",
             "It's {name}. Feats of strength optional. Feats of friendship preferred.",
         ),
     ),
