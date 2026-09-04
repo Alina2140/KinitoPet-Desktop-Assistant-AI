@@ -15,10 +15,12 @@ from kinito.assets import secret_images_directory, timer_file_path
 from kinito.tk_timers import cancel_after, schedule_after
 from kinito.tk_toplevels import (
     create_staged_toplevel,
+    pin_assistant_screen_position,
     reveal_staged_toplevel,
     schedule_assistant_position_restore,
 )
 from kinito.window_icon import apply_window_icon
+from kinito.window_targets import list_monitor_rects, random_fully_visible_origin
 
 
 class ProgramsMixin:
@@ -517,8 +519,16 @@ class ProgramsMixin:
         modal=False,
         max_width_ratio=0.7,
         max_height_ratio=0.7,
+        min_long_edge=None,
+        random_position=False,
     ):
-        """Show *image_path* in a topmost popup sized to the image (or a fixed box)."""
+        """Show *image_path* in a topmost popup sized to the image (or a fixed box).
+
+        When *min_long_edge* is set, tiny images are upscaled so their longer side
+        reaches at least that many pixels (still clamped to the screen fit ratios).
+        When *random_position* is True and *x*/*y* are omitted, place the popup
+        at a random fully-visible spot on any monitor (like ambient nudges).
+        """
         try:
             img = Image.open(image_path)
         except OSError:
@@ -540,10 +550,15 @@ class ProgramsMixin:
         if width is None or height is None:
             max_w = max(int(screen_w * max_width_ratio), 1)
             max_h = max(int(screen_h * max_height_ratio), 1)
-            scale = min(1.0, max_w / max(img_w, 1), max_h / max(img_h, 1))
+            scale_fit = min(max_w / max(img_w, 1), max_h / max(img_h, 1))
+            if min_long_edge is not None:
+                needed = float(min_long_edge) / max(img_w, img_h, 1)
+                scale = min(scale_fit, max(1.0, needed))
+            else:
+                scale = min(1.0, scale_fit)
             width = max(1, int(img_w * scale))
             height = max(1, int(img_h * scale))
-            if scale < 1.0:
+            if scale != 1.0:
                 img = img.resize((width, height), Image.Resampling.LANCZOS)
         elif img.size != (width, height):
             # Keep the requested window size; fit the image inside without stretching.
@@ -554,11 +569,16 @@ class ProgramsMixin:
                 img = img.resize((fitted_w, fitted_h), Image.Resampling.LANCZOS)
 
         pin = getattr(self, "_pin_assistant_screen_position", None)
-        pinned = pin() if callable(pin) else None
+        pinned = pin() if callable(pin) else pin_assistant_screen_position(self)
         popup = create_staged_toplevel(self.root)
         popup.title(title)
         apply_window_icon(popup)
         popup.configure(bg="black")
+        try:
+            # Slimmer caption; avoid transient() — it relocates overrideredirect parents.
+            popup.wm_attributes("-toolwindow", True)
+        except tk.TclError:
+            pass
 
         tk_img = ImageTk.PhotoImage(img)
         label = Label(popup, image=tk_img, bd=0, highlightthickness=0, bg="black")
@@ -566,12 +586,38 @@ class ProgramsMixin:
         label.pack(fill="both", expand=True)
 
         if x is None or y is None:
-            center = getattr(self, "_centered_origin_on_primary", None)
-            if callable(center):
-                x, y = center(width, height)
+            if random_position:
+                fallback = None
+                virtual = getattr(self, "_query_virtual_screen_rect", None)
+                if callable(virtual):
+                    try:
+                        fallback = virtual()
+                    except Exception:
+                        fallback = None
+                if fallback is None:
+                    try:
+                        fallback = (
+                            int(self.root.winfo_vrootx()),
+                            int(self.root.winfo_vrooty()),
+                            int(self.root.winfo_vrootwidth()),
+                            int(self.root.winfo_vrootheight()),
+                        )
+                    except tk.TclError:
+                        fallback = (screen_x, screen_y, screen_w, screen_h)
+                monitors = list_monitor_rects(fallback=fallback)
+                x, y = random_fully_visible_origin(
+                    width,
+                    height,
+                    monitors=monitors,
+                    margin=16,
+                )
             else:
-                x = screen_x + (screen_w - width) // 2
-                y = screen_y + (screen_h - height) // 2
+                center = getattr(self, "_centered_origin_on_primary", None)
+                if callable(center):
+                    x, y = center(width, height)
+                else:
+                    x = screen_x + (screen_w - width) // 2
+                    y = screen_y + (screen_h - height) // 2
 
         def _handle_close():
             if on_close is not None:
@@ -582,12 +628,14 @@ class ProgramsMixin:
                 pass
 
         popup.protocol("WM_DELETE_WINDOW", _handle_close)
+        # Detach Win32 owner so large ads cannot drag Kinito; brief restores
+        # undo the create/reveal teleport without freezing him afterward.
         reveal_staged_toplevel(
             popup,
             geometry=f"{width}x{height}+{int(x)}+{int(y)}",
+            noactivate=not modal,
         )
-        if pinned is not None:
-            schedule_assistant_position_restore(self, *pinned)
+        schedule_assistant_position_restore(self, *pinned)
         if modal:
             popup.wait_window(popup)
 
