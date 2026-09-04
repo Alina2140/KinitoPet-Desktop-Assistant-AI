@@ -27,7 +27,7 @@ DECLINED_BY_MOOD: dict[str, list[str]] = {
         "I see... that's fine.",
     ],
     "tired": [
-        "Mm. Okay...",
+        "Mmm. Okay...",
         "Yeah... sure...",
         "Alright... I'm too sleepy to argue.",
         "Okay. Nap sounds better anyway.",
