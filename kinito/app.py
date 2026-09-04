@@ -329,6 +329,7 @@ class FloatingAssistant(
             enabled=self._settings.get("app_awareness_enabled", True)
         )
         self._snoring_enabled = self._settings.get("snoring_enabled", True)
+        self._sound_effects_enabled = self._settings.get("sound_effects_enabled", True)
         self._focus_mode = False
         self._preserve_sprite = False
         self._talk_sprite_mode = "talking"
@@ -434,6 +435,9 @@ class FloatingAssistant(
             ),
             paint_recall_enabled=bool(getattr(self, "_paint_recall_enabled", True)),
             snoring_enabled=bool(getattr(self, "_snoring_enabled", True)),
+            sound_effects_enabled=bool(
+                getattr(self, "_sound_effects_enabled", True)
+            ),
             window_grab_enabled=bool(getattr(self, "_window_grab_enabled", True)),
             tts_enabled=bool(getattr(self, "_tts_enabled", True)),
             player_focus_enabled=bool(getattr(self, "_player_focus_enabled", True)),
@@ -1005,8 +1009,24 @@ class FloatingAssistant(
         check = getattr(self, "_player_focus_active", None)
         return callable(check) and bool(check())
 
+    def toggle_sound_effects(self):
+        """Enable or disable UI/game sound effects (speech TTS stays separate)."""
+        from content import dialogue as dlg
+
+        self._sound_effects_enabled = not getattr(self, "_sound_effects_enabled", True)
+        if hasattr(self, "_persist_settings"):
+            self._persist_settings()
+        lines = (
+            dlg.SOUND_EFFECTS_ON_LINES
+            if self._sound_effects_enabled
+            else dlg.SOUND_EFFECTS_OFF_LINES
+        )
+        self.speak(dlg.pick_line(lines), skip_ai=True)
+
     def play_sfx(self, file_path, volume=1.0):
         """Play a short sound effect without interrupting background music."""
+        if not getattr(self, "_sound_effects_enabled", True):
+            return
         if self._player_sounds_muted():
             return
         if not os.path.isfile(file_path):

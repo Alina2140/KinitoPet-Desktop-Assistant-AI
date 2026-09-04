@@ -905,6 +905,18 @@ SNORING_OFF_LINES = [
     "Sleep audio disabled. Peaceful silence while I nap. Miss the snoring yet?",
 ]
 
+SOUND_EFFECTS_ON_LINES = [
+    "Sound effects on! Woosh, bomp, page turns — the full soundtrack of me.",
+    "SFX enabled. Expect the little noises again. Friendship has audio now.",
+    "Sound effects are back. Click, drag, throw — I'll narrate with noise.",
+]
+
+SOUND_EFFECTS_OFF_LINES = [
+    "Sound effects off. I'll still talk — just quieter footsteps. Soft mode.",
+    "SFX muted. No more woosh or bomp. Voice stays. Bubbles stay. Peace.",
+    "Sound effects disabled. Silent desk energy. I can still speak though.",
+]
+
 WINDOW_PLAY_ON_LINES = [
     "Window play on! Hands may wander. Windows may wander with them.",
     "I can grab windows again. Gently. Mostly. Sometimes sideways.",
@@ -1734,6 +1746,9 @@ BUTTON_PAINT_RECALL_OFF = "Painting Popups off"
 BUTTON_SNORING = "Snoring"
 BUTTON_SNORING_ON = "Snoring on"
 BUTTON_SNORING_OFF = "Snoring off"
+BUTTON_SOUND_EFFECTS = "Sound Effects"
+BUTTON_SOUND_EFFECTS_ON = "Sound Effects on"
+BUTTON_SOUND_EFFECTS_OFF = "Sound Effects off"
 BUTTON_WINDOW_PLAY = "Window Play"
 BUTTON_WINDOW_PLAY_ON = "Window Play on"
 BUTTON_WINDOW_PLAY_OFF = "Window Play off"

@@ -20,6 +20,7 @@ DEFAULT_BOOL_SETTINGS: dict[str, bool] = {
     "screen_comments_enabled": True,
     "paint_recall_enabled": True,
     "snoring_enabled": True,
+    "sound_effects_enabled": True,
     "window_grab_enabled": True,
     "tts_enabled": True,
     "player_focus_enabled": True,

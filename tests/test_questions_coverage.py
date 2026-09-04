@@ -45,6 +45,7 @@ def _menu_app(**kwargs):
     app._screen_comments_enabled = kwargs.get("screen_comments_enabled", True)
     app._paint_recall_enabled = kwargs.get("paint_recall_enabled", True)
     app._snoring_enabled = kwargs.get("snoring_enabled", True)
+    app._sound_effects_enabled = kwargs.get("sound_effects_enabled", True)
     app._window_grab_enabled = kwargs.get("window_grab_enabled", True)
     app._tts_enabled = kwargs.get("tts_enabled", True)
     app._player_focus_enabled = kwargs.get("player_focus_enabled", True)
@@ -176,6 +177,7 @@ def test_settings_and_actions_options():
         dlg.BUTTON_SCREEN_COMMENTS_ON,
         dlg.BUTTON_PAINT_RECALL_ON,
         dlg.BUTTON_SNORING_ON,
+        dlg.BUTTON_SOUND_EFFECTS_ON,
         dlg.BUTTON_WINDOW_PLAY_ON,
         dlg.BUTTON_TTS_ON,
         dlg.BUTTON_PLAYER_FOCUS_ON,
@@ -203,23 +205,26 @@ def test_settings_and_actions_options():
     assert settings_toggles_options_for(_menu_app(snoring_enabled=False))[5] == (
         dlg.BUTTON_SNORING_OFF
     )
-    assert settings_toggles_options_for(_menu_app(window_grab_enabled=False))[6] == (
+    assert settings_toggles_options_for(_menu_app(sound_effects_enabled=False))[6] == (
+        dlg.BUTTON_SOUND_EFFECTS_OFF
+    )
+    assert settings_toggles_options_for(_menu_app(window_grab_enabled=False))[7] == (
         dlg.BUTTON_WINDOW_PLAY_OFF
     )
-    assert settings_toggles_options_for(_menu_app(tts_enabled=False))[7] == dlg.BUTTON_TTS_OFF
-    assert settings_toggles_options_for(_menu_app(player_focus_enabled=False))[8] == (
+    assert settings_toggles_options_for(_menu_app(tts_enabled=False))[8] == dlg.BUTTON_TTS_OFF
+    assert settings_toggles_options_for(_menu_app(player_focus_enabled=False))[9] == (
         dlg.BUTTON_PLAYER_FOCUS_OFF
     )
-    assert settings_toggles_options_for(_menu_app(emoji_picker_enabled=False))[9] == (
+    assert settings_toggles_options_for(_menu_app(emoji_picker_enabled=False))[10] == (
         dlg.BUTTON_EMOJI_OFF
     )
-    assert settings_toggles_options_for(_menu_app(special_days_enabled=False))[10] == (
+    assert settings_toggles_options_for(_menu_app(special_days_enabled=False))[11] == (
         dlg.BUTTON_SPECIAL_DAYS_OFF
     )
-    assert settings_toggles_options_for(_menu_app(mood_system_enabled=False))[11] == (
+    assert settings_toggles_options_for(_menu_app(mood_system_enabled=False))[12] == (
         dlg.BUTTON_MOOD_SYSTEM_OFF
     )
-    assert settings_toggles_options_for(_menu_app(color_guess_voice_enabled=False))[12] == (
+    assert settings_toggles_options_for(_menu_app(color_guess_voice_enabled=False))[13] == (
         dlg.BUTTON_COLOR_GUESS_VOICE_OFF
     )
     assert settings_toggles_options_for(
@@ -230,6 +235,7 @@ def test_settings_and_actions_options():
         dlg.BUTTON_APP_AWARENESS_ON,
         dlg.BUTTON_SCREEN_COMMENTS_ON,
         dlg.BUTTON_PAINT_RECALL_ON,
+        dlg.BUTTON_SOUND_EFFECTS_ON,
         dlg.BUTTON_WINDOW_PLAY_ON,
         dlg.BUTTON_TTS_ON,
         dlg.BUTTON_PLAYER_FOCUS_ON,

@@ -130,6 +130,17 @@ MENU_VISIBILITY_SECTIONS: tuple[tuple[str, tuple[MenuEntry, ...]], ...] = (
                 ),
             ),
             (
+                "settings.sound_effects",
+                "Sound Effects",
+                frozenset(
+                    {
+                        dlg.BUTTON_SOUND_EFFECTS,
+                        dlg.BUTTON_SOUND_EFFECTS_ON,
+                        dlg.BUTTON_SOUND_EFFECTS_OFF,
+                    }
+                ),
+            ),
+            (
                 "settings.window_play",
                 "Window Play",
                 frozenset(
