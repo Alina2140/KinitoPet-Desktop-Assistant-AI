@@ -126,8 +126,35 @@ def check_voice_input_available() -> tuple[bool, str | None]:
 def _configure_insecure_hf_backend() -> Callable[[], None]:
     """Disable TLS verification for Hugging Face downloads (corporate proxies).
 
-    Returns a restore callback.
+    Returns a restore callback. Supports huggingface-hub 1.x (httpx) and 0.x
+    (requests).
     """
+    try:
+        import httpx
+        from huggingface_hub.utils import set_client_factory
+        from huggingface_hub.utils._http import default_client_factory
+    except ImportError:
+        return _configure_insecure_hf_backend_legacy()
+
+    def factory():
+        return httpx.Client(verify=False, follow_redirects=True, timeout=None)
+
+    try:
+        set_client_factory(factory)
+    except Exception:  # noqa: BLE001
+        return lambda: None
+
+    def restore() -> None:
+        try:
+            set_client_factory(default_client_factory)
+        except Exception:  # noqa: BLE001
+            pass
+
+    return restore
+
+
+def _configure_insecure_hf_backend_legacy() -> Callable[[], None]:
+    """Fallback for huggingface-hub < 1.0 (requests-based backend)."""
     try:
         import requests
         from huggingface_hub import configure_http_backend
