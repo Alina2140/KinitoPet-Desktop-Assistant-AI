@@ -56,7 +56,7 @@ Do NOT store:
 - descriptions of emojis, facial expressions, gestures, or what is visible on screen
 - which apps or windows are open or active right now (that is live context, not memory)
 - random phrases, greetings, or throwaway small talk with no lasting meaning
-- fleeting mood about today ("having a good day") unless clearly answered as a check-in; then use mood_today as "good" or "bad" only
+- fleeting mood about today ("having a good day") unless clearly answered as a check-in; then use mood_today as "good", "neutral", or "bad" only
 - meta replies ("no change needed") or guesses
 - sensitive data (passwords, street addresses — city/region only for home_city)
 - notes that repeat or rephrase something already listed under Already known
@@ -73,7 +73,8 @@ Rules:
   Examples: new hobby "I also crochet" → {{"hobbies": "Crochet"}} (merged with known hobbies); "I only crochet now" → {{"hobbies": ["Crochet"]}}; pets "Lola and Mae" → {{"pets": ["Lola", "Mae"]}}; nickname "call me Sad sometimes" → {{"user_names": "Sad"}}.
 - birthday: store as YYYY-MM-DD when the year is known (e.g. "1990-03-15"), otherwise MM-DD (e.g. "03-15"). If the user refuses to share, store "declined".
 - Never set or change first_met (companion relationship start date). That key is managed by the app only.
-- mood_today: only "good" or "bad". energy_today: only "high" or "low". focus_today: only "busy" or "chill".
+- mood_today: only "good", "neutral", or "bad". energy_today: only "high", "neutral", or "low". focus_today: only "busy", "neutral", or "chill".
+- Daily check-ins (mood_today, energy_today, focus_today, plans_tonight) are for today only; do not invent yesterday's values.
 - home_city: city or region only — never a street address.
 - partner_status: short status text, or "private" if the user declines.
 - For markers like likes_programming / likes_music / likes_coffee / likes_rain / likes_horror / likes_spicy_food / likes_staying_up_late, always store "yes" or "no".

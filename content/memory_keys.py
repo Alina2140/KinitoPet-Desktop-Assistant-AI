@@ -88,6 +88,16 @@ EXTRA_FACT_KEYS: frozenset[str] = frozenset(
     }
 )
 
+# Day-scoped facts stored as "YYYY-MM-DD|value"; stale/undated entries are cleared.
+DAILY_FACT_KEYS: frozenset[str] = frozenset(
+    {
+        "mood_today",
+        "energy_today",
+        "focus_today",
+        "plans_tonight",
+    }
+)
+
 ALLOWED_FACT_KEYS: frozenset[str] = frozenset(MARKER_TO_FACT_KEY.values()) | EXTRA_FACT_KEYS
 
 # Cooldown topic for occasional "we've known each other…" idle mentions.

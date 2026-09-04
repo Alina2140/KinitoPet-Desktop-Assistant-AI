@@ -387,18 +387,38 @@ def _good_bad(good_lines, bad_lines) -> Handler:
     return handler
 
 
-def _good_bad_with_mood_memory(good_lines, bad_lines) -> Handler:
+def _good_bad_with_mood_memory(good_lines, bad_lines, neutral_lines) -> Handler:
     """Like _good_bad, but store mood_today without ask-once (daily cooldown)."""
-    return _two_button_with_daily_fact(
+    return _buttons_with_daily_fact(
         fact_key="mood_today",
         topic="mood_today",
-        button_a=dlg.BUTTON_GOOD,
-        value_a="good",
-        lines_a=good_lines,
-        button_b=dlg.BUTTON_BAD,
-        value_b="bad",
-        lines_b=bad_lines,
+        choices=(
+            (dlg.BUTTON_GOOD, "good", good_lines),
+            (dlg.BUTTON_NEUTRAL, "neutral", neutral_lines),
+            (dlg.BUTTON_BAD, "bad", bad_lines),
+        ),
     )
+
+
+def _buttons_with_daily_fact(
+    *,
+    fact_key: str,
+    topic: str,
+    choices: tuple[tuple[str, str, object], ...],
+) -> Handler:
+    """Persist a daily fact from a button answer without ask-once."""
+
+    def handler(app, response: str) -> None:
+        memory = getattr(app, "_memory", None)
+        for button, value, lines in choices:
+            if response == button:
+                if memory is not None:
+                    memory.set_fact(fact_key, value)
+                    memory.mark_topic_asked(topic)
+                app.speak(dlg.pick_line(lines))
+                return
+
+    return handler
 
 
 def _two_button_with_daily_fact(
@@ -413,21 +433,14 @@ def _two_button_with_daily_fact(
     lines_b,
 ) -> Handler:
     """Persist a daily fact from a two-button answer without ask-once."""
-
-    def handler(app, response: str) -> None:
-        memory = getattr(app, "_memory", None)
-        if response == button_a:
-            if memory is not None:
-                memory.set_fact(fact_key, value_a)
-                memory.mark_topic_asked(topic)
-            app.speak(dlg.pick_line(lines_a))
-        elif response == button_b:
-            if memory is not None:
-                memory.set_fact(fact_key, value_b)
-                memory.mark_topic_asked(topic)
-            app.speak(dlg.pick_line(lines_b))
-
-    return handler
+    return _buttons_with_daily_fact(
+        fact_key=fact_key,
+        topic=topic,
+        choices=(
+            (button_a, value_a, lines_a),
+            (button_b, value_b, lines_b),
+        ),
+    )
 
 
 def _text_format_with_daily_memory(
@@ -1344,35 +1357,44 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
     ),
     DialogSpec(
         dlg.DAY_QUESTION,
-        DialogUI("buttons", buttons=(dlg.BUTTON_GOOD, dlg.BUTTON_BAD)),
-        _good_bad_with_mood_memory(dlg.DAY_GOOD_LINES, dlg.DAY_BAD_LINES),
+        DialogUI(
+            "buttons",
+            buttons=(dlg.BUTTON_GOOD, dlg.BUTTON_NEUTRAL, dlg.BUTTON_BAD),
+        ),
+        _good_bad_with_mood_memory(
+            dlg.DAY_GOOD_LINES, dlg.DAY_BAD_LINES, dlg.DAY_NEUTRAL_LINES
+        ),
     ),
     DialogSpec(
         dlg.ENERGY_QUESTION,
-        DialogUI("buttons", buttons=(dlg.BUTTON_ENERGETIC, dlg.BUTTON_TIRED)),
-        _two_button_with_daily_fact(
+        DialogUI(
+            "buttons",
+            buttons=(dlg.BUTTON_ENERGETIC, dlg.BUTTON_NEUTRAL, dlg.BUTTON_TIRED),
+        ),
+        _buttons_with_daily_fact(
             fact_key="energy_today",
             topic="energy_today",
-            button_a=dlg.BUTTON_ENERGETIC,
-            value_a="high",
-            lines_a=dlg.ENERGY_HIGH_LINES,
-            button_b=dlg.BUTTON_TIRED,
-            value_b="low",
-            lines_b=dlg.ENERGY_LOW_LINES,
+            choices=(
+                (dlg.BUTTON_ENERGETIC, "high", dlg.ENERGY_HIGH_LINES),
+                (dlg.BUTTON_NEUTRAL, "neutral", dlg.ENERGY_NEUTRAL_LINES),
+                (dlg.BUTTON_TIRED, "low", dlg.ENERGY_LOW_LINES),
+            ),
         ),
     ),
     DialogSpec(
         dlg.FOCUS_QUESTION,
-        DialogUI("buttons", buttons=(dlg.BUTTON_BUSY, dlg.BUTTON_CHILL)),
-        _two_button_with_daily_fact(
+        DialogUI(
+            "buttons",
+            buttons=(dlg.BUTTON_BUSY, dlg.BUTTON_NEUTRAL, dlg.BUTTON_CHILL),
+        ),
+        _buttons_with_daily_fact(
             fact_key="focus_today",
             topic="focus_today",
-            button_a=dlg.BUTTON_BUSY,
-            value_a="busy",
-            lines_a=dlg.FOCUS_BUSY_LINES,
-            button_b=dlg.BUTTON_CHILL,
-            value_b="chill",
-            lines_b=dlg.FOCUS_CHILL_LINES,
+            choices=(
+                (dlg.BUTTON_BUSY, "busy", dlg.FOCUS_BUSY_LINES),
+                (dlg.BUTTON_NEUTRAL, "neutral", dlg.FOCUS_NEUTRAL_LINES),
+                (dlg.BUTTON_CHILL, "chill", dlg.FOCUS_CHILL_LINES),
+            ),
         ),
     ),
     DialogSpec(

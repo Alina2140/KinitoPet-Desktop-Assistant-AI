@@ -286,3 +286,92 @@ def test_apply_extraction_rejects_placeholder_favorite_drink(store):
         allowed_fact_keys=frozenset({"favorite_drink"}),
     )
     assert store.get_fact("favorite_drink") == "Tea"
+
+
+def test_daily_facts_are_dated_and_read_as_plain_value(store):
+    from datetime import date
+
+    from kinito.memory.daily_facts import format_daily_fact
+
+    store.set_fact("energy_today", "low")
+    assert store.get_fact("energy_today") == "low"
+    raw = store.snapshot()["facts"]["energy_today"]
+    assert raw == format_daily_fact("low")
+
+    store.set_fact("plans_tonight", "movie night")
+    assert store.get_fact("plans_tonight") == "movie night"
+    assert store.snapshot()["facts"]["plans_tonight"].startswith(date.today().isoformat())
+
+
+def test_daily_checkin_facts_accept_neutral(store):
+    from kinito.memory.daily_facts import format_daily_fact
+
+    store.set_fact("mood_today", "okay")
+    assert store.get_fact("mood_today") == "neutral"
+    assert store.snapshot()["facts"]["mood_today"] == format_daily_fact("neutral")
+
+    store.set_fact("energy_today", "medium")
+    assert store.get_fact("energy_today") == "neutral"
+
+    store.set_fact("focus_today", "normal")
+    assert store.get_fact("focus_today") == "neutral"
+
+
+def test_stale_daily_facts_are_cleared_on_read(store):
+    from datetime import date, timedelta
+
+    from kinito.memory.daily_facts import format_daily_fact
+
+    yesterday = date.today() - timedelta(days=1)
+    store._data["facts"]["energy_today"] = format_daily_fact("low", today=yesterday)
+    store._data["facts"]["mood_today"] = "bad"  # legacy undated
+    store.save()
+
+    assert store.get_fact("energy_today") is None
+    assert store.get_fact("mood_today") is None
+    assert "energy_today" not in store.snapshot()["facts"]
+    assert "mood_today" not in store.snapshot()["facts"]
+
+
+def test_stale_daily_facts_dropped_on_load(memory_dir):
+    from datetime import date, timedelta
+
+    from kinito.memory.daily_facts import format_daily_fact
+    from kinito.memory.store import memory_file_path
+
+    yesterday = date.today() - timedelta(days=1)
+    path = memory_file_path(memory_dir)
+    os.makedirs(memory_dir, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as handle:
+        json.dump(
+            {
+                "version": 1,
+                "facts": {
+                    "energy_today": format_daily_fact("low", today=yesterday),
+                    "focus_today": format_daily_fact("busy"),
+                    "user_names": "Alex",
+                },
+                "answered_markers": [],
+                "notes": [],
+                "asked_topics": [],
+                "topic_asked_at": {},
+            },
+            handle,
+        )
+
+    store = MemoryStore(directory=memory_dir)
+    assert store.get_fact("energy_today") is None
+    assert store.get_fact("focus_today") == "busy"
+    assert store.get_fact("user_names") == "Alex"
+
+
+def test_apply_extraction_dates_daily_facts(store):
+    from kinito.memory.daily_facts import format_daily_fact
+
+    store.apply_extraction(
+        update_facts={"mood_today": "good", "energy_today": "high"},
+        allowed_fact_keys=frozenset({"mood_today", "energy_today"}),
+    )
+    assert store.get_fact("mood_today") == "good"
+    assert store.snapshot()["facts"]["mood_today"] == format_daily_fact("good")
+    assert store.get_fact("energy_today") == "high"

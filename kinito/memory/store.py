@@ -11,11 +11,13 @@ from datetime import date
 from typing import Any
 
 from content.memory_keys import (
+    DAILY_FACT_KEYS,
     LEGACY_FACT_KEY_ALIASES,
     MULTI_VALUE_FACT_KEYS,
     PROTECTED_FACT_KEYS,
 )
 from kinito.assets import user_media_directory
+from kinito.memory.daily_facts import format_daily_fact, parse_daily_fact
 from kinito.memory.fact_values import (
     compact_fact_storage,
     format_fact_values,
@@ -153,6 +155,7 @@ class MemoryStore:
                     migrated[target_key] = normalized
             for key, value in list(migrated.items())[:MAX_FACTS]:
                 data["facts"][key] = value
+            self._drop_stale_daily_facts(data["facts"])
 
         markers = raw.get("answered_markers")
         if isinstance(markers, list):
@@ -215,6 +218,43 @@ class MemoryStore:
         return None
 
     @staticmethod
+    def _drop_stale_daily_facts(facts: dict[str, Any], *, today: date | None = None) -> bool:
+        """Remove undated or non-today daily facts from *facts*. Returns True if changed."""
+        moment = today or date.today()
+        changed = False
+        for key in list(facts):
+            if key not in DAILY_FACT_KEYS:
+                continue
+            raw = facts.get(key)
+            if not isinstance(raw, str):
+                facts.pop(key, None)
+                changed = True
+                continue
+            parsed = parse_daily_fact(raw)
+            if parsed is None or parsed[1] != moment:
+                facts.pop(key, None)
+                changed = True
+        return changed
+
+    def _fresh_daily_value(self, key: str, *, today: date | None = None) -> str | None:
+        """Return today's value for a daily fact, clearing stale/undated storage."""
+        facts: dict[str, Any] = self._data["facts"]
+        raw = facts.get(key)
+        if raw is None:
+            return None
+        if not isinstance(raw, str):
+            facts.pop(key, None)
+            self.save()
+            return None
+        parsed = parse_daily_fact(raw)
+        moment = today or date.today()
+        if parsed is None or parsed[1] != moment:
+            facts.pop(key, None)
+            self.save()
+            return None
+        return parsed[0]
+
+    @staticmethod
     def _normalize_note(entry: Any) -> dict[str, str] | None:
         if isinstance(entry, str):
             text = entry.strip()[:MAX_NOTE_LEN]
@@ -232,6 +272,9 @@ class MemoryStore:
 
     def get_fact_values(self, key: str) -> list[str]:
         """Return fact values as a list (empty if missing)."""
+        if key in DAILY_FACT_KEYS:
+            fresh = self._fresh_daily_value(key)
+            return [fresh] if fresh else []
         value = self._data["facts"].get(key)
         if value is None:
             return []
@@ -292,8 +335,19 @@ class MemoryStore:
             trimmed_value = parsed.isoformat()
         elif trimmed_key == "mood_today":
             lowered = trimmed_value.casefold()
-            if lowered in {"good", "great", "fine", "ok", "okay"}:
+            if lowered in {"good", "great"}:
                 trimmed_value = "good"
+            elif lowered in {
+                "neutral",
+                "fine",
+                "ok",
+                "okay",
+                "meh",
+                "alright",
+                "so-so",
+                "average",
+            }:
+                trimmed_value = "neutral"
             elif lowered in {"bad", "rough", "sad", "awful", "terrible"}:
                 trimmed_value = "bad"
             else:
@@ -302,6 +356,17 @@ class MemoryStore:
             lowered = trimmed_value.casefold()
             if lowered in {"high", "energetic", "full", "good"}:
                 trimmed_value = "high"
+            elif lowered in {
+                "neutral",
+                "medium",
+                "okay",
+                "ok",
+                "fine",
+                "meh",
+                "so-so",
+                "average",
+            }:
+                trimmed_value = "neutral"
             elif lowered in {"low", "tired", "exhausted", "drained"}:
                 trimmed_value = "low"
             else:
@@ -310,6 +375,16 @@ class MemoryStore:
             lowered = trimmed_value.casefold()
             if lowered in {"busy", "packed", "hectic"}:
                 trimmed_value = "busy"
+            elif lowered in {
+                "neutral",
+                "normal",
+                "okay",
+                "ok",
+                "mixed",
+                "so-so",
+                "average",
+            }:
+                trimmed_value = "neutral"
             elif lowered in {"chill", "free", "relaxed", "calm"}:
                 trimmed_value = "chill"
             else:
@@ -318,6 +393,11 @@ class MemoryStore:
             lowered = trimmed_value.casefold()
             if lowered in {"private", "prefer not", "prefer not to say", "none of your business"}:
                 trimmed_value = "private"
+        if trimmed_key in DAILY_FACT_KEYS:
+            # Leave room for "YYYY-MM-DD|" prefix in storage.
+            prefix_budget = 11
+            trimmed_value = trimmed_value[: max(1, MAX_FACT_VALUE_LEN - prefix_budget)]
+            trimmed_value = format_daily_fact(trimmed_value)
         facts: dict[str, Any] = self._data["facts"]
         if trimmed_key not in facts and len(facts) >= MAX_FACTS:
             return
@@ -614,6 +694,13 @@ class MemoryStore:
                     continue
 
                 if not isinstance(value, str):
+                    continue
+                if key in DAILY_FACT_KEYS:
+                    # Route through set_fact so values are normalized and dated.
+                    before = facts.get(key)
+                    self.set_fact(key, value)
+                    if facts.get(key) != before:
+                        changed = True
                     continue
                 trimmed = value.strip()[:MAX_FACT_VALUE_LEN]
                 if not trimmed or should_reject_fact_value(key, trimmed):
