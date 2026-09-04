@@ -696,6 +696,15 @@ class FloatingAssistant(
                     bubble.wm_attributes("-topmost", True)
                     bubble.lift()
                     self._force_window_topmost(bubble)
+            nudge = getattr(self, "_nudge_popup", None)
+            if nudge is not None:
+                try:
+                    if nudge.winfo_exists():
+                        nudge.wm_attributes("-topmost", True)
+                        nudge.lift()
+                        self._force_window_topmost(nudge)
+                except tk.TclError:
+                    pass
             # Screen effects must stay above Kinito/bubble among topmost peers.
             if hasattr(self, "_raise_screen_effect_overlays"):
                 self._raise_screen_effect_overlays()

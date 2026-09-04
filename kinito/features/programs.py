@@ -13,6 +13,11 @@ from PIL import Image, ImageTk
 from content import dialogue as dlg
 from kinito.assets import secret_images_directory, timer_file_path
 from kinito.tk_timers import cancel_after, schedule_after
+from kinito.tk_toplevels import (
+    create_staged_toplevel,
+    reveal_staged_toplevel,
+    schedule_assistant_position_restore,
+)
 from kinito.window_icon import apply_window_icon
 
 
@@ -548,10 +553,11 @@ class ProgramsMixin:
             if (fitted_w, fitted_h) != img.size:
                 img = img.resize((fitted_w, fitted_h), Image.Resampling.LANCZOS)
 
-        popup = Toplevel(self.root)
+        pin = getattr(self, "_pin_assistant_screen_position", None)
+        pinned = pin() if callable(pin) else None
+        popup = create_staged_toplevel(self.root)
         popup.title(title)
         apply_window_icon(popup)
-        popup.wm_attributes("-topmost", True)
         popup.configure(bg="black")
 
         tk_img = ImageTk.PhotoImage(img)
@@ -566,7 +572,6 @@ class ProgramsMixin:
             else:
                 x = screen_x + (screen_w - width) // 2
                 y = screen_y + (screen_h - height) // 2
-        popup.geometry(f"{width}x{height}+{int(x)}+{int(y)}")
 
         def _handle_close():
             if on_close is not None:
@@ -577,6 +582,12 @@ class ProgramsMixin:
                 pass
 
         popup.protocol("WM_DELETE_WINDOW", _handle_close)
+        reveal_staged_toplevel(
+            popup,
+            geometry=f"{width}x{height}+{int(x)}+{int(y)}",
+        )
+        if pinned is not None:
+            schedule_assistant_position_restore(self, *pinned)
         if modal:
             popup.wait_window(popup)
 

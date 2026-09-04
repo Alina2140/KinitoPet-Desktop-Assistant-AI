@@ -6,9 +6,14 @@ import random
 import sys
 import time
 import tkinter as tk
-from tkinter import Label, Toplevel
+from tkinter import Label
 
 from content.window_grab_lines import pick_window_grab_line
+from kinito.tk_toplevels import (
+    create_staged_toplevel,
+    reveal_staged_toplevel,
+    schedule_assistant_position_restore,
+)
 from kinito.window_targets import (
     SIDE_LEFT,
     WindowRect,
@@ -183,16 +188,13 @@ class WindowGrabMixin:
         photo = self._hand_photo_for_side(side)
         if photo is None:
             return None
-        hand = Toplevel(self.root)
+        pin = getattr(self, "_pin_assistant_screen_position", None)
+        pinned = pin() if callable(pin) else None
+        hand = create_staged_toplevel(self.root)
         hand.overrideredirect(True)
         hand.configure(bg="white")
         try:
             hand.attributes("-transparentcolor", "white")
-        except tk.TclError:
-            pass
-        # Visible during flight; tucked behind the target after grab.
-        try:
-            hand.wm_attributes("-topmost", True)
         except tk.TclError:
             pass
         label = Label(hand, image=photo, bg="white", bd=0, highlightthickness=0)
@@ -200,7 +202,9 @@ class WindowGrabMixin:
         hand.update_idletasks()
         hw = max(hand.winfo_reqwidth(), 1)
         hh = max(hand.winfo_reqheight(), 1)
-        hand.geometry(f"{hw}x{hh}+{x}+{y}")
+        reveal_staged_toplevel(hand, geometry=f"{hw}x{hh}+{x}+{y}")
+        if pinned is not None:
+            schedule_assistant_position_restore(self, *pinned)
         self._hand_window = hand
         self._hand_photo_ref = photo
         return hand

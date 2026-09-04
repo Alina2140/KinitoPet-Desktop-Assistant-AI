@@ -29,7 +29,16 @@ def test_show_popup_image_sizes_window_to_image(tmp_path):
         def title(self, *_args):
             return None
 
+        def withdraw(self):
+            return None
+
+        def attributes(self, *_args, **_kwargs):
+            return None
+
         def wm_attributes(self, *_args, **_kwargs):
+            return None
+
+        def deiconify(self):
             return None
 
         def configure(self, **_kwargs):
@@ -48,7 +57,10 @@ def test_show_popup_image_sizes_window_to_image(tmp_path):
             return None
 
     with (
-        patch("kinito.features.programs.Toplevel", return_value=FakePopup()),
+        patch(
+            "kinito.features.programs.create_staged_toplevel",
+            return_value=FakePopup(),
+        ),
         patch("kinito.features.programs.apply_window_icon"),
         patch("kinito.features.programs.Label", MagicMock()),
         patch("kinito.features.programs.ImageTk.PhotoImage", MagicMock()),

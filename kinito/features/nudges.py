@@ -3,15 +3,22 @@
 from __future__ import annotations
 
 import random
-import sys
 import time
 import tkinter as tk
-from tkinter import Canvas, Frame, Label, Toplevel
+from tkinter import Canvas, Frame, Label
 
 from PIL import Image, ImageDraw, ImageTk
 
 from content.app_lines import maybe_pick_app_aware_nudge_line
 from content.nudge_lines import pick_nudge_line
+from kinito.tk_toplevels import (
+    create_staged_toplevel,
+    deiconify_toplevel_noactivate,
+    pin_assistant_screen_position,
+    restore_assistant_screen_position,
+    reveal_staged_toplevel,
+    schedule_assistant_position_restore,
+)
 from kinito.window_icon import apply_window_icon
 from kinito.window_targets import list_monitor_rects, random_fully_visible_origin
 
@@ -141,55 +148,16 @@ class NudgesMixin:
 
     def _pin_assistant_screen_position(self) -> tuple[int, int]:
         """Remember Kinito's logical position so Toplevel creation cannot teleport him."""
-        try:
-            pinned_x = int(getattr(self, "x", self.root.winfo_x()))
-            pinned_y = int(getattr(self, "y", self.root.winfo_y()))
-        except (tk.TclError, TypeError, ValueError):
-            pinned_x, pinned_y = 0, 0
-        self.x = pinned_x
-        self.y = pinned_y
-        return pinned_x, pinned_y
+        return pin_assistant_screen_position(self)
 
     def _restore_assistant_screen_position(self, pinned_x: int, pinned_y: int) -> None:
         """Re-apply *pinned_x*/*pinned_y* to the overrideredirect root window."""
-        self.x = int(pinned_x)
-        self.y = int(pinned_y)
-        try:
-            if not self.root.winfo_exists():
-                return
-            self.root.geometry(f"+{self.x}+{self.y}")
-        except tk.TclError:
-            pass
+        restore_assistant_screen_position(self, pinned_x, pinned_y)
 
     @staticmethod
     def _deiconify_nudge_popup_noactivate(popup: tk.Toplevel) -> None:
         """Show *popup* without stealing focus from Kinito's root window."""
-        try:
-            popup.wm_attributes("-topmost", True)
-            popup.deiconify()
-        except tk.TclError:
-            return
-        if sys.platform != "win32":
-            return
-        try:
-            import ctypes
-
-            hwnd = int(popup.winfo_id())
-            parent = ctypes.windll.user32.GetParent(hwnd)
-            if parent:
-                hwnd = parent
-            # HWND_TOPMOST + NOMOVE/NOSIZE/NOACTIVATE
-            ctypes.windll.user32.SetWindowPos(
-                hwnd,
-                -1,
-                0,
-                0,
-                0,
-                0,
-                0x0002 | 0x0001 | 0x0010,
-            )
-        except (OSError, AttributeError, ValueError, TypeError, tk.TclError):
-            pass
+        deiconify_toplevel_noactivate(popup)
 
     @staticmethod
     def _pick_nudge_font(root: tk.Misc, candidates: tuple[tuple[str, int], ...]) -> tuple:
@@ -345,18 +313,8 @@ class NudgesMixin:
         # on Windows; pin and restore his logical screen position around setup.
         pinned_x, pinned_y = self._pin_assistant_screen_position()
 
-        popup = Toplevel(self.root)
+        popup = create_staged_toplevel(self.root)
         self._nudge_popup = popup
-        try:
-            popup.withdraw()
-        except tk.TclError:
-            pass
-        try:
-            popup.attributes("-alpha", 0.0)
-        except tk.TclError:
-            pass
-        # Park off-screen until sized, so Windows never flashes a default frame.
-        popup.geometry("-10000-10000")
         popup.title(title)
         apply_window_icon(popup)
         popup.configure(bg=self._NUDGE_BG)
@@ -458,21 +416,14 @@ class NudgesMixin:
                 monitors=monitors,
                 margin=16,
             )
-        popup.geometry(f"{int(needed_w)}x{int(needed_h)}+{int(x)}+{int(y)}")
-
         popup.protocol("WM_DELETE_WINDOW", _handle_close)
-        self._deiconify_nudge_popup_noactivate(popup)
-        try:
-            popup.attributes("-alpha", 1.0)
-        except tk.TclError:
-            pass
-        self._restore_assistant_screen_position(pinned_x, pinned_y)
+        reveal_staged_toplevel(
+            popup,
+            geometry=f"{int(needed_w)}x{int(needed_h)}+{int(x)}+{int(y)}",
+            noactivate=True,
+        )
         # Windows may move the borderless root asynchronously after the popup maps.
-        try:
-            self.root.after(1, lambda: self._restore_assistant_screen_position(pinned_x, pinned_y))
-            self.root.after(50, lambda: self._restore_assistant_screen_position(pinned_x, pinned_y))
-        except tk.TclError:
-            pass
+        schedule_assistant_position_restore(self, pinned_x, pinned_y)
 
         if auto_close_ms > 0:
             popup.after(auto_close_ms, _handle_close)
