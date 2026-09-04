@@ -26,7 +26,7 @@ from kinito.window_targets import list_monitor_rects, random_fully_visible_origi
 class NudgesMixin:
     """Occasionally remind the user via a Windows-style text popup."""
 
-    NUDGE_CHANCE = 1 / 270
+    NUDGE_CHANCE = 1 / 470
     NUDGE_COOLDOWN_SECONDS = 300
     NUDGE_POPUP_MAX_WRAP = 340
     NUDGE_POPUP_MIN_WRAP = 180
