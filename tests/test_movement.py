@@ -20,6 +20,11 @@ def movement():
     stub._drag_moved = False
     stub._throwing = False
     stub._drag_samples = []
+    stub._drag_sprite_state = None
+    stub._drag_idle_timer = None
+    stub._drag_wiggle_timer = None
+    stub._drag_wiggle_index = 0
+    stub._drag_hold_reacted = False
     stub._throw_after_id = None
     stub._throw_vx = 0.0
     stub._throw_vy = 0.0
@@ -35,12 +40,16 @@ def movement():
     stub.root.winfo_y.return_value = 100
     stub.root.winfo_rootx.return_value = 100
     stub.root.winfo_rooty.return_value = 200
+    stub.root.winfo_exists.return_value = True
     stub.root.after = MagicMock(return_value="timer")
     stub.root.after_cancel = MagicMock()
     stub.panel = MagicMock()
+    stub.panel.winfo_exists.return_value = True
     stub.tk_img_surf_left = "surf_left"
     stub.tk_img_surf_right = "surf_right"
     stub.tk_img_normal = "normal"
+    stub.tk_img_drag_left = "drag_left"
+    stub.tk_img_drag_right = "drag_right"
     stub.img_surf_left = Image.new("RGBA", (24, 48), (255, 255, 255, 0))
     stub.img_surf_right = Image.new("RGBA", (24, 48), (255, 255, 255, 0))
     stub._surf_render_cache = {}
@@ -209,6 +218,89 @@ def test_change_sprite_skipped_while_dragging(movement):
     movement.is_dragging = True
     movement.change_sprite("sprite")
     movement.panel.config.assert_not_called()
+
+
+def test_on_mouse_down_shows_standing_drag_sprite(movement):
+    movement._start_drag_tracking = MagicMock()
+    movement._sync_kinito_screen_position = MagicMock()
+    movement.x = 100
+    movement.y = 200
+    movement.on_mouse_down(MagicMock(x_root=50, y_root=60, widget=movement.panel))
+    movement.panel.config.assert_called_with(image="normal")
+    assert movement._drag_sprite_state == "standing"
+    movement.root.after.assert_called()
+
+
+def test_on_mouse_move_shows_drag_left_and_right(movement):
+    movement.is_dragging = True
+    movement.mouse_click_offset_x = 0
+    movement.mouse_click_offset_y = 0
+    movement.x = 300
+    movement.y = 400
+    movement.on_mouse_move(MagicMock(x_root=250, y_root=400))
+    movement.panel.config.assert_called_with(image="drag_left")
+    assert movement._drag_sprite_state == "left"
+    movement.panel.config.reset_mock()
+    movement.on_mouse_move(MagicMock(x_root=320, y_root=400))
+    movement.panel.config.assert_called_with(image="drag_right")
+    assert movement._drag_sprite_state == "right"
+
+
+def test_drag_sprite_idle_reverts_to_standing_and_schedules_wiggle(movement):
+    movement.is_dragging = True
+    movement._drag_sprite_state = "left"
+    movement._on_drag_sprite_idle()
+    movement.panel.config.assert_called_with(image="normal")
+    assert movement._drag_sprite_state == "standing"
+    movement.root.after.assert_called_with(
+        movement.DRAG_HOLD_WIGGLE_DELAY_MS, movement._start_drag_wiggle
+    )
+
+
+def test_drag_wiggle_cycles_left_standing_right(movement):
+    movement.is_dragging = True
+    movement._drag_wiggle_index = 0
+    movement._maybe_speak_hold_reaction = MagicMock()
+    movement._start_drag_wiggle()
+    movement._maybe_speak_hold_reaction.assert_called_once()
+    assert movement.panel.config.call_args_list[0].kwargs["image"] == "drag_left"
+    movement._drag_wiggle_tick()
+    assert movement.panel.config.call_args_list[1].kwargs["image"] == "normal"
+    movement._drag_wiggle_tick()
+    assert movement.panel.config.call_args_list[2].kwargs["image"] == "drag_right"
+
+
+def test_maybe_speak_hold_reaction_speaks_once(movement):
+    movement.speak = MagicMock()
+    movement._is_busy_with_speech = MagicMock(return_value=False)
+    with (
+        patch("kinito.movement.random.random", return_value=0.0),
+        patch("content.hold_lines.pick_hold_line", return_value="Let go!"),
+    ):
+        movement._maybe_speak_hold_reaction()
+        movement._maybe_speak_hold_reaction()
+    movement.speak.assert_called_once_with("Let go!")
+    assert movement._drag_hold_reacted is True
+
+
+def test_on_mouse_up_restores_standing_sprite(movement):
+    movement.is_dragging = True
+    movement._drag_moved = True
+    movement._drag_sprite_state = "right"
+    movement._stop_drag_tracking = MagicMock()
+    movement._follow_speech_bubble_to_kinito = MagicMock()
+    movement._start_throw = MagicMock()
+    now = 100.0
+    movement._drag_samples = [
+        (now - 0.2, 0.0, 0.0),
+        (now - 0.01, 401.0, 0.0),
+        (now, 401.5, 0.0),
+    ]
+    with patch("kinito.movement.time.monotonic", return_value=now):
+        movement.on_mouse_up(MagicMock())
+    movement.panel.config.assert_called_with(image="normal")
+    assert movement._drag_sprite_state is None
+    movement._start_throw.assert_not_called()
 
 
 def test_move_towards_stops_when_speech_starts(movement):

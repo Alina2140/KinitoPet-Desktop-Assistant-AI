@@ -76,6 +76,12 @@ class MovementMixin:
     THROW_FRAME_MS = 16
     THROW_REACT_CHANCE = 0.85
     THROW_MAX_DT = 0.05
+    DRAG_DIR_DEADZONE_PX = 2
+    DRAG_SPRITE_IDLE_MS = 90
+    DRAG_HOLD_WIGGLE_DELAY_MS = 5000
+    DRAG_WIGGLE_FRAME_MS = 240
+    HOLD_WIGGLE_REACT_CHANCE = 0.50
+    _DRAG_WIGGLE_FRAMES = ("left", "standing", "right")
 
     def setup_mouse_bindings(self):
         """Bind drag to the sprite only so control buttons stay clickable."""
@@ -208,6 +214,7 @@ class MovementMixin:
         self.is_dragging = True
         self._drag_moved = False
         self._drag_samples = []
+        self._drag_hold_reacted = False
         self.moving = False
         self._stop_audio_for_drag()
         if not self._should_skip_drag_sounds():
@@ -219,6 +226,9 @@ class MovementMixin:
         self.mouse_click_offset_x = root_x - event.x_root
         self.mouse_click_offset_y = root_y - event.y_root
         self._record_drag_sample(root_x, root_y)
+        self._stop_drag_wiggle()
+        self._set_drag_sprite("standing")
+        self._schedule_drag_wiggle_start()
         self._start_drag_tracking()
         if hasattr(self, "_capture_speech_bubble_drag_offset"):
             self._capture_speech_bubble_drag_offset()
@@ -230,12 +240,14 @@ class MovementMixin:
         if not self.is_dragging:
             return
         self._drag_moved = True
+        prev_x = getattr(self, "x", event.x_root + self.mouse_click_offset_x)
         new_x = event.x_root + self.mouse_click_offset_x
         new_y = event.y_root + self.mouse_click_offset_y
         new_x, new_y = self.clamp_position(new_x, new_y)
         self.x, self.y = new_x, new_y
         self.root.geometry(f"+{new_x}+{new_y}")
         self._record_drag_sample(new_x, new_y)
+        self._update_drag_sprite_from_dx(new_x - prev_x)
         self._follow_speech_bubble_to_kinito(new_x, new_y)
 
     def on_mouse_up(self, event):
@@ -247,6 +259,9 @@ class MovementMixin:
         self.is_dragging = False
         self._drag_moved = False
         self._stop_drag_tracking()
+        self._clear_drag_sprite_state()
+        if hasattr(self, "tk_img_normal"):
+            self.change_sprite(self.tk_img_normal)
 
         if drag_moved and speed >= self.THROW_MIN_SPEED_PX_S:
             self._start_throw(vx, vy)
@@ -262,6 +277,126 @@ class MovementMixin:
             self.root.after(0, self.ensure_on_screen)
         if hasattr(self, "_keep_assistant_on_top"):
             self.root.after(0, self._keep_assistant_on_top)
+
+    def _apply_panel_sprite(self, sprite) -> None:
+        """Set the panel image even while dragging (change_sprite is blocked then)."""
+        if sprite is None:
+            return
+        try:
+            if self.panel.winfo_exists():
+                self.panel.config(image=sprite)
+        except tk.TclError:
+            pass
+
+    def _drag_sprite_for_state(self, state: str):
+        """Return the PhotoImage for a drag visual state."""
+        if state == "left":
+            return getattr(self, "tk_img_drag_left", None)
+        if state == "right":
+            return getattr(self, "tk_img_drag_right", None)
+        return getattr(self, "tk_img_normal", None)
+
+    def _set_drag_sprite(self, state: str) -> None:
+        """Show left/right drag or standing sprite while the mouse button is held."""
+        if getattr(self, "_drag_sprite_state", None) == state:
+            return
+        sprite = self._drag_sprite_for_state(state)
+        if sprite is None:
+            return
+        self._apply_panel_sprite(sprite)
+        self._drag_sprite_state = state
+
+    def _schedule_drag_idle_sprite(self) -> None:
+        """After motion stops, fall back to standing, then maybe wiggle."""
+        schedule_after(
+            self.root,
+            self,
+            "_drag_idle_timer",
+            self.DRAG_SPRITE_IDLE_MS,
+            self._on_drag_sprite_idle,
+        )
+
+    def _on_drag_sprite_idle(self) -> None:
+        """Revert to standing when still, then start the hold wiggle soon."""
+        if not getattr(self, "is_dragging", False):
+            return
+        self._stop_drag_wiggle()
+        self._set_drag_sprite("standing")
+        self._schedule_drag_wiggle_start()
+
+    def _schedule_drag_wiggle_start(self) -> None:
+        """Begin wiggling after the user has held still long enough."""
+        schedule_after(
+            self.root,
+            self,
+            "_drag_wiggle_timer",
+            self.DRAG_HOLD_WIGGLE_DELAY_MS,
+            self._start_drag_wiggle,
+        )
+
+    def _stop_drag_wiggle(self) -> None:
+        """Cancel an in-progress or pending hold wiggle."""
+        cancel_after(self.root, self, "_drag_wiggle_timer")
+        self._drag_wiggle_index = 0
+
+    def _start_drag_wiggle(self) -> None:
+        """Start cycling left/standing/right while still held."""
+        if not getattr(self, "is_dragging", False):
+            return
+        self._drag_wiggle_index = 0
+        self._maybe_speak_hold_reaction()
+        self._drag_wiggle_tick()
+
+    def _drag_wiggle_tick(self) -> None:
+        """Advance one frame of the hold wiggle loop."""
+        if not getattr(self, "is_dragging", False):
+            return
+        frames = self._DRAG_WIGGLE_FRAMES
+        index = int(getattr(self, "_drag_wiggle_index", 0)) % len(frames)
+        self._set_drag_sprite(frames[index])
+        self._drag_wiggle_index = index + 1
+        schedule_after(
+            self.root,
+            self,
+            "_drag_wiggle_timer",
+            self.DRAG_WIGGLE_FRAME_MS,
+            self._drag_wiggle_tick,
+        )
+
+    def _clear_drag_sprite_state(self) -> None:
+        """Cancel idle/wiggle timers and forget the current drag visual state."""
+        cancel_after(self.root, self, "_drag_idle_timer")
+        self._stop_drag_wiggle()
+        self._drag_sprite_state = None
+
+    def _update_drag_sprite_from_dx(self, dx: float) -> None:
+        """Pick left/right drag sprites from horizontal motion; idle → standing."""
+        if abs(dx) < self.DRAG_DIR_DEADZONE_PX:
+            self._schedule_drag_idle_sprite()
+            return
+        self._stop_drag_wiggle()
+        self._set_drag_sprite("left" if dx < 0 else "right")
+        self._schedule_drag_idle_sprite()
+
+    def _maybe_speak_hold_reaction(self) -> None:
+        """Sometimes ask the user to let go while wiggling in place."""
+        if getattr(self, "_drag_hold_reacted", False):
+            return
+        if random.random() >= self.HOLD_WIGGLE_REACT_CHANCE:
+            self._drag_hold_reacted = True
+            return
+        if getattr(self, "_focus_mode", False):
+            return
+        if not getattr(self, "_startup_complete", True):
+            return
+        if hasattr(self, "_is_busy_with_speech") and self._is_busy_with_speech():
+            return
+        if not hasattr(self, "speak"):
+            return
+        from content.hold_lines import pick_hold_line
+
+        self._drag_hold_reacted = True
+        self.speak(pick_hold_line())
 
     def _maybe_speak_throw_reaction(self) -> None:
         """Sometimes comment on being thrown (happy through annoyed)."""

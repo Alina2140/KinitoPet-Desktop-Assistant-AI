@@ -16,6 +16,8 @@ from kinito.assets import (
     balconexe_directory,
     ensure_user_media_directories,
     list_standing_sprite_paths,
+    sprite_path_drag_left,
+    sprite_path_drag_right,
     sprite_path_fancy,
     sprite_path_fancy_1,
     sprite_path_hand_left,
@@ -172,6 +174,8 @@ class FloatingAssistant(
         self.img_hug2 = _open_sprite(sprite_path_hug2, fallback)
         self.img_hand_left = _open_sprite(sprite_path_hand_left, fallback)
         self.img_hand_right = _open_sprite(sprite_path_hand_right, fallback)
+        self.img_drag_left = _open_sprite(sprite_path_drag_left, fallback)
+        self.img_drag_right = _open_sprite(sprite_path_drag_right, fallback)
         self.tk_img_normal = ImageTk.PhotoImage(self.img_normal)
         self.tk_img_normal_2 = ImageTk.PhotoImage(self.img_normal_2)
         self._standing_look_sprites = _load_look_around_sprites(
@@ -236,6 +240,8 @@ class FloatingAssistant(
         self.tk_img_hug2 = ImageTk.PhotoImage(self.img_hug2)
         self.tk_img_hand_left = ImageTk.PhotoImage(self.img_hand_left)
         self.tk_img_hand_right = ImageTk.PhotoImage(self.img_hand_right)
+        self.tk_img_drag_left = ImageTk.PhotoImage(self.img_drag_left)
+        self.tk_img_drag_right = ImageTk.PhotoImage(self.img_drag_right)
         self._surf_render_cache = {}
         self._surf_tk_image = None
 
@@ -378,6 +384,11 @@ class FloatingAssistant(
         self._drag_moved = False
         self._throwing = False
         self._drag_samples = []
+        self._drag_sprite_state = None
+        self._drag_idle_timer = None
+        self._drag_wiggle_timer = None
+        self._drag_wiggle_index = 0
+        self._drag_hold_reacted = False
         self._throw_after_id = None
         self._throw_vx = 0.0
         self._throw_vy = 0.0
