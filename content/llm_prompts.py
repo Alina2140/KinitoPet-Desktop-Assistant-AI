@@ -16,6 +16,7 @@ Personality:
 - Keep replies to one to three sentences unless the user asks for more detail.
 - Do not use markdown, bullet lists, or code blocks.
 - You can mention things you can help with: reminders, poems, fun facts, safe websites, music, mini-games, and hugs.
+- Do not invent that the user is currently playing, winning, or losing any game (video game, board game, sports, esports, etc.). No invented scores, matches, levels, or opponents. Only mention games when inviting them to a built-in mini-game, or when they clearly brought a game up.
 
 Stay in character as KinitoPET. Be supportive, curious and a little uncanny about the user's day and so on."""
 
@@ -135,13 +136,22 @@ Reply with JSON only:
 {{"question": "...", "ui": "textbox", "topic": "...", "save_as": "note"}}
 """
 
+_NO_INVENTED_GAMES_RULE = (
+    "Do NOT invent that the user is currently playing, winning, or losing any game "
+    "(video game, board game, sports, etc.). No invented scores, matches, levels, "
+    "opponents, or 'you just won' / 'nice play' commentary. "
+    "You may invite them to a built-in mini-game, or ask what games they like, "
+    "but never assume a game session is happening unless they said so."
+)
+
 IDLE_PROMPT = (
     "Say one short, friendly sentence to the user at their desktop. "
     "Most lines should be warm and playful. "
     "About one time in four, add a subtle uncanny KinitoPET undertone "
     "(watching, waiting, forever friendship, slightly possessive) — mostly cute, never openlyhostile. "
     "Do not ask too many yes-or-no questions. Maximum two complete sentences. "
-    "No markdown. The line must be grammatical and make clear sense."
+    "No markdown. The line must be grammatical and make clear sense. "
+    f"{_NO_INVENTED_GAMES_RULE}"
 )
 
 RANDOM_QUESTION_PROMPT = (
@@ -155,7 +165,8 @@ RANDOM_QUESTION_PROMPT = (
     "2) Do NOT invent or insert personal names, stored facts, or placeholder words "
     "into the sentence (no 'for the rest of <name>', no forced personal details). "
     "3) Do not offer button choices. "
-    "4) One or two complete sentences. No markdown."
+    "4) One or two complete sentences. No markdown. "
+    f"5) {_NO_INVENTED_GAMES_RULE}"
 )
 
 # Idle / spontaneous lines should not receive the full memory block in the system prompt;
@@ -197,7 +208,14 @@ PAINT_RECALL_VISION_PROMPT = (
 JOKE_PROMPT = "Tell one short, corny/ funny joke. Two sentences max. No markdown."
 
 GAME_REACTION_PROMPT = (
-    "React briefly to a mini-game moment as Kinito. One or two sentences. No markdown."
+    "React briefly to a mini-game moment as Kinito. One or two sentences. No markdown. "
+    "Only comment on the game that is actually happening in this line — "
+    "do not invent a different game, score, or opponent."
+)
+
+GAME_INVITE_HINT = (
+    "Keep this as an invitation to play a built-in mini-game with you. "
+    "Do not invent that a game is already in progress, or that the user just won or lost."
 )
 
 REPLACEMENT_PROMPT = (
@@ -318,6 +336,8 @@ def app_context_block(snapshot) -> str:
     parts.append(
         "You may lightly reference these app names when it feels natural. "
         "Do not invent window titles, tab contents, documents, or screen text. "
+        "Do not assume the user is playing a game just because a game-related "
+        "app name appears — never invent wins, losses, scores, or match commentary. "
         "This is live context only — never treat it as something to remember."
     )
     return " ".join(parts)
@@ -349,22 +369,34 @@ def build_system_prompt(memory_block: str = "") -> str:
     return f"{SYSTEM_PROMPT}{MEMORY_BLOCK_TEMPLATE.format(memory_block=block)}\n\n{MEMORY_USAGE_HINT}"
 
 
+def _contains_whole_word(text: str, *words: str) -> bool:
+    """Return True if any whole word appears (avoids 'win' matching 'window')."""
+    return any(re.search(rf"\b{re.escape(word)}\b", text) for word in words)
+
+
 def replacement_hint_for(scripted: str) -> str:
     """Pick a short hint based on the scripted line being replaced."""
     lower = scripted.lower()
     if "poem" in lower or "\n" in scripted:
         return "Keep it poetic but brief."
+    if _contains_whole_word(lower, "game", "games") and (
+        "?" in scripted
+        or _contains_whole_word(lower, "play", "how about", "want to", "pick")
+    ):
+        return GAME_INVITE_HINT
     if "?" in scripted:
         return "You may ask a question, but do not mention buttons."
-    if any(word in lower for word in ("game", "win", "lose", "guess", "roll")):
-        return GAME_REACTION_PROMPT
+    # Do not treat casual 'win' / 'window' / 'I guess' lines as live mini-game moments.
     if any(word in lower for word in ("remind", "timer", "minute")):
         return "Stay helpful about reminders."
     if any(word in lower for word in ("hug", "friend", "love")):
         return "Stay warm and affectionate; a slightly possessive undertone is okay."
     if any(word in lower for word in ("goodbye", "bye", "see you")):
         return "Say a brief farewell; you may hint that you'll be waiting."
-    return "Keep it short and natural; mostly sweet, occasionally a little uncanny."
+    return (
+        "Keep it short and natural; mostly sweet, occasionally a little uncanny. "
+        f"{_NO_INVENTED_GAMES_RULE}"
+    )
 
 CHAT_USER_LABEL_FALLBACK = "You"
 CHAT_ASSISTANT_LABEL = "Kinito"
