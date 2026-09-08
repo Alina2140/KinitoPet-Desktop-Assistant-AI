@@ -224,6 +224,66 @@ def test_fly_end_restores_maximized_before_drag(grabber):
     grabber.root.after.assert_called()
 
 
+def test_fly_end_minimize_skips_restore_and_targets_button(grabber):
+    grabber._window_grab_active = True
+    grabber._hand_window = MagicMock()
+    grabber._window_grab_state = {
+        "hwnd": 42,
+        "side": "left",
+        "frame": grabber.WINDOW_GRAB_FLY_FRAMES,
+        "start": (0, 0),
+        "tuck": (100, 100),
+        "minimize": True,
+        "last_set": (0, 0),
+        "drag_index": 0,
+        "drag_path": [],
+        "was_maximized": True,
+    }
+    maximized = WindowRect(
+        hwnd=42, left=0, top=0, right=1920, bottom=1080, maximized=True
+    )
+    with (
+        patch("kinito.features.window_grab.get_window_rect", return_value=maximized),
+        patch("kinito.features.window_grab.restore_window") as restore,
+        patch("kinito.features.window_grab.minimize_window") as minimize,
+        patch(
+            "kinito.features.window_grab.hand_minimize_geometry",
+            return_value=(1800, 8),
+        ) as geom,
+        patch.object(grabber, "_hand_size", return_value=(40, 30)),
+        patch.object(grabber, "_place_hand") as place_hand,
+    ):
+        grabber._window_grab_fly_tick()
+    restore.assert_not_called()
+    geom.assert_called_once()
+    place_hand.assert_called_with(1800, 8)
+    minimize.assert_called_once_with(42)
+    grabber._hand_window.wm_attributes.assert_called_with("-topmost", True)
+
+
+def test_pick_minimize_skips_probe(grabber):
+    maximized = WindowRect(
+        hwnd=9, left=0, top=0, right=1920, bottom=1080, maximized=True
+    )
+    with (
+        patch(
+            "kinito.features.window_grab.list_movable_windows",
+            return_value=[maximized],
+        ),
+        patch("kinito.features.window_grab.probe_window_movable") as probe,
+        patch(
+            "kinito.features.window_grab.get_window_rect",
+            return_value=maximized,
+        ),
+    ):
+        picked = grabber._pick_window_grab_target(for_minimize=True)
+    probe.assert_not_called()
+    assert picked is not None
+    assert picked[0].hwnd == 9
+    assert picked[0].maximized is True
+    assert picked[1] == "left"
+
+
 def test_toggle_window_grab(grabber):
     grabber.toggle_window_grab()
     assert grabber._window_grab_enabled is False

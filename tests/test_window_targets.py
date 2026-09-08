@@ -98,6 +98,32 @@ def test_hand_tuck_geometry_right_edge():
     assert y == 100 + (400 - 30) // 2
 
 
+def test_minimize_button_center_fallback_top_right():
+    from kinito.window_targets import minimize_button_center
+
+    win = WindowRect(hwnd=1, left=0, top=0, right=1920, bottom=1080, maximized=True)
+    with patch("kinito.window_targets.sys.platform", "linux"):
+        cx, cy = minimize_button_center(win)
+    assert cx > win.right - 200
+    assert cx < win.right
+    assert 0 <= cy <= 40
+
+
+def test_hand_minimize_geometry_points_at_caption():
+    from kinito.window_targets import hand_minimize_geometry
+
+    win = WindowRect(hwnd=1, left=100, top=50, right=900, bottom=700)
+    with patch(
+        "kinito.window_targets.minimize_button_center",
+        return_value=(860, 66),
+    ):
+        x, y = hand_minimize_geometry(win, 40, 30)
+    assert x < 860
+    assert y < 66
+    # Fingers of HandToRight reach near the button center.
+    assert x + 40 >= 860 - 8
+
+
 def test_position_diverged_tolerance():
     assert position_diverged((100, 100), (100, 100)) is False
     assert position_diverged((100, 100), (105, 100), tolerance_px=12) is False

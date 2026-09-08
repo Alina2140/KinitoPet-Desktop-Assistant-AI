@@ -22,6 +22,7 @@ from kinito.window_targets import (
     clamp_window_origin,
     collect_own_hwnds,
     get_window_rect,
+    hand_minimize_geometry,
     hand_sprite_for_side,
     hand_tuck_geometry,
     list_movable_windows,
@@ -130,8 +131,10 @@ class WindowGrabMixin:
             windows.append(bubble)
         return collect_own_hwnds(*windows)
 
-    def _pick_window_grab_target(self) -> tuple[WindowRect, str] | None:
-        """Choose a visible, actually movable window and which edge to grab."""
+    def _pick_window_grab_target(
+        self, *, for_minimize: bool = False
+    ) -> tuple[WindowRect, str] | None:
+        """Choose a visible window; probe movability only when planning to drag."""
         windows = list_movable_windows(exclude_hwnds=self._window_grab_exclude_hwnds())
         if not windows:
             return None
@@ -154,6 +157,11 @@ class WindowGrabMixin:
         random.shuffle(pool)
 
         for candidate in pool[:8]:
+            if for_minimize:
+                # Never restore/nudge maximized windows just to minimize them.
+                fresh = get_window_rect(candidate.hwnd) or candidate
+                # Hand approaches the caption minimize button from the left.
+                return fresh, SIDE_LEFT
             if not probe_window_movable(candidate.hwnd):
                 continue
             # Rect may have changed after restore/probe — refresh.
@@ -265,7 +273,8 @@ class WindowGrabMixin:
             self._window_grab_active = False
             return
 
-        picked = self._pick_window_grab_target()
+        do_minimize = random.random() < self.WINDOW_GRAB_MINIMIZE_CHANCE
+        picked = self._pick_window_grab_target(for_minimize=do_minimize)
         if picked is None:
             self._window_grab_active = False
             return
@@ -289,10 +298,12 @@ class WindowGrabMixin:
             return
 
         hand_w, hand_h = self._hand_size()
-        tuck_x, tuck_y = hand_tuck_geometry(side, target, hand_w, hand_h)
+        if do_minimize:
+            tuck_x, tuck_y = hand_minimize_geometry(target, hand_w, hand_h)
+        else:
+            tuck_x, tuck_y = hand_tuck_geometry(side, target, hand_w, hand_h)
 
         self._window_grab_active = True
-        do_minimize = random.random() < self.WINDOW_GRAB_MINIMIZE_CHANCE
         self._window_grab_state = {
             "hwnd": target.hwnd,
             "side": side,
@@ -340,12 +351,29 @@ class WindowGrabMixin:
             )
             return
 
-        # After flight: tuck behind the target and act.
+        # After flight: act (minimize via caption button, or tuck behind and drag).
         rect = get_window_rect(state["hwnd"])
         if rect is None:
             self._finish_window_grab()
             return
         hand_w, hand_h = self._hand_size()
+
+        if state["minimize"]:
+            # Stay on top of the title bar and "click" minimize — never restore first.
+            tuck = hand_minimize_geometry(rect, hand_w, hand_h)
+            state["tuck"] = tuck
+            self._place_hand(*tuck)
+            hand = getattr(self, "_hand_window", None)
+            if hand is not None:
+                try:
+                    hand.wm_attributes("-topmost", True)
+                    hand.lift()
+                except tk.TclError:
+                    pass
+            minimize_window(state["hwnd"])
+            self._schedule_window_grab_step(280, self._finish_window_grab)
+            return
+
         tuck = hand_tuck_geometry(state["side"], rect, hand_w, hand_h)
         state["tuck"] = tuck
         self._place_hand(*tuck)
@@ -358,11 +386,6 @@ class WindowGrabMixin:
             hwnds = collect_own_hwnds(hand)
             if hwnds:
                 place_window_behind(next(iter(hwnds)), state["hwnd"])
-
-        if state["minimize"]:
-            minimize_window(state["hwnd"])
-            self._schedule_window_grab_step(280, self._finish_window_grab)
-            return
 
         # Maximized / zoomed: restore first so the window can actually slide.
         if state.get("was_maximized") or rect.maximized:

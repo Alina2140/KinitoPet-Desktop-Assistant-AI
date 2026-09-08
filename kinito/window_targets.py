@@ -105,6 +105,90 @@ def hand_tuck_geometry(
     return hand_x, hand_y
 
 
+def _estimate_caption_button_size(hwnd: int | None = None) -> tuple[int, int]:
+    """Return approximate caption-button width/height in screen pixels."""
+    btn_w, btn_h = 46, 32
+    if sys.platform != "win32":
+        return btn_w, btn_h
+    try:
+        import ctypes
+
+        user32 = ctypes.windll.user32
+        sm_cxsize = 30
+        sm_cysize = 31
+        btn_w = max(24, int(user32.GetSystemMetrics(sm_cxsize)) or btn_w)
+        btn_h = max(20, int(user32.GetSystemMetrics(sm_cysize)) or btn_h)
+        if hwnd is not None and hasattr(user32, "GetDpiForWindow"):
+            dpi = int(user32.GetDpiForWindow(int(hwnd)) or 0)
+            if dpi > 0:
+                # GetSystemMetrics is primary-monitor DPI; scale to the window's DPI.
+                primary_dpi = int(user32.GetDpiForSystem()) if hasattr(user32, "GetDpiForSystem") else 96
+                if primary_dpi > 0 and dpi != primary_dpi:
+                    btn_w = max(24, int(round(btn_w * dpi / primary_dpi)))
+                    btn_h = max(20, int(round(btn_h * dpi / primary_dpi)))
+    except (OSError, AttributeError, ValueError, TypeError):
+        pass
+    return btn_w, btn_h
+
+
+def minimize_button_center(window: WindowRect) -> tuple[int, int]:
+    """Return screen coordinates of the window's minimize caption button."""
+    hwnd = int(window.hwnd)
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            from ctypes import wintypes
+
+            user32 = ctypes.windll.user32
+            wm_gettitlebarinfoex = 0x033F
+
+            class TITLEBARINFOEX(ctypes.Structure):
+                _fields_ = [
+                    ("cbSize", wintypes.UINT),
+                    ("rcTitleBar", wintypes.RECT),
+                    ("rgstate", wintypes.DWORD * 6),
+                    ("rgrect", wintypes.RECT * 6),
+                ]
+
+            info = TITLEBARINFOEX()
+            info.cbSize = ctypes.sizeof(TITLEBARINFOEX)
+            # rgrect[2] = minimize button (screen coords). DefWindowProc fills the struct.
+            user32.SendMessageW(hwnd, wm_gettitlebarinfoex, 0, ctypes.byref(info))
+            rect = info.rgrect[2]
+            left, top, right, bottom = (
+                int(rect.left),
+                int(rect.top),
+                int(rect.right),
+                int(rect.bottom),
+            )
+            if right > left and bottom > top:
+                return (left + right) // 2, (top + bottom) // 2
+        except (OSError, AttributeError, ValueError, TypeError):
+            pass
+
+    btn_w, btn_h = _estimate_caption_button_size(hwnd)
+    # LTR caption cluster: [min][max/restore][close] flush to the top-right.
+    cx = int(window.right - btn_w * 2.5)
+    cy = int(window.top + btn_h / 2)
+    return cx, cy
+
+
+def hand_minimize_geometry(
+    window: WindowRect,
+    hand_w: int,
+    hand_h: int,
+) -> tuple[int, int]:
+    """Return hand top-left so fingers reach the minimize caption button.
+
+    Pair with ``SIDE_LEFT`` / ``HandToRight`` (fingers point right toward the button).
+    """
+    bx, by = minimize_button_center(window)
+    # Fingertips sit near the right edge of HandToRight.
+    hand_x = int(bx - hand_w * 0.78)
+    hand_y = int(by - hand_h * 0.42)
+    return hand_x, hand_y
+
+
 def position_diverged(
     expected: tuple[int, int],
     actual: tuple[int, int],
