@@ -56,6 +56,17 @@ class ContentMixin:
         if getattr(self, "_camera_active", False):
             marker = dlg.CAMERA_QUESTION_MARKER.lower()
             pool = [q for q in pool if marker not in q.lower()]
+        chat_blocked = getattr(self, "_chat_mode", False)
+        llm = getattr(self, "_llm_config", None)
+        ollama = getattr(self, "_ollama_client", None)
+        if chat_blocked or not (
+            llm is not None
+            and getattr(llm, "enabled", False)
+            and ollama is not None
+            and ollama.is_available()
+        ):
+            marker = dlg.CHAT_INVITE_MARKER.lower()
+            pool = [q for q in pool if marker not in q.lower()]
         return pool or list(QUESTIONS)
 
     def perform_random_menu_action(self):
@@ -70,6 +81,7 @@ class ContentMixin:
             ("browser", self.offer_browser_visit),
             ("music", self.offer_random_music),
             ("games", self.offer_game_picker),
+            ("chat_invite", self.offer_chat),
             ("hug_ask", self.ask_for_hug),
             ("nap", self.spontaneous_nap),
             ("special_day", self.maybe_announce_special_day),

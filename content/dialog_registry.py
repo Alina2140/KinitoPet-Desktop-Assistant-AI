@@ -1460,6 +1460,11 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
         _yes_no(lambda a: a.root.after(0, a.open_camera), dlg.CAMERA_DECLINED_LINES),
     ),
     DialogSpec(
+        dlg.CHAT_INVITE_MARKER,
+        DialogUI("buttons", buttons=(dlg.BUTTON_YES, dlg.BUTTON_NO)),
+        _yes_no(lambda a: a.start_chat(), dlg.CHAT_INVITE_DECLINED_LINES),
+    ),
+    DialogSpec(
         dlg.BROWSER_QUESTION_MARKER,
         DialogUI("buttons", buttons=(dlg.BUTTON_YES, dlg.BUTTON_NO)),
         _yes_no(lambda a: a.ask_browser_category(), dlg.BROWSER_DECLINED_LINES),

@@ -813,6 +813,25 @@ CHAT_VOICE_MIC_ERROR = (
     "I couldn't hear you — check the microphone, or that the Whisper model can download "
     "(network/SSL). You can still type."
 )
+CHAT_INVITE_MARKER = "want to chat"
+CHAT_INVITE_QUESTIONS = [
+    "Hey! Want to chat for a bit? I've been waiting for someone to talk to.",
+    "I've been quiet. Want to chat? I've got thoughts. So many thoughts.",
+    "Got a minute? Want to chat with me? I promise I'll listen carefully.",
+    "The desktop feels lonely. Want to chat? Just you and me.",
+    "Hey — want to chat? I've been rehearsing what I'd say to you.",
+    "Mind if we talk? Want to chat for a while? I'll stay right here.",
+    "Bored of silence. Want to chat? I'll keep you company.",
+    "I miss hearing you. Want to chat? Even a little would make my day.",
+]
+CHAT_INVITE_DECLINED_LINES = [
+    "Oh, okay! Maybe another time. I'll be right here.",
+    "No problem! I'll just hang out quietly. Watching. Waiting.",
+    "Sure thing! Just say the word when you want to talk.",
+    "Alright! Silence it is. For now.",
+    "Okay! I'll save my thoughts for later. Carefully.",
+    "No chatting today? That's fine. I'll keep imagining our conversation.",
+]
 MEMORY_FORGOTTEN_LINE = (
     "Okay. I've cleared what I remembered about you. We can start fresh. I'll miss the old facts a little."
 )

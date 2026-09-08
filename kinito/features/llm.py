@@ -309,6 +309,18 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
         self.close_speech_bubble()
         self.speak(spoken, skip_ai=True, **speak_kwargs)
 
+    def offer_chat(self) -> None:
+        """Ask the user whether they want to open chat (yes/no invite)."""
+        if self._is_busy_with_speech():
+            return
+        if getattr(self, "_chat_mode", False):
+            return
+        if not self._llm_config.enabled:
+            return
+        if not self._ollama_client.is_available():
+            return
+        self.speak(dlg.pick_line(dlg.CHAT_INVITE_QUESTIONS), 45, True, skip_ai=True)
+
     def start_chat(self) -> None:
         """Open chat mode if Ollama is reachable, otherwise show a fallback line."""
         if hasattr(self, "note_user_attention"):

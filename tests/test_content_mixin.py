@@ -35,6 +35,7 @@ def content():
         "offer_browser_visit",
         "offer_random_music",
         "offer_game_picker",
+        "offer_chat",
         "ask_for_hug",
         "spontaneous_nap",
     ):
