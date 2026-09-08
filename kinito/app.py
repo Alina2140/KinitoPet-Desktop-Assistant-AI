@@ -372,6 +372,10 @@ class FloatingAssistant(
         self._mouse_attention_timer = None
         self._mouse_think_timer = None
         self._mouse_look_direction = "center"
+        self._dizzy_orbit_angle = None
+        self._dizzy_orbit_accum = 0.0
+        self._dizzy_orbit_started_at = 0.0
+        self._dizzy_ready_at = 0.0
         self._last_snore_at = 0.0
         self.root.wm_attributes("-topmost", True)
 

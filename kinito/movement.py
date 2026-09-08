@@ -60,6 +60,12 @@ class MovementMixin:
     MOUSE_FOLLOW_OUTSIDE_MAX_PX = 720
     MOUSE_FOLLOW_COOLDOWN_SECONDS = (35, 70)
     MOUSE_LOOK_STANCE_SECONDS = 1.0
+    DIZZY_ORBIT_MIN_RADIUS_PX = 55
+    DIZZY_ORBIT_MAX_RADIUS_PX = 230
+    DIZZY_ORBIT_REVOLUTIONS = 8
+    DIZZY_ORBIT_WINDOW_SECONDS = 10.0
+    DIZZY_REACT_CHANCE = 0.60
+    DIZZY_COOLDOWN_SECONDS = (40, 75)
     SNORING_CHANCE = 0.38
     SNORING_VOLUME = 0.5
     SNORING_COOLDOWN_SECONDS = 5.0
@@ -414,6 +420,71 @@ class MovementMixin:
 
         self.speak(pick_throw_line())
 
+    def _maybe_speak_dizzy_reaction(self) -> None:
+        """Sometimes complain about getting dizzy from cursor orbits."""
+        low, high = self.DIZZY_COOLDOWN_SECONDS
+        self._dizzy_ready_at = time.monotonic() + random.uniform(low, high)
+        if random.random() >= self.DIZZY_REACT_CHANCE:
+            return
+        if getattr(self, "_focus_mode", False):
+            return
+        if not getattr(self, "_startup_complete", True):
+            return
+        if hasattr(self, "_is_busy_with_speech") and self._is_busy_with_speech():
+            return
+        if not hasattr(self, "speak"):
+            return
+        from content.dizzy_lines import pick_dizzy_line
+
+        self.speak(pick_dizzy_line())
+
+    def _reset_dizzy_orbit(self) -> None:
+        """Clear orbit-tracking state used for dizzy reactions."""
+        self._dizzy_orbit_angle = None
+        self._dizzy_orbit_accum = 0.0
+        self._dizzy_orbit_started_at = 0.0
+
+    def _track_dizzy_orbit(self, dx: float, dy: float, distance: float) -> None:
+        """Accumulate cursor revolutions around Kinito; maybe speak when dizzy."""
+        now = time.monotonic()
+        if now < float(getattr(self, "_dizzy_ready_at", 0.0)):
+            return
+        min_r = float(self.DIZZY_ORBIT_MIN_RADIUS_PX)
+        max_r = float(self.DIZZY_ORBIT_MAX_RADIUS_PX)
+        if distance < min_r or distance > max_r:
+            self._reset_dizzy_orbit()
+            return
+
+        angle = math.atan2(dy, dx)
+        prev = getattr(self, "_dizzy_orbit_angle", None)
+        if prev is None:
+            self._dizzy_orbit_angle = angle
+            self._dizzy_orbit_accum = 0.0
+            self._dizzy_orbit_started_at = now
+            return
+
+        delta = angle - float(prev)
+        if delta > math.pi:
+            delta -= 2.0 * math.pi
+        elif delta < -math.pi:
+            delta += 2.0 * math.pi
+
+        started = float(getattr(self, "_dizzy_orbit_started_at", 0.0) or now)
+        if now - started > float(self.DIZZY_ORBIT_WINDOW_SECONDS):
+            self._dizzy_orbit_angle = angle
+            self._dizzy_orbit_accum = 0.0
+            self._dizzy_orbit_started_at = now
+            return
+
+        self._dizzy_orbit_angle = angle
+        self._dizzy_orbit_accum = float(getattr(self, "_dizzy_orbit_accum", 0.0)) + delta
+        threshold = 2.0 * math.pi * float(self.DIZZY_ORBIT_REVOLUTIONS)
+        if abs(self._dizzy_orbit_accum) < threshold:
+            return
+
+        self._reset_dizzy_orbit()
+        self._maybe_speak_dizzy_reaction()
+
     def _start_throw(self, vx: float, vy: float) -> None:
         """Begin ballistic flight from the given release velocity."""
         self._throwing = True
@@ -596,6 +667,7 @@ class MovementMixin:
         cancel_after(self.root, self, "_mouse_attention_timer")
         cancel_after(self.root, self, "_mouse_think_timer")
         self._mouse_look_active = False
+        self._reset_dizzy_orbit()
         if getattr(self, "_mouse_follow_state", "idle") == "thinking":
             self._mouse_follow_state = "idle"
 
@@ -799,6 +871,7 @@ class MovementMixin:
 
             follow_state = getattr(self, "_mouse_follow_state", "idle")
             if follow_state == "chasing":
+                self._reset_dizzy_orbit()
                 self._schedule_mouse_attention_poll()
                 return
 
@@ -806,6 +879,7 @@ class MovementMixin:
                 self._mouse_look_active = False
                 self._mouse_look_crouch = False
                 self._mouse_look_stance_until = 0.0
+                self._reset_dizzy_orbit()
                 self._schedule_mouse_attention_poll()
                 return
 
@@ -814,6 +888,7 @@ class MovementMixin:
                 self._mouse_look_active = False
                 self._mouse_look_crouch = False
                 self._mouse_look_stance_until = 0.0
+                self._reset_dizzy_orbit()
                 self._schedule_mouse_attention_poll()
                 return
 
@@ -829,6 +904,7 @@ class MovementMixin:
                 if was_looking:
                     self._mouse_look_crouch = False
                     self._mouse_look_stance_until = 0.0
+                self._reset_dizzy_orbit()
                 # Occasional surf toward the cursor even when it is outside the look radius.
                 if follow_state != "thinking" and self._can_follow_mouse():
                     if random.random() < self.MOUSE_FOLLOW_OUTSIDE_CHANCE:
@@ -849,6 +925,7 @@ class MovementMixin:
             self._mouse_look_active = True
             self._refresh_mouse_look_stance(force=not was_looking)
             self._apply_mouse_look_sprite(direction)
+            self._track_dizzy_orbit(dx, dy, distance)
 
             # Already deciding whether to follow — keep looking, don't re-trigger.
             if follow_state == "thinking":

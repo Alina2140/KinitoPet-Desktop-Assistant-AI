@@ -1,4 +1,5 @@
 import math
+import time
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -703,6 +704,10 @@ def _configure_mouse_attention(movement):
     movement._mouse_follow_long_range = False
     movement._mouse_follow_ready_at = 0.0
     movement._mouse_look_direction = "center"
+    movement._dizzy_orbit_angle = None
+    movement._dizzy_orbit_accum = 0.0
+    movement._dizzy_orbit_started_at = 0.0
+    movement._dizzy_ready_at = 0.0
     movement._last_snore_at = 0.0
     movement.x = 100
     movement.y = 200
@@ -957,6 +962,100 @@ def test_idle_skips_sprite_when_mouse_look_active(movement):
         movement.idle_animation()
 
     movement.change_sprite.assert_not_called()
+
+
+def _simulate_cursor_orbit(movement, *, revolutions: float, radius: float = 120.0, steps: int | None = None):
+    """Feed orbit samples around the buddy center into dizzy tracking."""
+    if steps is None:
+        steps = max(40, int(revolutions * 16))
+    for i in range(steps + 1):
+        t = 2.0 * math.pi * revolutions * i / steps
+        dx = radius * math.cos(t)
+        dy = radius * math.sin(t)
+        movement._track_dizzy_orbit(dx, dy, math.hypot(dx, dy))
+
+
+def test_track_dizzy_orbit_triggers_after_revolutions(movement):
+    _configure_mouse_attention(movement)
+
+    def _react():
+        movement._dizzy_ready_at = time.monotonic() + 60.0
+
+    movement._maybe_speak_dizzy_reaction = MagicMock(side_effect=_react)
+    needed = float(movement.DIZZY_ORBIT_REVOLUTIONS) + 0.2
+    _simulate_cursor_orbit(movement, revolutions=needed)
+    movement._maybe_speak_dizzy_reaction.assert_called_once()
+    assert movement._dizzy_orbit_accum == 0.0
+    assert movement._dizzy_orbit_angle is None
+
+
+def test_track_dizzy_orbit_ignores_partial_spin(movement):
+    _configure_mouse_attention(movement)
+    movement._maybe_speak_dizzy_reaction = MagicMock()
+    partial = max(1.0, float(movement.DIZZY_ORBIT_REVOLUTIONS) * 0.4)
+    _simulate_cursor_orbit(movement, revolutions=partial)
+    movement._maybe_speak_dizzy_reaction.assert_not_called()
+    assert abs(movement._dizzy_orbit_accum) > 0
+
+
+def test_track_dizzy_orbit_resets_when_too_close(movement):
+    _configure_mouse_attention(movement)
+    movement._dizzy_orbit_angle = 0.5
+    movement._dizzy_orbit_accum = 4.0
+    movement._dizzy_orbit_started_at = 1.0
+    movement._track_dizzy_orbit(10.0, 0.0, 10.0)
+    assert movement._dizzy_orbit_angle is None
+    assert movement._dizzy_orbit_accum == 0.0
+
+
+def test_maybe_speak_dizzy_reaction_speaks_on_chance_hit(movement):
+    _configure_mouse_attention(movement)
+    movement.speak = MagicMock()
+    with (
+        patch("kinito.movement.random.random", return_value=0.0),
+        patch("kinito.movement.random.uniform", return_value=50.0),
+        patch("content.dizzy_lines.pick_dizzy_line", return_value="I'm dizzy!"),
+        patch("kinito.movement.time.monotonic", return_value=100.0),
+    ):
+        movement._maybe_speak_dizzy_reaction()
+    movement.speak.assert_called_once_with("I'm dizzy!")
+    assert movement._dizzy_ready_at == 150.0
+
+
+def test_maybe_speak_dizzy_reaction_skips_on_chance_miss(movement):
+    _configure_mouse_attention(movement)
+    movement.speak = MagicMock()
+    with (
+        patch("kinito.movement.random.random", return_value=0.99),
+        patch("kinito.movement.random.uniform", return_value=50.0),
+        patch("kinito.movement.time.monotonic", return_value=100.0),
+    ):
+        movement._maybe_speak_dizzy_reaction()
+    movement.speak.assert_not_called()
+    assert movement._dizzy_ready_at == 150.0
+
+
+def test_track_dizzy_orbit_respects_cooldown(movement):
+    _configure_mouse_attention(movement)
+    movement._dizzy_ready_at = 9999.0
+    movement._maybe_speak_dizzy_reaction = MagicMock()
+    with patch("kinito.movement.time.monotonic", return_value=100.0):
+        _simulate_cursor_orbit(
+            movement,
+            revolutions=float(movement.DIZZY_ORBIT_REVOLUTIONS) + 1.0,
+        )
+    movement._maybe_speak_dizzy_reaction.assert_not_called()
+
+
+def test_update_mouse_attention_tracks_orbit(movement):
+    _configure_mouse_attention(movement)
+    movement._track_dizzy_orbit = MagicMock()
+    movement.root.winfo_pointerx.return_value = 240
+    movement.root.winfo_pointery.return_value = 240
+    movement._update_mouse_attention()
+    movement._track_dizzy_orbit.assert_called_once()
+    dx, dy, distance = movement._track_dizzy_orbit.call_args[0]
+    assert distance == pytest.approx(math.hypot(dx, dy))
 
 
 def test_velocity_from_samples_caps_speed():
