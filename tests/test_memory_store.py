@@ -375,3 +375,33 @@ def test_apply_extraction_dates_daily_facts(store):
     assert store.get_fact("mood_today") == "good"
     assert store.snapshot()["facts"]["mood_today"] == format_daily_fact("good")
     assert store.get_fact("energy_today") == "high"
+
+
+def test_concurrent_set_fact_saves_do_not_raise(store, memory_dir):
+    """Mood drift and chat may persist memory from different threads."""
+    import threading
+
+    errors: list[BaseException] = []
+
+    def worker(prefix: str) -> None:
+        try:
+            for index in range(20):
+                store.set_fact("user_names", f"{prefix}-{index}")
+                store.add_note(f"Concurrent note {prefix} {index}")
+        except BaseException as exc:  # noqa: BLE001 - collect for assertion
+            errors.append(exc)
+
+    threads = [
+        threading.Thread(target=worker, args=("a",)),
+        threading.Thread(target=worker, args=("b",)),
+        threading.Thread(target=worker, args=("c",)),
+    ]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert errors == []
+    reloaded = MemoryStore(directory=memory_dir)
+    assert reloaded.get_fact("user_names")
+    assert os.path.isfile(os.path.join(memory_dir, "memory.json"))

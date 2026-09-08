@@ -6,6 +6,8 @@ import json
 import os
 import random
 import sys
+import threading
+import time
 from copy import deepcopy
 from datetime import date
 from typing import Any
@@ -65,6 +67,36 @@ def _atomic_replace(temp_path: str, final_path: str) -> None:
         os.replace(temp_path, final_path)
 
 
+def _write_text_atomic(path: str, payload: str, *, attempts: int = 5) -> None:
+    """Write *payload* to *path* via a unique temp file (Windows-safe)."""
+    directory = os.path.dirname(path) or "."
+    last_error: OSError | None = None
+    for attempt in range(attempts):
+        temp_path = os.path.join(
+            directory,
+            f".{os.path.basename(path)}.{os.getpid()}.{threading.get_ident()}.{attempt}.tmp",
+        )
+        try:
+            with open(temp_path, "w", encoding="utf-8") as handle:
+                handle.write(payload)
+                handle.flush()
+                os.fsync(handle.fileno())
+            _atomic_replace(temp_path, path)
+            return
+        except OSError as exc:
+            last_error = exc
+            try:
+                if os.path.isfile(temp_path):
+                    os.remove(temp_path)
+            except OSError:
+                pass
+            if attempt + 1 < attempts:
+                time.sleep(0.05 * (attempt + 1))
+    if last_error is not None:
+        raise last_error
+    raise OSError(f"Failed to write {path}")
+
+
 class MemoryStore:
     """Load, update, and persist user memory under GameAssets/UserMedia/."""
 
@@ -73,6 +105,8 @@ class MemoryStore:
         self._path = memory_file_path(self._directory)
         self._notes_path = notes_file_path(self._directory)
         self._data: dict[str, Any] = self._empty_data()
+        # Mood drift runs on the movement thread while chat may save concurrently.
+        self._lock = threading.RLock()
         self.load()
 
     @staticmethod
@@ -104,15 +138,11 @@ class MemoryStore:
 
     def save(self) -> None:
         """Persist memory atomically and refresh the notes mirror file."""
-        os.makedirs(self._directory, exist_ok=True)
-        temp_path = f"{self._path}.tmp"
-        payload = json.dumps(self._data, ensure_ascii=False, indent=2)
-        with open(temp_path, "w", encoding="utf-8") as handle:
-            handle.write(payload)
-            handle.flush()
-            os.fsync(handle.fileno())
-        _atomic_replace(temp_path, self._path)
-        self._write_notes_mirror()
+        with self._lock:
+            os.makedirs(self._directory, exist_ok=True)
+            payload = json.dumps(self._data, ensure_ascii=False, indent=2)
+            _write_text_atomic(self._path, payload)
+            self._write_notes_mirror()
 
     def reset(self) -> None:
         """Clear all memory and remove persisted files."""
@@ -783,12 +813,7 @@ class MemoryStore:
         content = "\n".join(lines)
         if content:
             content += "\n"
-        temp_path = f"{self._notes_path}.tmp"
-        with open(temp_path, "w", encoding="utf-8") as handle:
-            handle.write(content)
-            handle.flush()
-            os.fsync(handle.fileno())
-        _atomic_replace(temp_path, self._notes_path)
+        _write_text_atomic(self._notes_path, content)
 
     def snapshot(self) -> dict[str, Any]:
         """Return a deep copy of the in-memory data (for tests)."""

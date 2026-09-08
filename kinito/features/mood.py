@@ -574,10 +574,14 @@ class MoodMixin:
         memory = getattr(self, "_memory", None)
         if memory is None or not hasattr(memory, "set_fact"):
             return
-        memory.set_fact(
-            KINITO_MOOD_FACT_KEY,
-            format_mood_fact(self.get_mood(), self.get_mood_intensity()),
-        )
+        try:
+            memory.set_fact(
+                KINITO_MOOD_FACT_KEY,
+                format_mood_fact(self.get_mood(), self.get_mood_intensity()),
+            )
+        except OSError:
+            # Disk lock / permission race must not kill the movement thread.
+            return
 
     def _load_persisted_mood(self) -> None:
         memory = getattr(self, "_memory", None)
