@@ -161,3 +161,12 @@ def test_append_chat_message_styles_any_known_user_name(chat_app):
     user_index = log.search("Sad:", "1.0", tk.END)
     assert user_index
     assert "chat_user" in log.tag_names(user_index)
+
+
+def test_chat_entry_font_is_smaller_than_bubble_font(chat_app):
+    bubble = chat_app._bubble_font()
+    entry = chat_app._chat_entry_font()
+    assert isinstance(bubble, tuple) and isinstance(entry, tuple)
+    assert entry[0] == bubble[0]
+    assert entry[1] == max(8, int(bubble[1]) + chat_app.CHAT_ENTRY_FONT_DELTA)
+    assert entry[1] < bubble[1]

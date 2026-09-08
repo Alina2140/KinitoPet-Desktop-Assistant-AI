@@ -50,6 +50,7 @@ class SpeechChatMixin(EmojiPickerMixin):
     CHAT_LOG_WIDTH_PX = 360
     CHAT_KINITO_COLOR = "#cd77d1"
     CHAT_USER_COLOR = "#6A25EB"
+    CHAT_ENTRY_FONT_DELTA = -1
 
     def _init_chat_state(self) -> None:
         """Initialize chat-related instance attributes (call from app __init__)."""
@@ -65,6 +66,14 @@ class SpeechChatMixin(EmojiPickerMixin):
         self._init_emoji_picker_state()
         if not hasattr(self, "_chat_session_user_label"):
             self._chat_session_user_label = None
+
+    def _chat_entry_font(self):
+        """Return the chat input font (smaller text; emoji icons are unaffected)."""
+        base = self._bubble_font()
+        if not isinstance(base, tuple) or len(base) < 2:
+            return base
+        size = max(8, int(base[1]) + self.CHAT_ENTRY_FONT_DELTA)
+        return (base[0], size, *base[2:])
 
     def open_chat_mode_picker(self) -> None:
         """Show a short bubble asking continuous vs push-to-talk chat."""
@@ -237,9 +246,7 @@ class SpeechChatMixin(EmojiPickerMixin):
             spacer = tk.Frame(input_frame, bg=self.BUBBLE_BG)
             spacer.pack(side=tk.LEFT, fill=tk.X, expand=True)
         else:
-            entry_font = self._bubble_font()
-            if isinstance(entry_font, tuple) and len(entry_font) >= 2:
-                entry_font = (entry_font[0], int(entry_font[1]) + 2)
+            entry_font = self._chat_entry_font()
 
             entry_width = self.get_entry_char_width("Type your message here...")
             entry = tk.Entry(
@@ -318,8 +325,6 @@ class SpeechChatMixin(EmojiPickerMixin):
             pady=2,
         )
         close_button.pack(side=tk.LEFT, padx=(5, 0))
-        if not voice_only:
-            self._focus_bubble_entry(force=True)
 
     def _ensure_voice_input(self):
         """Create the shared voice controller if needed."""

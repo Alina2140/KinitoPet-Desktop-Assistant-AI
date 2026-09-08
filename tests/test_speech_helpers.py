@@ -592,6 +592,30 @@ def test_bubble_screen_size_ignores_inflated_winfo(speech):
     assert speech._bubble_screen_size() == (200, 100)
 
 
+def test_focus_bubble_entry_raises_after_focus(speech):
+    entry = MagicMock()
+    entry.winfo_exists.return_value = True
+    entry.cget.return_value = "normal"
+    entry.focus_get.return_value = None
+    speech._speech_bubble_entry = entry
+    speech._raise_active_speech_bubble = MagicMock()
+
+    speech._focus_bubble_entry(force=True)
+
+    entry.focus_set.assert_called_once()
+    speech._raise_active_speech_bubble.assert_called_once()
+
+
+def test_raise_active_speech_bubble_uses_keep_on_top(speech):
+    speech._keep_assistant_on_top = MagicMock()
+    speech._has_active_speech_bubble = MagicMock(return_value=True)
+    speech._speech_bubble_ready = True
+
+    speech._raise_active_speech_bubble()
+
+    speech._keep_assistant_on_top.assert_called_once()
+
+
 def test_reveal_speech_bubble_prepaints_off_screen(speech):
     speech._has_active_speech_bubble = MagicMock(return_value=True)
     speech._speech_bubble_ready = False
@@ -600,6 +624,7 @@ def test_reveal_speech_bubble_prepaints_off_screen(speech):
     speech._bubble_screen_size = MagicMock(return_value=(220, 140))
     speech.position_speech_bubble = MagicMock()
     speech._focus_bubble_entry = MagicMock()
+    speech._raise_active_speech_bubble = MagicMock()
     speech._raise_screen_effect_overlays = MagicMock()
     speech.root = MagicMock()
     bubble = MagicMock()
@@ -618,6 +643,7 @@ def test_reveal_speech_bubble_prepaints_off_screen(speech):
     bubble.attributes.assert_any_call("-alpha", 1.0)
     speech._raise_screen_effect_overlays.assert_called_once()
     speech._focus_bubble_entry.assert_called_once_with(force=True)
+    speech._raise_active_speech_bubble.assert_called_once()
 
 
 def test_reveal_speech_bubble_skips_offscreen_when_already_ready(speech):

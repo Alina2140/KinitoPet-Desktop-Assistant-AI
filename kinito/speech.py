@@ -320,6 +320,27 @@ class SpeechMixin:
                 return
             entry.focus_set()
         except tk.TclError:
+            return
+        # Entry focus can bury overrideredirect topmost bubbles on Windows.
+        self._raise_active_speech_bubble()
+
+    def _raise_active_speech_bubble(self) -> None:
+        """Re-assert topmost for the speech bubble without stealing focus."""
+        if hasattr(self, "_keep_assistant_on_top"):
+            self._keep_assistant_on_top()
+            return
+        if not self._has_active_speech_bubble():
+            return
+        if not getattr(self, "_speech_bubble_ready", False):
+            return
+        bubble = self.speech_bubble
+        try:
+            bubble.wm_attributes("-topmost", True)
+            bubble.lift()
+            force = getattr(self, "_force_window_topmost", None)
+            if callable(force):
+                force(bubble)
+        except tk.TclError:
             pass
 
     def get_entry_char_width(self, prompt=""):
@@ -1399,6 +1420,8 @@ class SpeechMixin:
         if hasattr(self, "_raise_screen_effect_overlays"):
             self._raise_screen_effect_overlays()
         self._focus_bubble_entry(force=True)
+        # Focus (normal chat Entry) may have reordered topmost peers — raise again.
+        self._raise_active_speech_bubble()
 
     def _schedule_speech_bubble_position(self):
         """Position and reveal the bubble after layout has settled."""

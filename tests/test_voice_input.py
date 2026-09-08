@@ -183,6 +183,32 @@ def test_continuous_mode_hides_text_entry(chat_app):
         root.destroy()
 
 
+def test_push_mode_defers_entry_focus_until_reveal(chat_app):
+    chat_app._chat_voice_mode = CHAT_VOICE_PUSH
+    chat_app._create_bubble_button = MagicMock(return_value=MagicMock())
+    chat_app._update_mic_button_appearance = MagicMock()
+    chat_app._focus_bubble_entry = MagicMock()
+    chat_app._bind_entry_focus_on_click = MagicMock()
+    try:
+        root = tk.Tk()
+        root.withdraw()
+        frame = tk.Frame(root)
+    except tk.TclError:
+        pytest.skip("No display for Tk")
+        return
+    try:
+        with patch("kinito.speech_chat.load_mic_button_icon", return_value=None):
+            with patch(
+                "kinito.features.emoji_picker.load_emoji_button_icon",
+                return_value=None,
+            ):
+                chat_app._show_chat_input_row(frame)
+        assert chat_app._chat_entry_widget is not None
+        chat_app._focus_bubble_entry.assert_not_called()
+    finally:
+        root.destroy()
+
+
 def test_begin_chat_continuous_falls_back_without_stt(chat_app):
     chat_app.open_chat_bubble = MagicMock()
     chat_app.append_chat_message = MagicMock()
