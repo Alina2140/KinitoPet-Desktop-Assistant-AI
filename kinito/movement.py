@@ -1327,6 +1327,11 @@ class MovementMixin:
                 menu_chance *= weights.get("menu_action_mult", 1.0)
                 # Bored asks more questions; annoyed asks fewer.
                 memory_chance *= weights.get("questions_mult", 1.0)
+            if getattr(self, "_special_days_enabled", True):
+                from content.special_days import seasonal_multiplier
+
+                speech_chance *= seasonal_multiplier("speech_chance_mult")
+                menu_chance *= seasonal_multiplier("menu_action_mult")
             if (
                 random.random() < speech_chance
                 and self._allow_random_questions

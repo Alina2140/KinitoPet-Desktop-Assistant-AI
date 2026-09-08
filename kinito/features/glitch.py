@@ -86,7 +86,12 @@ class GlitchMixin:
         last_at = getattr(self, "_last_glitch_at", 0.0)
         if last_at > 0 and time.monotonic() - last_at < self.GLITCH_COOLDOWN_SECONDS:
             return False
-        if random.random() >= self.GLITCH_CHANCE:
+        chance = self.GLITCH_CHANCE
+        if getattr(self, "_special_days_enabled", True):
+            from content.special_days import seasonal_multiplier
+
+            chance *= seasonal_multiplier("glitch_mult")
+        if random.random() >= chance:
             return False
         self._last_glitch_at = time.monotonic()
         self.root.after(0, self._flash_screen_glitch)
@@ -107,7 +112,12 @@ class GlitchMixin:
         last_at = getattr(self, "_last_blue_screen_at", 0.0)
         if last_at > 0 and time.monotonic() - last_at < self.BLUE_SCREEN_COOLDOWN_SECONDS:
             return False
-        if random.random() >= self.BLUE_SCREEN_CHANCE:
+        chance = self.BLUE_SCREEN_CHANCE
+        if getattr(self, "_special_days_enabled", True):
+            from content.special_days import seasonal_multiplier
+
+            chance *= seasonal_multiplier("blue_screen_mult")
+        if random.random() >= chance:
             return False
         self._last_blue_screen_at = time.monotonic()
         self.root.after(0, self._flash_blue_screen)

@@ -8,9 +8,13 @@ from content import dialogue as dlg
 from content import llm_prompts as prompts
 from content.facts import get_random_fact
 from content.fancy_lines import FANCY_LINES
-from content.poems import POEMS
+from content.poems import pick_poem
 from content.questions import QUESTIONS
-from content.special_days import pick_special_day_line, special_day_for
+from content.special_days import (
+    pick_special_day_line,
+    seasonal_modifiers,
+    special_day_for,
+)
 from content.stories import STORIES
 from content.wisdom import get_random_wisdom
 from kinito.assets import newbeginnings_file_path, tune_file_path
@@ -24,6 +28,12 @@ class ContentMixin:
     MEMORY_FOLLOWUP_CHANCE = 0.25
     FANCY_SPEECH_START_TIMEOUT = 3.0
     FANCY_SPRITE_SWAP_SECONDS = 0.45
+
+    def _seasonal_modifiers_if_enabled(self) -> dict:
+        """Seasonal chance weights when special days are enabled; else empty."""
+        if not getattr(self, "_special_days_enabled", True):
+            return {}
+        return seasonal_modifiers()
 
     def speak_random_question(self):
         """Ask a random question from the question pool."""
@@ -85,6 +95,7 @@ class ContentMixin:
             ("games", self.offer_game_picker),
             ("chat_invite", self.offer_chat),
             ("hug_ask", self.ask_for_hug),
+            ("compliment", self.ask_for_compliment),
             ("nap", self.spontaneous_nap),
             ("special_day", self.maybe_announce_special_day),
             ("birthday", self.maybe_announce_birthday),
@@ -92,9 +103,13 @@ class ContentMixin:
             ("friendship", self.maybe_mention_friendship_duration),
         ]
         if hasattr(self, "mood_action_weights"):
-            weights_map = self.mood_action_weights()
+            weights_map = dict(self.mood_action_weights())
         else:
             weights_map = {}
+        action_keys = {name for name, _ in actions}
+        for key, value in self._seasonal_modifiers_if_enabled().items():
+            if key in action_keys and isinstance(value, (int, float)):
+                weights_map[key] = weights_map.get(key, 1.0) * float(value)
         probs = [max(0.05, weights_map.get(key, 1.0)) for key, _ in actions]
         _key, action = random.choices(actions, weights=probs, k=1)[0]
         action()
@@ -255,7 +270,13 @@ class ContentMixin:
 
     def say_random_poem(self):
         """Recite a random poem in Kinito's normal voice, optionally with background music."""
-        poem = random.choice(POEMS)
+        seasonal = self._seasonal_modifiers_if_enabled()
+        themes = seasonal.get("poem_themes") or ()
+        bias = seasonal.get("poem_theme_bias") or 0.0
+        poem = pick_poem(
+            themes if isinstance(themes, tuple) else (),
+            theme_bias=float(bias) if isinstance(bias, (int, float)) else 0.0,
+        )
         play_music = poem.get("play_music") and not poem.get("whisper")
         accompaniment_path = newbeginnings_file_path if play_music else None
         accompaniment_volume = self.POEM_BACKGROUND_MUSIC_VOLUME if play_music else None
@@ -284,7 +305,12 @@ class ContentMixin:
 
     def say_random_fact(self):
         """Speak a random fun fact."""
-        self.speak(get_random_fact(), ai_hint=prompts.FUN_FACT_PROMPT)
+        weight = self._seasonal_modifiers_if_enabled().get("kinito_fact_weight")
+        kinito_weight = float(weight) if isinstance(weight, (int, float)) else None
+        self.speak(
+            get_random_fact(kinito_weight=kinito_weight),
+            ai_hint=prompts.FUN_FACT_PROMPT,
+        )
 
     def say_random_wisdom(self):
         """Share a random wisdom line during idle reading."""
@@ -379,6 +405,10 @@ class ContentMixin:
     def say_random_joke(self):
         """Tell a random corny joke."""
         self.speak(dlg.pick_line(dlg.JOKES), ai_hint=prompts.JOKE_PROMPT)
+
+    def ask_for_compliment(self):
+        """Ask whether the user wants a compliment (yes/no dialog)."""
+        self.speak(dlg.pick_line(dlg.COMPLIMENT_QUESTIONS), 45, True)
 
     def say_random_compliment(self):
         """Give the user a random compliment."""

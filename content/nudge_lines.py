@@ -92,9 +92,13 @@ PLAY_INVITE_NUDGE_LINES = [
 ]
 
 
-def pick_nudge_line() -> str:
-    """Pick a wellness or creepy nudge line at random (50/50 category)."""
-    pool = WELLNESS_NUDGE_LINES if random.random() < 0.5 else CREEPY_NUDGE_LINES
+def pick_nudge_line(*, creepy_chance: float | None = None) -> str:
+    """Pick a wellness or creepy nudge line.
+
+    *creepy_chance* is the probability of the creepy pool (default 0.5).
+    """
+    chance = 0.5 if creepy_chance is None else max(0.0, min(1.0, float(creepy_chance)))
+    pool = CREEPY_NUDGE_LINES if random.random() < chance else WELLNESS_NUDGE_LINES
     return pick_line(pool)
 
 

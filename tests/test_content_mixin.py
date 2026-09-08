@@ -114,7 +114,7 @@ def test_available_questions_skip_camera_while_active(content):
 
 def test_say_random_poem_whisper(content):
     poem = {"text": "secret poem", "whisper": True, "play_music": False}
-    with patch("kinito.features.content.random.choice", return_value=poem):
+    with patch("kinito.features.content.pick_poem", return_value=poem):
         content.say_random_poem()
     content.speak_whisper.assert_called_once_with(
         "secret poem",
@@ -127,7 +127,7 @@ def test_say_random_poem_whisper(content):
 
 def test_say_random_poem_plays_music_and_uses_normal_voice(content):
     poem = {"text": "loud poem", "whisper": False, "play_music": True}
-    with patch("kinito.features.content.random.choice", return_value=poem):
+    with patch("kinito.features.content.pick_poem", return_value=poem):
         content.say_random_poem()
     content.play_mp3.assert_not_called()
     content.speak.assert_called_once_with(

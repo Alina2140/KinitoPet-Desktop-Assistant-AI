@@ -59,6 +59,7 @@ _BASE_ACTION_WEIGHTS = {
     "games": 1.0,
     "chat_invite": 1.0,
     "hug_ask": 1.0,
+    "compliment": 0.4,
     "nap": 1.0,
     "special_day": 0.6,
     "birthday": 0.5,

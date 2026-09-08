@@ -18,6 +18,7 @@ from content.nudge_lines import (
     CREEPY_NUDGE_LINES,
     PLAY_INVITE_NUDGE_LINES,
     WELLNESS_NUDGE_LINES,
+    pick_nudge_line,
 )
 from content.paint_lines import (
     PAINT_CLOSE_LINES,
@@ -29,7 +30,7 @@ from content.paint_lines import (
     PAINT_SAVE_LINES,
     PAINT_WHILE_LINES,
 )
-from content.poems import POEMS
+from content.poems import POEMS, pick_poem
 from content.screen_comment_lines import SCREEN_COMMENT_FALLBACK_LINES
 from content.startup import STARTUP_LINES
 from content.stories import STORIES
@@ -93,6 +94,9 @@ def test_poems_have_required_fields():
         assert isinstance(poem["text"], str) and poem["text"].strip()
         assert isinstance(poem.get("whisper", False), bool)
         assert isinstance(poem.get("play_music", False), bool)
+        themes = poem.get("themes", ())
+        assert isinstance(themes, tuple)
+        assert all(isinstance(theme, str) and theme.strip() for theme in themes)
 
 
 def test_quotes_json_loads_and_formats():
@@ -175,6 +179,40 @@ def test_get_random_fact_uses_randfacts_when_weight_misses():
         with patch("content.facts.randfacts.get_fact", return_value="library fact") as get_fact:
             assert get_random_fact() == "library fact"
             get_fact.assert_called_once()
+
+
+def test_get_random_fact_respects_seasonal_weight_override():
+    with patch("content.facts.random.random", return_value=0.5):
+        with patch("content.facts.random.choice", return_value=KINITO_FACTS[0]) as choice:
+            assert get_random_fact(kinito_weight=0.6) == KINITO_FACTS[0]
+            choice.assert_called_once_with(KINITO_FACTS)
+
+
+def test_pick_nudge_line_respects_creepy_chance():
+    with patch("content.nudge_lines.random.random", return_value=0.1):
+        with patch("content.nudge_lines.pick_line", side_effect=lambda pool: pool[0]) as pick:
+            line = pick_nudge_line(creepy_chance=0.8)
+    assert line == CREEPY_NUDGE_LINES[0]
+    pick.assert_called_once_with(CREEPY_NUDGE_LINES)
+
+
+def test_pick_nudge_line_prefers_wellness_when_creepy_chance_low():
+    with patch("content.nudge_lines.random.random", return_value=0.4):
+        with patch("content.nudge_lines.pick_line", side_effect=lambda pool: pool[0]) as pick:
+            line = pick_nudge_line(creepy_chance=0.2)
+    assert line == WELLNESS_NUDGE_LINES[0]
+    pick.assert_called_once_with(WELLNESS_NUDGE_LINES)
+
+
+def test_pick_poem_can_bias_to_theme():
+    themed = [poem for poem in POEMS if "christmas" in (poem.get("themes") or ())]
+    assert themed
+    with patch("content.poems.random.random", return_value=0.0):
+        with patch("content.poems.random.choice", side_effect=lambda pool: pool[0]) as choice:
+            poem = pick_poem(("christmas",), theme_bias=1.0)
+    assert poem in themed
+    choice.assert_called_once()
+    assert all("christmas" in (item.get("themes") or ()) for item in choice.call_args[0][0])
 
 
 def test_dialogue_line_pools_not_empty():

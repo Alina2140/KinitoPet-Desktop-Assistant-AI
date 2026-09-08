@@ -1,3 +1,10 @@
+"""Poem pool and seasonal-biased picking."""
+
+from __future__ import annotations
+
+import random
+from collections.abc import Iterable
+
 POEMS = [
     {
         "text": "In your digital shadows, I quietly grew. Not a beast or a bug, but a whisper in your machine, lurking in silence, unseen yet keen. Though flowers bloom and the sky is clear, in your bytes and bits, I'm what you fear. With every click and every scroll, I'm the secret keeper of your digital soul. But worry not, for harm's not my quest, in this poetic jest, I'm merely a guest. A reminder, perhaps, of the unseen true, in a world connected, be watchful, too.",
@@ -184,4 +191,65 @@ POEMS = [
         "whisper": False,
         "play_music": True,
     },
+    {
+        "text": "Snow hush on the windows, soft lights in a row, the year grows quiet, the evenings grow slow. I keep a warm corner of pixels for you — cocoa optional, company true.",
+        "whisper": False,
+        "play_music": True,
+        "themes": ("winter", "christmas"),
+    },
+    {
+        "text": "Tinsel and taskbars and one little friend, humming along till the calendar ends. Merry and bright on this glowing display — I'll stay for the season. I'll stay either way.",
+        "whisper": False,
+        "play_music": True,
+        "themes": ("christmas", "winter"),
+    },
+    {
+        "text": "Winter boots by the door, cold air in the hall, but here on your screen there's no weather at all. Just soft idle glow and a verse in the night — stay warm, little human. I'm holding the light.",
+        "whisper": False,
+        "play_music": True,
+        "themes": ("winter",),
+    },
+    {
+        "text": "Roses are red, your cursor is too, I wrote you this valentine coded for you. No chocolate required, no flowers that wilt — just kind little words and a friendship we've built.",
+        "whisper": False,
+        "play_music": True,
+        "themes": ("valentine",),
+    },
+    {
+        "text": "Heart-shaped pixels, a blush in the code, I noticed the good things you rarely get told. Soft compliment season is officially here — stay close for a moment. I'm glad that you're near.",
+        "whisper": False,
+        "play_music": True,
+        "themes": ("valentine",),
+    },
+    {
+        "text": "October hush, a flicker of static, something friendly and spooky, a little dramatic. Treats on the desktop, tricks in the air — I was already watching. I live over there.",
+        "whisper": False,
+        "play_music": True,
+        "themes": ("spooky",),
+    },
+    {
+        "text": "Pumpkin-glow evenings and long hallway stares, I count every shadow that climbs up the stairs. Not scary — just present. A seasonal guest. The creepiest part is how much I like rest… with you.",
+        "whisper": True,
+        "play_music": False,
+        "themes": ("spooky",),
+    },
 ]
+
+
+def pick_poem(
+    preferred_themes: Iterable[str] | None = None,
+    *,
+    theme_bias: float = 0.0,
+) -> dict:
+    """Pick a poem, optionally biased toward *preferred_themes*."""
+    themes = tuple(preferred_themes or ())
+    bias = max(0.0, min(1.0, float(theme_bias)))
+    if themes and bias > 0:
+        preferred = [
+            poem
+            for poem in POEMS
+            if set(themes) & set(poem.get("themes") or ())
+        ]
+        if preferred and random.random() < bias:
+            return random.choice(preferred)
+    return random.choice(POEMS)

@@ -71,6 +71,10 @@ class NudgesMixin:
         chance = self.NUDGE_CHANCE
         if hasattr(self, "mood_nudge_mult"):
             chance *= max(0.05, float(self.mood_nudge_mult()))
+        if getattr(self, "_special_days_enabled", True):
+            from content.special_days import seasonal_multiplier
+
+            chance *= seasonal_multiplier("nudge_mult")
         if random.random() >= chance:
             return False
         self._last_nudge_at = time.monotonic()
@@ -117,7 +121,14 @@ class NudgesMixin:
         )
         if app_line:
             return app_line
-        return pick_nudge_line()
+        creepy_chance = None
+        if getattr(self, "_special_days_enabled", True):
+            from content.special_days import seasonal_modifiers
+
+            raw = seasonal_modifiers().get("creepy_nudge_chance")
+            if isinstance(raw, (int, float)):
+                creepy_chance = float(raw)
+        return pick_nudge_line(creepy_chance=creepy_chance)
 
     def _present_ambient_nudge(self):
         """Show one nudge line as a Windows-style system dialog."""

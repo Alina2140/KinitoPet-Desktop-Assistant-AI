@@ -5,6 +5,8 @@ from unittest.mock import MagicMock, patch
 
 from content.special_days import (
     pick_special_day_line,
+    seasonal_modifiers,
+    seasonal_multiplier,
     special_day_for,
     special_days_for,
 )
@@ -57,6 +59,50 @@ def test_special_day_for_ordinary_day_is_none():
     assert special_day_for(date(2026, 7, 28)) is None
 
 
+def test_seasonal_modifiers_neutral_on_ordinary_day():
+    mods = seasonal_modifiers(date(2026, 7, 28))
+    assert mods["glitch_mult"] == 1.0
+    assert mods["creepy_nudge_chance"] == 0.5
+    assert mods["kinito_fact_weight"] is None
+    assert mods["poem_themes"] == ()
+
+
+def test_seasonal_modifiers_halloween_boosts_spooky():
+    mods = seasonal_modifiers(date(2026, 10, 31))
+    assert mods["glitch_mult"] > 1.5
+    assert mods["creepy_nudge_chance"] > 0.6
+    assert isinstance(mods["kinito_fact_weight"], float)
+    assert mods["kinito_fact_weight"] > 0.4
+    assert "spooky" in mods["poem_themes"]
+
+
+def test_seasonal_modifiers_spooky_week_before_halloween():
+    mods = seasonal_modifiers(date(2026, 10, 27))
+    assert mods["glitch_mult"] > 1.0
+    assert mods["creepy_nudge_chance"] > 0.5
+
+
+def test_seasonal_modifiers_christmas_prefers_wellness_and_poems():
+    mods = seasonal_modifiers(date(2026, 12, 25))
+    assert mods["poem"] > 1.5
+    assert mods["creepy_nudge_chance"] < 0.3
+    assert mods["nudge_mult"] > 1.0
+    assert "christmas" in mods["poem_themes"] or "winter" in mods["poem_themes"]
+
+
+def test_seasonal_modifiers_valentines_boosts_compliments():
+    mods = seasonal_modifiers(date(2026, 2, 14))
+    assert mods["compliment"] > 2.0
+    assert mods["poem"] > 1.5
+    assert mods["creepy_nudge_chance"] < 0.3
+    assert "valentine" in mods["poem_themes"]
+
+
+def test_seasonal_multiplier_clamps_missing_key():
+    assert seasonal_multiplier("glitch_mult", date(2026, 7, 28)) == 1.0
+    assert seasonal_multiplier("poem_themes", date(2026, 10, 31), default=1.0) == 1.0
+
+
 def test_maybe_announce_special_day_speaks_when_enabled():
     from kinito.features.content import ContentMixin
 
@@ -87,6 +133,17 @@ def test_maybe_announce_special_day_skips_when_disabled():
     stub.speak = MagicMock()
     assert stub.maybe_announce_special_day() is False
     stub.speak.assert_not_called()
+
+
+def test_seasonal_modifiers_disabled_via_content_helper():
+    from kinito.features.content import ContentMixin
+
+    class Stub(ContentMixin):
+        pass
+
+    stub = Stub()
+    stub._special_days_enabled = False
+    assert stub._seasonal_modifiers_if_enabled() == {}
 
 
 def test_print_current_datetime_includes_date_and_time():

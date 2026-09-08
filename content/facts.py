@@ -110,9 +110,13 @@ KINITO_FACTS = [
 FACTS = KINITO_FACTS
 
 
-def get_random_fact() -> str:
-    """Return a fun fact, ~33% from Kinito pool and ~67% from randfacts."""
-    if KINITO_FACTS and (randfacts is None or random.random() < KINITO_FACT_WEIGHT):
+def get_random_fact(*, kinito_weight: float | None = None) -> str:
+    """Return a fun fact, mostly from randfacts with a Kinito-pool share.
+
+    *kinito_weight* overrides ``KINITO_FACT_WEIGHT`` when provided (e.g. seasonal).
+    """
+    weight = KINITO_FACT_WEIGHT if kinito_weight is None else max(0.0, min(1.0, float(kinito_weight)))
+    if KINITO_FACTS and (randfacts is None or random.random() < weight):
         return random.choice(KINITO_FACTS)
     if randfacts is not None:
         return randfacts.get_fact()
