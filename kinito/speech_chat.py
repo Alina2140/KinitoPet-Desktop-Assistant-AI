@@ -69,6 +69,8 @@ class SpeechChatMixin(EmojiPickerMixin):
     def open_chat_mode_picker(self) -> None:
         """Show a short bubble asking continuous vs push-to-talk chat."""
         self.interrupt_speech()
+        if hasattr(self, "_stop_fancy_idle"):
+            self._stop_fancy_idle()
         self._chat_mode = False
         self._chat_voice_mode = None
         self._stop_voice_input(discard=True)
@@ -168,6 +170,8 @@ class SpeechChatMixin(EmojiPickerMixin):
     def open_chat_bubble(self, greeting: str) -> None:
         """Open a persistent chat bubble with an initial assistant greeting."""
         self.interrupt_speech()
+        if hasattr(self, "_stop_fancy_idle"):
+            self._stop_fancy_idle()
         self._chat_mode = True
         self._chat_generating = False
         if hasattr(self, "_pin_chat_user_label") and not getattr(self, "_chat_session_user_label", None):

@@ -552,6 +552,8 @@ class FloatingAssistant(
         self.interrupt_speech()
         self.close_speech_bubble()
         self.end_hug()
+        if hasattr(self, "_stop_fancy_idle"):
+            self._stop_fancy_idle()
         self.hide_screen_glitch()
         self.hide_blue_screen()
         if hasattr(self, "_ensure_single_game_window"):

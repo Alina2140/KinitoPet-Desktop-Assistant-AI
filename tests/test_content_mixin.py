@@ -29,7 +29,15 @@ def content():
     stub.talking = False
     stub._fancy_mode = False
     stub.tk_img_fancy = "fancy"
+    stub.tk_img_normal = "normal"
     stub.change_sprite = MagicMock()
+    stub._chat_mode = False
+    stub._awaiting_response = False
+    stub._focus_mode = False
+    stub._hug_mode = False
+    stub._preserve_sprite = False
+    stub.dragging = False
+    stub._is_game_active = MagicMock(return_value=False)
     for name in (
         "print_current_datetime",
         "offer_browser_visit",
@@ -181,3 +189,59 @@ def test_run_fancy_idle_cycles_sprites_during_speech(content):
     assert "fancy2" in sprite_calls
     assert content.change_sprite.call_count >= 3
     assert content._fancy_mode is False
+    assert sprite_calls[-1] == "normal"
+
+
+def test_run_fancy_idle_aborts_when_speech_never_starts(content):
+    content._magician_sprites = ("fancy", "fancy2")
+    content.tk_img_fancy_2 = "fancy2"
+    content.perform_fancy_show = MagicMock()
+    content.FANCY_SPEECH_START_TIMEOUT = 0.9
+
+    with patch("kinito.features.content.time.sleep", return_value=None):
+        content._run_fancy_idle()
+
+    assert content._fancy_mode is False
+    assert content.change_sprite.call_args_list[-1].args[0] == "normal"
+
+
+def test_run_fancy_idle_aborts_when_chat_opens_before_speech(content):
+    content._magician_sprites = ("fancy", "fancy2")
+    content.tk_img_fancy_2 = "fancy2"
+    content.perform_fancy_show = MagicMock()
+
+    def fake_sleep(_seconds):
+        content._chat_mode = True
+
+    with patch("kinito.features.content.time.sleep", side_effect=fake_sleep):
+        content._run_fancy_idle()
+
+    assert content._fancy_mode is False
+    assert content.change_sprite.call_args_list[-1].args[0] == "normal"
+
+
+def test_run_fancy_idle_skips_when_busy(content):
+    content._can_initiate_spontaneous_speech.return_value = False
+    content.perform_fancy_show = MagicMock()
+    content._run_fancy_idle()
+    content.perform_fancy_show.assert_not_called()
+    assert content._fancy_mode is False
+
+
+def test_stop_fancy_idle_clears_mode_and_sprite(content):
+    content._fancy_mode = True
+    content._stop_fancy_idle()
+    assert content._fancy_mode is False
+    content.change_sprite.assert_called_once_with("normal")
+
+
+def test_perform_fancy_show_uses_speech_accompaniment(content):
+    with patch("kinito.features.content.random.choice", return_value="ta-da"):
+        content.perform_fancy_show()
+    content.speak.assert_called_once_with(
+        "ta-da",
+        skip_ai=True,
+        speech_accompaniment_path=ANY,
+        speech_accompaniment_volume=ContentMixin.POEM_BACKGROUND_MUSIC_VOLUME,
+    )
+    content.play_mp3.assert_not_called()

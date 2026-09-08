@@ -1348,6 +1348,7 @@ class MovementMixin:
                     and not game_active
                     and idle_roll < self.IDLE_READING_CHANCE + self.IDLE_FANCY_CHANCE
                     and self._allow_random_questions
+                    and self._can_initiate_spontaneous_speech()
                 ):
                     self._run_fancy_idle()
                     continue
