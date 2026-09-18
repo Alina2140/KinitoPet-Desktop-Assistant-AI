@@ -87,7 +87,7 @@ class MovementMixin:
     DRAG_HOLD_WIGGLE_DELAY_MS = 5000
     DRAG_WIGGLE_FRAME_MS = 240
     HOLD_WIGGLE_REACT_CHANCE = 0.50
-    _DRAG_WIGGLE_FRAMES = ("left", "standing", "right")
+    _DRAG_WIGGLE_FRAMES = ("left", "standing", "right", "standing")
 
     def setup_mouse_bindings(self):
         """Bind drag to the sprite only so control buttons stay clickable."""
@@ -346,7 +346,7 @@ class MovementMixin:
         self._drag_wiggle_index = 0
 
     def _start_drag_wiggle(self) -> None:
-        """Start cycling left/standing/right while still held."""
+        """Start cycling left → standing → right → standing while still held."""
         if not getattr(self, "is_dragging", False):
             return
         self._drag_wiggle_index = 0

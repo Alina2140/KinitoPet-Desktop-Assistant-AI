@@ -258,7 +258,7 @@ def test_drag_sprite_idle_reverts_to_standing_and_schedules_wiggle(movement):
     )
 
 
-def test_drag_wiggle_cycles_left_standing_right(movement):
+def test_drag_wiggle_cycles_left_standing_right_standing(movement):
     movement.is_dragging = True
     movement._drag_wiggle_index = 0
     movement._maybe_speak_hold_reaction = MagicMock()
@@ -269,6 +269,10 @@ def test_drag_wiggle_cycles_left_standing_right(movement):
     assert movement.panel.config.call_args_list[1].kwargs["image"] == "normal"
     movement._drag_wiggle_tick()
     assert movement.panel.config.call_args_list[2].kwargs["image"] == "drag_right"
+    movement._drag_wiggle_tick()
+    assert movement.panel.config.call_args_list[3].kwargs["image"] == "normal"
+    movement._drag_wiggle_tick()
+    assert movement.panel.config.call_args_list[4].kwargs["image"] == "drag_left"
 
 
 def test_maybe_speak_hold_reaction_speaks_once(movement):
