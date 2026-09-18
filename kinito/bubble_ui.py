@@ -197,15 +197,21 @@ def draw_bubble_shell(
     tail_half_width: int,
     offset_x: int = 0,
     offset_y: int = 0,
+    tail_side: str = "bottom",
 ) -> None:
-    """Paint the chamfered bubble body and pointer tail."""
+    """Paint the chamfered bubble body and pointer tail.
+
+    *tail_side* is ``\"bottom\"`` (default, tip points down) or ``\"top\"``
+    (body shifted down, tip points up toward the pet).
+    """
     canvas.delete("bubble")
     inset = chamfer + border_width
     body_h = body_height + (2 * inset)
     body_w = panel_width
+    body_origin_y = offset_y + (tail_height if tail_side == "top" else 0)
     points = chamfered_rect_points(
         offset_x + border_width / 2,
-        offset_y + border_width / 2,
+        body_origin_y + border_width / 2,
         body_w - border_width,
         body_h - border_width,
         chamfer,
@@ -218,17 +224,33 @@ def draw_bubble_shell(
         smooth=False,
         tags="bubble",
     )
-    tail_top = offset_y + body_h - border_width
     tail_x = offset_x + tail_center_x
-    canvas.create_polygon(
-        tail_x - tail_half_width,
-        tail_top,
-        tail_x + tail_half_width,
-        tail_top,
-        tail_x,
-        tail_top + tail_height,
-        fill=bg,
-        outline=border,
-        width=border_width,
-        tags="bubble",
-    )
+    if tail_side == "top":
+        tail_base = body_origin_y + border_width
+        tip_y = tail_base - tail_height
+        canvas.create_polygon(
+            tail_x - tail_half_width,
+            tail_base,
+            tail_x + tail_half_width,
+            tail_base,
+            tail_x,
+            tip_y,
+            fill=bg,
+            outline=border,
+            width=border_width,
+            tags="bubble",
+        )
+    else:
+        tail_top = body_origin_y + body_h - border_width
+        canvas.create_polygon(
+            tail_x - tail_half_width,
+            tail_top,
+            tail_x + tail_half_width,
+            tail_top,
+            tail_x,
+            tail_top + tail_height,
+            fill=bg,
+            outline=border,
+            width=border_width,
+            tags="bubble",
+        )

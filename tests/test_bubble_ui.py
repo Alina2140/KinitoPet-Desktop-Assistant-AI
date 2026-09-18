@@ -62,3 +62,33 @@ def test_draw_bubble_shell_creates_body_and_tail():
 
     canvas.delete.assert_called_once_with("bubble")
     assert canvas.create_polygon.call_count == 2
+
+
+def test_draw_bubble_shell_top_tail_points_upward():
+    canvas = MagicMock()
+
+    draw_bubble_shell(
+        canvas,
+        panel_width=120,
+        body_height=40,
+        tail_center_x=60,
+        bg="#FFF8E7",
+        border="#000000",
+        border_width=1,
+        chamfer=8,
+        tail_height=12,
+        tail_half_width=11,
+        offset_x=1,
+        offset_y=1,
+        tail_side="top",
+    )
+
+    assert canvas.create_polygon.call_count == 2
+    # Second polygon is the tail: tip Y must be above the base Y.
+    # body_origin=13, tail_base=14, tip=2
+    tail_args = canvas.create_polygon.call_args_list[1].args
+    base_y = tail_args[1]
+    tip_y = tail_args[5]
+    assert tip_y < base_y
+    assert tip_y == 2
+    assert base_y == 14

@@ -28,6 +28,14 @@ htmlcov/
 Thumbs.db
 desktop.ini
 
+# Cursor skills
+.cursor/skills/
+.cursor/commands/
+.cache/cursor-skills/
+skills/
+scripts/
+skills.lock.json
+
 # Local secrets (never commit these)
 .env
 *.key

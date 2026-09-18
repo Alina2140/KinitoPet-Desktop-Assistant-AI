@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from content import dialogue as dlg
-from kinito.speech import SpeechMixin
+from kinito.speech import SpeechMixin, choose_speech_bubble_side
 from kinito.tts_text import normalize_text_for_tts
 
 
@@ -18,6 +18,103 @@ class SpeechStub(SpeechMixin):
 def speech():
     return SpeechStub()
 
+
+@pytest.mark.parametrize(
+    "kwargs,expected",
+    [
+        # Fits above → above
+        (
+            {
+                "kinito_y": 300,
+                "kinito_h": 100,
+                "bubble_h": 80,
+                "min_y": 0,
+                "max_y": 2000,
+            },
+            "above",
+        ),
+        # Does not fit above, fits below → below
+        (
+            {
+                "kinito_y": 40,
+                "kinito_h": 100,
+                "bubble_h": 80,
+                "min_y": 0,
+                "max_y": 2000,
+            },
+            "below",
+        ),
+        # Neither fits; more space below → below
+        (
+            {
+                "kinito_y": 100,
+                "kinito_h": 50,
+                "bubble_h": 200,
+                "min_y": 0,
+                "max_y": 150,
+            },
+            "below",
+        ),
+        # Neither fits; equal space → above (tie)
+        (
+            {
+                "kinito_y": 125,
+                "kinito_h": 50,
+                "bubble_h": 200,
+                "min_y": 0,
+                "max_y": 100,
+            },
+            "above",
+        ),
+    ],
+)
+def test_choose_speech_bubble_side_basic(kwargs, expected):
+    assert choose_speech_bubble_side(**kwargs) == expected
+
+
+def test_choose_speech_bubble_side_hysteresis_stays_below_near_threshold():
+    # above_y = 100 - 80 - 12 = 8; fits_above True but not comfortably (min_y+12=12)
+    side = choose_speech_bubble_side(
+        kinito_y=100,
+        kinito_h=100,
+        bubble_h=80,
+        min_y=0,
+        max_y=2000,
+        current_side="below",
+        gap=12,
+        hysteresis_px=12,
+    )
+    assert side == "below"
+
+
+def test_choose_speech_bubble_side_hysteresis_flips_above_when_clear():
+    # above_y = 120 - 80 - 12 = 28 >= 0 + 12 → comfortable
+    side = choose_speech_bubble_side(
+        kinito_y=120,
+        kinito_h=100,
+        bubble_h=80,
+        min_y=0,
+        max_y=2000,
+        current_side="below",
+        gap=12,
+        hysteresis_px=12,
+    )
+    assert side == "above"
+
+
+def test_choose_speech_bubble_side_stays_above_while_it_still_fits():
+    side = choose_speech_bubble_side(
+        kinito_y=92,
+        kinito_h=100,
+        bubble_h=80,
+        min_y=0,
+        max_y=2000,
+        current_side="above",
+        gap=12,
+        hysteresis_px=12,
+    )
+    # above_y = 92 - 80 - 12 = 0 → still fits
+    assert side == "above"
 
 @pytest.mark.parametrize(
     "text,expected",
@@ -34,6 +131,32 @@ def test_bubble_close_delay_short(speech, text, expected):
 def test_bubble_style_uses_game_colors(speech):
     assert speech.BUBBLE_BG == "#FFF8E7"
     assert speech.BUBBLE_BORDER == "#000000"
+
+
+def test_redraw_bubble_shell_pads_bottom_when_tail_is_on_top(speech):
+    speech._speech_bubble_side = "below"
+    speech.speech_bubble = MagicMock()
+    speech.speech_bubble.winfo_exists.return_value = True
+    speech.speech_bubble.winfo_rootx.return_value = 100
+    speech.root = MagicMock()
+    speech.root.winfo_rootx.return_value = 180
+    speech.root.winfo_rooty.return_value = 40
+    speech.root.winfo_width.return_value = 120
+    speech._speech_bubble_body = MagicMock()
+    speech._speech_bubble_body.winfo_reqwidth.return_value = 120
+    speech._speech_bubble_body.winfo_reqheight.return_value = 40
+    speech._speech_bubble_canvas = MagicMock()
+    speech._speech_bubble_body_window = 1
+    speech._has_active_speech_bubble = MagicMock(return_value=True)
+
+    with patch("kinito.speech.draw_bubble_shell") as draw:
+        speech._redraw_bubble_shell()
+
+    speech._speech_bubble_canvas.configure.assert_called()
+    kwargs = speech._speech_bubble_canvas.configure.call_args.kwargs
+    # content 40 + 2*(8+1)=58 body + tail 12 = 70 panel; pad 1*2 + 1 = 3 → 73
+    assert kwargs["height"] == 73
+    assert draw.call_args.kwargs["tail_side"] == "top"
 
 
 def test_update_bubble_tail_redraws_shell(speech):
@@ -104,6 +227,7 @@ def test_position_speech_bubble_uses_tracked_kinito_coords_while_dragging(speech
     speech.root = MagicMock()
     speech.root.winfo_rootx.return_value = 50
     speech.root.winfo_rooty.return_value = 60
+    speech.root.winfo_height.return_value = 100
     speech.x = 500
     speech.y = 300
     speech.speech_bubble = MagicMock()
@@ -113,13 +237,14 @@ def test_position_speech_bubble_uses_tracked_kinito_coords_while_dragging(speech
     speech.speech_bubble.winfo_reqwidth.return_value = 120
     speech.speech_bubble.winfo_reqheight.return_value = 80
     speech.root.winfo_width.return_value = 100
-    speech.img_normal = MagicMock(width=100)
+    speech.img_normal = MagicMock(width=100, height=100)
     speech.get_screen_bounds = MagicMock(return_value=(0, 0, 2000, 2000))
     speech._update_bubble_tail = MagicMock()
 
     speech.position_speech_bubble()
 
     speech.speech_bubble.geometry.assert_called_once_with("120x80+490+208")
+    assert speech._speech_bubble_side == "above"
 
 
 def test_position_speech_bubble_prefers_live_window_coords(speech):
@@ -129,6 +254,7 @@ def test_position_speech_bubble_prefers_live_window_coords(speech):
     speech.root = MagicMock()
     speech.root.winfo_rootx.return_value = 800
     speech.root.winfo_rooty.return_value = 400
+    speech.root.winfo_height.return_value = 100
     speech.x = 100
     speech.y = 100
     speech.speech_bubble = MagicMock()
@@ -138,13 +264,63 @@ def test_position_speech_bubble_prefers_live_window_coords(speech):
     speech.speech_bubble.winfo_reqwidth.return_value = 120
     speech.speech_bubble.winfo_reqheight.return_value = 80
     speech.root.winfo_width.return_value = 100
-    speech.img_normal = MagicMock(width=100)
+    speech.img_normal = MagicMock(width=100, height=100)
     speech.get_screen_bounds = MagicMock(return_value=(0, 0, 2000, 2000))
     speech._update_bubble_tail = MagicMock()
 
     speech.position_speech_bubble()
 
     speech.speech_bubble.geometry.assert_called_once_with("120x80+790+308")
+
+
+def test_position_speech_bubble_flips_below_when_above_does_not_fit(speech):
+    speech._speech_bubble_ready = True
+    speech.root = MagicMock()
+    speech.root.winfo_rootx.return_value = 400
+    speech.root.winfo_rooty.return_value = 40
+    speech.root.winfo_width.return_value = 100
+    speech.root.winfo_height.return_value = 100
+    speech.img_normal = MagicMock(width=100, height=100)
+    speech.speech_bubble = MagicMock()
+    speech.speech_bubble.winfo_exists.return_value = True
+    speech.speech_bubble.winfo_width.return_value = 120
+    speech.speech_bubble.winfo_height.return_value = 80
+    speech.speech_bubble.winfo_reqwidth.return_value = 120
+    speech.speech_bubble.winfo_reqheight.return_value = 80
+    # above_y = 40 - 80 - 12 = -52 < min_y=0 → flip below
+    speech.get_screen_bounds = MagicMock(return_value=(0, 0, 2000, 2000))
+    speech._update_bubble_tail = MagicMock()
+
+    speech.position_speech_bubble()
+
+    # below_y = 40 + 100 + 12 = 152
+    speech.speech_bubble.geometry.assert_called_once_with("120x80+390+152")
+    assert speech._speech_bubble_side == "below"
+
+
+def test_position_speech_bubble_flips_back_above_with_hysteresis(speech):
+    speech._speech_bubble_ready = True
+    speech._speech_bubble_side = "below"
+    speech.root = MagicMock()
+    speech.root.winfo_rootx.return_value = 400
+    speech.root.winfo_rooty.return_value = 200
+    speech.root.winfo_width.return_value = 100
+    speech.root.winfo_height.return_value = 100
+    speech.img_normal = MagicMock(width=100, height=100)
+    speech.speech_bubble = MagicMock()
+    speech.speech_bubble.winfo_exists.return_value = True
+    speech.speech_bubble.winfo_width.return_value = 120
+    speech.speech_bubble.winfo_height.return_value = 80
+    speech.speech_bubble.winfo_reqwidth.return_value = 120
+    speech.speech_bubble.winfo_reqheight.return_value = 80
+    speech.get_screen_bounds = MagicMock(return_value=(0, 0, 2000, 2000))
+    speech._update_bubble_tail = MagicMock()
+
+    speech.position_speech_bubble()
+
+    # above_y = 200 - 80 - 12 = 108 >= min_y + hysteresis → flip back above
+    speech.speech_bubble.geometry.assert_called_once_with("120x80+390+108")
+    assert speech._speech_bubble_side == "above"
 
 
 def test_fit_speech_bubble_to_content_preserves_screen_position(speech):
@@ -163,10 +339,12 @@ def test_fit_speech_bubble_to_content_preserves_screen_position(speech):
     speech.speech_bubble.geometry.assert_called_once_with("360x180+420+210")
 
 
-def test_move_speech_bubble_with_kinito_uses_drag_offset(speech):
+def test_move_speech_bubble_with_kinito_uses_dynamic_placement(speech):
     speech._speech_bubble_ready = True
-    speech._bubble_kinito_offset_x = 10
-    speech._bubble_kinito_offset_y = -200
+    speech.root = MagicMock()
+    speech.root.winfo_width.return_value = 100
+    speech.root.winfo_height.return_value = 100
+    speech.img_normal = MagicMock(width=100, height=100)
     speech.speech_bubble = MagicMock()
     speech.speech_bubble.winfo_exists.return_value = True
     speech.speech_bubble.winfo_width.return_value = 120
@@ -178,8 +356,31 @@ def test_move_speech_bubble_with_kinito_uses_drag_offset(speech):
 
     speech._move_speech_bubble_with_kinito(500, 300)
 
-    speech.speech_bubble.geometry.assert_called_once_with("120x80+510+100")
+    # above: 300 - 80 - 12 = 208, centered x = 500 + 50 - 60 = 490
+    speech.speech_bubble.geometry.assert_called_once_with("120x80+490+208")
+    assert speech._speech_bubble_side == "above"
 
+
+def test_move_speech_bubble_with_kinito_flips_below_near_top(speech):
+    speech._speech_bubble_ready = True
+    speech.root = MagicMock()
+    speech.root.winfo_width.return_value = 100
+    speech.root.winfo_height.return_value = 100
+    speech.img_normal = MagicMock(width=100, height=100)
+    speech.speech_bubble = MagicMock()
+    speech.speech_bubble.winfo_exists.return_value = True
+    speech.speech_bubble.winfo_width.return_value = 120
+    speech.speech_bubble.winfo_height.return_value = 80
+    speech.speech_bubble.winfo_reqwidth.return_value = 120
+    speech.speech_bubble.winfo_reqheight.return_value = 80
+    speech.get_screen_bounds = MagicMock(return_value=(0, 0, 2000, 2000))
+    speech._update_bubble_tail = MagicMock()
+
+    speech._move_speech_bubble_with_kinito(500, 30)
+
+    # above does not fit; below_y = 30 + 100 + 12 = 142
+    speech.speech_bubble.geometry.assert_called_once_with("120x80+490+142")
+    assert speech._speech_bubble_side == "below"
 
 @pytest.mark.parametrize(
     "text,expected",

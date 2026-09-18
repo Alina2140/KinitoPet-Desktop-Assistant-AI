@@ -126,10 +126,11 @@ class MovementMixin:
             return
         if kinito_x is None or kinito_y is None:
             kinito_x, kinito_y = getattr(self, "x", 0), getattr(self, "y", 0)
-        coupled = self._is_position_locked_by_user() and hasattr(
+        # While the user is dragging/throwing, use the light placement path
+        # (no update_idletasks) so side flips stay responsive.
+        if self._is_position_locked_by_user() and hasattr(
             self, "_move_speech_bubble_with_kinito"
-        )
-        if coupled and getattr(self, "_bubble_kinito_offset_x", None) is not None:
+        ):
             self._move_speech_bubble_with_kinito(kinito_x, kinito_y)
         elif hasattr(self, "position_speech_bubble"):
             self.position_speech_bubble()
