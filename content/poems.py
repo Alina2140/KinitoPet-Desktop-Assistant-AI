@@ -242,6 +242,13 @@ def pick_poem(
     theme_bias: float = 0.0,
 ) -> dict:
     """Pick a poem, optionally biased toward *preferred_themes*."""
+    if not POEMS:
+        return {
+            "text": "I misplaced my poems. Awkward.",
+            "whisper": False,
+            "play_music": False,
+            "themes": (),
+        }
     themes = tuple(preferred_themes or ())
     bias = max(0.0, min(1.0, float(theme_bias)))
     if themes and bias > 0:

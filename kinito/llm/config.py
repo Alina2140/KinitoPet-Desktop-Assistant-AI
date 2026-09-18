@@ -39,7 +39,7 @@ class LLMConfig:
     """Runtime settings for Ollama (overridable via environment variables)."""
 
     base_url: str = "http://127.0.0.1:11434"
-    model: str = "llama3.2:3b"
+    model: str = "llama3.1:8b"
     vision_model: str = "llava"
     timeout_s: int = 60
     enabled: bool = True
@@ -58,7 +58,7 @@ class LLMConfig:
         """Build config from environment variables with sensible defaults."""
         return cls(
             base_url=os.environ.get("OLLAMA_BASE_URL", "http://127.0.0.1:11434").rstrip("/"),
-            model=os.environ.get("OLLAMA_MODEL", "llama3.2:3b"),
+            model=os.environ.get("OLLAMA_MODEL", "llama3.1:8b"),
             vision_model=os.environ.get("OLLAMA_VISION_MODEL", "llava"),
             timeout_s=_env_int("OLLAMA_TIMEOUT_S", 60),
             enabled=_env_bool("OLLAMA_ENABLED", True),

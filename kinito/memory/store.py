@@ -128,13 +128,29 @@ class MemoryStore:
         try:
             with open(self._path, encoding="utf-8") as handle:
                 raw = json.load(handle)
-        except (OSError, json.JSONDecodeError, TypeError):
+        except (OSError, json.JSONDecodeError, TypeError) as exc:
+            print(f"Warning: memory.json unreadable ({exc!r}); starting empty.", flush=True)
+            self._backup_corrupt_file()
             self._data = self._empty_data()
             return
         if not isinstance(raw, dict):
+            print("Warning: memory.json has invalid root type; starting empty.", flush=True)
+            self._backup_corrupt_file()
             self._data = self._empty_data()
             return
         self._data = self._normalize_loaded(raw)
+
+    def _backup_corrupt_file(self) -> None:
+        """Move a bad memory.json aside so the original bytes are not lost."""
+        if not os.path.isfile(self._path):
+            return
+        stamp = time.strftime("%Y%m%d-%H%M%S")
+        backup = f"{self._path}.corrupt-{stamp}"
+        try:
+            os.replace(self._path, backup)
+            print(f"Warning: corrupt memory backed up to {backup}", flush=True)
+        except OSError as exc:
+            print(f"Warning: could not backup corrupt memory: {exc!r}", flush=True)
 
     def save(self) -> None:
         """Persist memory atomically and refresh the notes mirror file."""
@@ -142,7 +158,10 @@ class MemoryStore:
             os.makedirs(self._directory, exist_ok=True)
             payload = json.dumps(self._data, ensure_ascii=False, indent=2)
             _write_text_atomic(self._path, payload)
-            self._write_notes_mirror()
+            try:
+                self._write_notes_mirror()
+            except OSError as exc:
+                print(f"Warning: notes.txt mirror failed: {exc!r}", flush=True)
 
     def reset(self) -> None:
         """Clear all memory and remove persisted files."""

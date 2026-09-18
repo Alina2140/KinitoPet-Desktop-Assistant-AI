@@ -791,11 +791,17 @@ class SpeechMixin:
             data = self._scale_wav_pcm(data, volume)
             self._tts_sd_active = True
             sd.play(data, rate)
+            frame_count = int(getattr(data, "shape", [len(data)])[0])
+            duration = (frame_count / float(rate)) if rate else 0.0
+            deadline = time.monotonic() + max(1.0, duration + 2.0)
             while True:
                 stream = sd.get_stream()
                 if stream is None or not getattr(stream, "active", False):
                     break
                 if self._tts_interrupted(speech_epoch):
+                    sd.stop()
+                    return False
+                if time.monotonic() >= deadline:
                     sd.stop()
                     return False
                 time.sleep(0.05)

@@ -356,7 +356,7 @@ class ContentMixin:
             return
         if getattr(self, "_preserve_sprite", False) or getattr(self, "paused", False):
             return
-        if getattr(self, "dragging", False):
+        if getattr(self, "is_dragging", False):
             return
         normal = getattr(self, "tk_img_normal", None)
         if normal is not None:

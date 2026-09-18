@@ -119,5 +119,12 @@ def get_random_fact(*, kinito_weight: float | None = None) -> str:
     if KINITO_FACTS and (randfacts is None or random.random() < weight):
         return random.choice(KINITO_FACTS)
     if randfacts is not None:
-        return randfacts.get_fact()
-    return random.choice(KINITO_FACTS)
+        try:
+            return randfacts.get_fact()
+        except Exception:
+            if KINITO_FACTS:
+                return random.choice(KINITO_FACTS)
+            return "I wanted to share a fun fact, but my encyclopedia is empty."
+    if KINITO_FACTS:
+        return random.choice(KINITO_FACTS)
+    return "I wanted to share a fun fact, but my encyclopedia is empty."

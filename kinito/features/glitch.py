@@ -93,7 +93,6 @@ class GlitchMixin:
             chance *= seasonal_multiplier("glitch_mult")
         if random.random() >= chance:
             return False
-        self._last_glitch_at = time.monotonic()
         self.root.after(0, self._flash_screen_glitch)
         return True
 
@@ -119,7 +118,6 @@ class GlitchMixin:
             chance *= seasonal_multiplier("blue_screen_mult")
         if random.random() >= chance:
             return False
-        self._last_blue_screen_at = time.monotonic()
         self.root.after(0, self._flash_blue_screen)
         return True
 
@@ -244,28 +242,41 @@ class GlitchMixin:
         if width < 1 or height < 1:
             return
 
-        noise_w = max(width // self.GLITCH_NOISE_SCALE, 1)
-        noise_h = max(height // self.GLITCH_NOISE_SCALE, 1)
-        noise = Image.effect_noise((noise_w, noise_h), random.randint(40, 70)).convert("RGB")
-        noise = noise.resize((width, height), Image.NEAREST)
-
-        self._glitch_window = self._make_overlay_window(x=x, y=y, width=width, height=height)
+        shown = False
         try:
-            self._glitch_window.attributes("-alpha", 0.28)
-        except tk.TclError:
-            pass
+            noise_w = max(width // self.GLITCH_NOISE_SCALE, 1)
+            noise_h = max(height // self.GLITCH_NOISE_SCALE, 1)
+            noise = Image.effect_noise((noise_w, noise_h), random.randint(40, 70)).convert(
+                "RGB"
+            )
+            noise = noise.resize((width, height), Image.NEAREST)
 
-        self._glitch_tk_image = ImageTk.PhotoImage(noise)
-        label = tk.Label(
-            self._glitch_window, image=self._glitch_tk_image, bd=0, highlightthickness=0
-        )
-        label.pack(fill="both", expand=True)
+            self._glitch_window = self._make_overlay_window(
+                x=x, y=y, width=width, height=height
+            )
+            try:
+                self._glitch_window.attributes("-alpha", 0.28)
+            except tk.TclError:
+                pass
 
-        self._raise_screen_effect_overlays()
-        self._glitch_hide_timer = self.root.after(
-            self.GLITCH_DURATION_MS,
-            self.hide_screen_glitch,
-        )
+            self._glitch_tk_image = ImageTk.PhotoImage(noise)
+            label = tk.Label(
+                self._glitch_window, image=self._glitch_tk_image, bd=0, highlightthickness=0
+            )
+            label.pack(fill="both", expand=True)
+
+            self._raise_screen_effect_overlays()
+            self._glitch_hide_timer = self.root.after(
+                self.GLITCH_DURATION_MS,
+                self.hide_screen_glitch,
+            )
+            shown = True
+            self._last_glitch_at = time.monotonic()
+        except Exception as exc:
+            print(f"Warning: screen glitch failed: {exc!r}", flush=True)
+        finally:
+            if not shown:
+                self.hide_screen_glitch()
 
     def _flash_blue_screen(self):
         """Show the BSOD on the primary monitor; black out other screens briefly."""
@@ -284,23 +295,32 @@ class GlitchMixin:
         if vw < 1 or vh < 1 or pw < 1 or ph < 1:
             return
 
-        # Full virtual desktop goes black; BSOD sits on top of the primary only.
-        self._crash_blackout_window = self._make_overlay_window(
-            x=vx, y=vy, width=vw, height=vh
-        )
+        shown = False
+        try:
+            # Full virtual desktop goes black; BSOD sits on top of the primary only.
+            self._crash_blackout_window = self._make_overlay_window(
+                x=vx, y=vy, width=vw, height=vh
+            )
 
-        if crash_img.size != (pw, ph):
-            crash_img = crash_img.resize((pw, ph), Image.Resampling.LANCZOS)
+            if crash_img.size != (pw, ph):
+                crash_img = crash_img.resize((pw, ph), Image.Resampling.LANCZOS)
 
-        self._crash_window = self._make_overlay_window(x=px, y=py, width=pw, height=ph)
-        self._crash_tk_image = ImageTk.PhotoImage(crash_img)
-        label = tk.Label(
-            self._crash_window, image=self._crash_tk_image, bd=0, highlightthickness=0
-        )
-        label.pack(fill="both", expand=True)
+            self._crash_window = self._make_overlay_window(x=px, y=py, width=pw, height=ph)
+            self._crash_tk_image = ImageTk.PhotoImage(crash_img)
+            label = tk.Label(
+                self._crash_window, image=self._crash_tk_image, bd=0, highlightthickness=0
+            )
+            label.pack(fill="both", expand=True)
 
-        self._raise_screen_effect_overlays()
-        self._crash_hide_timer = self.root.after(
-            self.BLUE_SCREEN_DURATION_MS,
-            self.hide_blue_screen,
-        )
+            self._raise_screen_effect_overlays()
+            self._crash_hide_timer = self.root.after(
+                self.BLUE_SCREEN_DURATION_MS,
+                self.hide_blue_screen,
+            )
+            shown = True
+            self._last_blue_screen_at = time.monotonic()
+        except Exception as exc:
+            print(f"Warning: blue screen flash failed: {exc!r}", flush=True)
+        finally:
+            if not shown:
+                self.hide_blue_screen()

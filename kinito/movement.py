@@ -634,15 +634,38 @@ class MovementMixin:
             return
         self._finish_throw(play_sound=False)
 
+    def _run_on_ui(self, callback) -> None:
+        """Run *callback* on the Tk main thread (safe from worker threads)."""
+        if threading.current_thread() is threading.main_thread():
+            try:
+                callback()
+            except tk.TclError:
+                pass
+            return
+
+        def _invoke():
+            try:
+                callback()
+            except tk.TclError:
+                pass
+
+        try:
+            self.root.after(0, _invoke)
+        except tk.TclError:
+            pass
+
     def change_sprite(self, new_sprite):
         """Swap the visible sprite unless the user is currently dragging."""
         if self.is_dragging:
             return
-        try:
+
+        def _apply():
+            if self.is_dragging:
+                return
             if self.panel.winfo_exists():
                 self.panel.config(image=new_sprite)
-        except tk.TclError:
-            pass
+
+        self._run_on_ui(_apply)
 
     def _start_mouse_attention(self) -> None:
         """Begin polling the cursor for look-at / occasional follow behavior."""
@@ -1070,26 +1093,27 @@ class MovementMixin:
             self._surf_tilt_degrees(wave_phase) / self.SURF_TILT_QUANTUM
         ) * self.SURF_TILT_QUANTUM
         facing = self._surf_facing
-        if abs(tilt) < 0.05:
-            photo = self.tk_img_surf_left if facing == "left" else self.tk_img_surf_right
-        else:
-            cache = getattr(self, "_surf_render_cache", None)
-            if cache is None:
-                self._surf_render_cache = {}
-                cache = self._surf_render_cache
-            cache_key = (facing, tilt)
-            photo = cache.get(cache_key)
-            if photo is None:
-                base = self.img_surf_left if facing == "left" else self.img_surf_right
-                rendered = self._rotate_sprite_padded(base, tilt)
-                photo = ImageTk.PhotoImage(rendered, master=self.root)
-                cache[cache_key] = photo
-        try:
+
+        def _apply():
+            if abs(tilt) < 0.05:
+                photo = self.tk_img_surf_left if facing == "left" else self.tk_img_surf_right
+            else:
+                cache = getattr(self, "_surf_render_cache", None)
+                if cache is None:
+                    self._surf_render_cache = {}
+                    cache = self._surf_render_cache
+                cache_key = (facing, tilt)
+                photo = cache.get(cache_key)
+                if photo is None:
+                    base = self.img_surf_left if facing == "left" else self.img_surf_right
+                    rendered = self._rotate_sprite_padded(base, tilt)
+                    photo = ImageTk.PhotoImage(rendered, master=self.root)
+                    cache[cache_key] = photo
             if self.panel.winfo_exists():
                 self.panel.config(image=photo)
                 self._surf_tk_image = photo
-        except tk.TclError:
-            pass
+
+        self._run_on_ui(_apply)
 
     def _finish_surf_movement(self) -> None:
         """Reset surf visuals after roaming."""
@@ -1117,10 +1141,17 @@ class MovementMixin:
         display_y = y + self._surf_wave_offset(wave_phase)
         clamped_x, clamped_y = self.clamp_position(x, display_y)
         self.x, self.y = x, y
-        self.root.geometry(f"+{int(clamped_x)}+{int(clamped_y)}")
-        if hasattr(self, "_schedule_raise_screen_effect_overlays"):
-            self._schedule_raise_screen_effect_overlays()
 
+        def _apply():
+            try:
+                self.root.geometry(f"+{int(clamped_x)}+{int(clamped_y)}")
+            except tk.TclError:
+                self._stop_roaming()
+                return
+            if hasattr(self, "_schedule_raise_screen_effect_overlays"):
+                self._schedule_raise_screen_effect_overlays()
+
+        self._run_on_ui(_apply)
     def _talking_sprite_pair(self):
         """Return the two-frame sprite pair for the current speech mode."""
         if getattr(self, "_talk_sprite_mode", "talking") == "thinking":
@@ -1291,81 +1322,89 @@ class MovementMixin:
     def smooth_movement(self):
         """Background loop: roam the screen or trigger spontaneous speech/actions."""
         while self._running:
-            if (
-                self.paused
-                or self._is_position_locked_by_user()
-                or not self._startup_complete
-                or self._is_busy_with_speech()
-                or self._is_background_music_playing()
-                or getattr(self, "_reading_idle_active", False)
-                or getattr(self, "_window_grab_active", False)
-                or getattr(self, "_mouse_follow_state", "idle") in {"thinking", "chasing"}
-            ):
-                time.sleep(0.1)
-                continue
-            self.maybe_trigger_screen_glitch()
-            self.maybe_trigger_blue_screen()
-            self.maybe_trigger_random_ad()
-            self.maybe_trigger_ambient_reminder()
-            if self.maybe_trigger_screen_comment():
-                time.sleep(self._idle_wait_before_next_action())
-                continue
-            if self.maybe_trigger_paint_recall():
-                time.sleep(self._idle_wait_before_next_action())
-                continue
-            if self.maybe_trigger_window_grab():
-                time.sleep(self._idle_wait_before_next_action())
-                continue
-            if hasattr(self, "maybe_drift_mood"):
-                self.maybe_drift_mood()
-            speech_chance = self.SPONTANEOUS_CHANCE
-            menu_chance = self.MENU_ACTION_CHANCE
-            memory_chance = self.MEMORY_QUESTION_CHANCE
-            if hasattr(self, "mood_action_weights"):
-                weights = self.mood_action_weights()
-                speech_chance *= weights.get("speech_chance_mult", 1.0)
-                menu_chance *= weights.get("menu_action_mult", 1.0)
-                # Bored asks more questions; annoyed asks fewer.
-                memory_chance *= weights.get("questions_mult", 1.0)
-            if getattr(self, "_special_days_enabled", True):
-                from content.special_days import seasonal_multiplier
+            try:
+                self._smooth_movement_tick()
+            except Exception as exc:
+                print(f"Warning: smooth_movement tick failed: {exc!r}", flush=True)
+                time.sleep(0.5)
 
-                speech_chance *= seasonal_multiplier("speech_chance_mult")
-                menu_chance *= seasonal_multiplier("menu_action_mult")
-            if (
-                random.random() < speech_chance
-                and self._allow_random_questions
-                and not getattr(self, "_focus_mode", False)
-                and not (
-                    callable(getattr(self, "_player_focus_active", None))
-                    and self._player_focus_active()
-                )
-                and not getattr(self, "_is_game_active", lambda: False)()
-            ):
-                if random.random() < menu_chance:
-                    self.perform_random_menu_action()
-                elif random.random() < memory_chance:
-                    self.speak_memory_question_idle()
-                elif self._should_use_ai_idle_line():
-                    self.speak_ai_idle_line()
-                else:
-                    self.speak_random_question()
-            else:
-                self.ensure_on_screen()
-                target_x, target_y = self.random_position_on_screen()
-                self.moving = True
-                current_x = self.root.winfo_rootx()
-                self._render_surf_sprite(target_x - current_x, 0.0)
-                self.play_sfx(surf_file_path)
-                self.move_towards(target_x, target_y)
-                self.moving = False
-                self._finish_surf_movement()
-                self.root.after(0, self.ensure_on_screen)
-                if hasattr(self, "_keep_assistant_on_top"):
-                    self.root.after(0, self._keep_assistant_on_top)
+    def _smooth_movement_tick(self) -> None:
+        """One iteration of the autonomous roam / speech loop."""
+        if (
+            self.paused
+            or self._is_position_locked_by_user()
+            or not self._startup_complete
+            or self._is_busy_with_speech()
+            or self._is_background_music_playing()
+            or getattr(self, "_reading_idle_active", False)
+            or getattr(self, "_window_grab_active", False)
+            or getattr(self, "_mouse_follow_state", "idle") in {"thinking", "chasing"}
+        ):
+            time.sleep(0.1)
+            return
+        self.maybe_trigger_screen_glitch()
+        self.maybe_trigger_blue_screen()
+        self.maybe_trigger_random_ad()
+        self.maybe_trigger_ambient_reminder()
+        if self.maybe_trigger_screen_comment():
             time.sleep(self._idle_wait_before_next_action())
-            if self._startup_complete:
-                self._allow_random_questions = True
+            return
+        if self.maybe_trigger_paint_recall():
+            time.sleep(self._idle_wait_before_next_action())
+            return
+        if self.maybe_trigger_window_grab():
+            time.sleep(self._idle_wait_before_next_action())
+            return
+        if hasattr(self, "maybe_drift_mood"):
+            self.maybe_drift_mood()
+        speech_chance = self.SPONTANEOUS_CHANCE
+        menu_chance = self.MENU_ACTION_CHANCE
+        memory_chance = self.MEMORY_QUESTION_CHANCE
+        if hasattr(self, "mood_action_weights"):
+            weights = self.mood_action_weights()
+            speech_chance *= weights.get("speech_chance_mult", 1.0)
+            menu_chance *= weights.get("menu_action_mult", 1.0)
+            # Bored asks more questions; annoyed asks fewer.
+            memory_chance *= weights.get("questions_mult", 1.0)
+        if getattr(self, "_special_days_enabled", True):
+            from content.special_days import seasonal_multiplier
+
+            speech_chance *= seasonal_multiplier("speech_chance_mult")
+            menu_chance *= seasonal_multiplier("menu_action_mult")
+        if (
+            random.random() < speech_chance
+            and self._allow_random_questions
+            and not getattr(self, "_focus_mode", False)
+            and not (
+                callable(getattr(self, "_player_focus_active", None))
+                and self._player_focus_active()
+            )
+            and not getattr(self, "_is_game_active", lambda: False)()
+        ):
+            if random.random() < menu_chance:
+                self.perform_random_menu_action()
+            elif random.random() < memory_chance:
+                self.speak_memory_question_idle()
+            elif self._should_use_ai_idle_line():
+                self.speak_ai_idle_line()
+            else:
+                self.speak_random_question()
+        else:
+            self.ensure_on_screen()
+            target_x, target_y = self.random_position_on_screen()
+            self.moving = True
+            current_x = self.root.winfo_rootx()
+            self._render_surf_sprite(target_x - current_x, 0.0)
+            self.play_sfx(surf_file_path)
+            self.move_towards(target_x, target_y)
+            self.moving = False
+            self._finish_surf_movement()
+            self.root.after(0, self.ensure_on_screen)
+            if hasattr(self, "_keep_assistant_on_top"):
+                self.root.after(0, self._keep_assistant_on_top)
+        time.sleep(self._idle_wait_before_next_action())
+        if self._startup_complete:
+            self._allow_random_questions = True
 
     def move_towards(self, target_x, target_y, speed=None, frame_delay=None):
         """Animate movement toward (*target_x*, *target_y*) at *speed* pixels per step."""
@@ -1377,7 +1416,15 @@ class MovementMixin:
         current_x, current_y = self.clamp_position(current_x, current_y)
         self.x, self.y = current_x, current_y
         if (current_x, current_y) != (self.root.winfo_rootx(), self.root.winfo_rooty()):
-            self.root.geometry(f"+{current_x}+{current_y}")
+            clamped_x, clamped_y = current_x, current_y
+
+            def _snap():
+                try:
+                    self.root.geometry(f"+{clamped_x}+{clamped_y}")
+                except tk.TclError:
+                    self._stop_roaming()
+
+            self._run_on_ui(_snap)
 
         target_x, target_y = self.clamp_position(target_x, target_y)
         wave_phase = 0.0
@@ -1386,13 +1433,22 @@ class MovementMixin:
                 self._finish_surf_movement()
                 self._realign_speech_bubble_after_move()
                 return
+            if not getattr(self, "moving", True):
+                return
             current_x, current_y = self.x, self.y
             dx = target_x - current_x
             dy = target_y - current_y
             distance = ((dx**2) + (dy**2)) ** 0.5
             if distance < 1:
                 self.x, self.y = target_x, target_y
-                self.root.geometry(f"+{int(self.x)}+{int(self.y)}")
+
+                def _arrive():
+                    try:
+                        self.root.geometry(f"+{int(self.x)}+{int(self.y)}")
+                    except tk.TclError:
+                        self._stop_roaming()
+
+                self._run_on_ui(_arrive)
                 break
             self._render_surf_sprite(dx, wave_phase)
             steps = min(speed, distance)
@@ -1401,93 +1457,102 @@ class MovementMixin:
             next_y = current_y + steps * math.sin(theta)
             wave_phase += self.SURF_WAVE_STEP
             self._apply_surf_geometry(next_x, next_y, wave_phase)
-            self.root.update()
+            # Let the Tk main thread process geometry/sprite callbacks; never call
+            # root.update() from this worker thread.
             time.sleep(frame_delay)
 
     def idle_animation(self):
         """Background loop: alternate normal sprites, reading, fancy, sleep, and thinking."""
         while self._running:
-            if self.moving:
-                time.sleep(0.1)
-                continue
-            if not self.paused and not self.talking:
-                if self._mouse_attention_owns_sprite():
-                    time.sleep(0.25)
-                    continue
-                idle_roll = random.random()
-                focus_mode = getattr(self, "_focus_mode", False)
-                game_active = getattr(self, "_is_game_active", lambda: False)()
-                if (
-                    not focus_mode
-                    and not game_active
-                    and idle_roll < self.IDLE_READING_CHANCE
-                    and self._allow_random_questions
-                ):
-                    self._run_reading_idle()
-                    continue
-                if (
-                    not focus_mode
-                    and not game_active
-                    and idle_roll < self.IDLE_READING_CHANCE + self.IDLE_FANCY_CHANCE
-                    and self._allow_random_questions
-                    and self._can_initiate_spontaneous_speech()
-                ):
-                    self._run_fancy_idle()
-                    continue
-                self.change_sprite(self._pick_normal_idle_sprite(crouch=False))
-                time.sleep(1)
+            try:
+                self._idle_animation_tick()
+            except Exception as exc:
+                print(f"Warning: idle_animation tick failed: {exc!r}", flush=True)
+                time.sleep(0.5)
+
+    def _idle_animation_tick(self) -> None:
+        """One iteration of the idle / talking sprite cycle."""
+        if self.moving:
+            time.sleep(0.1)
+            return
+        if not self.paused and not self.talking:
+            if self._mouse_attention_owns_sprite():
+                time.sleep(0.25)
+                return
+            idle_roll = random.random()
+            focus_mode = getattr(self, "_focus_mode", False)
+            game_active = getattr(self, "_is_game_active", lambda: False)()
+            if (
+                not focus_mode
+                and not game_active
+                and idle_roll < self.IDLE_READING_CHANCE
+                and self._allow_random_questions
+            ):
+                self._run_reading_idle()
+                return
+            if (
+                not focus_mode
+                and not game_active
+                and idle_roll < self.IDLE_READING_CHANCE + self.IDLE_FANCY_CHANCE
+                and self._allow_random_questions
+                and self._can_initiate_spontaneous_speech()
+            ):
+                self._run_fancy_idle()
+                return
+            self.change_sprite(self._pick_normal_idle_sprite(crouch=False))
+            time.sleep(1)
+            if not self._running:
+                return
+            if self._mouse_attention_owns_sprite():
+                return
+            self.change_sprite(self._pick_normal_idle_sprite(crouch=True))
+            time.sleep(1)
+        elif self.paused and not self.talking:
+            self._maybe_play_snoring()
+            for sprite in (
+                self.tk_img_sleep,
+                self.tk_img_sleep1,
+                self.tk_img_sleep2,
+                self.tk_img_sleep3,
+            ):
                 if not self._running:
-                    break
-                if self._mouse_attention_owns_sprite():
-                    continue
-                self.change_sprite(self._pick_normal_idle_sprite(crouch=True))
+                    return
+                self.change_sprite(sprite)
                 time.sleep(1)
-            elif self.paused and not self.talking:
-                self._maybe_play_snoring()
-                for sprite in (
-                    self.tk_img_sleep,
-                    self.tk_img_sleep1,
-                    self.tk_img_sleep2,
-                    self.tk_img_sleep3,
-                ):
-                    if not self._running:
-                        return
-                    self.change_sprite(sprite)
-                    time.sleep(1)
-            elif self.talking:
-                if getattr(self, "_preserve_sprite", False):
-                    time.sleep(0.1)
-                    continue
-                if getattr(self, "_ai_generating", False):
-                    sprite_a, sprite_b = self._talking_sprite_pair()
-                    self.change_sprite(sprite_a)
-                    time.sleep(1)
-                    if not self._running:
-                        break
-                    self.change_sprite(sprite_b)
-                    time.sleep(1)
-                    continue
-                if self._fancy_mode:
-                    magician_sprites = getattr(self, "_magician_sprites", (self.tk_img_fancy,))
-                    frame = getattr(self, "_magician_frame", 0)
-                    self.change_sprite(magician_sprites[frame % len(magician_sprites)])
-                    self._magician_frame = frame + 1
-                    time.sleep(0.45)
-                    continue
-                if self._hug_mode:
-                    self.change_sprite(self.tk_img_hug)
-                    time.sleep(1)
-                    if not self._running:
-                        break
-                    self.change_sprite(self.tk_img_hug2)
-                    time.sleep(1)
-                    continue
+        elif self.talking:
+            if getattr(self, "_preserve_sprite", False):
+                time.sleep(0.1)
+                return
+            if getattr(self, "_ai_generating", False):
                 sprite_a, sprite_b = self._talking_sprite_pair()
                 self.change_sprite(sprite_a)
                 time.sleep(1)
                 if not self._running:
-                    break
+                    return
                 self.change_sprite(sprite_b)
                 time.sleep(1)
-            else:
-                time.sleep(0.1)
+                return
+            if self._fancy_mode:
+                magician_sprites = getattr(self, "_magician_sprites", (self.tk_img_fancy,))
+                frame = getattr(self, "_magician_frame", 0)
+                self.change_sprite(magician_sprites[frame % len(magician_sprites)])
+                self._magician_frame = frame + 1
+                time.sleep(0.45)
+                return
+            if self._hug_mode:
+                self.change_sprite(self.tk_img_hug)
+                time.sleep(1)
+                if not self._running:
+                    return
+                self.change_sprite(self.tk_img_hug2)
+                time.sleep(1)
+                return
+            sprite_a, sprite_b = self._talking_sprite_pair()
+            self.change_sprite(sprite_a)
+            time.sleep(1)
+            if not self._running:
+                return
+            self.change_sprite(sprite_b)
+            time.sleep(1)
+        else:
+            time.sleep(0.1)

@@ -120,6 +120,9 @@ def test_load_recovers_from_corrupt_json(memory_dir):
 
     store = MemoryStore(directory=memory_dir)
     assert store.snapshot()["facts"] == {}
+    assert not os.path.isfile(path)
+    backups = [name for name in os.listdir(memory_dir) if name.startswith("memory.json.corrupt-")]
+    assert len(backups) == 1
 
 
 def test_save_writes_valid_json(memory_dir, store):

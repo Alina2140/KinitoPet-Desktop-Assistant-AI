@@ -72,14 +72,19 @@ from kinito.window_icon import set_default_window_icon
 
 def _open_sprite(path, fallback_path):
     """Load a sprite image, falling back to *fallback_path* if missing or unreadable."""
-    try:
-        if os.path.isfile(path):
-            return Image.open(path)
-    except OSError:
-        pass
-    if path != fallback_path:
-        print(f"Warning: missing sprite {path}, using fallback.", flush=True)
-    return Image.open(fallback_path)
+    for candidate in (path, fallback_path) if path != fallback_path else (path,):
+        try:
+            if os.path.isfile(candidate):
+                return Image.open(candidate)
+        except OSError:
+            pass
+        if candidate == path and path != fallback_path:
+            print(f"Warning: missing sprite {path}, using fallback.", flush=True)
+    print(
+        f"Warning: sprite fallback unreadable ({fallback_path}); using placeholder.",
+        flush=True,
+    )
+    return Image.new("RGBA", (1, 1), (0, 0, 0, 0))
 
 
 def _load_look_around_sprites(paths, *, default_path, fallback):
@@ -775,6 +780,11 @@ class FloatingAssistant(
             cancel_after(self.root, self, attr)
         if hasattr(self, "_stop_mouse_attention"):
             self._stop_mouse_attention()
+        if hasattr(self, "_clear_drag_sprite_state"):
+            self._clear_drag_sprite_state()
+        else:
+            cancel_after(self.root, self, "_drag_idle_timer")
+            cancel_after(self.root, self, "_drag_wiggle_timer")
 
     def ensure_on_screen(self):
         """Reposition the assistant (and bubbles) if it drifted off-screen."""

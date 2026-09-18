@@ -36,7 +36,7 @@ def content():
     stub._focus_mode = False
     stub._hug_mode = False
     stub._preserve_sprite = False
-    stub.dragging = False
+    stub.is_dragging = False
     stub._is_game_active = MagicMock(return_value=False)
     for name in (
         "print_current_datetime",

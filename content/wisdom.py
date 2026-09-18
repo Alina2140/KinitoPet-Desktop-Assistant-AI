@@ -41,6 +41,10 @@ _INTROS = [
     "A proverb from somewhere dark:",
 ]
 
+_EMPTY_WISDOM_FALLBACK = (
+    "I wanted to share a quote, but my book seems to be missing its pages."
+)
+
 
 def _quotes_path():
     return os.path.join(os.path.dirname(__file__), "quotes.json")
@@ -58,7 +62,16 @@ def load_quotes():
     return data
 
 
-QUOTES = load_quotes()
+def _safe_load_quotes():
+    """Load quotes, or return an empty pool if the file is missing/invalid."""
+    try:
+        return load_quotes()
+    except (OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
+        print(f"Warning: could not load quotes.json ({exc}); wisdom pool empty.", flush=True)
+        return []
+
+
+QUOTES = _safe_load_quotes()
 
 
 def format_wisdom_line(entry, intro=None):
@@ -79,4 +92,6 @@ WISDOM = [
 
 def get_random_wisdom():
     """Return a random wisdom line with a fresh intro."""
+    if not QUOTES:
+        return _EMPTY_WISDOM_FALLBACK
     return format_wisdom_line(random.choice(QUOTES))

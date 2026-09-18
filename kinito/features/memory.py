@@ -285,38 +285,46 @@ class MemoryMixin:
         fact_rows = list(widgets.get("fact_rows") or [])
         note_rows = list(widgets.get("note_rows") or [])
 
-        kept_keys: set[str] = set()
-        for row in fact_rows:
-            key = row.get("key")
-            entry = row.get("entry")
-            if not isinstance(key, str) or entry is None:
-                continue
-            try:
-                value = entry.get().strip()
-            except tk.TclError:
-                continue
-            if not value:
-                self._memory.delete_fact(key)
-                continue
-            self._memory.set_fact(key, value)
-            kept_keys.add(key)
+        try:
+            kept_keys: set[str] = set()
+            for row in fact_rows:
+                key = row.get("key")
+                entry = row.get("entry")
+                if not isinstance(key, str) or entry is None:
+                    continue
+                try:
+                    value = entry.get().strip()
+                except tk.TclError:
+                    continue
+                if not value:
+                    self._memory.delete_fact(key)
+                    continue
+                self._memory.set_fact(key, value)
+                kept_keys.add(key)
 
-        for key in list(self._memory.facts_dict()):
-            if key not in kept_keys:
-                self._memory.delete_fact(key)
+            for key in list(self._memory.facts_dict()):
+                if key not in kept_keys:
+                    self._memory.delete_fact(key)
 
-        note_texts: list[str] = []
-        for row in note_rows:
-            entry = row.get("entry")
-            if entry is None:
-                continue
-            try:
-                text = entry.get().strip()
-            except tk.TclError:
-                continue
-            if text:
-                note_texts.append(text)
-        self._memory.replace_notes(note_texts)
+            note_texts: list[str] = []
+            for row in note_rows:
+                entry = row.get("entry")
+                if entry is None:
+                    continue
+                try:
+                    text = entry.get().strip()
+                except tk.TclError:
+                    continue
+                if text:
+                    note_texts.append(text)
+            self._memory.replace_notes(note_texts)
+        except OSError as exc:
+            print(f"Warning: memory editor save failed: {exc!r}", flush=True)
+            self.speak(
+                "I couldn't save your memories right now. Please try again.",
+                skip_ai=True,
+            )
+            return
 
         self._reload_memory_editor_rows()
         self.speak(dlg.MEMORY_SAVED_LINE, skip_ai=True)

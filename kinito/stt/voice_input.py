@@ -137,7 +137,11 @@ def _configure_insecure_hf_backend() -> Callable[[], None]:
         return _configure_insecure_hf_backend_legacy()
 
     def factory():
-        return httpx.Client(verify=False, follow_redirects=True, timeout=None)
+        return httpx.Client(
+            verify=False,
+            follow_redirects=True,
+            timeout=httpx.Timeout(120.0, connect=30.0),
+        )
 
     try:
         set_client_factory(factory)
@@ -164,7 +168,16 @@ def _configure_insecure_hf_backend_legacy() -> Callable[[], None]:
     def factory():
         session = requests.Session()
         session.verify = False
-        return session
+
+        class _TimeoutSession(requests.Session):
+            def request(self, *args, **kwargs):
+                kwargs.setdefault("timeout", (30, 120))
+                return super().request(*args, **kwargs)
+
+        timed = _TimeoutSession()
+        timed.verify = False
+        timed.headers.update(session.headers)
+        return timed
 
     try:
         configure_http_backend(backend_factory=factory)

@@ -142,6 +142,13 @@ def test_open_sprite_uses_fallback_when_missing(tmp_path):
     assert img.size == (4, 4)
 
 
+def test_open_sprite_uses_placeholder_when_fallback_missing(tmp_path):
+    missing = tmp_path / "missing.png"
+    fallback = tmp_path / "also_missing.png"
+    img = _open_sprite(str(missing), str(fallback))
+    assert img.size == (1, 1)
+
+
 def test_play_mp3_skips_missing_file(goodbye_app):
     goodbye_app.play_mp3("definitely/not/a/file.mp3")
 

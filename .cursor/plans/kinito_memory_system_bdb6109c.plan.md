@@ -136,7 +136,7 @@ flowchart LR
 
 ## Kapazitäts-Limits
 
-**Engpass ist der Ollama-Kontext, nicht Festplatte oder Python.** Mit dem Default-Setup (`llama3.2:3b`, `OLLAMA_MAX_HISTORY=20`) teilen sich System-Prompt, Memory-Block und Chat-Verlauf dasselbe Kontextfenster. Zu viel Memory macht Antworten langsamer, teurer (mehr Tokens) und verwässert den Fokus.
+**Engpass ist der Ollama-Kontext, nicht Festplatte oder Python.** Mit dem Default-Setup (`llama3.1:8b`, `OLLAMA_MAX_HISTORY=20`) teilen sich System-Prompt, Memory-Block und Chat-Verlauf dasselbe Kontextfenster. Zu viel Memory macht Antworten langsamer, teurer (mehr Tokens) und verwässert den Fokus.
 
 ### Empfohlene Default-Limits (v1)
 

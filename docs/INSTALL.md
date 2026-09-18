@@ -216,7 +216,7 @@ Kinito can chat with you using a **local** Ollama model. Nothing is sent to the 
 2. Open a terminal and pull a model:
 
 ```powershell
-ollama pull llama3.2:3b
+ollama pull llama3.1:8b
 ```
 
 3. Keep Ollama running (tray icon or `ollama serve`)

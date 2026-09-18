@@ -193,6 +193,41 @@ def test_flash_blue_screen_primary_only_with_virtual_blackout(glitch):
     )
 
 
+def test_flash_screen_glitch_sets_cooldown_on_success(glitch):
+    overlay = MagicMock()
+    glitch._make_overlay_window = MagicMock(return_value=overlay)
+    glitch._raise_screen_effect_overlays = MagicMock()
+    with (
+        patch("kinito.features.glitch.Image.effect_noise", return_value=Image.new("L", (2, 2))),
+        patch("kinito.features.glitch.ImageTk.PhotoImage", return_value=MagicMock()),
+        patch("kinito.features.glitch.tk.Label", return_value=MagicMock()),
+        patch("kinito.features.glitch.time.monotonic", return_value=1234.0),
+    ):
+        glitch._flash_screen_glitch()
+    assert glitch._last_glitch_at == 1234.0
+
+
+def test_flash_blue_screen_cleans_up_partial_failure(glitch):
+    blackout = MagicMock()
+    glitch._overlay_virtual_screen_rect = MagicMock(return_value=(-1920, 0, 3840, 1080))
+    glitch._overlay_primary_screen_rect = MagicMock(return_value=(0, 0, 1920, 1080))
+    glitch.hide_blue_screen = MagicMock()
+    crash_img = Image.new("RGB", (100, 50), color=(0, 0, 255))
+
+    with (
+        patch("kinito.features.glitch.Image.open", return_value=crash_img),
+        patch.object(
+            glitch,
+            "_make_overlay_window",
+            side_effect=[blackout, RuntimeError("boom")],
+        ),
+    ):
+        glitch._flash_blue_screen()
+
+    glitch.hide_blue_screen.assert_called()
+    assert getattr(glitch, "_last_blue_screen_at", 0.0) == 0.0
+
+
 def test_hide_blue_screen_destroys_blackout_and_crash(glitch):
     crash = MagicMock()
     blackout = MagicMock()

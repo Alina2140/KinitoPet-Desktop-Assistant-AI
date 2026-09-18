@@ -5,6 +5,8 @@ import random
 
 def pick_line(lines):
     """Return a random line from a list of dialogue variants."""
+    if not lines:
+        return ""
     return random.choice(lines)
 
 

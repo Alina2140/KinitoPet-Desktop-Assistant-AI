@@ -77,8 +77,20 @@ def test_maybe_trigger_ambient_reminder_schedules_on_hit(nudges):
         patch("kinito.features.nudges.random.random", return_value=0.0),
     ):
         assert nudges.maybe_trigger_ambient_reminder() is True
-        assert nudges._last_nudge_at == 5000.0
+        # Cooldown starts only after the popup is successfully shown.
+        assert nudges._last_nudge_at == 0.0
     nudges.root.after.assert_called_once_with(0, nudges._present_ambient_nudge)
+
+
+def test_present_ambient_nudge_sets_cooldown_after_show(nudges):
+    nudges._nudge_popup_is_open = MagicMock(return_value=True)
+    with (
+        patch.object(nudges, "_pick_ambient_nudge_text", return_value="Hydrate."),
+        patch("kinito.features.nudges.time.monotonic", return_value=7777.0),
+    ):
+        nudges._present_ambient_nudge()
+    assert nudges._last_nudge_at == 7777.0
+    nudges.show_popup_text.assert_called_once()
 
 
 def test_maybe_trigger_ambient_reminder_skips_on_miss(nudges):

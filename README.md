@@ -208,7 +208,7 @@ Kinito optional deps: {'pywebview': 'ok', 'opencv': 'missing', 'balcon': 'ok', '
 ### Ollama (AI chat)
 
 1. Install [Ollama](https://ollama.com/) and start it (default: `http://127.0.0.1:11434`)
-2. Pull a model, e.g. `ollama pull llama3.2:3b`
+2. Pull a model, e.g. `ollama pull llama3.1:8b`
 3. Right-click Kinito → **Chat**
 
 Optional environment variables:
@@ -216,7 +216,7 @@ Optional environment variables:
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | Ollama API URL |
-| `OLLAMA_MODEL` | `llama3.2:3b` | Model name |
+| `OLLAMA_MODEL` | `llama3.1:8b` | Model name |
 | `OLLAMA_VISION_MODEL` | `llava` | Vision model for screen comments (`ollama pull llava`) |
 | `OLLAMA_ENABLED` | `true` | Enable/disable AI features |
 | `OLLAMA_IDLE_LINES` | `true` | AI-generated spontaneous lines |
@@ -310,7 +310,7 @@ Or install packages one by one. **Minimum to start:** `Pillow`, `pygame`, `pytts
 
 1. Make sure Ollama is running (`ollama serve` or the Ollama desktop app)
 2. Verify the API: open `http://127.0.0.1:11434` in a browser
-3. Pull the model: `ollama pull llama3.2:3b` (or set `OLLAMA_MODEL` to a model you have)
+3. Pull the model: `ollama pull llama3.1:8b` (or set `OLLAMA_MODEL` to a model you have)
 4. Check the console line `ollama: ok` on startup
 
 ### No voice / TTS silent

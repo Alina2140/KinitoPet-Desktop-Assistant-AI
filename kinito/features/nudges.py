@@ -77,7 +77,6 @@ class NudgesMixin:
             chance *= seasonal_multiplier("nudge_mult")
         if random.random() >= chance:
             return False
-        self._last_nudge_at = time.monotonic()
         self.root.after(0, self._present_ambient_nudge)
         return True
 
@@ -145,6 +144,9 @@ class NudgesMixin:
                 self._nudge_popup = None
         text = self._pick_ambient_nudge_text()
         self.show_popup_text(text, title="KinitoPET")
+        # Consume cooldown only after a popup was actually created.
+        if self._nudge_popup_is_open():
+            self._last_nudge_at = time.monotonic()
 
     def _nudge_popup_is_open(self) -> bool:
         """Return True while a nudge dialog is still on screen."""

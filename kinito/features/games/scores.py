@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import json
 import os
-import sys
+import threading
 from typing import Any
 
 from kinito.assets import user_media_directory
+from kinito.memory.store import _write_text_atomic
 
 SCORES_VERSION = 1
 SCORES_FILENAME = "game_scores.json"
@@ -41,18 +42,6 @@ def scores_file_path(directory: str | None = None) -> str:
     return os.path.join(base, SCORES_FILENAME)
 
 
-def _atomic_replace(temp_path: str, final_path: str) -> None:
-    """Replace *final_path* atomically; retry once on Windows file locks."""
-    try:
-        os.replace(temp_path, final_path)
-    except PermissionError:
-        if sys.platform != "win32":
-            raise
-        if os.path.isfile(final_path):
-            os.remove(final_path)
-        os.replace(temp_path, final_path)
-
-
 class GameScoresStore:
     """Load and persist mini-game highscores under GameAssets/UserMedia/."""
 
@@ -60,6 +49,7 @@ class GameScoresStore:
         self._directory = directory or user_media_directory
         self._path = scores_file_path(self._directory)
         self._data: dict[str, Any] = self._empty_data()
+        self._lock = threading.RLock()
         self.load()
 
     @staticmethod
@@ -84,14 +74,10 @@ class GameScoresStore:
 
     def save(self) -> None:
         """Persist scores atomically."""
-        os.makedirs(self._directory, exist_ok=True)
-        temp_path = f"{self._path}.tmp"
-        payload = json.dumps(self._data, ensure_ascii=False, indent=2)
-        with open(temp_path, "w", encoding="utf-8") as handle:
-            handle.write(payload)
-            handle.flush()
-            os.fsync(handle.fileno())
-        _atomic_replace(temp_path, self._path)
+        with self._lock:
+            os.makedirs(self._directory, exist_ok=True)
+            payload = json.dumps(self._data, ensure_ascii=False, indent=2)
+            _write_text_atomic(self._path, payload)
 
     def _normalize_loaded(self, raw: dict[str, Any]) -> dict[str, Any]:
         data = self._empty_data()
@@ -123,8 +109,9 @@ class GameScoresStore:
         current = self.snake_highscore()
         if score <= current:
             return False
-        self._data["snake_highscore"] = score
-        self.save()
+        with self._lock:
+            self._data["snake_highscore"] = score
+            self.save()
         return True
 
     def tetris_highscore(self) -> int:
@@ -137,8 +124,9 @@ class GameScoresStore:
         current = self.tetris_highscore()
         if score <= current:
             return False
-        self._data["tetris_highscore"] = score
-        self.save()
+        with self._lock:
+            self._data["tetris_highscore"] = score
+            self.save()
         return True
 
     def memory_best_moves(self) -> int | None:
@@ -178,8 +166,9 @@ class GameScoresStore:
         current = self._get_low_best(key)
         if current is not None and value >= current:
             return False
-        self._data[key] = value
-        self.save()
+        with self._lock:
+            self._data[key] = value
+            self.save()
         return True
 
     def trivia_best_score(self) -> int:
@@ -199,19 +188,20 @@ class GameScoresStore:
     ) -> dict[str, int | bool]:
         """Update trivia best/streak. Return summary flags for dialogue."""
         score = max(0, min(int(total), int(score)))
-        best = self.trivia_best_score()
-        new_best = score > best
-        if new_best:
-            self._data["trivia_best_score"] = score
+        with self._lock:
+            best = self.trivia_best_score()
+            new_best = score > best
+            if new_best:
+                self._data["trivia_best_score"] = score
 
-        if score >= win_threshold:
-            streak = self.trivia_streak() + 1
-        else:
-            streak = 0
-        self._data["trivia_streak"] = streak
-        self.save()
-        return {
-            "best": self.trivia_best_score(),
-            "streak": streak,
-            "new_best": new_best,
-        }
+            if score >= win_threshold:
+                streak = self.trivia_streak() + 1
+            else:
+                streak = 0
+            self._data["trivia_streak"] = streak
+            self.save()
+            return {
+                "best": self.trivia_best_score(),
+                "streak": streak,
+                "new_best": new_best,
+            }

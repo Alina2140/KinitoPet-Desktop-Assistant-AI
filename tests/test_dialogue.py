@@ -9,9 +9,8 @@ def test_pick_line_returns_member():
     assert dlg.pick_line(lines) in lines
 
 
-def test_pick_line_requires_non_empty_list():
-    with pytest.raises(IndexError):
-        dlg.pick_line([])
+def test_pick_line_returns_empty_string_for_empty_list():
+    assert dlg.pick_line([]) == ""
 
 
 def test_pick_declined_line_returns_from_ack_or_specific():

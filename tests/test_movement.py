@@ -307,6 +307,7 @@ def test_on_mouse_up_restores_standing_sprite(movement):
 def test_move_towards_stops_when_speech_starts(movement):
     movement.x = 0
     movement.y = 0
+    movement.moving = True
     movement.root.winfo_rootx.return_value = 0
     movement.root.winfo_rooty.return_value = 0
     movement._running = True
@@ -342,6 +343,7 @@ def test_stop_roaming_clears_moving_flag(movement):
 def test_move_towards_reaches_target(movement):
     movement.x = 0
     movement.y = 0
+    movement.moving = True
     movement._running = True
     with patch.object(movement, "_render_surf_sprite"):
         movement.move_towards(20, 0, speed=5)
@@ -371,6 +373,7 @@ def test_apply_surf_geometry_bobs_display_y(movement):
 def test_move_towards_geometry_y_varies_with_wave(movement):
     movement.x = 100
     movement.y = 100
+    movement.moving = True
     geometries = []
     movement.root.geometry = lambda geometry: geometries.append(geometry)
     with patch.object(movement, "_render_surf_sprite"):
