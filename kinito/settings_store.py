@@ -25,6 +25,7 @@ DEFAULT_BOOL_SETTINGS: dict[str, bool] = {
     "window_grab_enabled": True,
     "tts_enabled": True,
     "player_focus_enabled": True,
+    "music_shuffle": False,
     "special_days_enabled": True,
     "emoji_picker_enabled": True,
     "mood_system_enabled": True,

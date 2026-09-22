@@ -328,6 +328,7 @@ class FloatingAssistant(
         self._tts_volume = self._settings.get_int("tts_volume", 100)
         self._music_volume = self._settings.get_int("music_volume", 75)
         self._music_folder = self._settings.get_music_folder()
+        self._music_shuffle = bool(self._settings.get("music_shuffle", False))
         self._special_days_enabled = self._settings.get("special_days_enabled", True)
         self._emoji_picker_enabled = self._settings.get("emoji_picker_enabled", True)
         self._mood_system_enabled = self._settings.get("mood_system_enabled", True)
@@ -464,6 +465,7 @@ class FloatingAssistant(
             tts_volume=int(getattr(self, "_tts_volume", 100)),
             music_volume=int(getattr(self, "_music_volume", 75)),
             music_folder=str(getattr(self, "_music_folder", "") or ""),
+            music_shuffle=bool(getattr(self, "_music_shuffle", False)),
             special_days_enabled=bool(getattr(self, "_special_days_enabled", True)),
             emoji_picker_enabled=bool(getattr(self, "_emoji_picker_enabled", True)),
             mood_system_enabled=bool(getattr(self, "_mood_system_enabled", True)),

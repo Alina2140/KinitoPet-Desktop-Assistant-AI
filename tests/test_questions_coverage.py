@@ -54,12 +54,29 @@ def _menu_app(**kwargs):
     app._mood_system_enabled = kwargs.get("mood_system_enabled", True)
     app._color_guess_voice_enabled = kwargs.get("color_guess_voice_enabled", True)
     app._hidden_menu_buttons = kwargs.get("hidden_menu_buttons", set())
+    app._is_music_player_minimized = lambda: bool(
+        kwargs.get("music_player_minimized", False)
+    )
     return app
 
 
 def test_menu_options_default_toggle_labels():
     opts = menu_options_for(_menu_app())
     assert opts == [
+        dlg.BUTTON_MODES,
+        dlg.BUTTON_SETTINGS,
+        dlg.BUTTON_ACTIONS,
+        dlg.BUTTON_MOOD,
+        dlg.BUTTON_CHAT,
+        dlg.BUTTON_SAY_GOODBYE,
+    ]
+
+
+def test_menu_options_show_player_first_when_minimized():
+    opts = menu_options_for(_menu_app(music_player_minimized=True))
+    assert opts[0] == dlg.BUTTON_SHOW_PLAYER
+    assert opts == [
+        dlg.BUTTON_SHOW_PLAYER,
         dlg.BUTTON_MODES,
         dlg.BUTTON_SETTINGS,
         dlg.BUTTON_ACTIONS,
@@ -269,6 +286,19 @@ def test_settings_and_actions_options():
         dlg.BUTTON_FUN_FACT,
         dlg.BUTTON_VISIT_WEBSITE,
         dlg.BUTTON_PLAY_MUSIC,
+        dlg.BUTTON_PLAY_GAME,
+        dlg.BUTTON_PAINT,
+        dlg.BUTTON_GIVE_HUG,
+        dlg.BUTTON_BACK,
+    ]
+    assert actions_options_for(_menu_app(music_player_minimized=True)) == [
+        dlg.BUTTON_SET_REMINDER,
+        dlg.BUTTON_TELL_TIME,
+        dlg.BUTTON_KNOWN_SINCE,
+        dlg.BUTTON_SING_SONG,
+        dlg.BUTTON_FUN_FACT,
+        dlg.BUTTON_VISIT_WEBSITE,
+        dlg.BUTTON_SHOW_PLAYER,
         dlg.BUTTON_PLAY_GAME,
         dlg.BUTTON_PAINT,
         dlg.BUTTON_GIVE_HUG,

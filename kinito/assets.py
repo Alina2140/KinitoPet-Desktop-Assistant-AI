@@ -117,6 +117,8 @@ music_player_order_icon_path = os.path.join(music_player_directory, "arrow-right
 music_player_shuffle_icon_path = os.path.join(music_player_directory, "shuffle.png")
 music_player_repeat_one_icon_path = os.path.join(music_player_directory, "repeat-1.png")
 music_player_repeat_all_icon_path = os.path.join(music_player_directory, "repeat.png")
+music_player_volume_icon_path = os.path.join(music_player_directory, "volume.png")
+music_player_list_icon_path = os.path.join(music_player_directory, "list.png")
 
 crash_image_path = os.path.join(crash_directory, "blueScreen.png")
 kinito_pet_url = "https://www.kinitopet.com/"

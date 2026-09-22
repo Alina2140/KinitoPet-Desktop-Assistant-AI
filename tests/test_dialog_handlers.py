@@ -42,6 +42,18 @@ def test_handle_music_player_yes(mock_app):
     mock_app.open_music_player.assert_called_once()
 
 
+def test_handle_actions_show_player(mock_app):
+    spec = find_dialog_spec(dlg.ACTIONS_MENU_QUESTION)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_SHOW_PLAYER)
+    mock_app.open_music_player.assert_called_once()
+
+
+def test_handle_main_menu_show_player(mock_app):
+    spec = find_dialog_spec(dlg.MENU_PROMPT)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_SHOW_PLAYER)
+    mock_app.open_music_player.assert_called_once()
+
+
 def test_handle_color_text_response(mock_app):
     spec = find_dialog_spec(dlg.COLOR_QUESTION)
     handle_dialog_response(mock_app, spec, "blue")

@@ -101,17 +101,18 @@ def menu_options_for(app) -> list[str]:
         options.append(dlg.BUTTON_SAY_GOODBYE)
         return _visible_menu_buttons(app, options)
 
-    return _visible_menu_buttons(
-        app,
-        [
-            dlg.BUTTON_MODES,
-            dlg.BUTTON_SETTINGS,
-            dlg.BUTTON_ACTIONS,
-            dlg.BUTTON_MOOD,
-            dlg.BUTTON_CHAT,
-            dlg.BUTTON_SAY_GOODBYE,
-        ],
-    )
+    options = [
+        dlg.BUTTON_MODES,
+        dlg.BUTTON_SETTINGS,
+        dlg.BUTTON_ACTIONS,
+        dlg.BUTTON_MOOD,
+        dlg.BUTTON_CHAT,
+        dlg.BUTTON_SAY_GOODBYE,
+    ]
+    is_minimized = getattr(app, "_is_music_player_minimized", None)
+    if callable(is_minimized) and is_minimized():
+        options = [dlg.BUTTON_SHOW_PLAYER, *options]
+    return _visible_menu_buttons(app, options)
 
 
 def modes_options_for(app) -> list[str]:
@@ -247,6 +248,10 @@ def settings_toggles_options_for(app) -> list[str]:
 
 def actions_options_for(app) -> list[str]:
     """Return Actions submenu labels."""
+    music_label = dlg.BUTTON_PLAY_MUSIC
+    is_minimized = getattr(app, "_is_music_player_minimized", None)
+    if callable(is_minimized) and is_minimized():
+        music_label = dlg.BUTTON_SHOW_PLAYER
     return _visible_menu_buttons(
         app,
         [
@@ -256,7 +261,7 @@ def actions_options_for(app) -> list[str]:
             dlg.BUTTON_SING_SONG,
             dlg.BUTTON_FUN_FACT,
             dlg.BUTTON_VISIT_WEBSITE,
-            dlg.BUTTON_PLAY_MUSIC,
+            music_label,
             dlg.BUTTON_PLAY_GAME,
             dlg.BUTTON_PAINT,
             dlg.BUTTON_GIVE_HUG,
@@ -588,6 +593,7 @@ def _handle_menu(app, response: str) -> None:
     if getattr(app, "_focus_mode", False) and response not in _MENU_FOCUS_BUTTONS:
         return
     actions = {
+        dlg.BUTTON_SHOW_PLAYER: lambda a: a.open_music_player(),
         dlg.BUTTON_MODES: _open_modes_menu,
         dlg.BUTTON_SETTINGS: _open_settings_menu,
         dlg.BUTTON_ACTIONS: _open_actions_menu,
@@ -665,6 +671,7 @@ def _menu_action_handlers() -> dict[str, Handler]:
         dlg.BUTTON_FORGET: lambda a: a.forget_memory(),
         dlg.BUTTON_VISIT_WEBSITE: lambda a: a.ask_browser_category(),
         dlg.BUTTON_PLAY_MUSIC: lambda a: a.open_music_player(),
+        dlg.BUTTON_SHOW_PLAYER: lambda a: a.open_music_player(),
         dlg.BUTTON_PLAY_GAME: lambda a: a.offer_game_picker(),
         dlg.BUTTON_PAINT: lambda a: a.offer_paint_picker(),
         dlg.BUTTON_GIVE_HUG: lambda a: a.give_hug(),
