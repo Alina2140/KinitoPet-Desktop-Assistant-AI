@@ -348,6 +348,18 @@ def test_on_background_music_stopped_clears_state(music):
     assert music._music_paused is False
 
 
+def test_toggle_player_kinito_mute_updates_state_and_interrupts(music):
+    music.interrupt_speech = MagicMock()
+    music._refresh_music_player_ui = MagicMock()
+    assert music._is_player_kinito_muted() is False
+    music.toggle_player_kinito_mute()
+    assert music._is_player_kinito_muted() is True
+    music.interrupt_speech.assert_called_once()
+    music.toggle_player_kinito_mute()
+    assert music._is_player_kinito_muted() is False
+    music._refresh_music_player_ui.assert_called()
+
+
 def test_close_music_player_stops_playback(music):
     music._user_music_path = "song.mp3"
     fake_window = MagicMock()
@@ -357,6 +369,14 @@ def test_close_music_player_stops_playback(music):
     music.stop_background_music.assert_called_once()
     fake_window.destroy.assert_called_once()
     assert music._music_player_window is None
+
+
+def test_close_music_player_clears_kinito_mute(music):
+    music._player_kinito_muted = True
+    music._music_player_window = MagicMock()
+    music._music_player_widgets = {}
+    music._close_music_player_window()
+    assert music._is_player_kinito_muted() is False
 
 
 def test_toggle_music_volume_popup_opens_and_closes(music):

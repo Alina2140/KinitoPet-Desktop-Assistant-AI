@@ -37,7 +37,7 @@ class MusicMixin:
     _MUSIC_POLL_INTERVAL_MS = 250
     _MUSIC_PROGRESS_TICK_MS = 250
     _MUSIC_PLAYER_WIDTH = 420
-    _MUSIC_PLAYER_HEIGHT = 196
+    _MUSIC_PLAYER_HEIGHT = 180
     _MUSIC_VOLUME_POPUP_WIDTH = 168
     _MUSIC_VOLUME_POPUP_HEIGHT = 46
     _MUSIC_TRACK_PICKER_WIDTH = 320
@@ -92,6 +92,28 @@ class MusicMixin:
             self._music_volume = 75
         if not hasattr(self, "_player_focus_enabled"):
             self._player_focus_enabled = True
+        self._player_kinito_muted = False
+
+    def _is_player_kinito_muted(self) -> bool:
+        """Return True when the music player has Kinito voice and SFX muted."""
+        return bool(getattr(self, "_player_kinito_muted", False))
+
+    def toggle_player_kinito_mute(self) -> None:
+        """Mute or unmute Kinito TTS and sound effects from the music player."""
+        self._player_kinito_muted = not self._is_player_kinito_muted()
+        if self._player_kinito_muted:
+            interrupt = getattr(self, "interrupt_speech", None)
+            if callable(interrupt):
+                interrupt()
+        self._refresh_music_player_ui()
+
+    def _clear_player_kinito_mute(self) -> None:
+        """Reset player mute so Kinito can speak again after the player closes."""
+        self._player_kinito_muted = False
+
+    @staticmethod
+    def _player_kinito_mute_button_text(*, muted: bool) -> str:
+        return "🔇" if muted else "🔊"
 
     def _is_music_player_open(self) -> bool:
         """Return True while the music player window exists (including minimized)."""
@@ -1419,7 +1441,7 @@ class MusicMixin:
             widget.bind("<B1-Motion>", self._drag_music_player)
 
         body = tk.Frame(window, bg=self._MUSIC_UI_BG)
-        body.pack(fill="both", expand=True, padx=12, pady=(8, 10))
+        body.pack(fill="x", expand=False, padx=12, pady=(8, 4))
 
         info = tk.Frame(body, bg=self._MUSIC_UI_BG)
         info.pack(fill="x")
@@ -1497,7 +1519,7 @@ class MusicMixin:
         progress_bar.bind("<ButtonRelease-1>", self._on_music_progress_release)
 
         controls_row = tk.Frame(body, bg=self._MUSIC_UI_BG)
-        controls_row.pack(fill="x", pady=(8, 4))
+        controls_row.pack(fill="x", pady=(8, 0))
         controls_row.grid_columnconfigure(0, weight=1)
         controls_row.grid_columnconfigure(2, weight=1)
 
@@ -1546,11 +1568,35 @@ class MusicMixin:
         play_btn.pack(side="left", padx=4)
         next_btn.pack(side="left", padx=4)
         repeat_btn.pack(side="left", padx=4)
+
+        mute_row = tk.Frame(body, bg=self._MUSIC_UI_BG)
+        mute_row.pack(fill="x", pady=(10, 0))
+        kinito_mute_btn = tk.Button(
+            mute_row,
+            text=self._player_kinito_mute_button_text(muted=self._is_player_kinito_muted()),
+            font=("Segoe UI Emoji", 11),
+            command=self.toggle_player_kinito_mute,
+            relief=tk.RIDGE,
+            bd=1,
+            padx=6,
+            pady=4,
+            bg=self._MUSIC_BTN_BG,
+            activebackground=self._MUSIC_BTN_HOVER_BG,
+            highlightthickness=0,
+            cursor="hand2",
+        )
+        self._bind_music_player_button_hover(
+            kinito_mute_btn,
+            self._MUSIC_BTN_BG,
+            self._MUSIC_BTN_HOVER_BG,
+        )
+        kinito_mute_btn.pack(anchor="center")
         widgets["shuffle"] = shuffle_btn
         widgets["play"] = play_btn
         widgets["prev"] = prev_btn
         widgets["next"] = next_btn
         widgets["repeat"] = repeat_btn
+        widgets["kinito_mute"] = kinito_mute_btn
         widgets["volume_btn"] = volume_btn
         widgets["list_btn"] = list_btn
 
@@ -1639,6 +1685,7 @@ class MusicMixin:
 
     def _close_music_player_window(self):
         """Close the player and stop any user song that is still playing."""
+        self._clear_player_kinito_mute()
         cancel_after(self.root, self, "_music_progress_timer")
         self._close_music_volume_popup()
         self._close_music_track_picker()
@@ -1684,6 +1731,7 @@ class MusicMixin:
         play_btn = widgets.get("play")
         shuffle_btn = widgets.get("shuffle")
         repeat_btn = widgets.get("repeat")
+        kinito_mute_btn = widgets.get("kinito_mute")
         photos = getattr(self, "_music_player_photos", {})
         try:
             if song_label is not None:
@@ -1718,6 +1766,12 @@ class MusicMixin:
                 repeat_icon = photos.get("repeat_one" if repeat_one else "repeat_all")
                 if repeat_icon is not None:
                     repeat_btn.config(image=repeat_icon)
+            if kinito_mute_btn is not None:
+                kinito_mute_btn.config(
+                    text=self._player_kinito_mute_button_text(
+                        muted=self._is_player_kinito_muted()
+                    )
+                )
         except tk.TclError:
             pass
         self._update_music_progress_ui()

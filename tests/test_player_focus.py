@@ -53,6 +53,23 @@ def test_run_tts_is_skipped_when_player_focus_is_active(speech):
     assert speech._run_tts("Hello") is False
 
 
+def test_run_tts_is_skipped_when_player_kinito_muted(speech):
+    speech._tts_enabled = True
+    speech._player_kinito_muted = True
+    speech._player_focus_active.return_value = False
+    assert speech._run_tts("Hello") is False
+
+
+def test_play_sfx_is_muted_when_player_kinito_muted():
+    app = FloatingAssistant.__new__(FloatingAssistant)
+    app._player_kinito_muted = True
+    app._sound_effects_enabled = True
+    app._player_focus_active = MagicMock(return_value=False)
+    with patch("kinito.app.os.path.isfile") as isfile:
+        app.play_sfx("boop.mp3")
+    isfile.assert_not_called()
+
+
 def test_play_sfx_is_muted_when_player_focus_is_active():
     app = FloatingAssistant.__new__(FloatingAssistant)
     app._player_focus_active = MagicMock(return_value=True)

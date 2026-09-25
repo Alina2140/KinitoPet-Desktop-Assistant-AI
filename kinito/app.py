@@ -1065,6 +1065,8 @@ class FloatingAssistant(
         """Play a short sound effect without interrupting background music."""
         if not getattr(self, "_sound_effects_enabled", True):
             return
+        if getattr(self, "_player_kinito_muted", False):
+            return
         if self._player_sounds_muted():
             return
         if not os.path.isfile(file_path):
@@ -1083,7 +1085,9 @@ class FloatingAssistant(
 
     def play_mp3(self, file_path, volume=1.0, *, speech_accompaniment=False):
         """Play an MP3 file via pygame mixer; silently skip missing or broken files."""
-        if speech_accompaniment and self._player_sounds_muted():
+        if speech_accompaniment and (
+            self._player_sounds_muted() or getattr(self, "_player_kinito_muted", False)
+        ):
             return
         if not os.path.isfile(file_path):
             return

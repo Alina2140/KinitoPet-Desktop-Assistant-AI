@@ -983,6 +983,8 @@ class SpeechMixin:
         """Run TTS via balcon (preferred) or pyttsx3 fallback."""
         if not getattr(self, "_tts_enabled", True):
             return False
+        if getattr(self, "_player_kinito_muted", False):
+            return False
         check = getattr(self, "_player_focus_active", None)
         if callable(check) and check():
             return False
