@@ -84,7 +84,7 @@ MEMORY_FIRST_PAIR_LINES = [
 
 MEMORY_HALF_LINES = [
     "Halfway there! Your memory is better than mine. I forget nothing.",
-    "Four pairs down! You're on a roll.",
+    "Halfway already! You're on a roll.",
 ]
 
 MEMORY_WIN_LINES = [

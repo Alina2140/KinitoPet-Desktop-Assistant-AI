@@ -41,7 +41,15 @@ from kinito.features.games.coin_dice import (
 )
 from kinito.features.games.hangman import MAX_MISSES, apply_guess, display_word
 from kinito.features.games.magic_8_ball import pick_answer
-from kinito.features.games.memory import DEFAULT_PAIRS, build_deck, is_match
+from kinito.features.games.memory import (
+    DEFAULT_PAIRS,
+    PAIR_OPTIONS,
+    build_deck,
+    grid_shape,
+    is_match,
+    normalize_pair_count,
+    select_pairs,
+)
 from kinito.features.games.number_guess import (
     compare_guess,
     is_valid_guess,
@@ -163,9 +171,27 @@ def test_ttt_ai_blocks_player_win():
 def test_memory_deck_has_pairs():
     random.seed(0)
     deck = build_deck()
-    assert len(deck) == 16
+    assert len(deck) == len(DEFAULT_PAIRS) * 2
     for symbol in DEFAULT_PAIRS:
         assert deck.count(symbol) == 2
+
+
+def test_memory_deck_for_pair_options():
+    for count in PAIR_OPTIONS:
+        pairs = select_pairs(count)
+        assert len(pairs) == count
+        deck = build_deck(pairs)
+        assert len(deck) == count * 2
+        rows, cols = grid_shape(count)
+        assert rows * cols == count * 2
+        for symbol in pairs:
+            assert deck.count(symbol) == 2
+
+
+def test_memory_normalize_pair_count():
+    assert normalize_pair_count(12) == 12
+    assert normalize_pair_count(99) == 16
+    assert normalize_pair_count(None) == 16
 
 
 def test_memory_is_match():

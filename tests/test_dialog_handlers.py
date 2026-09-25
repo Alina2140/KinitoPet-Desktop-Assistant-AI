@@ -245,6 +245,18 @@ def test_handle_trivia_pack_back_opens_quick_games(mock_app):
     mock_app.offer_quick_games.assert_called_once()
 
 
+def test_handle_memory_size_opens_game(mock_app):
+    spec = find_dialog_spec(dlg.MEMORY_SIZE_QUESTION)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_MEMORY_PAIRS_12)
+    mock_app.start_memory_with_pairs.assert_called_once_with(12)
+
+
+def test_handle_memory_size_back_opens_board_games(mock_app):
+    spec = find_dialog_spec(dlg.MEMORY_SIZE_QUESTION)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_BACK)
+    mock_app.offer_board_games.assert_called_once()
+
+
 def test_handle_quick_games_true_false_opens_pack_picker(mock_app):
     spec = find_dialog_spec(dlg.QUICK_GAMES_QUESTION)
     handle_dialog_response(mock_app, spec, dlg.BUTTON_GAME_TRUE_FALSE)

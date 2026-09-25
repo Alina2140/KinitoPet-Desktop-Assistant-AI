@@ -13,11 +13,17 @@ from kinito.memory.store import _write_text_atomic
 SCORES_VERSION = 1
 SCORES_FILENAME = "game_scores.json"
 
+# Memory boards track a separate best-move record per pair count.
+# Keep in sync with PAIR_OPTIONS / DEFAULT_PAIR_COUNT in memory.py.
+_MEMORY_PAIR_OPTIONS = (8, 12, 16)
+_MEMORY_DEFAULT_PAIR_COUNT = 16
+_LEGACY_MEMORY_BEST_KEY = "memory_best_moves"
+
 # Integer scores; 0 means "no record yet" for lower-is-better keys.
 DEFAULT_SCORES: dict[str, int] = {
     "snake_highscore": 0,
     "tetris_highscore": 0,
-    "memory_best_moves": 0,
+    **{f"memory_best_moves_{n}": 0 for n in _MEMORY_PAIR_OPTIONS},
     "trivia_best_score": 0,
     "trivia_streak": 0,
     "number_guess_best_attempts": 0,
@@ -29,11 +35,23 @@ TRIVIA_STREAK_THRESHOLD = 3
 # Keys where a lower positive value is better (0 = unset).
 _LOW_IS_BETTER_KEYS = frozenset(
     {
-        "memory_best_moves",
+        *(f"memory_best_moves_{n}" for n in _MEMORY_PAIR_OPTIONS),
         "number_guess_best_attempts",
         "battleships_best_shots",
     }
 )
+
+
+def _normalize_memory_pair_count(pair_count: int | None) -> int:
+    """Clamp *pair_count* to a supported Memory board size."""
+    if pair_count in _MEMORY_PAIR_OPTIONS:
+        return int(pair_count)
+    return _MEMORY_DEFAULT_PAIR_COUNT
+
+
+def _memory_best_key(pair_count: int | None) -> str:
+    """Return the scores key for the given Memory pair count."""
+    return f"memory_best_moves_{_normalize_memory_pair_count(pair_count)}"
 
 
 def scores_file_path(directory: str | None = None) -> str:
@@ -91,7 +109,22 @@ class GameScoresStore:
                 data[key] = max(0, int(value))
             else:
                 data[key] = default
+        self._migrate_legacy_memory_best(raw, data)
         return data
+
+    @staticmethod
+    def _migrate_legacy_memory_best(raw: dict[str, Any], data: dict[str, Any]) -> None:
+        """Move a pre-split Memory best onto the default board if needed."""
+        legacy = raw.get(_LEGACY_MEMORY_BEST_KEY)
+        if isinstance(legacy, bool):
+            return
+        if isinstance(legacy, float) and legacy.is_integer():
+            legacy = int(legacy)
+        if not isinstance(legacy, int) or legacy <= 0:
+            return
+        default_key = _memory_best_key(_MEMORY_DEFAULT_PAIR_COUNT)
+        if data.get(default_key, 0) == 0:
+            data[default_key] = legacy
 
     def get(self, key: str) -> int:
         """Return an integer score value (0 if unknown)."""
@@ -129,13 +162,13 @@ class GameScoresStore:
             self.save()
         return True
 
-    def memory_best_moves(self) -> int | None:
-        """Return best (lowest) Memory move count, or None if unset."""
-        return self._get_low_best("memory_best_moves")
+    def memory_best_moves(self, pair_count: int | None = None) -> int | None:
+        """Return best (lowest) Memory moves for *pair_count*, or None if unset."""
+        return self._get_low_best(_memory_best_key(pair_count))
 
-    def record_memory_moves(self, moves: int) -> bool:
-        """Update Memory best if *moves* is a new low. Return True on new best."""
-        return self._record_low_best("memory_best_moves", moves)
+    def record_memory_moves(self, moves: int, pair_count: int | None = None) -> bool:
+        """Update Memory best for *pair_count* if *moves* is a new low."""
+        return self._record_low_best(_memory_best_key(pair_count), moves)
 
     def number_guess_best_attempts(self) -> int | None:
         """Return fewest Number Guess attempts on a win, or None if unset."""

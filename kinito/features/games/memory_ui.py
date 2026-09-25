@@ -6,10 +6,15 @@ from tkinter import Button, Frame, Label
 from content import dialogue as dlg
 from content import game_lines
 from kinito.features.games.base import create_uniform_grid, game_emoji_font, open_game_window
-from kinito.features.games.memory import DEFAULT_PAIRS, build_deck, is_match
+from kinito.features.games.memory import (
+    PAIR_OPTIONS,
+    build_deck,
+    grid_shape,
+    is_match,
+    normalize_pair_count,
+    select_pairs,
+)
 
-GRID_SIZE = 4
-PAIR_COUNT = len(DEFAULT_PAIRS)
 FLIP_BACK_MS = 800
 HIDDEN_TEXT = "?"
 CARD_WIDTH = 3
@@ -18,11 +23,12 @@ POST_WIN_MIN_HEIGHT = 580
 
 
 class MemoryGame:
-    """4x4 memory game with emoji card pairs."""
+    """Memory game with a configurable number of emoji card pairs."""
 
-    def __init__(self, app):
+    def __init__(self, app, pair_count: int | None = None):
         self.app = app
-        self.deck = build_deck()
+        self.pair_count = normalize_pair_count(pair_count)
+        self.deck = build_deck(select_pairs(self.pair_count))
         self.revealed = [False] * len(self.deck)
         self.matched = [False] * len(self.deck)
         self.buttons: list[Button] = []
@@ -31,39 +37,78 @@ class MemoryGame:
         self.moves = 0
         self.pairs_found = 0
         self.status_label: Label | None = None
+        self.grid_frame: Frame | None = None
+        self.main_frame: Frame | None = None
+        self.pair_buttons: dict[int, Button] = {}
         self.window = None
-        scores = app.game_scores() if hasattr(app, "game_scores") else None
-        self.best_moves = scores.memory_best_moves() if scores is not None else None
+        self.best_moves: int | None = None
+        self._refresh_best_moves()
+
+    def _refresh_best_moves(self) -> None:
+        """Load the persistent best for the current pair-count category."""
+        scores = self.app.game_scores() if hasattr(self.app, "game_scores") else None
+        self.best_moves = (
+            scores.memory_best_moves(self.pair_count) if scores is not None else None
+        )
 
     def open(self):
         """Open the memory game window."""
+        rows, cols = grid_shape(self.pair_count)
+        width = max(360, 90 * cols + 80)
+        height = max(420, 90 * rows + 160)
         self.window = open_game_window(
             self.app,
             "Memory with Kinito",
-            420,
-            560,
-            min_width=340,
-            min_height=480,
+            width,
+            height,
+            min_width=max(300, width - 80),
+            min_height=max(360, height - 80),
         )
 
-        main = Frame(self.window)
-        main.pack(fill=tk.BOTH, expand=True)
+        self.main_frame = Frame(self.window)
+        self.main_frame.pack(fill=tk.BOTH, expand=True)
 
-        Button(main, text="New Game", command=self._reset).pack(
-            side=tk.BOTTOM,
-            pady=(0, 10),
-        )
+        footer = Frame(self.main_frame)
+        footer.pack(side=tk.BOTTOM, fill=tk.X, pady=(0, 10), padx=10)
+        Label(footer, text="PAIRS:", font=("Arial", 9)).pack(side=tk.LEFT)
+        for value in PAIR_OPTIONS:
+            button = Button(
+                footer,
+                text=str(value),
+                width=3,
+                relief=tk.FLAT,
+                font=("Arial", 9, "bold" if value == self.pair_count else "normal"),
+                command=lambda n=value: self._set_pair_count(n),
+            )
+            button.pack(side=tk.LEFT, padx=1)
+            self.pair_buttons[value] = button
+        Button(footer, text="New Game", command=self._reset).pack(side=tk.RIGHT)
 
-        self.status_label = Label(main, text=self._status_idle_text())
+        self.status_label = Label(self.main_frame, text=self._status_idle_text())
         self.status_label.pack(side=tk.TOP, pady=8)
 
-        grid = create_uniform_grid(main, GRID_SIZE, GRID_SIZE, uniform="memory")
+        self._build_grid()
+
+    def _build_grid(self):
+        """Create or recreate the card button grid for the current pair count."""
+        if self.grid_frame is not None:
+            self.grid_frame.destroy()
+            self.grid_frame = None
+        self.buttons.clear()
+
+        rows, cols = grid_shape(self.pair_count)
+        self.grid_frame = create_uniform_grid(
+            self.main_frame,
+            rows,
+            cols,
+            uniform="memory",
+        )
         card_font = game_emoji_font(22)
 
-        for index in range(GRID_SIZE * GRID_SIZE):
-            row, col = divmod(index, GRID_SIZE)
+        for index in range(rows * cols):
+            row, col = divmod(index, cols)
             button = Button(
-                grid,
+                self.grid_frame,
                 text=HIDDEN_TEXT,
                 font=card_font,
                 width=CARD_WIDTH,
@@ -77,8 +122,8 @@ class MemoryGame:
 
     def _status_idle_text(self) -> str:
         if self.best_moves is None:
-            return "Find all matching pairs!"
-        return f"Find all matching pairs!  Best: {self.best_moves} moves"
+            return f"Find all {self.pair_count} matching pairs!"
+        return f"Find all {self.pair_count} pairs!  Best: {self.best_moves} moves"
 
     def _expand_window_for_summary(self):
         """Grow the window after a win so status text and controls stay visible."""
@@ -94,17 +139,31 @@ class MemoryGame:
         except tk.TclError:
             pass
 
-    def _reset(self):
+    def _set_pair_count(self, pair_count: int) -> None:
+        """Switch board size and start a fresh game."""
+        count = normalize_pair_count(pair_count)
+        if count == self.pair_count and self.pairs_found == 0 and self.moves == 0:
+            return
+        self.pair_count = count
+        for value, button in self.pair_buttons.items():
+            button.config(font=("Arial", 9, "bold" if value == self.pair_count else "normal"))
+        self._refresh_best_moves()
+        self._reset(rebuild_grid=True)
+
+    def _reset(self, *, rebuild_grid: bool = False):
         """Shuffle and restart."""
-        self.deck = build_deck()
+        self.deck = build_deck(select_pairs(self.pair_count))
         self.revealed = [False] * len(self.deck)
         self.matched = [False] * len(self.deck)
         self.first_pick = None
         self.lock_input = False
         self.moves = 0
         self.pairs_found = 0
-        for button in self.buttons:
-            button.config(text=HIDDEN_TEXT, state="normal")
+        if rebuild_grid or len(self.buttons) != len(self.deck):
+            self._build_grid()
+        else:
+            for button in self.buttons:
+                button.config(text=HIDDEN_TEXT, state="normal")
         if self.status_label:
             self.status_label.config(text=self._status_idle_text())
 
@@ -132,7 +191,7 @@ class MemoryGame:
             self.buttons[second].config(state="disabled")
             self.pairs_found += 1
             self._on_pair_found()
-            if self.pairs_found == PAIR_COUNT:
+            if self.pairs_found == self.pair_count:
                 self._on_win()
             return
 
@@ -156,15 +215,17 @@ class MemoryGame:
         """Comment on pair milestones."""
         if self.pairs_found == 1:
             self.app.speak_game_line(dlg.pick_line(game_lines.MEMORY_FIRST_PAIR_LINES))
-        elif self.pairs_found == PAIR_COUNT // 2:
+        elif self.pairs_found == self.pair_count // 2:
             self.app.speak_game_line(dlg.pick_line(game_lines.MEMORY_HALF_LINES))
 
     def _on_win(self):
         """Announce victory and update the persistent best-move record."""
         is_new_best = False
         if hasattr(self.app, "game_scores"):
-            is_new_best = self.app.game_scores().record_memory_moves(self.moves)
-            self.best_moves = self.app.game_scores().memory_best_moves()
+            is_new_best = self.app.game_scores().record_memory_moves(
+                self.moves, self.pair_count
+            )
+            self.best_moves = self.app.game_scores().memory_best_moves(self.pair_count)
         elif self.best_moves is None or self.moves < self.best_moves:
             self.best_moves = self.moves
             is_new_best = True

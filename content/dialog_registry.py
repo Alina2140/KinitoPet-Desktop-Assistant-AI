@@ -870,6 +870,21 @@ def _handle_trivia_pack(app, response: str) -> None:
         app.start_true_false_pack(pack)
 
 
+def _handle_memory_size(app, response: str) -> None:
+    """Open Memory with the chosen pair count, or return to board games."""
+    if response == dlg.BUTTON_BACK:
+        app.offer_board_games()
+        return
+    size_map = {
+        dlg.BUTTON_MEMORY_PAIRS_8: 8,
+        dlg.BUTTON_MEMORY_PAIRS_12: 12,
+        dlg.BUTTON_MEMORY_PAIRS_16: 16,
+    }
+    pair_count = size_map.get(response)
+    if pair_count is not None:
+        app.start_memory_with_pairs(pair_count)
+
+
 def _handle_board_games(app, response: str) -> None:
     """Launch a board mini-game or return to the top-level picker."""
     if response == dlg.BUTTON_BACK:
@@ -1261,6 +1276,19 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
             ),
         ),
         _handle_trivia_pack,
+    ),
+    DialogSpec(
+        dlg.MEMORY_SIZE_MARKER,
+        DialogUI(
+            "buttons",
+            buttons=(
+                dlg.BUTTON_MEMORY_PAIRS_8,
+                dlg.BUTTON_MEMORY_PAIRS_12,
+                dlg.BUTTON_MEMORY_PAIRS_16,
+                dlg.BUTTON_BACK,
+            ),
+        ),
+        _handle_memory_size,
     ),
     DialogSpec(
         dlg.TRUE_FALSE_MARKER,

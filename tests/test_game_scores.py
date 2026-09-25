@@ -28,6 +28,9 @@ def test_defaults_when_missing(store):
     assert store.snake_highscore() == 0
     assert store.tetris_highscore() == 0
     assert store.memory_best_moves() is None
+    assert store.memory_best_moves(8) is None
+    assert store.memory_best_moves(12) is None
+    assert store.memory_best_moves(16) is None
     assert store.number_guess_best_attempts() is None
     assert store.battleships_best_shots() is None
     assert store.trivia_best_score() == 0
@@ -56,14 +59,37 @@ def test_record_tetris_score_persists(store, scores_dir):
     assert reloaded.tetris_highscore() == 2400
 
 
-def test_record_memory_moves_keeps_lowest(store, scores_dir):
-    assert store.record_memory_moves(18) is True
-    assert store.memory_best_moves() == 18
-    assert store.record_memory_moves(22) is False
-    assert store.memory_best_moves() == 18
-    assert store.record_memory_moves(14) is True
+def test_record_memory_moves_keeps_lowest_per_category(store, scores_dir):
+    assert store.record_memory_moves(18, 8) is True
+    assert store.memory_best_moves(8) == 18
+    assert store.record_memory_moves(22, 8) is False
+    assert store.memory_best_moves(8) == 18
+    assert store.record_memory_moves(14, 8) is True
+    assert store.memory_best_moves(8) == 14
+
+    assert store.record_memory_moves(30, 12) is True
+    assert store.memory_best_moves(12) == 30
+    assert store.memory_best_moves(8) == 14
+    assert store.memory_best_moves(16) is None
+
+    assert store.record_memory_moves(40, 16) is True
+    assert store.memory_best_moves() == 40
+
     reloaded = GameScoresStore(directory=scores_dir)
-    assert reloaded.memory_best_moves() == 14
+    assert reloaded.memory_best_moves(8) == 14
+    assert reloaded.memory_best_moves(12) == 30
+    assert reloaded.memory_best_moves(16) == 40
+
+
+def test_migrates_legacy_memory_best_to_default_board(scores_dir):
+    os.makedirs(scores_dir, exist_ok=True)
+    path = os.path.join(scores_dir, "game_scores.json")
+    with open(path, "w", encoding="utf-8") as handle:
+        json.dump({"version": 1, "memory_best_moves": 22}, handle)
+    store = GameScoresStore(directory=scores_dir)
+    assert store.memory_best_moves(16) == 22
+    assert store.memory_best_moves(8) is None
+    assert store.memory_best_moves(12) is None
 
 
 def test_record_number_guess_attempts_keeps_lowest(store, scores_dir):
@@ -122,6 +148,7 @@ def test_ignores_invalid_types(scores_dir):
             {
                 "version": 1,
                 "snake_highscore": "nope",
+                "memory_best_moves_8": True,
                 "memory_best_moves": True,
                 "trivia_best_score": 3.0,
                 "trivia_streak": -2,
@@ -130,6 +157,7 @@ def test_ignores_invalid_types(scores_dir):
         )
     store = GameScoresStore(directory=scores_dir)
     assert store.snake_highscore() == 0
-    assert store.memory_best_moves() is None
+    assert store.memory_best_moves(8) is None
+    assert store.memory_best_moves(16) is None
     assert store.trivia_best_score() == 3
     assert store.trivia_streak() == 0

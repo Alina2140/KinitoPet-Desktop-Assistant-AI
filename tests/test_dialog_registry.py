@@ -195,6 +195,7 @@ def test_game_picker_before_game_question():
         (dlg.DICE_GUESS_QUESTION, dlg.DICE_GUESS_MARKER),
         (dlg.MAGIC_8_BALL_QUESTION, dlg.MAGIC_8_BALL_MARKER),
         (dlg.TRIVIA_PACK_QUESTION, dlg.TRIVIA_PACK_MARKER),
+        (dlg.MEMORY_SIZE_QUESTION, dlg.MEMORY_SIZE_MARKER),
         (dlg.GAME_PLAY_AGAIN_SUFFIX, dlg.GAME_PLAY_AGAIN_MARKER),
     ],
 )
@@ -215,6 +216,15 @@ def test_trivia_pack_question_does_not_match_true_false_marker():
     assert spec is not None
     assert spec.marker == dlg.TRIVIA_PACK_MARKER
     assert dlg.BUTTON_TRIVIA_MIXED in spec.ui.buttons
+
+
+def test_memory_size_question_has_pair_buttons():
+    spec = find_dialog_spec(dlg.MEMORY_SIZE_QUESTION)
+    assert spec is not None
+    assert spec.marker == dlg.MEMORY_SIZE_MARKER
+    assert dlg.BUTTON_MEMORY_PAIRS_8 in spec.ui.buttons
+    assert dlg.BUTTON_MEMORY_PAIRS_12 in spec.ui.buttons
+    assert dlg.BUTTON_MEMORY_PAIRS_16 in spec.ui.buttons
 
 
 def test_quick_games_before_game_picker():

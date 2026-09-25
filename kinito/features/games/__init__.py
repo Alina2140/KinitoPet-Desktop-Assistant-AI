@@ -123,10 +123,19 @@ class GamesMixin:
         self.speak(dlg.NUMBER_GUESS_QUESTION, 45, True)
 
     def start_memory(self):
-        """Open a memory card game window."""
+        """Offer Memory board-size choices before opening the game."""
+        if self._is_busy_with_speech():
+            return
         if hasattr(self, "note_user_attention"):
             self.note_user_attention()
-        self.root.after(0, lambda: MemoryGame(self).open())
+        self.speak(dlg.MEMORY_SIZE_QUESTION, 45, True)
+
+    def start_memory_with_pairs(self, pair_count: int | None = None):
+        """Open a memory card game window with *pair_count* pairs."""
+        if hasattr(self, "note_user_attention"):
+            self.note_user_attention()
+        count = pair_count
+        self.root.after(0, lambda: MemoryGame(self, pair_count=count).open())
 
     def start_coin_dice(self):
         """Start the coin-and-dice quick game."""
