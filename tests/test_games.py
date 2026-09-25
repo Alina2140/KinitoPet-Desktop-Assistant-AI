@@ -510,6 +510,25 @@ def test_hangman_pick_word_avoids_used():
     assert word == WORDS[-1]
 
 
+def test_hangman_letter_button_disabled_style():
+    from unittest.mock import MagicMock
+
+    from kinito.features.games.hangman import (
+        _LETTER_BTN_DISABLED_BG,
+        _LETTER_BTN_DISABLED_FG,
+        _style_letter_button,
+    )
+
+    button = MagicMock()
+    _style_letter_button(button, enabled=False)
+    import tkinter as tk
+
+    kwargs = button.config.call_args.kwargs
+    assert kwargs["state"] == tk.DISABLED
+    assert kwargs["bg"] == _LETTER_BTN_DISABLED_BG
+    assert kwargs["fg"] == _LETTER_BTN_DISABLED_FG
+
+
 def test_hangman_hit_reveals_letters():
     state = hangman_game.new_game("CAT")
     assert apply_guess(state, "a") == "hit"
@@ -541,6 +560,15 @@ def test_hangman_win_when_all_revealed():
     assert apply_guess(state, "i") == "hit"
     assert state["status"] == "won"
     assert display_word(state) == "H I"
+
+
+def test_hangman_misses_never_exceed_max_on_rapid_wrong_guesses():
+    state = hangman_game.new_game("AB")
+    wrong = "CDEFGHIJKLMNOPQRSTUVWXYZ"
+    for ch in wrong:
+        apply_guess(state, ch)
+    assert state["misses"] <= MAX_MISSES
+    assert state["status"] == "lost"
 
 
 def test_hangman_lose_at_max_misses():

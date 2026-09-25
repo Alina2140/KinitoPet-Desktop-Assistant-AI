@@ -15,6 +15,12 @@ from kinito.features.games.base import open_game_window
 MAX_MISSES = 6
 Status = Literal["playing", "won", "lost"]
 
+_LETTER_BTN_BG = "#ececec"
+_LETTER_BTN_FG = "#111111"
+_LETTER_BTN_ACTIVE_BG = "#d4d4d4"
+_LETTER_BTN_DISABLED_BG = "#a8a8a8"
+_LETTER_BTN_DISABLED_FG = "#5a5a5a"
+
 HANGMAN_STAGES: tuple[str, ...] = (
     """
   +---+
@@ -95,17 +101,15 @@ def display_word(state: dict) -> str:
     return " ".join(chars)
 
 
-def apply_guess(state: dict, letter: str) -> Literal["hit", "miss", "repeat", "ignored"]:
-    """Apply one letter guess. Mutates *state*. Return the outcome label."""
-    if state["status"] != "playing":
-        return "ignored"
+def _resolve_guess_letter(letter: str) -> str | None:
     ch = letter.strip().upper()
     if len(ch) != 1 or ch not in string.ascii_uppercase:
-        return "ignored"
-    if ch in state["guessed"]:
-        return "repeat"
+        return None
+    return ch
 
-    state["guessed"].add(ch)
+
+def _score_guess(state: dict, ch: str) -> Literal["hit", "miss"]:
+    """Score *ch* after it was reserved in ``guessed``."""
     if ch in state["word"]:
         for index, word_ch in enumerate(state["word"]):
             if word_ch == ch:
@@ -114,11 +118,61 @@ def apply_guess(state: dict, letter: str) -> Literal["hit", "miss", "repeat", "i
             state["status"] = "won"
         return "hit"
 
-    state["misses"] += 1
     if state["misses"] >= MAX_MISSES:
         state["status"] = "lost"
         state["revealed"] = [True] * len(state["word"])
+        return "miss"
+
+    state["misses"] += 1
+    if state["misses"] >= MAX_MISSES:
+        state["misses"] = MAX_MISSES
+        state["status"] = "lost"
+        state["revealed"] = [True] * len(state["word"])
     return "miss"
+
+
+def apply_guess(state: dict, letter: str) -> Literal["hit", "miss", "repeat", "ignored"]:
+    """Apply one letter guess. Mutates *state*. Return the outcome label."""
+    if state["status"] != "playing":
+        return "ignored"
+    ch = _resolve_guess_letter(letter)
+    if ch is None:
+        return "ignored"
+    if ch in state["guessed"]:
+        return "repeat"
+
+    state["guessed"].add(ch)
+    return _score_guess(state, ch)
+
+
+def _style_letter_button(
+    button: Button,
+    *,
+    enabled: bool,
+    command=None,
+) -> None:
+    """Dim used letters via background color (works on Tk builds without disabledbackground)."""
+    if enabled:
+        options = {
+            "state": tk.NORMAL,
+            "bg": _LETTER_BTN_BG,
+            "fg": _LETTER_BTN_FG,
+            "activebackground": _LETTER_BTN_ACTIVE_BG,
+            "relief": tk.RIDGE,
+            "cursor": "hand2",
+        }
+        if command is not None:
+            options["command"] = command
+        button.config(**options)
+        return
+    button.config(
+        state=tk.DISABLED,
+        bg=_LETTER_BTN_DISABLED_BG,
+        fg=_LETTER_BTN_DISABLED_FG,
+        activebackground=_LETTER_BTN_DISABLED_BG,
+        relief=tk.SUNKEN,
+        cursor="arrow",
+    )
 
 
 class HangmanGame:
@@ -134,6 +188,7 @@ class HangmanGame:
         self.status_label: Label | None = None
         self.letter_buttons: dict[str, Button] = {}
         self._ended = False
+        self._guess_in_progress = False
 
     def _next_word(self) -> str:
         word = pick_word(used=self.used_words)
@@ -184,7 +239,10 @@ class HangmanGame:
                 text=ch,
                 width=3,
                 command=lambda c=ch: self._on_letter(c),
+                relief=tk.RIDGE,
+                bd=2,
             )
+            _style_letter_button(button, enabled=True)
             button.grid(row=index // 9, column=index % 9, padx=2, pady=2)
             self.letter_buttons[ch] = button
 
@@ -195,7 +253,8 @@ class HangmanGame:
             return f"You win! The word was {self.state['word']}."
         if self.state["status"] == "lost":
             return f"Game over! The word was {self.state['word']}."
-        return f"Misses: {self.state['misses']}/{MAX_MISSES}. Pick a letter!"
+        misses = min(int(self.state["misses"]), MAX_MISSES)
+        return f"Misses: {misses}/{MAX_MISSES}. Pick a letter!"
 
     def _refresh(self):
         misses = min(self.state["misses"], MAX_MISSES)
@@ -208,20 +267,53 @@ class HangmanGame:
 
     def _lock_letters(self):
         for button in self.letter_buttons.values():
-            button.config(state="disabled")
+            _style_letter_button(button, enabled=False)
+
+    def _freeze_active_letters(self) -> None:
+        """Disable every unused letter so queued clicks cannot fire mid-guess."""
+        for ch, button in self.letter_buttons.items():
+            if ch not in self.state["guessed"]:
+                button.config(state=tk.DISABLED)
+
+    def _sync_letter_buttons(self) -> None:
+        """Refresh letter buttons from game state."""
+        for ch, button in self.letter_buttons.items():
+            if ch in self.state["guessed"]:
+                _style_letter_button(button, enabled=False)
+            elif self.state["status"] == "playing":
+                _style_letter_button(
+                    button,
+                    enabled=True,
+                    command=lambda c=ch: self._on_letter(c),
+                )
+            else:
+                _style_letter_button(button, enabled=False)
 
     def _on_letter(self, letter: str):
-        if self.state["status"] != "playing":
+        if self._guess_in_progress or self.state["status"] != "playing":
             return
-        result = apply_guess(self.state, letter)
-        if result == "ignored":
-            return
-        button = self.letter_buttons.get(letter)
-        if button is not None:
-            button.config(state="disabled")
-        self._refresh()
-        if self.state["status"] in ("won", "lost"):
+        if int(self.state["misses"]) >= MAX_MISSES:
+            self.state["status"] = "lost"
+            self.state["revealed"] = [True] * len(self.state["word"])
+            self._lock_letters()
+            self._refresh()
             self._end_game()
+            return
+        ch = _resolve_guess_letter(letter)
+        if ch is None or ch in self.state["guessed"]:
+            return
+
+        self._guess_in_progress = True
+        self._freeze_active_letters()
+        try:
+            self.state["guessed"].add(ch)
+            _score_guess(self.state, ch)
+            self._refresh()
+            self._sync_letter_buttons()
+            if self.state["status"] in ("won", "lost"):
+                self._end_game()
+        finally:
+            self._guess_in_progress = False
 
     def _end_game(self):
         if self._ended:
@@ -244,6 +336,11 @@ class HangmanGame:
         """Start a new round with a fresh word."""
         self.state = new_game(self._next_word())
         self._ended = False
-        for _ch, button in self.letter_buttons.items():
-            button.config(state="normal")
+        self._guess_in_progress = False
+        for ch, button in self.letter_buttons.items():
+            _style_letter_button(
+                button,
+                enabled=True,
+                command=lambda c=ch: self._on_letter(c),
+            )
         self._refresh()
