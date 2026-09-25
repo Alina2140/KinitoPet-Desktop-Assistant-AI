@@ -50,9 +50,43 @@ class GamesMixin:
             return
         self.speak(dlg.BOARD_GAMES_QUESTION, 45, True)
 
-    def speak_game_line(self, line, *, show_bubble=True):
+    _GAME_LINE_DEFER_POLL_MS = 100
+    _GAME_LINE_DEFER_MAX_POLLS = 600
+
+    def speak_game_line(self, line, *, show_bubble=True, defer_if_speaking=False):
         """Speak a game comment with TTS and show Kinito's speech bubble."""
+        if defer_if_speaking and self._is_busy_with_speech():
+            self.root.after(
+                self._GAME_LINE_DEFER_POLL_MS,
+                lambda: self._schedule_speak_game_line_when_idle(
+                    line,
+                    show_bubble=show_bubble,
+                ),
+            )
+            return
         self.speak(line, show_bubble=show_bubble, skip_ai=True)
+
+    def _schedule_speak_game_line_when_idle(
+        self,
+        line,
+        *,
+        show_bubble=True,
+        poll_count=0,
+    ) -> None:
+        """Speak *line* once current speech finishes (used when closing a game)."""
+        if not self._is_busy_with_speech():
+            self.speak(line, show_bubble=show_bubble, skip_ai=True)
+            return
+        if poll_count >= self._GAME_LINE_DEFER_MAX_POLLS:
+            return
+        self.root.after(
+            self._GAME_LINE_DEFER_POLL_MS,
+            lambda: self._schedule_speak_game_line_when_idle(
+                line,
+                show_bubble=show_bubble,
+                poll_count=poll_count + 1,
+            ),
+        )
 
     def is_color_guess_voice_enabled(self) -> bool:
         """Return whether Color Guess should speak a line on correct picks."""

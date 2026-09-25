@@ -105,7 +105,10 @@ def open_game_window(
         app._game_window = None
         line = dlg.pick_line(game_lines.GAME_CLOSED_LINES)
         window.destroy()
-        app.root.after(0, lambda: app.speak_game_line(line))
+        app.root.after(
+            0,
+            lambda: app.speak_game_line(line, defer_if_speaking=True),
+        )
 
     window.protocol("WM_DELETE_WINDOW", on_close)
     window._kinito_close = on_close

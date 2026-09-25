@@ -651,6 +651,30 @@ def test_game_window_close_shows_speech_bubble():
     after_callback = app.root.after.call_args.args[1]
     after_callback()
     app.speak_game_line.assert_called_once()
+    assert app.speak_game_line.call_args.kwargs.get("defer_if_speaking") is True
+
+
+def test_speak_game_line_defers_while_speech_is_active():
+    from unittest.mock import MagicMock
+
+    from kinito.features.games import GamesMixin
+
+    class GameSpeechStub(GamesMixin):
+        pass
+
+    stub = GameSpeechStub()
+    stub._is_busy_with_speech = MagicMock(side_effect=[True, False])
+    stub.speak = MagicMock()
+    stub.root = MagicMock()
+
+    stub.speak_game_line("Game closed.", defer_if_speaking=True)
+
+    stub.speak.assert_not_called()
+    stub.root.after.assert_called_once()
+    stub.root.after.call_args.args[1]()
+    stub.speak.assert_called_once_with(
+        "Game closed.", show_bubble=True, skip_ai=True
+    )
 
 
 def test_is_game_active_with_open_window():
