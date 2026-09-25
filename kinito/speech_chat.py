@@ -142,6 +142,15 @@ class SpeechChatMixin(EmojiPickerMixin):
         )
         normal_btn.pack(side=tk.LEFT, padx=2)
 
+        back_btn = self._create_bubble_button(
+            row,
+            dlg.BUTTON_BACK,
+            self._back_from_chat_mode_picker,
+            padx=5,
+            pady=1,
+        )
+        back_btn.pack(side=tk.LEFT, padx=2)
+
         close_button = self._create_bubble_button(
             row,
             "×",
@@ -156,6 +165,11 @@ class SpeechChatMixin(EmojiPickerMixin):
         self._fit_speech_bubble_to_content()
         self._schedule_speech_bubble_position()
         self.speak(dlg.CHAT_MODE_PROMPT, show_bubble=False, skip_ai=True)
+
+    def _back_from_chat_mode_picker(self) -> None:
+        """Close the chat mode picker and reopen the main menu."""
+        self._close_speech_bubble_impl()
+        self.speak(dlg.MENU_PROMPT, 45, True, allow_in_focus=True)
 
     def _begin_chat_with_voice_mode(self, mode: str) -> None:
         """Open the chat bubble after the user picks a voice input mode."""

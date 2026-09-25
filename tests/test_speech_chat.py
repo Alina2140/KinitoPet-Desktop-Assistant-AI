@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from content import dialogue as dlg
 from kinito.speech import SpeechMixin
 from kinito.speech_chat import SpeechChatMixin
 
@@ -74,6 +75,16 @@ def test_close_chat_mode_resets_conversation(chat_app):
     chat_app._clear_chat_session_user_label.assert_called_once()
     assert chat_app._chat_session_user_label is None
     chat_app._close_speech_bubble_impl.assert_called_once()
+
+
+def test_back_from_chat_mode_picker_opens_main_menu(chat_app):
+    chat_app._close_speech_bubble_impl = MagicMock()
+    chat_app.speak = MagicMock()
+    chat_app._back_from_chat_mode_picker()
+    chat_app._close_speech_bubble_impl.assert_called_once_with()
+    chat_app.speak.assert_called_once_with(
+        dlg.MENU_PROMPT, 45, True, allow_in_focus=True
+    )
 
 
 def test_init_chat_state_includes_voice_defaults(chat_app):

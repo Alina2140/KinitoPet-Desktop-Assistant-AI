@@ -781,6 +781,9 @@ def _handle_story(app, response: str) -> None:
 
 def _handle_browser_category(app, response: str) -> None:
     """Map a category button to open_allowed_site."""
+    if response == dlg.BUTTON_BACK:
+        _open_actions_menu(app)
+        return
     category_map = {
         dlg.BUTTON_CATEGORY_ANIMALS: "animals",
         dlg.BUTTON_CATEGORY_KNOWLEDGE: "knowledge",
@@ -807,6 +810,9 @@ def _handle_poem(app, response: str) -> None:
 
 def _handle_game_picker(app, response: str) -> None:
     """Open the quick-games or board-games submenu."""
+    if response == dlg.BUTTON_BACK:
+        _open_actions_menu(app)
+        return
     actions = {
         dlg.BUTTON_QUICK_GAMES: lambda a: a.offer_quick_games(),
         dlg.BUTTON_BOARD_GAMES: lambda a: a.offer_board_games(),
@@ -1305,6 +1311,7 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
             buttons=(
                 dlg.BUTTON_QUICK_GAMES,
                 dlg.BUTTON_BOARD_GAMES,
+                dlg.BUTTON_BACK,
             ),
         ),
         _handle_game_picker,
@@ -1381,6 +1388,7 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
                 dlg.BUTTON_CATEGORY_GAMES,
                 dlg.BUTTON_CATEGORY_HORROR,
                 dlg.BUTTON_CATEGORY_RANDOM,
+                dlg.BUTTON_BACK,
             ),
         ),
         _handle_browser_category,

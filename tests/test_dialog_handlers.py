@@ -111,6 +111,18 @@ def test_handle_game_picker_opens_board_games(mock_app):
     mock_app.offer_board_games.assert_called_once()
 
 
+def test_handle_game_picker_back_opens_actions(mock_app):
+    spec = find_dialog_spec(dlg.GAME_PICKER_QUESTION)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_BACK)
+    mock_app.speak.assert_called_once_with(dlg.ACTIONS_MENU_QUESTION, 45, True)
+
+
+def test_handle_browser_category_back_opens_actions(mock_app):
+    spec = find_dialog_spec(dlg.BROWSER_CATEGORY_QUESTION)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_BACK)
+    mock_app.speak.assert_called_once_with(dlg.ACTIONS_MENU_QUESTION, 45, True)
+
+
 def test_handle_board_games_tic_tac_toe(mock_app):
     spec = find_dialog_spec(dlg.BOARD_GAMES_QUESTION)
     handle_dialog_response(mock_app, spec, dlg.BUTTON_GAME_TIC_TAC_TOE)
