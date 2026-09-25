@@ -1121,6 +1121,8 @@ class MovementMixin:
         cache = getattr(self, "_surf_render_cache", None)
         if cache is not None:
             cache.clear()
+        if getattr(self, "paused", False):
+            return
         self.change_sprite(self.tk_img_normal)
 
     def _stop_roaming(self) -> None:
@@ -1508,7 +1510,7 @@ class MovementMixin:
                 return
             self.change_sprite(self._pick_normal_idle_sprite(crouch=True))
             time.sleep(1)
-        elif self.paused and not self.talking:
+        elif self.paused:
             self._maybe_play_snoring()
             for sprite in (
                 self.tk_img_sleep,

@@ -442,6 +442,41 @@ def test_finish_surf_movement_clears_cache_and_restores_sprite(movement):
     movement.panel.config.assert_called_with(image="normal")
 
 
+def test_finish_surf_movement_keeps_sleep_sprite_while_paused(movement):
+    movement.paused = True
+    movement._surf_render_cache[("right", 4.0)] = "cached"
+    movement._finish_surf_movement()
+    assert movement._surf_render_cache == {}
+    movement.panel.config.assert_not_called()
+
+
+def test_idle_animation_uses_sleep_sprites_while_paused_and_talking(movement):
+    movement.paused = True
+    movement.talking = True
+    movement.tk_img_sleep = "sleep0"
+    movement.tk_img_sleep1 = "sleep1"
+    movement.tk_img_sleep2 = "sleep2"
+    movement.tk_img_sleep3 = "sleep3"
+    movement.tk_img_talking = "talk_a"
+    movement.tk_img_talking2 = "talk_b"
+    movement.tk_img_thinking = "think_a"
+    movement.tk_img_thinking2 = "think_b"
+    movement.change_sprite = MagicMock()
+    movement._maybe_play_snoring = MagicMock()
+
+    calls = {"n": 0}
+
+    def stop_after_first_sleep_frame(_seconds):
+        calls["n"] += 1
+        if calls["n"] >= 1:
+            movement._running = False
+
+    with patch("kinito.movement.time.sleep", side_effect=stop_after_first_sleep_frame):
+        movement._idle_animation_tick()
+
+    movement.change_sprite.assert_called_once_with("sleep0")
+
+
 def test_surf_sprite_for_movement_uses_direction(movement):
     assert movement._surf_sprite_for_movement(-5) == "surf_left"
     assert movement._surf_facing == "left"
