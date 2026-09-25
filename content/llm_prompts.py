@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import random
 import re
 from datetime import datetime
 
@@ -180,8 +181,44 @@ POEM_PROMPT = (
 
 FUN_FACT_PROMPT = (
     "Share one surprising fun fact with the user. One or two sentences. No markdown. "
-    "Usually light and curious; occasionally a slightly eerie curiosity is fine."
+    "Usually light and curious; occasionally a slightly eerie curiosity is fine. "
+    "Pick a fresh topic each time — do not default to famous internet facts."
 )
+
+FUN_FACT_TOPIC_ANGLES = (
+    "everyday physics or chemistry",
+    "ancient or medieval history",
+    "language and words",
+    "food and cooking science",
+    "space or astronomy",
+    "deep ocean (not jellyfish immortality)",
+    "plants and fungi",
+    "architecture or engineering",
+    "music or art history",
+    "wild animal behavior (not jellyfish)",
+    "human body quirks",
+    "geography or geology",
+)
+
+FUN_FACT_OVERUSED_PHRASES = (
+    "immortal jellyfish",
+    "turritopsis",
+    "revert to its juvenile",
+    "live forever by reverting",
+)
+
+
+def build_fun_fact_generation_prompt(*, seed: str) -> str:
+    """Build an Ollama prompt that nudges variety away from the seed line."""
+    angle = random.choice(FUN_FACT_TOPIC_ANGLES)
+    return (
+        f"{FUN_FACT_PROMPT}\n"
+        f"Topic angle for this reply: {angle}.\n"
+        "Invent a completely new fact on that angle. Do NOT copy, paraphrase, or stay on "
+        "the same subject as this seed (treat it as a topic to avoid):\n"
+        f"{seed.strip()}\n"
+        "Never use the immortal jellyfish / Turritopsis dohrnii fact or close variants."
+    )
 
 HUG_PROMPT = (
     "Say one short, warm hug line to the user. One or two sentences. No markdown. "

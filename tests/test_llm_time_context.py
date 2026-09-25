@@ -73,6 +73,16 @@ def test_build_generation_prompt_includes_time_for_day_question():
     assert dlg.DAY_QUESTIONS[0] in prompt
 
 
+def test_build_generation_prompt_fun_fact_avoids_inspired_by_paraphrase():
+    app = LLMStub()
+    seed = "There's a species of jellyfish that can theoretically live forever!"
+    prompt = app._build_generation_prompt(seed, prompts.FUN_FACT_PROMPT)
+    assert "Inspired by:" not in prompt
+    assert "Topic angle for this reply:" in prompt
+    assert "Turritopsis" in prompt
+    assert seed.strip() in prompt
+
+
 def test_build_generation_prompt_skips_time_for_poem_hint():
     app = LLMStub()
     prompt = app._build_generation_prompt("Roses are red.", prompts.POEM_PROMPT)

@@ -192,6 +192,8 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
         """Build the Ollama prompt for replacing a scripted line."""
         if ai_hint and not scripted_text.strip():
             prompt = ai_hint
+        elif ai_hint == prompts.FUN_FACT_PROMPT and scripted_text.strip():
+            prompt = prompts.build_fun_fact_generation_prompt(seed=scripted_text)
         elif ai_hint:
             prompt = f"{ai_hint}\nInspired by: {scripted_text.strip()}"
         else:
