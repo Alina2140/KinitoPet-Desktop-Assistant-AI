@@ -385,10 +385,12 @@ def test_move_speech_bubble_with_kinito_flips_below_near_top(speech):
 @pytest.mark.parametrize(
     "text,expected",
     [
-        ("", 6500),
-        ("x" * 100, 6500),
-        ("x" * 500, 21500),
-        ("x" * 2000, 46500),
+        ("", 3500),
+        ("x" * 50, 3500),
+        ("x" * 62, 3980),
+        ("x" * 100, 5500),
+        ("x" * 500, 5500),
+        ("x" * 2000, 5500),
     ],
 )
 def test_bubble_close_delay_poem(speech, text, expected):

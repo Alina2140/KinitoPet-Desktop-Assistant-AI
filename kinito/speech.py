@@ -146,8 +146,8 @@ class SpeechMixin:
     BUBBLE_REVEAL_DELAY_MS = 100
     BUBBLE_OFF_SCREEN_GEOMETRY = "-10000-10000"
     BRIEF_ACK_DISPLAY_MS = 2000
-    POEM_READ_MS_MIN = 5000
-    POEM_READ_MS_MAX = 45000
+    POEM_READ_MS_MIN = 2000
+    POEM_READ_MS_MAX = 4000
     POEM_READ_MS_PER_CHAR = 40
 
     def _has_protected_interactive_state(self) -> bool:
