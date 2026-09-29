@@ -261,7 +261,7 @@ The app expects a `GameAssets` folder next to `Kinito.py`:
 GameAssets/
 ├── sprites/
 │   ├── Standing/      # KinitoNormal.png + look-around variants
-│   ├── Standing2/     # crouch pose + look-around variants
+│   ├── Crouching/     # crouch pose + look-around variants
 │   ├── Reading/       # Idle / IdleGlasses
 │   ├── Magic/         # Fancy hat
 │   ├── Surfing/       # movement sprites

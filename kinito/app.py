@@ -19,6 +19,7 @@ from kinito.assets import (
     sprite_path_blush_down,
     sprite_path_blush_left,
     sprite_path_blush_right,
+    sprite_path_crouching,
     sprite_path_drag_left,
     sprite_path_drag_right,
     sprite_path_fancy,
@@ -36,7 +37,6 @@ from kinito.assets import (
     sprite_path_idle_glasses_2_page,
     sprite_path_idle_glasses_2_page_2,
     sprite_path_normal,
-    sprite_path_normal_2,
     sprite_path_sleep,
     sprite_path_sleep1,
     sprite_path_sleep2,
@@ -155,7 +155,7 @@ class FloatingAssistant(
 
         fallback = sprite_path_normal
         self.img_normal = _open_sprite(sprite_path_normal, fallback)
-        self.img_normal_2 = _open_sprite(sprite_path_normal_2, fallback)
+        self.img_crouching = _open_sprite(sprite_path_crouching, fallback)
         self.img_idle = _open_sprite(sprite_path_idle, fallback)
         self.img_idle_2 = _open_sprite(sprite_path_idle_2, fallback)
         self.img_idle_2_page = _open_sprite(sprite_path_idle_2_page, fallback)
@@ -188,15 +188,15 @@ class FloatingAssistant(
         self.img_blush_right = _open_sprite(sprite_path_blush_right, fallback)
         self.img_blush_down = _open_sprite(sprite_path_blush_down, fallback)
         self.tk_img_normal = ImageTk.PhotoImage(self.img_normal)
-        self.tk_img_normal_2 = ImageTk.PhotoImage(self.img_normal_2)
+        self.tk_img_crouching = ImageTk.PhotoImage(self.img_crouching)
         self._standing_look_sprites = _load_look_around_sprites(
             list_standing_sprite_paths(crouch=False),
             default_path=sprite_path_normal,
             fallback=fallback,
         )
-        self._standing2_look_sprites = _load_look_around_sprites(
+        self._crouching_look_sprites = _load_look_around_sprites(
             list_standing_sprite_paths(crouch=True),
-            default_path=sprite_path_normal_2,
+            default_path=sprite_path_crouching,
             fallback=fallback,
         )
         self._standing_dir_sprites = _load_direction_sprites(
@@ -204,10 +204,10 @@ class FloatingAssistant(
             fallback=fallback,
             center_image=self.img_normal,
         )
-        self._standing2_dir_sprites = _load_direction_sprites(
+        self._crouching_dir_sprites = _load_direction_sprites(
             list_standing_sprite_paths(crouch=True),
             fallback=fallback,
-            center_image=self.img_normal_2,
+            center_image=self.img_crouching,
         )
         self.tk_img_idle = ImageTk.PhotoImage(self.img_idle)
         self.tk_img_idle_2 = ImageTk.PhotoImage(self.img_idle_2)

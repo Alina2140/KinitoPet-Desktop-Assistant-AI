@@ -69,16 +69,16 @@ Zentrale Guard-Methode z. B. `_can_react_to_mouse()` → False in allen Busy-S
 | Look-Radius | 280 px |
 | Follow-Radius | 180 px (enger als Look) |
 | Follow-Chance nach Denken | ~35 % |
-| Denkzeit | 0.6–1.2 s (Standing/Standing2-Sprites) |
+| Denkzeit | 0.6–1.2 s (Standing/Crouching-Sprites) |
 | Follow-Dauer / Distanz | kurz: max ~120–200 px oder ~1.5 s, dann stoppen |
 | Cooldown nach Versuch (egal ob Ja/Nein) | 15–35 s |
-| Deadzone Mitte | ~40 px → Front-Sprite (`Standing/Standing2`) |
+| Deadzone Mitte | ~40 px → Front-Sprite (`Standing/Crouching`) |
 
 ## Umsetzung
 
 ### 1. Richtungs-Mapping aus vorhandenen Sprites
 
-In [`kinito/app.py`](kinito/app.py) / [`kinito/assets.py`](kinito/assets.py): beim Laden der Standing-Sprites aus Dateinamen (`Left`, `Right`, `Top`, `TopLeft`, …) eine Map `direction → PhotoImage` bauen (Standing + Standing2). Fehlende Richtungen fallen auf Front zurück — **keine neuen Assets nötig**; optionale Extra-Sprites später einfach ablegen.
+In [`kinito/app.py`](kinito/app.py) / [`kinito/assets.py`](kinito/assets.py): beim Laden der Standing-Sprites aus Dateinamen (`Left`, `Right`, `Top`, `TopLeft`, …) eine Map `direction → PhotoImage` bauen (Standing + Crouching). Fehlende Richtungen fallen auf Front zurück — **keine neuen Assets nötig**; optionale Extra-Sprites später einfach ablegen.
 
 ### 2. Cursor-Poll auf dem Tk-Thread
 
@@ -113,4 +113,4 @@ In [`tests/test_movement.py`](tests/test_movement.py):
 
 ## Was du nicht brauchst
 
-Neue Sprites sind **optional**. Für Look reichen die vorhandenen `Standing`/`Standing2`-Richtungen; für Denken/Folgen reichen `Thinking/` und `Surfing/`. Extra-Zwischenwinkel oder „neugierigere“ Looks kannst du später einfach als PNGs mit denselben Namensmustern ablegen.
+Neue Sprites sind **optional**. Für Look reichen die vorhandenen `Standing`/`Crouching`-Richtungen; für Denken/Folgen reichen `Thinking/` und `Surfing/`. Extra-Zwischenwinkel oder „neugierigere“ Looks kannst du später einfach als PNGs mit denselben Namensmustern ablegen.

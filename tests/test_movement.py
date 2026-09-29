@@ -809,9 +809,9 @@ def test_pick_normal_idle_sprite_respects_look_around_cooldown(movement):
     roll.assert_not_called()
 
 
-def test_pick_normal_idle_sprite_crouch_uses_standing2_pool(movement):
-    movement.tk_img_normal_2 = "crouch-default"
-    movement._standing2_look_sprites = ("crouch-left",)
+def test_pick_normal_idle_sprite_crouch_uses_crouching_pool(movement):
+    movement.tk_img_crouching = "crouch-default"
+    movement._crouching_look_sprites = ("crouch-left",)
     movement._look_around_ready_at = 0.0
     with patch("kinito.movement.random.random", return_value=0.1):
         assert movement._pick_normal_idle_sprite(crouch=True) == "crouch-default"
@@ -897,7 +897,7 @@ def _configure_mouse_attention(movement):
         "bottom_left": "look_bottom_left",
         "bottom_right": "look_bottom_right",
     }
-    movement._standing2_dir_sprites = {
+    movement._crouching_dir_sprites = {
         "center": "crouch_center",
         "left": "crouch_left",
         "right": "crouch_right",

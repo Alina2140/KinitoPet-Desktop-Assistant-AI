@@ -35,7 +35,7 @@ def test_asset_subdirectories(directory_attr, relative_path):
     "path_attr,filename,parent_attr",
     [
         ("sprite_path_normal", "KinitoNormal.png", "sprites_standing_directory"),
-        ("sprite_path_normal_2", "KinitoNormal2.png", "sprites_standing2_directory"),
+        ("sprite_path_crouching", "KinitoCrouching.png", "sprites_crouching_directory"),
         ("sprite_path_idle", "Idle.png", "sprites_reading_directory"),
         ("sprite_path_idle_2", "Idle2.png", "sprites_reading_directory"),
         ("sprite_path_idle_2_page", "Idle2Page.png", "sprites_reading_directory"),
@@ -127,7 +127,7 @@ def test_asset_paths_point_to_expected_files(path_attr, filename, parent_attr):
     "path_attr",
     [
         "sprite_path_normal",
-        "sprite_path_normal_2",
+        "sprite_path_crouching",
         "sprite_path_idle",
         "sprite_path_idle_2",
         "sprite_path_fancy",
@@ -204,7 +204,7 @@ def test_list_standing_sprite_paths_puts_default_first():
 
     crouch_paths = assets.list_standing_sprite_paths(crouch=True)
     assert crouch_paths
-    assert crouch_paths[0] == assets.sprite_path_normal_2
+    assert crouch_paths[0] == assets.sprite_path_crouching
     assert len(crouch_paths) >= 2
 
 
@@ -220,9 +220,9 @@ def test_list_standing_sprite_paths_puts_default_first():
         ("KinitoNormalTopRight.png", "top_right"),
         ("KinitoNormalBottomLeft.png", "bottom_left"),
         ("KinitoNormalBottomRight.png", "bottom_right"),
-        ("KinitoNormal2.png", "center"),
-        ("KinitoNormal2Left.png", "left"),
-        ("KinitoNormal2TopRight.png", "top_right"),
+        ("KinitoCrouching.png", "center"),
+        ("KinitoCrouchingLeft.png", "left"),
+        ("KinitoCrouchingTopRight.png", "top_right"),
     ],
 )
 def test_standing_direction_from_path(filename, direction):
@@ -257,7 +257,7 @@ def test_look_direction_from_delta(dx, dy, expected):
 def test_packaged_asset_files_exist_on_disk():
     expected_files = [
         assets.sprite_path_normal,
-        assets.sprite_path_normal_2,
+        assets.sprite_path_crouching,
         assets.sprite_path_idle,
         assets.sprite_path_idle_2,
         assets.sprite_path_idle_2_page,

@@ -14,7 +14,7 @@ script_directory = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 assets_directory = os.path.join(script_directory, "GameAssets")
 sprites_directory = os.path.join(assets_directory, "sprites")
 sprites_standing_directory = os.path.join(sprites_directory, "Standing")
-sprites_standing2_directory = os.path.join(sprites_directory, "Standing2")
+sprites_crouching_directory = os.path.join(sprites_directory, "Crouching")
 sprites_reading_directory = os.path.join(sprites_directory, "Reading")
 sprites_magic_directory = os.path.join(sprites_directory, "Magic")
 sprites_surfing_directory = os.path.join(sprites_directory, "Surfing")
@@ -41,7 +41,7 @@ crash_directory = os.path.join(assets_directory, "crash")
 balconexe_directory = os.path.join(programs_directory, "balcon.exe")
 
 SPRITE_NORMAL_DEFAULT = "KinitoNormal.png"
-SPRITE_NORMAL2_DEFAULT = "KinitoNormal2.png"
+SPRITE_CROUCHING_DEFAULT = "KinitoCrouching.png"
 
 # 8-way look directions derived from standing sprite filenames.
 LOOK_DIRECTION_CENTER = "center"
@@ -70,7 +70,7 @@ _STANDING_DIRECTION_SUFFIXES: dict[str, str] = {
 }
 
 sprite_path_normal = os.path.join(sprites_standing_directory, SPRITE_NORMAL_DEFAULT)
-sprite_path_normal_2 = os.path.join(sprites_standing2_directory, SPRITE_NORMAL2_DEFAULT)
+sprite_path_crouching = os.path.join(sprites_crouching_directory, SPRITE_CROUCHING_DEFAULT)
 sprite_path_idle = os.path.join(sprites_reading_directory, "Idle.png")
 sprite_path_idle_2 = os.path.join(sprites_reading_directory, "Idle2.png")
 sprite_path_idle_2_page = os.path.join(sprites_reading_directory, "Idle2Page.png")
@@ -161,8 +161,8 @@ def list_image_files(directory):
 def list_standing_sprite_paths(*, crouch: bool = False) -> list[str]:
     """Return standing (or crouch) sprite paths with the default variant first."""
     if crouch:
-        directory = sprites_standing2_directory
-        default_name = SPRITE_NORMAL2_DEFAULT
+        directory = sprites_crouching_directory
+        default_name = SPRITE_CROUCHING_DEFAULT
     else:
         directory = sprites_standing_directory
         default_name = SPRITE_NORMAL_DEFAULT
@@ -184,7 +184,8 @@ def list_standing_sprite_paths(*, crouch: bool = False) -> list[str]:
 def standing_direction_from_path(path: str) -> str | None:
     """Return a look-direction id from a standing/crouch sprite filename, or None."""
     stem = os.path.splitext(os.path.basename(path))[0]
-    for prefix in ("KinitoNormal2", "KinitoNormal"):
+    # Longer crouching prefix must be checked before standing "KinitoNormal".
+    for prefix in ("KinitoCrouching", "KinitoNormal"):
         if stem.startswith(prefix):
             suffix = stem[len(prefix) :]
             return _STANDING_DIRECTION_SUFFIXES.get(suffix)

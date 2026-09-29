@@ -1031,13 +1031,13 @@ class MovementMixin:
         """Return the PhotoImage for *direction*, falling back to center/front."""
         mapping = getattr(
             self,
-            "_standing2_dir_sprites" if crouch else "_standing_dir_sprites",
+            "_crouching_dir_sprites" if crouch else "_standing_dir_sprites",
             {},
         )
         if not isinstance(mapping, dict) or not mapping:
-            return getattr(self, "tk_img_normal_2" if crouch else "tk_img_normal", None)
+            return getattr(self, "tk_img_crouching" if crouch else "tk_img_normal", None)
         return mapping.get(direction) or mapping.get("center") or getattr(
-            self, "tk_img_normal_2" if crouch else "tk_img_normal", None
+            self, "tk_img_crouching" if crouch else "tk_img_normal", None
         )
 
     def _refresh_mouse_look_stance(self, *, force: bool = False) -> None:
@@ -1448,8 +1448,8 @@ class MovementMixin:
     def _pick_normal_idle_sprite(self, *, crouch: bool = False):
         """Pick standing or crouch idle sprite; look-arounds are rare and cooled down."""
         if crouch:
-            default = getattr(self, "tk_img_normal_2", None)
-            variants = getattr(self, "_standing2_look_sprites", ())
+            default = getattr(self, "tk_img_crouching", None)
+            variants = getattr(self, "_crouching_look_sprites", ())
         else:
             default = getattr(self, "tk_img_normal", None)
             variants = getattr(self, "_standing_look_sprites", ())
