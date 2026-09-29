@@ -16,6 +16,9 @@ from kinito.assets import (
     balconexe_directory,
     ensure_user_media_directories,
     list_standing_sprite_paths,
+    sprite_path_blush_down,
+    sprite_path_blush_left,
+    sprite_path_blush_right,
     sprite_path_drag_left,
     sprite_path_drag_right,
     sprite_path_fancy,
@@ -181,6 +184,9 @@ class FloatingAssistant(
         self.img_hand_right = _open_sprite(sprite_path_hand_right, fallback)
         self.img_drag_left = _open_sprite(sprite_path_drag_left, fallback)
         self.img_drag_right = _open_sprite(sprite_path_drag_right, fallback)
+        self.img_blush_left = _open_sprite(sprite_path_blush_left, fallback)
+        self.img_blush_right = _open_sprite(sprite_path_blush_right, fallback)
+        self.img_blush_down = _open_sprite(sprite_path_blush_down, fallback)
         self.tk_img_normal = ImageTk.PhotoImage(self.img_normal)
         self.tk_img_normal_2 = ImageTk.PhotoImage(self.img_normal_2)
         self._standing_look_sprites = _load_look_around_sprites(
@@ -247,6 +253,9 @@ class FloatingAssistant(
         self.tk_img_hand_right = ImageTk.PhotoImage(self.img_hand_right)
         self.tk_img_drag_left = ImageTk.PhotoImage(self.img_drag_left)
         self.tk_img_drag_right = ImageTk.PhotoImage(self.img_drag_right)
+        self.tk_img_blush_left = ImageTk.PhotoImage(self.img_blush_left)
+        self.tk_img_blush_right = ImageTk.PhotoImage(self.img_blush_right)
+        self.tk_img_blush_down = ImageTk.PhotoImage(self.img_blush_down)
         self._surf_render_cache = {}
         self._surf_tk_image = None
 
@@ -399,6 +408,14 @@ class FloatingAssistant(
         self._drag_wiggle_timer = None
         self._drag_wiggle_index = 0
         self._drag_hold_reacted = False
+        self._head_stroke_mode = False
+        self._head_stroke_active_seconds = 0.0
+        self._head_stroke_ready_at = 0.0
+        self._head_stroke_started_at = 0.0
+        self._head_stroke_last_t = None
+        self._head_stroke_last_pointer = None
+        self._head_stroke_blush_index = 0
+        self._head_stroke_blush_timer = None
         self._throw_after_id = None
         self._throw_vx = 0.0
         self._throw_vy = 0.0

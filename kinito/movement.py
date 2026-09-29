@@ -88,10 +88,29 @@ class MovementMixin:
     DRAG_WIGGLE_FRAME_MS = 240
     HOLD_WIGGLE_REACT_CHANCE = 0.50
     _DRAG_WIGGLE_FRAMES = ("left", "standing", "right", "standing")
+    HEAD_ZONE_HEIGHT_FRAC = 0.50
+    HEAD_ZONE_PAD_X_PX = 30
+    HEAD_ZONE_PAD_TOP_PX = 10
+    HEAD_STROKE_MIN_SECONDS = 2.0
+    HEAD_STROKE_MOTION_GAP_SECONDS = 0.45
+    HEAD_STROKE_MIN_MOVE_PX = 3.0
+    HEAD_STROKE_BLUSH_CHANCE = 0.35
+    HEAD_STROKE_REACT_CHANCE = 0.35
+    HEAD_STROKE_COOLDOWN_SECONDS = (12, 28)
+    HEAD_STROKE_BLUSH_FRAME_MS = 500
+    HEAD_STROKE_MIN_DURATION_SECONDS = 2.5
+    _HEAD_STROKE_BLUSH_FRAMES = (
+        "blush_left",
+        "blush_down",
+        "blush_right",
+        "blush_down",
+    )
 
     def setup_mouse_bindings(self):
-        """Bind drag to the sprite only so control buttons stay clickable."""
+        """Bind drag/hover to the sprite only so control buttons stay clickable."""
         self.panel.bind("<Button-1>", self.on_mouse_down)
+        self.panel.bind("<Motion>", self.on_panel_motion)
+        self.panel.bind("<Leave>", self.on_panel_leave)
         self.root.bind("<Configure>", self._on_root_moved)
         self._sync_kinito_screen_position()
 
@@ -222,6 +241,7 @@ class MovementMixin:
         self._drag_moved = False
         self._drag_samples = []
         self._drag_hold_reacted = False
+        self._exit_head_stroke_mode(restore_sprite=False)
         self.moving = False
         self._stop_audio_for_drag()
         if not self._should_skip_drag_sounds():
@@ -256,6 +276,25 @@ class MovementMixin:
         self._record_drag_sample(new_x, new_y)
         self._update_drag_sprite_from_dx(new_x - prev_x)
         self._follow_speech_bubble_to_kinito(new_x, new_y)
+
+    def on_panel_motion(self, event):
+        """Track hover strokes over Kinito's head (no click required)."""
+        if getattr(self, "is_dragging", False):
+            return
+        self._accumulate_head_stroke(event.x_root, event.y_root)
+
+    def on_panel_leave(self, _event=None):
+        """Stop head-pet tracking when the cursor leaves the padded head zone."""
+        if getattr(self, "is_dragging", False):
+            return
+        # Keep blushing while the reaction line is still being spoken.
+        if getattr(self, "_head_stroke_mode", False) and getattr(self, "talking", False):
+            return
+        # Leaving the sprite panel is fine if the cursor is still in the padded zone.
+        cursor = self._cursor_screen_pos()
+        if cursor is not None and self._pointer_in_head_zone(cursor[0], cursor[1]):
+            return
+        self._exit_head_stroke_mode(restore_sprite=True)
 
     def on_mouse_up(self, event):
         """End dragging: place with bomp, or throw when release speed is high."""
@@ -301,6 +340,15 @@ class MovementMixin:
             return getattr(self, "tk_img_drag_left", None)
         if state == "right":
             return getattr(self, "tk_img_drag_right", None)
+        if state == "blush_left":
+            sprite = getattr(self, "tk_img_blush_left", None)
+            return sprite or getattr(self, "tk_img_normal", None)
+        if state == "blush_right":
+            sprite = getattr(self, "tk_img_blush_right", None)
+            return sprite or getattr(self, "tk_img_normal", None)
+        if state == "blush_down":
+            sprite = getattr(self, "tk_img_blush_down", None)
+            return sprite or getattr(self, "tk_img_normal", None)
         return getattr(self, "tk_img_normal", None)
 
     def _set_drag_sprite(self, state: str) -> None:
@@ -375,6 +423,215 @@ class MovementMixin:
         cancel_after(self.root, self, "_drag_idle_timer")
         self._stop_drag_wiggle()
         self._drag_sprite_state = None
+
+    def _pointer_in_head_zone(self, x_root: float, y_root: float) -> bool:
+        """Return True when the cursor is over/near Kinito's head (with padding)."""
+        try:
+            px = int(self.panel.winfo_rootx())
+            py = int(self.panel.winfo_rooty())
+            pw = max(int(self.panel.winfo_width()), 1)
+            ph = max(int(self.panel.winfo_height()), 1)
+        except tk.TclError:
+            return False
+        pad_x = float(self.HEAD_ZONE_PAD_X_PX)
+        pad_top = float(self.HEAD_ZONE_PAD_TOP_PX)
+        left = px - pad_x
+        right = px + pw + pad_x
+        top = py - pad_top
+        bottom = py + ph * self.HEAD_ZONE_HEIGHT_FRAC
+        return left <= float(x_root) <= right and top <= float(y_root) <= bottom
+
+    def _can_head_stroke(self) -> bool:
+        """Return True when hover head-pets may change the sprite."""
+        if not getattr(self, "_running", True):
+            return False
+        if getattr(self, "paused", False) or self._is_position_locked_by_user():
+            return False
+        # Already blushing: keep going through our own reaction speech.
+        if getattr(self, "_head_stroke_mode", False):
+            return True
+        if not getattr(self, "_startup_complete", False):
+            return False
+        if getattr(self, "moving", False):
+            return False
+        if getattr(self, "talking", False):
+            return False
+        if getattr(self, "_fancy_mode", False):
+            return False
+        if getattr(self, "_reading_idle_active", False):
+            return False
+        if getattr(self, "_hug_mode", False):
+            return False
+        if getattr(self, "_preserve_sprite", False):
+            return False
+        if getattr(self, "_ai_generating", False):
+            return False
+        if getattr(self, "_is_game_active", lambda: False)():
+            return False
+        return not getattr(self, "_chat_mode", False)
+
+    def _stop_head_stroke_blush_loop(self) -> None:
+        """Cancel the head-pet blush animation loop."""
+        cancel_after(self.root, self, "_head_stroke_blush_timer")
+        self._head_stroke_blush_index = 0
+
+    def _begin_head_stroke_cooldown(self) -> None:
+        """Delay the next blush reaction so petting stays occasional."""
+        low, high = self.HEAD_STROKE_COOLDOWN_SECONDS
+        self._head_stroke_ready_at = time.monotonic() + random.uniform(low, high)
+
+    def _exit_head_stroke_mode(self, *, restore_sprite: bool = False) -> None:
+        """Leave head-pet mode and stop blush cycling."""
+        was_active = getattr(self, "_head_stroke_mode", False)
+        self._head_stroke_mode = False
+        self._head_stroke_active_seconds = 0.0
+        self._head_stroke_last_t = None
+        self._head_stroke_last_pointer = None
+        self._head_stroke_started_at = 0.0
+        self._stop_head_stroke_blush_loop()
+        if was_active:
+            self._drag_sprite_state = None
+            self._begin_head_stroke_cooldown()
+            if restore_sprite and not getattr(self, "is_dragging", False):
+                normal = getattr(self, "tk_img_normal", None)
+                if normal is not None:
+                    self.change_sprite(normal)
+
+    def _set_blush_sprite(self, state: str) -> None:
+        """Show a blush frame while head-pet mode owns the sprite."""
+        if getattr(self, "_drag_sprite_state", None) == state:
+            return
+        sprite = self._drag_sprite_for_state(state)
+        if sprite is None:
+            return
+        self._apply_panel_sprite(sprite)
+        self._drag_sprite_state = state
+
+    def _reset_head_stroke_tracking(self) -> None:
+        """Clear in-progress stroke timing (cursor left the head)."""
+        self._head_stroke_active_seconds = 0.0
+        self._head_stroke_last_t = None
+        self._head_stroke_last_pointer = None
+
+    def _pointer_still_in_head_zone(self) -> bool:
+        """Return True when the current cursor is still over Kinito's head."""
+        cursor = self._cursor_screen_pos()
+        if cursor is None:
+            return False
+        return self._pointer_in_head_zone(cursor[0], cursor[1])
+
+    def _accumulate_head_stroke(self, x_root: float, y_root: float) -> bool:
+        """Track hover rubbing over the head; return True while blush mode is active."""
+        if not self._can_head_stroke():
+            if getattr(self, "_head_stroke_mode", False):
+                self._exit_head_stroke_mode(restore_sprite=True)
+            return False
+
+        if not self._pointer_in_head_zone(x_root, y_root):
+            if getattr(self, "_head_stroke_mode", False):
+                # Keep blushing while the reaction line is still being spoken.
+                if getattr(self, "talking", False):
+                    return True
+                self._exit_head_stroke_mode(restore_sprite=True)
+            else:
+                self._reset_head_stroke_tracking()
+            return False
+
+        now = time.monotonic()
+        px, py = float(x_root), float(y_root)
+        last = getattr(self, "_head_stroke_last_pointer", None)
+        moved_px = (
+            0.0
+            if last is None
+            else math.hypot(px - float(last[0]), py - float(last[1]))
+        )
+        last_t = getattr(self, "_head_stroke_last_t", None)
+        if last_t is not None:
+            dt = now - float(last_t)
+            # Ignore long pauses so resting the cursor does not count as stroking.
+            if dt > self.HEAD_STROKE_MOTION_GAP_SECONDS:
+                self._head_stroke_active_seconds = 0.0
+            elif moved_px >= self.HEAD_STROKE_MIN_MOVE_PX and dt > 0.0:
+                self._head_stroke_active_seconds = float(
+                    getattr(self, "_head_stroke_active_seconds", 0.0)
+                ) + dt
+        self._head_stroke_last_t = now
+        self._head_stroke_last_pointer = (px, py)
+
+        if getattr(self, "_head_stroke_mode", False):
+            return True
+
+        if now < float(getattr(self, "_head_stroke_ready_at", 0.0)):
+            return False
+
+        if self._head_stroke_active_seconds >= self.HEAD_STROKE_MIN_SECONDS:
+            # One roll per completed stroke attempt; miss still starts cooldown.
+            self._head_stroke_active_seconds = 0.0
+            self._head_stroke_last_t = None
+            if random.random() >= self.HEAD_STROKE_BLUSH_CHANCE:
+                self._begin_head_stroke_cooldown()
+                return False
+            self._head_stroke_mode = True
+            self._head_stroke_started_at = now
+            self._mouse_look_active = False
+            self._drag_sprite_state = None
+            self._start_head_stroke_blush_loop()
+            self._maybe_speak_head_stroke_reaction()
+            return True
+        return False
+
+    def _start_head_stroke_blush_loop(self) -> None:
+        """Cycle blush left → down → right → down while being petted."""
+        if not getattr(self, "_head_stroke_mode", False):
+            return
+        self._head_stroke_blush_index = 0
+        self._head_stroke_blush_tick()
+
+    def _head_stroke_blush_tick(self) -> None:
+        """Advance one frame of the head-pet blush loop."""
+        if not getattr(self, "_head_stroke_mode", False):
+            return
+        if not self._can_head_stroke():
+            self._exit_head_stroke_mode(restore_sprite=True)
+            return
+        # After the minimum blush window (and any reaction speech), stop if gone.
+        started = float(getattr(self, "_head_stroke_started_at", 0.0) or 0.0)
+        elapsed = time.monotonic() - started if started else 0.0
+        if (
+            elapsed >= self.HEAD_STROKE_MIN_DURATION_SECONDS
+            and not getattr(self, "talking", False)
+            and not self._pointer_still_in_head_zone()
+        ):
+            self._exit_head_stroke_mode(restore_sprite=True)
+            return
+        frames = self._HEAD_STROKE_BLUSH_FRAMES
+        index = int(getattr(self, "_head_stroke_blush_index", 0)) % len(frames)
+        self._set_blush_sprite(frames[index])
+        self._head_stroke_blush_index = index + 1
+        schedule_after(
+            self.root,
+            self,
+            "_head_stroke_blush_timer",
+            self.HEAD_STROKE_BLUSH_FRAME_MS,
+            self._head_stroke_blush_tick,
+        )
+
+    def _maybe_speak_head_stroke_reaction(self) -> None:
+        """Sometimes react verbally when the user pets Kinito's head."""
+        if getattr(self, "_focus_mode", False):
+            return
+        if not getattr(self, "_startup_complete", True):
+            return
+        if hasattr(self, "_is_busy_with_speech") and self._is_busy_with_speech():
+            return
+        if not hasattr(self, "speak"):
+            return
+        if random.random() >= self.HEAD_STROKE_REACT_CHANCE:
+            return
+        from content.head_stroke_lines import pick_head_stroke_line
+
+        # Keep blush sprites instead of the default talk cycle.
+        self.speak(pick_head_stroke_line(), preserve_sprite=True, skip_ai=True)
 
     def _update_drag_sprite_from_dx(self, dx: float) -> None:
         """Pick left/right drag sprites from horizontal motion; idle → standing."""
@@ -692,6 +949,7 @@ class MovementMixin:
         cancel_after(self.root, self, "_mouse_think_timer")
         self._mouse_look_active = False
         self._reset_dizzy_orbit()
+        self._exit_head_stroke_mode(restore_sprite=False)
         if getattr(self, "_mouse_follow_state", "idle") == "thinking":
             self._mouse_follow_state = "idle"
 
@@ -727,6 +985,8 @@ class MovementMixin:
             return False
         if getattr(self, "moving", False):
             return False
+        if getattr(self, "_head_stroke_mode", False):
+            return False
         if getattr(self, "_fancy_mode", False):
             return False
         if getattr(self, "_reading_idle_active", False):
@@ -761,6 +1021,8 @@ class MovementMixin:
 
     def _mouse_attention_owns_sprite(self) -> bool:
         """Return True when idle animation must not overwrite mouse-driven sprites."""
+        if getattr(self, "_head_stroke_mode", False):
+            return True
         if getattr(self, "_mouse_look_active", False):
             return True
         return getattr(self, "_mouse_follow_state", "idle") in {"thinking", "chasing"}
@@ -888,7 +1150,7 @@ class MovementMixin:
             self._keep_assistant_on_top()
 
     def _update_mouse_attention(self) -> None:
-        """Poll cursor proximity and update look / follow state."""
+        """Poll cursor proximity and update look / follow / head-pet state."""
         try:
             if not getattr(self, "_running", True):
                 return
@@ -899,6 +1161,20 @@ class MovementMixin:
                 self._schedule_mouse_attention_poll()
                 return
 
+            cursor = self._cursor_screen_pos()
+            # Head pets use a padded zone and keep working slightly off-sprite.
+            # While building up a stroke, still allow look-at-mouse; only blush
+            # mode owns the sprite exclusively.
+            if cursor is not None:
+                self._accumulate_head_stroke(cursor[0], cursor[1])
+                if getattr(self, "_head_stroke_mode", False):
+                    self._mouse_look_active = False
+                    self._mouse_look_crouch = False
+                    self._mouse_look_stance_until = 0.0
+                    self._reset_dizzy_orbit()
+                    self._schedule_mouse_attention_poll()
+                    return
+
             if not self._can_look_at_mouse():
                 self._mouse_look_active = False
                 self._mouse_look_crouch = False
@@ -907,7 +1183,6 @@ class MovementMixin:
                 self._schedule_mouse_attention_poll()
                 return
 
-            cursor = self._cursor_screen_pos()
             if cursor is None:
                 self._mouse_look_active = False
                 self._mouse_look_crouch = False
@@ -1524,6 +1799,9 @@ class MovementMixin:
                 time.sleep(1)
         elif self.talking:
             if getattr(self, "_preserve_sprite", False):
+                time.sleep(0.1)
+                return
+            if getattr(self, "_head_stroke_mode", False):
                 time.sleep(0.1)
                 return
             if getattr(self, "_ai_generating", False):

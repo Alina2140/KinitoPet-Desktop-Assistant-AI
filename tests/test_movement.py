@@ -26,6 +26,14 @@ def movement():
     stub._drag_wiggle_timer = None
     stub._drag_wiggle_index = 0
     stub._drag_hold_reacted = False
+    stub._head_stroke_mode = False
+    stub._head_stroke_active_seconds = 0.0
+    stub._head_stroke_ready_at = 0.0
+    stub._head_stroke_started_at = 0.0
+    stub._head_stroke_last_t = None
+    stub._head_stroke_last_pointer = None
+    stub._head_stroke_blush_index = 0
+    stub._head_stroke_blush_timer = None
     stub._throw_after_id = None
     stub._throw_vx = 0.0
     stub._throw_vy = 0.0
@@ -51,6 +59,13 @@ def movement():
     stub.tk_img_normal = "normal"
     stub.tk_img_drag_left = "drag_left"
     stub.tk_img_drag_right = "drag_right"
+    stub.tk_img_blush_left = "blush_left"
+    stub.tk_img_blush_right = "blush_right"
+    stub.tk_img_blush_down = "blush_down"
+    stub.panel.winfo_rootx.return_value = 100
+    stub.panel.winfo_rooty.return_value = 200
+    stub.panel.winfo_width.return_value = 100
+    stub.panel.winfo_height.return_value = 200
     stub.img_surf_left = Image.new("RGBA", (24, 48), (255, 255, 255, 0))
     stub.img_surf_right = Image.new("RGBA", (24, 48), (255, 255, 255, 0))
     stub._surf_render_cache = {}
@@ -113,7 +128,10 @@ def test_setup_mouse_bindings_drags_sprite_only(movement):
     movement.root.winfo_rootx.return_value = 100
     movement.root.winfo_rooty.return_value = 200
     movement.setup_mouse_bindings()
-    movement.panel.bind.assert_called_once_with("<Button-1>", movement.on_mouse_down)
+    movement.panel.bind.assert_any_call("<Button-1>", movement.on_mouse_down)
+    movement.panel.bind.assert_any_call("<Motion>", movement.on_panel_motion)
+    movement.panel.bind.assert_any_call("<Leave>", movement.on_panel_leave)
+    assert movement.panel.bind.call_count == 3
     movement.root.bind.assert_called_once_with("<Configure>", movement._on_root_moved)
     assert movement.x == 100
     assert movement.y == 200
@@ -273,6 +291,120 @@ def test_drag_wiggle_cycles_left_standing_right_standing(movement):
     assert movement.panel.config.call_args_list[3].kwargs["image"] == "normal"
     movement._drag_wiggle_tick()
     assert movement.panel.config.call_args_list[4].kwargs["image"] == "drag_left"
+
+
+def test_pointer_in_head_zone_uses_upper_sprite_fraction(movement):
+    assert movement._pointer_in_head_zone(150, 240) is True
+    # Panel at y=200, height=200, frac=0.50 → head ends at y=300.
+    assert movement._pointer_in_head_zone(150, 320) is False
+
+
+def test_pointer_in_head_zone_allows_side_and_top_padding(movement):
+    # Panel is at (100,200) size 100x200 → head bottom at y=300 with frac 0.50.
+    # Left/right padding HEAD_ZONE_PAD_X_PX, top padding HEAD_ZONE_PAD_TOP_PX.
+    pad_x = movement.HEAD_ZONE_PAD_X_PX
+    pad_top = movement.HEAD_ZONE_PAD_TOP_PX
+    assert movement._pointer_in_head_zone(100 - pad_x, 240) is True  # left edge
+    assert movement._pointer_in_head_zone(200 + pad_x, 240) is True  # right edge
+    assert movement._pointer_in_head_zone(150, 200 - pad_top) is True  # top edge
+    assert movement._pointer_in_head_zone(100 - pad_x - 1, 240) is False  # too far left
+    assert movement._pointer_in_head_zone(150, 200 - pad_top - 1) is False  # too far above
+
+
+def test_head_stroke_requires_actual_pointer_movement(movement):
+    movement._head_stroke_last_t = 50.0
+    movement._head_stroke_last_pointer = (150.0, 240.0)
+    with patch("kinito.movement.time.monotonic", return_value=50.2):
+        # Barely moved (< MIN_MOVE_PX) → time does not count.
+        assert movement._accumulate_head_stroke(151, 240) is False
+    assert movement._head_stroke_active_seconds == 0.0
+
+
+def test_head_stroke_triggers_blush_loop_and_speech(movement):
+    movement.speak = MagicMock()
+    movement._is_busy_with_speech = MagicMock(return_value=False)
+    movement._head_stroke_active_seconds = movement.HEAD_STROKE_MIN_SECONDS - 0.1
+    movement._head_stroke_last_t = 100.0
+    movement._head_stroke_last_pointer = (140.0, 240.0)
+    with (
+        patch("kinito.movement.time.monotonic", return_value=100.2),
+        patch("kinito.movement.random.random", return_value=0.0),
+        patch(
+            "content.head_stroke_lines.pick_head_stroke_line",
+            return_value="Blush!",
+        ),
+    ):
+        assert movement._accumulate_head_stroke(150, 240) is True
+    movement.speak.assert_called_once_with(
+        "Blush!", preserve_sprite=True, skip_ai=True
+    )
+    assert movement._head_stroke_mode is True
+    movement.panel.config.assert_called()
+    movement.root.after.assert_called()
+
+
+def test_head_stroke_blush_chance_can_skip_animation(movement):
+    movement.speak = MagicMock()
+    movement._head_stroke_active_seconds = movement.HEAD_STROKE_MIN_SECONDS
+    movement._head_stroke_last_t = 100.0
+    movement._head_stroke_last_pointer = (140.0, 240.0)
+    with (
+        patch("kinito.movement.time.monotonic", return_value=100.1),
+        patch("kinito.movement.random.random", return_value=0.99),
+    ):
+        assert movement._accumulate_head_stroke(150, 240) is False
+    assert movement._head_stroke_mode is False
+    movement.speak.assert_not_called()
+    assert movement._head_stroke_ready_at > 100.1
+
+
+def test_head_stroke_requires_two_seconds_of_motion(movement):
+    movement._head_stroke_last_t = 50.0
+    movement._head_stroke_last_pointer = (140.0, 240.0)
+    with patch("kinito.movement.time.monotonic", return_value=50.2):
+        assert movement._accumulate_head_stroke(150, 240) is False
+    assert movement._head_stroke_mode is False
+    assert movement._head_stroke_active_seconds == pytest.approx(0.2)
+
+
+def test_head_stroke_blush_cycles_left_down_right_down(movement):
+    movement._head_stroke_mode = True
+    movement.talking = True
+    movement._head_stroke_blush_index = 0
+    movement._start_head_stroke_blush_loop()
+    assert movement.panel.config.call_args_list[0].kwargs["image"] == "blush_left"
+    movement._head_stroke_blush_tick()
+    assert movement.panel.config.call_args_list[1].kwargs["image"] == "blush_down"
+    movement._head_stroke_blush_tick()
+    assert movement.panel.config.call_args_list[2].kwargs["image"] == "blush_right"
+    movement._head_stroke_blush_tick()
+    assert movement.panel.config.call_args_list[3].kwargs["image"] == "blush_down"
+    movement._head_stroke_blush_tick()
+    assert movement.panel.config.call_args_list[4].kwargs["image"] == "blush_left"
+
+
+def test_head_stroke_resets_when_leaving_head_zone(movement):
+    movement._head_stroke_mode = True
+    movement.talking = False
+    movement.change_sprite = MagicMock()
+    movement._accumulate_head_stroke(150, 350)
+    assert movement._head_stroke_mode is False
+    movement.change_sprite.assert_called_once_with("normal")
+
+
+def test_head_stroke_keeps_blushing_while_talking_outside_head(movement):
+    movement._head_stroke_mode = True
+    movement.talking = True
+    movement.change_sprite = MagicMock()
+    assert movement._accumulate_head_stroke(150, 350) is True
+    assert movement._head_stroke_mode is True
+    movement.change_sprite.assert_not_called()
+
+
+def test_panel_motion_accumulates_hover_head_stroke(movement):
+    movement._accumulate_head_stroke = MagicMock(return_value=False)
+    movement.on_panel_motion(MagicMock(x_root=150, y_root=240))
+    movement._accumulate_head_stroke.assert_called_once_with(150, 240)
 
 
 def test_maybe_speak_hold_reaction_speaks_once(movement):
