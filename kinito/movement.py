@@ -1814,7 +1814,7 @@ class MovementMixin:
                 time.sleep(1)
                 return
             if self._fancy_mode:
-                magician_sprites = getattr(self, "_magician_sprites", (self.tk_img_fancy,))
+                magician_sprites = getattr(self, "_magician_sprites", (self.tk_img_magic,))
                 frame = getattr(self, "_magician_frame", 0)
                 self.change_sprite(magician_sprites[frame % len(magician_sprites)])
                 self._magician_frame = frame + 1

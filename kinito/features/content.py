@@ -375,9 +375,9 @@ class ContentMixin:
         if not self._can_initiate_spontaneous_speech():
             return
 
-        magician_sprites = getattr(self, "_magician_sprites", (self.tk_img_fancy,))
+        magician_sprites = getattr(self, "_magician_sprites", (self.tk_img_magic,))
         if len(magician_sprites) < 2:
-            magician_sprites = (self.tk_img_fancy, getattr(self, "tk_img_fancy_2", self.tk_img_fancy))
+            magician_sprites = (self.tk_img_magic, getattr(self, "tk_img_magic_2", self.tk_img_magic))
 
         self._fancy_mode = True
         frame = 0

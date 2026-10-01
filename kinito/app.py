@@ -22,8 +22,6 @@ from kinito.assets import (
     sprite_path_crouching,
     sprite_path_drag_left,
     sprite_path_drag_right,
-    sprite_path_fancy,
-    sprite_path_fancy_1,
     sprite_path_hand_left,
     sprite_path_hand_right,
     sprite_path_hug,
@@ -36,6 +34,8 @@ from kinito.assets import (
     sprite_path_idle_glasses_2,
     sprite_path_idle_glasses_2_page,
     sprite_path_idle_glasses_2_page_2,
+    sprite_path_magic,
+    sprite_path_magic_2,
     sprite_path_normal,
     sprite_path_sleep,
     sprite_path_sleep1,
@@ -166,8 +166,8 @@ class FloatingAssistant(
         self.img_idle_glasses_2_page_2 = _open_sprite(
             sprite_path_idle_glasses_2_page_2, fallback
         )
-        self.img_fancy = _open_sprite(sprite_path_fancy, fallback)
-        self.img_fancy_2 = _open_sprite(sprite_path_fancy_1, fallback)
+        self.img_magic = _open_sprite(sprite_path_magic, fallback)
+        self.img_magic_2 = _open_sprite(sprite_path_magic_2, fallback)
         self.img_surf_left = _open_sprite(sprite_path_surf_left, fallback)
         self.img_surf_right = _open_sprite(sprite_path_surf_right, fallback)
         self.img_sleep = _open_sprite(sprite_path_sleep, fallback)
@@ -219,8 +219,8 @@ class FloatingAssistant(
         self.tk_img_idle_glasses_2_page_2 = ImageTk.PhotoImage(
             self.img_idle_glasses_2_page_2
         )
-        self.tk_img_fancy = ImageTk.PhotoImage(self.img_fancy)
-        self.tk_img_fancy_2 = ImageTk.PhotoImage(self.img_fancy_2)
+        self.tk_img_magic = ImageTk.PhotoImage(self.img_magic)
+        self.tk_img_magic_2 = ImageTk.PhotoImage(self.img_magic_2)
         self._reading_sprites = (self.tk_img_idle, self.tk_img_idle_2)
         self._reading_page_sprites = (self.tk_img_idle_2_page, self.tk_img_idle_2_page_2)
         self._reading_glasses_sprites = (
@@ -231,7 +231,7 @@ class FloatingAssistant(
             self.tk_img_idle_glasses_2_page,
             self.tk_img_idle_glasses_2_page_2,
         )
-        self._magician_sprites = (self.tk_img_fancy, self.tk_img_fancy_2)
+        self._magician_sprites = (self.tk_img_magic, self.tk_img_magic_2)
         self._magician_frame = 0
         self.tk_img_surf_left = ImageTk.PhotoImage(
             MovementMixin._flatten_sprite_on_white(self.img_surf_left)

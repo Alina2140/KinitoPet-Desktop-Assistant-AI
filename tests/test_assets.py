@@ -52,8 +52,8 @@ def test_asset_subdirectories(directory_attr, relative_path):
             "IdleGlasses2Page2.png",
             "sprites_reading_directory",
         ),
-        ("sprite_path_fancy", "Fancy.png", "sprites_magic_directory"),
-        ("sprite_path_fancy_1", "Fancy1.png", "sprites_magic_directory"),
+        ("sprite_path_magic", "Magic.png", "sprites_magic_directory"),
+        ("sprite_path_magic_2", "Magic2.png", "sprites_magic_directory"),
         ("sprite_path_surf_left", "KinitoSurfLeft.png", "sprites_surfing_directory"),
         ("sprite_path_surf_right", "KinitoSurfRight.png", "sprites_surfing_directory"),
         ("sprite_path_moving", "KinitoSurfRight.png", "sprites_surfing_directory"),
@@ -130,8 +130,8 @@ def test_asset_paths_point_to_expected_files(path_attr, filename, parent_attr):
         "sprite_path_crouching",
         "sprite_path_idle",
         "sprite_path_idle_2",
-        "sprite_path_fancy",
-        "sprite_path_fancy_1",
+        "sprite_path_magic",
+        "sprite_path_magic_2",
         "sprite_path_surf_left",
         "sprite_path_surf_right",
         "sprite_path_moving",
@@ -230,7 +230,7 @@ def test_standing_direction_from_path(filename, direction):
 
 
 def test_standing_direction_from_path_rejects_unknown():
-    assert assets.standing_direction_from_path("/sprites/Fancy.png") is None
+    assert assets.standing_direction_from_path("/sprites/Magic.png") is None
 
 
 @pytest.mark.parametrize(
@@ -264,7 +264,7 @@ def test_packaged_asset_files_exist_on_disk():
         assets.sprite_path_idle_2_page_2,
         assets.sprite_path_idle_glasses,
         assets.sprite_path_idle_glasses_2_page,
-        assets.sprite_path_fancy_1,
+        assets.sprite_path_magic_2,
         assets.sprite_path_drag_left,
         assets.sprite_path_drag_right,
         assets.crash_image_path,
