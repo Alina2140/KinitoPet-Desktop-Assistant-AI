@@ -27,18 +27,28 @@ from kinito.memory.fact_values import (
     should_reject_fact_value,
     split_fact_values,
 )
-from kinito.memory.validation import is_duplicate_of_existing_note, is_storable_note
+from kinito.memory.validation import (
+    dedupe_note_entries,
+    find_near_duplicate_note_index,
+    is_assistant_spam_note,
+    is_ephemeral_note,
+    is_meaningfully_richer_note,
+    is_storable_note,
+)
 
 MEMORY_VERSION = 1
 MEMORY_FILENAME = "memory.json"
-NOTES_FILENAME = "notes.txt"
 
 MAX_FACTS = 50
 MAX_FACT_VALUE_LEN = 80
-MAX_NOTES_STORED = 50
-MAX_NOTES_IN_PROMPT = 20
+# Soft cap for editor replace_notes only — chat extraction does not delete old notes.
+MAX_NOTES_STORED = 500
+MAX_NOTES_IN_PROMPT = 35
+MAX_NOTES_RECENT_IN_PROMPT = 8
 MAX_NOTE_LEN = 120
-MAX_PROMPT_BLOCK_CHARS = 800
+MAX_PROMPT_BLOCK_CHARS = 2500
+MAX_FACTS_PROMPT_CHARS = 1600
+MAX_NOTES_PROMPT_CHARS = 900
 MAX_NEW_NOTES_PER_TURN = 1
 MAX_ASKED_TOPICS = 100
 
@@ -47,12 +57,6 @@ def memory_file_path(directory: str | None = None) -> str:
     """Return the path to the JSON memory file."""
     base = directory or user_media_directory
     return os.path.join(base, MEMORY_FILENAME)
-
-
-def notes_file_path(directory: str | None = None) -> str:
-    """Return the path to the human-readable notes mirror file."""
-    base = directory or user_media_directory
-    return os.path.join(base, NOTES_FILENAME)
 
 
 def _atomic_replace(temp_path: str, final_path: str) -> None:
@@ -103,7 +107,6 @@ class MemoryStore:
     def __init__(self, directory: str | None = None) -> None:
         self._directory = directory or user_media_directory
         self._path = memory_file_path(self._directory)
-        self._notes_path = notes_file_path(self._directory)
         self._data: dict[str, Any] = self._empty_data()
         # Mood drift runs on the movement thread while chat may save concurrently.
         self._lock = threading.RLock()
@@ -138,7 +141,13 @@ class MemoryStore:
             self._backup_corrupt_file()
             self._data = self._empty_data()
             return
-        self._data = self._normalize_loaded(raw)
+        normalized, notes_cleaned = self._normalize_loaded(raw)
+        self._data = normalized
+        if notes_cleaned:
+            try:
+                self.save()
+            except OSError as exc:
+                print(f"Warning: memory note migration save failed: {exc!r}", flush=True)
 
     def _backup_corrupt_file(self) -> None:
         """Move a bad memory.json aside so the original bytes are not lost."""
@@ -153,28 +162,24 @@ class MemoryStore:
             print(f"Warning: could not backup corrupt memory: {exc!r}", flush=True)
 
     def save(self) -> None:
-        """Persist memory atomically and refresh the notes mirror file."""
+        """Persist memory atomically to memory.json."""
         with self._lock:
             os.makedirs(self._directory, exist_ok=True)
             payload = json.dumps(self._data, ensure_ascii=False, indent=2)
             _write_text_atomic(self._path, payload)
-            try:
-                self._write_notes_mirror()
-            except OSError as exc:
-                print(f"Warning: notes.txt mirror failed: {exc!r}", flush=True)
 
     def reset(self) -> None:
-        """Clear all memory and remove persisted files."""
+        """Clear all memory and remove the persisted memory file."""
         self._data = self._empty_data()
-        for path in (self._path, self._notes_path):
-            if os.path.isfile(path):
-                try:
-                    os.remove(path)
-                except OSError:
-                    pass
+        if os.path.isfile(self._path):
+            try:
+                os.remove(self._path)
+            except OSError:
+                pass
 
-    def _normalize_loaded(self, raw: dict[str, Any]) -> dict[str, Any]:
+    def _normalize_loaded(self, raw: dict[str, Any]) -> tuple[dict[str, Any], bool]:
         data = self._empty_data()
+        notes_cleaned = False
         facts = raw.get("facts")
         if isinstance(facts, dict):
             migrated: dict[str, Any] = {}
@@ -218,10 +223,23 @@ class MemoryStore:
 
         notes = raw.get("notes")
         if isinstance(notes, list):
-            for entry in notes[-MAX_NOTES_STORED:]:
+            collected: list[dict[str, str]] = []
+            for entry in notes:
                 note = self._normalize_note(entry)
-                if note:
-                    data["notes"].append(note)
+                if not note:
+                    notes_cleaned = True
+                    continue
+                if is_assistant_spam_note(note["text"]) or is_ephemeral_note(note["text"]):
+                    notes_cleaned = True
+                    continue
+                collected.append(note)
+            deduped = dedupe_note_entries(collected)
+            if len(deduped) != len(collected):
+                notes_cleaned = True
+            if len(deduped) > MAX_NOTES_STORED:
+                deduped = deduped[-MAX_NOTES_STORED:]
+                notes_cleaned = True
+            data["notes"] = deduped
 
         topics = raw.get("asked_topics")
         if isinstance(topics, list):
@@ -247,7 +265,7 @@ class MemoryStore:
                 except ValueError:
                     continue
                 data["topic_asked_at"][normalized] = day
-        return data
+        return data, notes_cleaned
 
     @classmethod
     def _normalize_stored_fact(cls, key: str, value: Any) -> str | list[str] | None:
@@ -625,15 +643,25 @@ class MemoryStore:
         return bool(self._data["facts"] or self._data["notes"])
 
     def add_note(self, text: str, *, source: str = "chat") -> bool:
-        """Append a note if under limits and not a duplicate."""
+        """Append a note, or upgrade a near-duplicate when the new text is richer."""
         trimmed = text.strip()[:MAX_NOTE_LEN]
         if not trimmed or not is_storable_note(trimmed, source=source):
             return False
         notes: list[dict[str, str]] = self._data["notes"]
-        if is_duplicate_of_existing_note(trimmed, notes):
-            return False
-        if len(notes) >= MAX_NOTES_STORED:
-            del notes[0]
+        duplicate_index = find_near_duplicate_note_index(trimmed, notes)
+        if duplicate_index is not None:
+            existing_text = notes[duplicate_index].get("text", "")
+            if not isinstance(existing_text, str) or not is_meaningfully_richer_note(
+                trimmed, existing_text
+            ):
+                return False
+            notes[duplicate_index] = {
+                "text": trimmed,
+                "source": source.strip() or "chat",
+                "created": notes[duplicate_index].get("created") or date.today().isoformat(),
+            }
+            self.save()
+            return True
         notes.append(
             {
                 "text": trimmed,
@@ -708,7 +736,7 @@ class MemoryStore:
         """Apply validated memory updates from the chat extractor."""
         changed = False
         if update_facts:
-            for key, value in update_facts.items():
+            for key, raw in update_facts.items():
                 if allowed_fact_keys is not None and key not in allowed_fact_keys:
                     continue
                 facts: dict[str, Any] = self._data["facts"]
@@ -717,35 +745,47 @@ class MemoryStore:
                 if key not in facts and len(facts) >= MAX_FACTS:
                     continue
 
+                intent, value = self._split_extraction_claim(key, raw)
+                if intent is None:
+                    continue
+
                 if key in MULTI_VALUE_FACT_KEYS:
-                    if isinstance(value, list):
-                        # Explicit list = full replacement (user corrected the set).
-                        before = facts.get(key)
-                        cleaned = [
-                            item
-                            for item in normalize_fact_value_list(value)
-                            if not should_reject_fact_value(key, item)
-                        ]
+                    items = (
+                        normalize_fact_value_list(value)
+                        if isinstance(value, list)
+                        else split_fact_values(value)
+                        if isinstance(value, str)
+                        else []
+                    )
+                    cleaned = [item for item in items if not should_reject_fact_value(key, item)]
+                    if not cleaned:
+                        continue
+                    before = facts.get(key)
+                    if intent == "replace":
                         self.replace_fact_values(key, cleaned)
-                        if facts.get(key) != before:
-                            changed = True
-                    elif isinstance(value, str):
-                        before = facts.get(key)
-                        # Plain string adds/merges newly mentioned items.
-                        cleaned = [
-                            item
-                            for item in split_fact_values(value)
-                            if not should_reject_fact_value(key, item)
-                        ]
+                    elif intent == "add":
                         self.merge_fact_values(key, cleaned)
-                        if facts.get(key) != before:
-                            changed = True
+                    elif intent == "remove":
+                        for item in cleaned:
+                            self.remove_fact_value(key, item)
+                    if facts.get(key) != before:
+                        changed = True
                     continue
 
                 if not isinstance(value, str):
                     continue
+                if intent == "remove":
+                    current = self.get_fact(key)
+                    if (
+                        current
+                        and current.casefold() == value.strip().casefold()
+                        and self.delete_fact(key)
+                    ):
+                        changed = True
+                    continue
+                if intent == "add" and facts.get(key):
+                    continue
                 if key in DAILY_FACT_KEYS:
-                    # Route through set_fact so values are normalized and dated.
                     before = facts.get(key)
                     self.set_fact(key, value)
                     if facts.get(key) != before:
@@ -771,6 +811,25 @@ class MemoryStore:
         if changed:
             self.save()
 
+    @staticmethod
+    def _split_extraction_claim(key: str, raw: Any) -> tuple[str | None, Any]:
+        """Return (intent, value) for an extraction claim; legacy strings/lists supported."""
+        if isinstance(raw, dict):
+            intent_raw = raw.get("intent")
+            intent = intent_raw.strip().casefold() if isinstance(intent_raw, str) else ""
+            if intent not in {"add", "replace", "remove"}:
+                return None, None
+            return intent, raw.get("value")
+        if key in MULTI_VALUE_FACT_KEYS:
+            if isinstance(raw, list):
+                return "replace", raw
+            if isinstance(raw, str):
+                return "add", raw
+            return None, None
+        if isinstance(raw, str):
+            return "replace", raw
+        return None, None
+
     def as_facts_prompt_block(self) -> str:
         """Return only structured facts for short AI generation prompts."""
         facts = self.facts_dict()
@@ -778,9 +837,30 @@ class MemoryStore:
             return ""
         fact_lines = [f"- {key.replace('_', ' ')}: {value}" for key, value in facts.items()]
         block = "Known facts about the user:\n" + "\n".join(fact_lines)
-        if len(block) <= MAX_PROMPT_BLOCK_CHARS:
+        if len(block) <= MAX_FACTS_PROMPT_CHARS:
             return block
-        return block[: MAX_PROMPT_BLOCK_CHARS - 3].rstrip() + "..."
+        return block[: MAX_FACTS_PROMPT_CHARS - 3].rstrip() + "..."
+
+    def _sample_notes_for_prompt(self, notes: list[dict[str, str]]) -> list[dict[str, str]]:
+        """Pick recent notes plus a day-stable random sample of older notes."""
+        if not notes:
+            return []
+        recent_n = min(MAX_NOTES_RECENT_IN_PROMPT, MAX_NOTES_IN_PROMPT, len(notes))
+        recent = notes[-recent_n:]
+        if len(notes) <= recent_n:
+            return recent
+        older = notes[:-recent_n]
+        need = max(0, MAX_NOTES_IN_PROMPT - len(recent))
+        if need <= 0 or not older:
+            return recent
+        rng = random.Random(date.today().isoformat())
+        if len(older) <= need:
+            sampled = list(older)
+        else:
+            sampled = rng.sample(older, need)
+        # Keep chronological order among the selected notes.
+        selected = {id(note) for note in sampled} | {id(note) for note in recent}
+        return [note for note in notes if id(note) in selected]
 
     def as_prompt_block(self) -> str:
         """Return a compact memory summary for LLM system/generation prompts."""
@@ -791,8 +871,23 @@ class MemoryStore:
 
         notes: list[dict[str, str]] = self._data["notes"]
         if notes:
-            recent = notes[-MAX_NOTES_IN_PROMPT:]
-            note_lines = [f"- {note['text']}" for note in recent if note.get("text")]
+            selected = self._sample_notes_for_prompt(notes)
+            recent_ids = {id(note) for note in notes[-MAX_NOTES_RECENT_IN_PROMPT:]}
+            recent_selected = [note for note in selected if id(note) in recent_ids]
+            older_selected = [note for note in selected if id(note) not in recent_ids]
+            # Fit recent notes first so the char budget cannot drop them for older ones.
+            note_lines: list[str] = []
+            notes_budget = MAX_NOTES_PROMPT_CHARS
+            used = len("Additional notes:\n")
+            for note in recent_selected + older_selected:
+                text = note.get("text")
+                if not text:
+                    continue
+                line = f"- {text}"
+                if used + len(line) + 1 > notes_budget and note_lines:
+                    break
+                note_lines.append(line)
+                used += len(line) + 1
             if note_lines:
                 parts.append("Additional notes:\n" + "\n".join(note_lines))
 
@@ -824,15 +919,6 @@ class MemoryStore:
         if names:
             return random.choice(names)
         return fallback
-
-    def _write_notes_mirror(self) -> None:
-        notes: list[dict[str, str]] = self._data["notes"]
-        lines = [f"- {note['text']}" for note in notes if note.get("text")]
-        os.makedirs(self._directory, exist_ok=True)
-        content = "\n".join(lines)
-        if content:
-            content += "\n"
-        _write_text_atomic(self._notes_path, content)
 
     def snapshot(self) -> dict[str, Any]:
         """Return a deep copy of the in-memory data (for tests)."""

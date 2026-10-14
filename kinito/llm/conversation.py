@@ -43,5 +43,11 @@ class ConversationHistory:
         payload.extend(deepcopy(self._messages))
         return payload
 
+    def recent_messages(self, limit: int = 4) -> list[dict[str, str]]:
+        """Return the last *limit* user/assistant messages (copy)."""
+        if limit <= 0:
+            return []
+        return deepcopy(self._messages[-limit:])
+
     def __len__(self) -> int:
         return len(self._messages)

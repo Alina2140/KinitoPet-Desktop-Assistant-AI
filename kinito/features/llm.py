@@ -373,15 +373,19 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
         self.append_chat_message(prompts.CHAT_ASSISTANT_LABEL, reply)
         self.set_chat_generating(False)
         self.speak_chat_response(reply)
-        self._extract_chat_memory(self._last_chat_user_text, reply)
+        self._extract_chat_memory()
 
-    def _extract_chat_memory(self, user_text: str, assistant_text: str) -> None:
+    def _extract_chat_memory(self) -> None:
         """Run memory extraction in the background after a chat reply."""
         if not self._llm_config.enabled:
             return
+        if getattr(self, "_is_game_active", lambda: False)():
+            return
+
+        messages = self._conversation.recent_messages(4)
 
         def worker():
-            self._memory_extractor.extract_from_turn(user_text, assistant_text)
+            self._memory_extractor.extract_from_messages(messages)
 
         threading.Thread(target=worker, daemon=True).start()
 

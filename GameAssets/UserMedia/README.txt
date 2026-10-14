@@ -8,7 +8,6 @@ Memory
 Kinito can remember things about you across sessions.
 
 - memory.json  — structured facts and chat notes (auto-managed)
-- notes.txt    — human-readable mirror of chat notes (optional to edit)
 
 Paintings
 ---------

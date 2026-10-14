@@ -241,10 +241,9 @@ Kinito can remember personal facts across sessions — no database required.
 - **Chat notes** are extracted in the background when Ollama is available (stable facts the user clearly stated).
 - Files live in `GameAssets/UserMedia/`:
   - `memory.json` — structured facts and notes (auto-managed)
-  - `notes.txt` — human-readable mirror of chat notes
   - `paintings/` — PNGs saved from **Actions → Paint**
 
-These files are local only (listed in `.gitignore`) and are not uploaded to Git. You do **not** need to create them manually — Kinito creates `memory.json` and `notes.txt` automatically the first time something is saved (e.g. when you answer a name question or a memory follow-up). After cloning the repo, the `UserMedia/` folder already exists; your personal memory starts empty until you use the app.
+These files are local only (listed in `.gitignore`) and are not uploaded to Git. You do **not** need to create them manually — Kinito creates `memory.json` automatically the first time something is saved (e.g. when you answer a name question or a memory follow-up). After cloning the repo, the `UserMedia/` folder already exists; your personal memory starts empty until you use the app.
 
 Right-click Kinito → **Settings** → **Memories** to open the memory editor (view, edit, or delete individual facts and notes, then **Save**).  
 Right-click Kinito → **Settings** → **Forget** to clear saved memory — you will be asked to confirm first.
@@ -275,12 +274,11 @@ GameAssets/
 ├── SecretImages/                                     # Optional images for easter egg
 └── UserMedia/                                        # Personal data (gitignored)
     ├── memory.json                                   # Saved facts & notes (auto-created)
-    ├── notes.txt                                     # Human-readable notes mirror
     ├── settings.json                                 # Local app settings
     └── paintings/                                    # Saved Paint PNGs
 ```
 
-The `UserMedia/` directory is created when Kinito starts. Memory files (`memory.json`, `notes.txt`) appear automatically when you first save a fact — nothing to copy or create by hand after `git clone`. The `paintings/` subfolder is created at startup (and again when saving a drawing).
+The `UserMedia/` directory is created when Kinito starts. `memory.json` appears automatically when you first save a fact — nothing to copy or create by hand after `git clone`. The `paintings/` subfolder is created at startup (and again when saving a drawing).
 
 If a sprite is missing, Kinito falls back to `Standing/KinitoNormal.png`.
 

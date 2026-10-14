@@ -8,7 +8,6 @@ import pytest
 
 from kinito.memory.store import (
     MAX_NOTES_IN_PROMPT,
-    MAX_NOTES_STORED,
     MAX_PROMPT_BLOCK_CHARS,
     MemoryStore,
 )
@@ -56,13 +55,14 @@ def test_add_note_rejects_near_duplicates(store):
     assert len(store.snapshot()["notes"]) == 1
 
 
-def test_notes_fifo_when_over_limit(store):
-    for index in range(MAX_NOTES_STORED + 3):
+def test_notes_do_not_fifo_delete_when_many(store):
+    count = 60
+    for index in range(count):
         store.add_note(f"Plans with friend number {index}")
     notes = store.snapshot()["notes"]
-    assert len(notes) == MAX_NOTES_STORED
-    assert notes[0]["text"] == "Plans with friend number 3"
-    assert notes[-1]["text"] == f"Plans with friend number {MAX_NOTES_STORED + 2}"
+    assert len(notes) == count
+    assert notes[0]["text"] == "Plans with friend number 0"
+    assert notes[-1]["text"] == f"Plans with friend number {count - 1}"
 
 
 def test_as_prompt_block_includes_facts_and_recent_notes(store):
@@ -73,16 +73,19 @@ def test_as_prompt_block_includes_facts_and_recent_notes(store):
     assert "works late" in block
 
 
-def test_as_prompt_block_limits_note_count(store):
-    for index in range(MAX_NOTES_IN_PROMPT + 5):
+def test_as_prompt_block_samples_older_notes(store):
+    for index in range(MAX_NOTES_IN_PROMPT + 10):
         store.add_note(f"Movie nights with friend {index}")
     block = store.as_prompt_block()
-    assert "friend 4" not in block
-    assert f"friend {MAX_NOTES_IN_PROMPT + 4}" in block
+    # Recent notes always present.
+    assert f"friend {MAX_NOTES_IN_PROMPT + 9}" in block
+    # Not every older note fits; sampling keeps count bounded.
+    note_lines = [line for line in block.splitlines() if line.startswith("- Movie nights")]
+    assert 1 <= len(note_lines) <= MAX_NOTES_IN_PROMPT
 
 
 def test_as_prompt_block_truncates_long_output(store):
-    store.set_fact("user_names", "A" * 200)
+    store.set_fact("user_names", "A" * 2000)
     block = store.as_prompt_block()
     assert len(block) <= MAX_PROMPT_BLOCK_CHARS
 
@@ -90,7 +93,7 @@ def test_as_prompt_block_truncates_long_output(store):
 def test_apply_extraction_updates_facts_and_notes(store):
     store.apply_extraction(
         add_notes=["Enjoys hiking on weekends"],
-        update_facts={"hobbies": "hiking"},
+        update_facts={"hobbies": {"value": "hiking", "intent": "add"}},
         allowed_fact_keys=frozenset({"hobbies"}),
     )
     snapshot = store.snapshot()
@@ -98,17 +101,16 @@ def test_apply_extraction_updates_facts_and_notes(store):
     assert snapshot["notes"][0]["text"] == "Enjoys hiking on weekends"
 
 
-def test_reset_removes_files(store, memory_dir):
+def test_reset_removes_memory_json_only(store, memory_dir):
     store.set_fact("user_names", "Alex")
-    store.add_note("Test note")
+    store.add_note("Test note about hiking weekends")
     path = os.path.join(memory_dir, "memory.json")
     notes_path = os.path.join(memory_dir, "notes.txt")
     assert os.path.isfile(path)
-    assert os.path.isfile(notes_path)
+    assert not os.path.isfile(notes_path)
 
     store.reset()
     assert not os.path.isfile(path)
-    assert not os.path.isfile(notes_path)
     assert store.snapshot()["facts"] == {}
 
 
@@ -226,16 +228,68 @@ def test_loads_plural_multi_value_lists_from_disk(memory_dir):
 def test_apply_extraction_merges_hobby_string_and_replaces_list(store):
     store.set_fact("hobbies", "Drawing")
     store.apply_extraction(
-        update_facts={"hobbies": "Reading"},
+        update_facts={"hobbies": {"value": "Reading", "intent": "add"}},
         allowed_fact_keys=frozenset({"hobbies"}),
     )
     assert store.get_fact_values("hobbies") == ["Drawing", "Reading"]
 
     store.apply_extraction(
-        update_facts={"hobbies": ["Crochet"]},
+        update_facts={"hobbies": {"value": ["Crochet"], "intent": "replace"}},
         allowed_fact_keys=frozenset({"hobbies"}),
     )
     assert store.get_fact_values("hobbies") == ["Crochet"]
+
+
+def test_apply_extraction_legacy_string_still_adds_hobby(store):
+    store.set_fact("hobbies", "Drawing")
+    store.apply_extraction(
+        update_facts={"hobbies": "Reading"},
+        allowed_fact_keys=frozenset({"hobbies"}),
+    )
+    assert store.get_fact_values("hobbies") == ["Drawing", "Reading"]
+
+
+def test_load_strips_spam_and_dedupes_similar_notes(memory_dir):
+    os.makedirs(memory_dir, exist_ok=True)
+    path = os.path.join(memory_dir, "memory.json")
+    with open(path, "w", encoding="utf-8") as handle:
+        json.dump(
+            {
+                "version": 1,
+                "facts": {"user_names": "Alex"},
+                "answered_markers": [],
+                "asked_topics": [],
+                "notes": [
+                    {"text": "I'm a bit invested in hangman.", "source": "chat", "created": "2026-10-14"},
+                    {"text": "Movie nights with Sarah on weekends", "source": "chat", "created": "2026-10-14"},
+                    {"text": "You like rain, don't you?", "source": "chat", "created": "2026-10-14"},
+                    {"text": "User is reading Dracula again", "source": "chat", "created": "2026-10-14"},
+                    {"text": "User is rereading Dracula again", "source": "chat", "created": "2026-10-14"},
+                    {
+                        "text": "Movie night with Sarah every weekend",
+                        "source": "chat",
+                        "created": "2026-10-14",
+                    },
+                ],
+            },
+            handle,
+        )
+
+    store = MemoryStore(directory=memory_dir)
+    texts = [note["text"] for note in store.notes_list()]
+    assert "I'm a bit invested in hangman." not in texts
+    assert len([text for text in texts if "Sarah" in text]) == 1
+    assert len([text for text in texts if "Dracula" in text]) == 1
+    assert store.get_fact("user_names") == "Alex"
+
+
+def test_add_note_upgrades_near_duplicate_when_richer(store):
+    assert store.add_note("User is reading Dracula again") is True
+    assert store.add_note("User is rereading Dracula") is False
+    richer = "User is reading Dracula again and finds it a little boring"
+    assert store.add_note(richer) is True
+    texts = [note["text"] for note in store.notes_list()]
+    assert texts == [richer]
 
 
 def test_pet_and_split_on_set_fact(store):
@@ -285,7 +339,7 @@ def test_set_fact_rejects_placeholder_for_favorite_drink(store):
 def test_apply_extraction_rejects_placeholder_favorite_drink(store):
     store.set_fact("favorite_drink", "Tea")
     store.apply_extraction(
-        update_facts={"favorite_drink": "no"},
+        update_facts={"favorite_drink": {"value": "no", "intent": "replace"}},
         allowed_fact_keys=frozenset({"favorite_drink"}),
     )
     assert store.get_fact("favorite_drink") == "Tea"
@@ -372,7 +426,10 @@ def test_apply_extraction_dates_daily_facts(store):
     from kinito.memory.daily_facts import format_daily_fact
 
     store.apply_extraction(
-        update_facts={"mood_today": "good", "energy_today": "high"},
+        update_facts={
+            "mood_today": {"value": "good", "intent": "replace"},
+            "energy_today": {"value": "high", "intent": "replace"},
+        },
         allowed_fact_keys=frozenset({"mood_today", "energy_today"}),
     )
     assert store.get_fact("mood_today") == "good"

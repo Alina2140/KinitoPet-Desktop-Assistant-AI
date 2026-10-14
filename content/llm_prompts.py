@@ -42,53 +42,76 @@ MEMORY_GENERATION_HINT = (
 MEMORY_EXTRACT_SYSTEM = (
     "You extract durable memories for a desktop companion's memory file. "
     "Reply with JSON only. No markdown. Add at most one new note per turn. "
+    "Only store what the USER clearly states about themselves. "
     "Never repeat or rephrase something already listed under Already known."
 )
 
-MEMORY_EXTRACT_PROMPT = """Review this chat exchange and decide what durable memories are worth storing.
+MEMORY_EXTRACT_PROMPT = """Review this recent chat and decide what durable memories might be worth storing.
 
-Store long-term useful information, for example:
-- user facts and preferences (food, music, hobbies, language/style preferences)
-- people in the user's life (friends, family, pets)
-- plans or recurring activities (movie night with Sarah, works on Mondays)
-- stable personal details (job, studies, where they live)
-- occasional companion observations (e.g. enjoys chatting here, likes Kinito's updates)
+Store only information the USER asserts or corrects about themselves, for example:
+- preferences (food, music, hobbies, colors, …)
+- people in their life (friends, family, pets)
+- plans or recurring activities
+- stable personal details (job, studies, home city, languages)
 
 Do NOT store:
 - descriptions of emojis, facial expressions, gestures, or what is visible on screen
 - which apps or windows are open or active right now (that is live context, not memory)
 - random phrases, greetings, or throwaway small talk with no lasting meaning
-- fleeting mood about today ("having a good day") unless clearly answered as a check-in; then use mood_today as "good", "neutral", or "bad" only
 - meta replies ("no change needed") or guesses
 - sensitive data (passwords, street addresses — city/region only for home_city)
 - notes that repeat or rephrase something already listed under Already known
+- topics, examples, rainbows, colors, foods, or words that merely appear in discussion, games, riddles, word chains, hangman, trivia, or hypothetical lists
+- anything only the assistant said, guessed, or joked about
+- companion self-talk or observations about the chat ("I'm invested…", "You like…", "Youthful energy!")
+- fleeting mood unless clearly a check-in → mood_today as "good", "neutral", or "bad" only
+- rephrasing something already listed under Already known (including similar wording)
+- every tiny follow-up about the same topic (if Already known says the user is reading Dracula,
+  do NOT also store "still reading", "a little boring", "thinking about Frankenstein" unless the
+  user clearly commits to a new durable detail)
 
 Rules:
 - If nothing genuinely new is worth storing, return empty lists/objects.
-- add_notes: max 1 short note. Prefer the single most useful new detail from this turn.
+- Facts MUST come from USER lines only. Assistant lines are context, never a fact source.
+- Keep stored values in the user's wording (usually English); do not invent values.
+- favorite_* / comfort_food / dream_destination / morning_drink: ONLY when the user explicitly
+  marks a preference ("my favorite book is…", "I prefer…", "my go-to…"), or answers a direct
+  favorite question with a short reply. Casual mentions never overwrite these keys.
+- update_facts values use objects: {{"value": <string or array>, "intent": "add"|"replace"|"remove"}}.
+  - replace: full new set / new singular value ("My favorite snacks are oranges, chips, ice cream")
+  - add: append one or more items ("I also crochet")
+  - remove: drop item(s) ("I don't like chips anymore")
+- Legacy plain strings are discouraged; prefer the object form.
+- update_facts keys only if clearly stated: user_names, favorite_colors, favorite_food, hobbies, pets, favorite_book, favorite_drink, favorite_movie, favorite_snacks, favorite_seasons, likes_programming, likes_music, likes_coffee, birthday, job, favorite_game, bedtime, mood_today, favorite_show, favorite_artist, favorite_animal, comfort_food, dream_destination, favorite_app, morning_drink, wake_time, home_city, chronotype, languages, likes_rain, likes_horror, likes_spicy_food, likes_staying_up_late, partner_status, siblings, important_person, pronouns, energy_today, focus_today, plans_tonight.
+- Multi-value keys (user_names, hobbies, pets, favorite_colors, favorite_seasons, favorite_snacks, languages, favorite_animal): use a JSON array for replace of the full set; string or one-item array for add/remove.
+- likes_* markers: value must be "yes" or "no".
+- birthday: YYYY-MM-DD or MM-DD; "declined" if refused. Never set first_met.
+- mood_today: good|neutral|bad. energy_today: high|neutral|low. focus_today: busy|neutral|chill.
+- home_city: city/region only. partner_status: short text or "private".
+- Never set user_names unless the user explicitly states a name ("my name is", "call me"). Genres/colors/foods/hobbies are NOT names.
+- add_notes: max 1 short USER-focused note when useful (current book/show/game, plans, people).
+  One note per topic is enough. No assistant quotes.
 - Do not add a note if Already known already covers the same topic, even with different wording.
-- remove_notes: exact note texts to delete if the user corrected themselves (notes only — never delete fact keys).
-- update_facts: only these keys if clearly stated: user_names, favorite_colors, favorite_food, hobbies, pets, favorite_book, favorite_drink, favorite_movie, favorite_snacks, favorite_seasons, likes_programming, likes_music, likes_coffee, birthday, job, favorite_game, bedtime, mood_today, favorite_show, favorite_artist, favorite_animal, comfort_food, dream_destination, favorite_app, morning_drink, wake_time, home_city, chronotype, languages, likes_rain, likes_horror, likes_spicy_food, likes_staying_up_late, partner_status, siblings, important_person, pronouns, energy_today, focus_today, plans_tonight.
-- When a preference changes, OVERWRITE the fact with the new value via update_facts. Do not leave the old value and do not try to remove the key.
-  Examples: "I don't like programming anymore" → {{"likes_programming": "no"}}; "my favorite color is blue now" → {{"favorite_colors": "blue"}}; "I work as a nurse" → {{"job": "nurse"}}; "bedtime is around 11pm" → {{"bedtime": "11pm"}}; "my favorite game is Zelda" → {{"favorite_game": "Zelda"}}; "I speak German and English" → {{"languages": ["German", "English"]}}; "pronouns are they/them" → {{"pronouns": "they/them"}}.
-- user_names, hobbies, pets, favorite_colors, favorite_seasons, favorite_snacks, languages, and favorite_animal may hold multiple values. Prefer a JSON array when listing more than one, or when correcting the full set.
-  Examples: new hobby "I also crochet" → {{"hobbies": "Crochet"}} (merged with known hobbies); "I only crochet now" → {{"hobbies": ["Crochet"]}}; pets "Lola and Mae" → {{"pets": ["Lola", "Mae"]}}; nickname "call me Sad sometimes" → {{"user_names": "Sad"}}.
-- birthday: store as YYYY-MM-DD when the year is known (e.g. "1990-03-15"), otherwise MM-DD (e.g. "03-15"). If the user refuses to share, store "declined".
-- Never set or change first_met (companion relationship start date). That key is managed by the app only.
-- mood_today: only "good", "neutral", or "bad". energy_today: only "high", "neutral", or "low". focus_today: only "busy", "neutral", or "chill".
-- Daily check-ins (mood_today, energy_today, focus_today, plans_tonight) are for today only; do not invent yesterday's values.
-- home_city: city or region only — never a street address.
-- partner_status: short status text, or "private" if the user declines.
-- For markers like likes_programming / likes_music / likes_coffee / likes_rain / likes_horror / likes_spicy_food / likes_staying_up_late, always store "yes" or "no".
-- Never set user_names unless the user explicitly states their name (e.g. "my name is", "call me", "I'm …" as an introduction). Music genres, colors, foods, and hobbies are NOT names.
-- Do not overwrite existing user_names with a preference, genre, or single-word topic label.
-- Prefer update_facts over add_notes when a fact key fits.
+- remove_notes: exact note texts to delete if the user corrected a note (notes only).
+- Prefer update_facts over add_notes when a fact key fits AND the preference is explicit.
+- When unsure, store nothing.
+
+Examples:
+- "I don't like programming anymore" → {{"likes_programming": {{"value": "no", "intent": "replace"}}}}
+- "my favorite color is blue now" → {{"favorite_colors": {{"value": ["blue"], "intent": "replace"}}}}
+- "My favorite snacks are oranges, chips, ice cream" → {{"favorite_snacks": {{"value": ["oranges", "chips", "ice cream"], "intent": "replace"}}}}
+- "I also crochet" → {{"hobbies": {{"value": "Crochet", "intent": "add"}}}}
+- "I don't like chips anymore" → {{"favorite_snacks": {{"value": ["chips"], "intent": "remove"}}}}
+- First time: "I've recently started reading Dracula again" → {{"add_notes": ["User is rereading Dracula"], "update_facts": {{}}}}
+- Later in the same topic: "it's a little boring" / "maybe Frankenstein next" → {{"add_notes": [], "update_facts": {{}}}}
+- "My favorite book is Dracula" → {{"favorite_book": {{"value": "Dracula", "intent": "replace"}}}}
+- "Movie night with Sarah every Friday" → {{"add_notes": ["Movie nights with Sarah on Fridays"], "update_facts": {{}}}}
 
 Already known:
 {known_facts}
 
-User: {user_text}
-Assistant: {assistant_text}
+Recent chat:
+{chat_transcript}
 
 Reply with JSON only:
 {{"add_notes": [], "remove_notes": [], "update_facts": {{}}}}
