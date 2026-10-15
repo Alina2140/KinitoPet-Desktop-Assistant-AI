@@ -55,6 +55,8 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
         self._ai_generating = True
         self.talking = True
         self._talk_sprite_mode = "thinking"
+        if getattr(self, "_dizzy_mode", False) or getattr(self, "_fancy_mode", False):
+            return
         if hasattr(self, "change_sprite") and hasattr(self, "tk_img_thinking"):
             self.change_sprite(self.tk_img_thinking)
 

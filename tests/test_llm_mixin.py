@@ -198,6 +198,15 @@ def test_generate_and_speak_shows_thinking_sprite(mock_speak, llm_app):
     assert llm_app._ai_generating is True
 
 
+def test_show_ai_thinking_sprite_skips_override_during_dizzy(llm_app):
+    llm_app.change_sprite = MagicMock()
+    llm_app.tk_img_thinking = "thinking"
+    llm_app._dizzy_mode = True
+    llm_app._show_ai_thinking_sprite()
+    llm_app.change_sprite.assert_not_called()
+    assert llm_app._ai_generating is True
+
+
 @patch.object(SpeechMixin, "speak")
 def test_speak_skips_ai_for_interactive_dialog(mock_speak, llm_app):
     with patch("kinito.features.llm.find_dialog_spec", return_value=object()):

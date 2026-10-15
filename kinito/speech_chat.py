@@ -80,6 +80,8 @@ class SpeechChatMixin(EmojiPickerMixin):
         self.interrupt_speech()
         if hasattr(self, "_stop_fancy_idle"):
             self._stop_fancy_idle()
+        if hasattr(self, "_stop_dizzy_reaction"):
+            self._stop_dizzy_reaction()
         self._chat_mode = False
         self._chat_voice_mode = None
         self._stop_voice_input(discard=True)
@@ -195,6 +197,8 @@ class SpeechChatMixin(EmojiPickerMixin):
         self.interrupt_speech()
         if hasattr(self, "_stop_fancy_idle"):
             self._stop_fancy_idle()
+        if hasattr(self, "_stop_dizzy_reaction"):
+            self._stop_dizzy_reaction()
         self._chat_mode = True
         self._chat_generating = False
         if hasattr(self, "_pin_chat_user_label") and not getattr(self, "_chat_session_user_label", None):

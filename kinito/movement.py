@@ -64,8 +64,10 @@ class MovementMixin:
     DIZZY_ORBIT_MAX_RADIUS_PX = 230
     DIZZY_ORBIT_REVOLUTIONS = 8
     DIZZY_ORBIT_WINDOW_SECONDS = 10.0
-    DIZZY_REACT_CHANCE = 0.60
+    DIZZY_REACT_CHANCE = 0.50
     DIZZY_COOLDOWN_SECONDS = (40, 75)
+    DIZZY_SPRITE_SWAP_SECONDS = 0.45
+    DIZZY_SPEECH_START_TIMEOUT = 3.0
     SNORING_CHANCE = 0.38
     SNORING_VOLUME = 0.5
     SNORING_COOLDOWN_SECONDS = 5.0
@@ -458,6 +460,8 @@ class MovementMixin:
             return False
         if getattr(self, "_fancy_mode", False):
             return False
+        if getattr(self, "_dizzy_mode", False):
+            return False
         if getattr(self, "_reading_idle_active", False):
             return False
         if getattr(self, "_hug_mode", False):
@@ -688,13 +692,71 @@ class MovementMixin:
             return
         if not getattr(self, "_startup_complete", True):
             return
+        if getattr(self, "_dizzy_mode", False):
+            return
         if hasattr(self, "_is_busy_with_speech") and self._is_busy_with_speech():
             return
         if not hasattr(self, "speak"):
             return
+        threading.Thread(target=self._run_dizzy_reaction, daemon=True).start()
+
+    def _stop_dizzy_reaction(self, *, restore_sprite: bool = True) -> None:
+        """Abort dizzy animation so other modes are not stuck spinning."""
+        if not getattr(self, "_dizzy_mode", False):
+            return
+        self._dizzy_mode = False
+        if restore_sprite:
+            self._restore_sprite_after_dizzy()
+
+    def _restore_sprite_after_dizzy(self) -> None:
+        """Return to a normal standing sprite unless another pose owns the display."""
+        if getattr(self, "talking", False) or getattr(self, "_hug_mode", False):
+            return
+        if getattr(self, "_fancy_mode", False):
+            return
+        if getattr(self, "_preserve_sprite", False) or getattr(self, "paused", False):
+            return
+        if getattr(self, "is_dragging", False):
+            return
+        normal = getattr(self, "tk_img_normal", None)
+        if normal is not None:
+            self.change_sprite(normal)
+
+    def _run_dizzy_reaction(self) -> None:
+        """Cycle dizzy sprites while complaining about being orbited."""
         from content.dizzy_lines import pick_dizzy_line
 
-        self.speak(pick_dizzy_line())
+        dizzy_sprites = getattr(self, "_dizzy_sprites", ())
+        if not dizzy_sprites:
+            dizzy = getattr(self, "tk_img_dizzy", None)
+            dizzy_sprites = (dizzy,) if dizzy is not None else ()
+
+        self._dizzy_mode = True
+        self._dizzy_frame = 0
+        frame = 0
+        waited = 0.0
+        speech_started = False
+        if dizzy_sprites:
+            self.change_sprite(dizzy_sprites[0])
+        self.speak(pick_dizzy_line(), skip_ai=True)
+
+        try:
+            while self._running and not self.paused and getattr(self, "_dizzy_mode", False):
+                time.sleep(self.DIZZY_SPRITE_SWAP_SECONDS)
+                waited += self.DIZZY_SPRITE_SWAP_SECONDS
+                if not getattr(self, "_dizzy_mode", False):
+                    break
+                if dizzy_sprites:
+                    frame += 1
+                    self.change_sprite(dizzy_sprites[frame % len(dizzy_sprites)])
+                    self._dizzy_frame = frame
+                if self.talking:
+                    speech_started = True
+                elif speech_started or waited >= self.DIZZY_SPEECH_START_TIMEOUT:
+                    break
+        finally:
+            self._dizzy_mode = False
+            self._restore_sprite_after_dizzy()
 
     def _reset_dizzy_orbit(self) -> None:
         """Clear orbit-tracking state used for dizzy reactions."""
@@ -989,6 +1051,8 @@ class MovementMixin:
             return False
         if getattr(self, "_fancy_mode", False):
             return False
+        if getattr(self, "_dizzy_mode", False):
+            return False
         if getattr(self, "_reading_idle_active", False):
             return False
         if getattr(self, "_hug_mode", False):
@@ -1109,7 +1173,10 @@ class MovementMixin:
         if getattr(self, "paused", False) or self._is_position_locked_by_user():
             self._mouse_follow_state = "idle"
             return
-        if getattr(self, "_fancy_mode", False) or getattr(self, "_reading_idle_active", False):
+        if getattr(self, "_fancy_mode", False) or getattr(self, "_dizzy_mode", False):
+            self._mouse_follow_state = "idle"
+            return
+        if getattr(self, "_reading_idle_active", False):
             self._mouse_follow_state = "idle"
             return
         if getattr(self, "_hug_mode", False) or getattr(self, "_preserve_sprite", False):
@@ -1507,6 +1574,7 @@ class MovementMixin:
             and not self._is_position_locked_by_user()
             and not getattr(self, "_focus_mode", False)
             and not getattr(self, "_fancy_mode", False)
+            and not getattr(self, "_dizzy_mode", False)
             and (not self.talking or getattr(self, "_preserve_sprite", False))
         )
 
@@ -1522,6 +1590,7 @@ class MovementMixin:
             and not self.talking
             and not getattr(self, "_focus_mode", False)
             and not getattr(self, "_fancy_mode", False)
+            and not getattr(self, "_dizzy_mode", False)
         )
 
     def _maybe_play_reading_page_turn(self, session: int, *, page_sprites=(), restore_sprite=None) -> bool:
@@ -1804,6 +1873,24 @@ class MovementMixin:
             if getattr(self, "_head_stroke_mode", False):
                 time.sleep(0.1)
                 return
+            if self._fancy_mode:
+                magician_sprites = getattr(self, "_magician_sprites", (self.tk_img_magic,))
+                frame = getattr(self, "_magician_frame", 0)
+                self.change_sprite(magician_sprites[frame % len(magician_sprites)])
+                self._magician_frame = frame + 1
+                time.sleep(0.45)
+                return
+            if getattr(self, "_dizzy_mode", False):
+                dizzy_sprites = getattr(self, "_dizzy_sprites", ())
+                if not dizzy_sprites:
+                    dizzy = getattr(self, "tk_img_dizzy", None)
+                    dizzy_sprites = (dizzy,) if dizzy is not None else ()
+                if dizzy_sprites:
+                    frame = getattr(self, "_dizzy_frame", 0)
+                    self.change_sprite(dizzy_sprites[frame % len(dizzy_sprites)])
+                    self._dizzy_frame = frame + 1
+                    time.sleep(self.DIZZY_SPRITE_SWAP_SECONDS)
+                    return
             if getattr(self, "_ai_generating", False):
                 sprite_a, sprite_b = self._talking_sprite_pair()
                 self.change_sprite(sprite_a)
@@ -1812,13 +1899,6 @@ class MovementMixin:
                     return
                 self.change_sprite(sprite_b)
                 time.sleep(1)
-                return
-            if self._fancy_mode:
-                magician_sprites = getattr(self, "_magician_sprites", (self.tk_img_magic,))
-                frame = getattr(self, "_magician_frame", 0)
-                self.change_sprite(magician_sprites[frame % len(magician_sprites)])
-                self._magician_frame = frame + 1
-                time.sleep(0.45)
                 return
             if self._hug_mode:
                 self.change_sprite(self.tk_img_hug)

@@ -864,6 +864,7 @@ def _configure_mouse_attention(movement):
     movement.moving = False
     movement.talking = False
     movement._fancy_mode = False
+    movement._dizzy_mode = False
     movement._reading_idle_active = False
     movement._hug_mode = False
     movement._preserve_sprite = False
@@ -882,6 +883,10 @@ def _configure_mouse_attention(movement):
     movement._dizzy_orbit_accum = 0.0
     movement._dizzy_orbit_started_at = 0.0
     movement._dizzy_ready_at = 0.0
+    movement._dizzy_sprites = ("dizzy", "dizzy2", "dizzy3")
+    movement._dizzy_frame = 0
+    movement.tk_img_dizzy = "dizzy"
+    movement.tk_img_normal = "normal"
     movement._last_snore_at = 0.0
     movement.x = 100
     movement.y = 200
@@ -1182,17 +1187,20 @@ def test_track_dizzy_orbit_resets_when_too_close(movement):
     assert movement._dizzy_orbit_accum == 0.0
 
 
-def test_maybe_speak_dizzy_reaction_speaks_on_chance_hit(movement):
+def test_maybe_speak_dizzy_reaction_starts_animation_on_chance_hit(movement):
     _configure_mouse_attention(movement)
-    movement.speak = MagicMock()
+    movement._run_dizzy_reaction = MagicMock()
     with (
         patch("kinito.movement.random.random", return_value=0.0),
         patch("kinito.movement.random.uniform", return_value=50.0),
-        patch("content.dizzy_lines.pick_dizzy_line", return_value="I'm dizzy!"),
         patch("kinito.movement.time.monotonic", return_value=100.0),
+        patch("kinito.movement.threading.Thread") as mock_thread,
     ):
+        mock_thread.return_value = MagicMock()
         movement._maybe_speak_dizzy_reaction()
-    movement.speak.assert_called_once_with("I'm dizzy!")
+    mock_thread.assert_called_once()
+    assert mock_thread.call_args.kwargs["target"] is movement._run_dizzy_reaction
+    mock_thread.return_value.start.assert_called_once()
     assert movement._dizzy_ready_at == 150.0
 
 
@@ -1203,10 +1211,65 @@ def test_maybe_speak_dizzy_reaction_skips_on_chance_miss(movement):
         patch("kinito.movement.random.random", return_value=0.99),
         patch("kinito.movement.random.uniform", return_value=50.0),
         patch("kinito.movement.time.monotonic", return_value=100.0),
+        patch("kinito.movement.threading.Thread") as mock_thread,
     ):
         movement._maybe_speak_dizzy_reaction()
     movement.speak.assert_not_called()
+    mock_thread.assert_not_called()
     assert movement._dizzy_ready_at == 150.0
+
+
+def test_run_dizzy_reaction_cycles_sprites_during_speech(movement):
+    _configure_mouse_attention(movement)
+    movement.speak = MagicMock()
+    movement.change_sprite = MagicMock()
+    movement._running = True
+    movement.paused = False
+
+    def fake_sleep(_seconds):
+        if movement.change_sprite.call_count == 2:
+            movement.talking = True
+        elif movement.change_sprite.call_count >= 4:
+            movement.talking = False
+
+    with (
+        patch("content.dizzy_lines.pick_dizzy_line", return_value="I'm dizzy!"),
+        patch("kinito.movement.time.sleep", side_effect=fake_sleep),
+    ):
+        movement._run_dizzy_reaction()
+
+    sprite_calls = [call.args[0] for call in movement.change_sprite.call_args_list]
+    assert sprite_calls[0] == "dizzy"
+    assert "dizzy2" in sprite_calls
+    assert movement.change_sprite.call_count >= 3
+    assert movement._dizzy_mode is False
+    assert sprite_calls[-1] == "normal"
+    movement.speak.assert_called_once_with("I'm dizzy!", skip_ai=True)
+
+
+def test_run_dizzy_reaction_aborts_when_speech_never_starts(movement):
+    _configure_mouse_attention(movement)
+    movement.speak = MagicMock()
+    movement.change_sprite = MagicMock()
+    movement.DIZZY_SPEECH_START_TIMEOUT = 0.9
+
+    with (
+        patch("content.dizzy_lines.pick_dizzy_line", return_value="I'm dizzy!"),
+        patch("kinito.movement.time.sleep", return_value=None),
+    ):
+        movement._run_dizzy_reaction()
+
+    assert movement._dizzy_mode is False
+    assert movement.change_sprite.call_args_list[-1].args[0] == "normal"
+
+
+def test_stop_dizzy_reaction_clears_mode_and_sprite(movement):
+    _configure_mouse_attention(movement)
+    movement.change_sprite = MagicMock()
+    movement._dizzy_mode = True
+    movement._stop_dizzy_reaction()
+    assert movement._dizzy_mode is False
+    movement.change_sprite.assert_called_once_with("normal")
 
 
 def test_track_dizzy_orbit_respects_cooldown(movement):

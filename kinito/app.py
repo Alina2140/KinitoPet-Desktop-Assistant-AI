@@ -20,6 +20,9 @@ from kinito.assets import (
     sprite_path_blush_left,
     sprite_path_blush_right,
     sprite_path_crouching,
+    sprite_path_dizzy,
+    sprite_path_dizzy_2,
+    sprite_path_dizzy_3,
     sprite_path_drag_left,
     sprite_path_drag_right,
     sprite_path_hand_left,
@@ -168,6 +171,9 @@ class FloatingAssistant(
         )
         self.img_magic = _open_sprite(sprite_path_magic, fallback)
         self.img_magic_2 = _open_sprite(sprite_path_magic_2, fallback)
+        self.img_dizzy = _open_sprite(sprite_path_dizzy, fallback)
+        self.img_dizzy_2 = _open_sprite(sprite_path_dizzy_2, fallback)
+        self.img_dizzy_3 = _open_sprite(sprite_path_dizzy_3, fallback)
         self.img_surf_left = _open_sprite(sprite_path_surf_left, fallback)
         self.img_surf_right = _open_sprite(sprite_path_surf_right, fallback)
         self.img_sleep = _open_sprite(sprite_path_sleep, fallback)
@@ -221,6 +227,9 @@ class FloatingAssistant(
         )
         self.tk_img_magic = ImageTk.PhotoImage(self.img_magic)
         self.tk_img_magic_2 = ImageTk.PhotoImage(self.img_magic_2)
+        self.tk_img_dizzy = ImageTk.PhotoImage(self.img_dizzy)
+        self.tk_img_dizzy_2 = ImageTk.PhotoImage(self.img_dizzy_2)
+        self.tk_img_dizzy_3 = ImageTk.PhotoImage(self.img_dizzy_3)
         self._reading_sprites = (self.tk_img_idle, self.tk_img_idle_2)
         self._reading_page_sprites = (self.tk_img_idle_2_page, self.tk_img_idle_2_page_2)
         self._reading_glasses_sprites = (
@@ -233,6 +242,12 @@ class FloatingAssistant(
         )
         self._magician_sprites = (self.tk_img_magic, self.tk_img_magic_2)
         self._magician_frame = 0
+        self._dizzy_sprites = (
+            self.tk_img_dizzy,
+            self.tk_img_dizzy_2,
+            self.tk_img_dizzy_3,
+        )
+        self._dizzy_frame = 0
         self.tk_img_surf_left = ImageTk.PhotoImage(
             MovementMixin._flatten_sprite_on_white(self.img_surf_left)
         )
@@ -280,6 +295,7 @@ class FloatingAssistant(
         self._reminder_id = 0
         self._pending_story = None
         self._fancy_mode = False
+        self._dizzy_mode = False
         self._reading_idle_active = False
         self._reading_idle_session = 0
         self._speech_accompaniment_active = False
@@ -582,6 +598,8 @@ class FloatingAssistant(
         self.end_hug()
         if hasattr(self, "_stop_fancy_idle"):
             self._stop_fancy_idle()
+        if hasattr(self, "_stop_dizzy_reaction"):
+            self._stop_dizzy_reaction()
         self.hide_screen_glitch()
         self.hide_blue_screen()
         if hasattr(self, "_ensure_single_game_window"):
