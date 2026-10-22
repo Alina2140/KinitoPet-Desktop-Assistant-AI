@@ -420,6 +420,19 @@ def test_run_tts_uses_balcon_when_available(speech):
         play_wav.assert_not_called()
 
 
+def test_run_balcon_process_hides_console_on_windows(speech):
+    process = MagicMock(returncode=0)
+    process.communicate.return_value = ("", "")
+    with (
+        patch("kinito.speech.os.name", "nt"),
+        patch("kinito.speech.subprocess.CREATE_NO_WINDOW", 0x08000000, create=True),
+        patch("kinito.speech.subprocess.Popen", return_value=process) as popen,
+    ):
+        ok, _stderr = speech._run_balcon_process("Eddie", "Hello", 45)
+    assert ok is True
+    assert popen.call_args.kwargs["creationflags"] == 0x08000000
+
+
 def test_run_tts_soft_volume_renders_wav(speech):
     speech._available_voices = {"Eddie"}
     speech._tts_volume = 40

@@ -655,6 +655,7 @@ class SpeechMixin:
                 capture_output=True,
                 text=True,
                 timeout=10,
+                **self._balcon_popen_kwargs(),
             )
             voices = set()
             for line in result.stdout.splitlines():
@@ -814,6 +815,16 @@ class SpeechMixin:
         return command
 
     @staticmethod
+    def _balcon_popen_kwargs() -> dict:
+        """Hide balcon's console window on Windows (avoids a flash before speech when using the .bat version)."""
+        if os.name != "nt":
+            return {}
+        creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        if not creationflags:
+            return {}
+        return {"creationflags": creationflags}
+
+    @staticmethod
     def _scale_wav_pcm(data: np.ndarray, volume: float) -> np.ndarray:
         """Return PCM samples attenuated by *volume* (0.0–1.0)."""
         if volume >= 1.0:
@@ -902,6 +913,7 @@ class SpeechMixin:
                 stderr=subprocess.PIPE,
                 text=True,
                 encoding="utf-8",
+                **self._balcon_popen_kwargs(),
             )
         except (OSError, subprocess.SubprocessError, ValueError):
             return False, ""

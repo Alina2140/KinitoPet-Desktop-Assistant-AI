@@ -190,21 +190,52 @@ python Kinito.py
 
 ---
 
-## Step 7 (Optional): Create a desktop shortcut
+## Step 7 (Optional): Start Kinito without a terminal
 
-1. Right-click on Desktop → **New** → **Shortcut**
-2. Target (adjust paths):
+After Steps 4–5 you can open Kinito **without** PowerShell or an IDE. There is no separate `.exe` installer; the project includes a small launcher instead.
+
+### Easiest: double-click `Start-Kinito.bat`
+
+1. In the project folder, double-click **`Start-Kinito.bat`**
+2. Kinito should appear on the desktop (no black console window)
+
+### Desktop shortcut with the Kinito icon
+
+Windows shortcuts can use a custom icon; a `.bat` file itself cannot. The project already ships `GameAssets/icons/Icon.ico`.
+
+1. Double-click **`Create-Desktop-Shortcut.bat`** once
+2. A **Kinito** shortcut appears on your Desktop (with the Kinito icon)
+3. Use that shortcut to start him from then on
+
+If you already made a shortcut via **Send to → Desktop**, either run `Create-Desktop-Shortcut.bat` (replaces/creates `Kinito.lnk`) or set the icon manually: right-click shortcut → **Properties** → **Change Icon…** → browse to `GameAssets\icons\Icon.ico`.
+
+### Alternative: manual Windows shortcut
+
+1. Right-click Desktop → **New** → **Shortcut**
+2. Location (use **your** project path; keep the quotes):
 
 ```
-C:\Users\YourName\Documents\KinitoPET-Python-Virtual-Assistant\.venv\Scripts\pythonw.exe C:\Users\YourName\Documents\KinitoPET-Python-Virtual-Assistant\Kinito.py
+"C:\Users\YourName\Documents\KinitoPET-Python-Virtual-Assistant\.venv\Scripts\pythonw.exe" "C:\Users\YourName\Documents\KinitoPET-Python-Virtual-Assistant\Kinito.py"
 ```
 
-Using `pythonw.exe` hides the black console window.
+3. Click **Next**, name it **Kinito**, finish
+4. Right-click the new shortcut → **Properties**
+5. Set **Start in** to the project folder (the folder that contains `Kinito.py`), e.g.:
 
-3. Name it **Kinito**
-4. Double-click to launch
+```
+C:\Users\YourName\Documents\KinitoPET-Python-Virtual-Assistant
+```
 
----
+6. Click **Change Icon…** and choose `GameAssets\icons\Icon.ico`
+
+`pythonw.exe` runs Python **without** a console window. If nothing appears, run `python Kinito.py` from PowerShell once (Step 6) to see the real error text.
+
+### How to close Kinito (shortcut / bat)
+
+- Right-click Kinito → **Say Goodbye** (recommended)
+- Or close him from the system tray / taskbar if shown
+
+There is no terminal to close when you used `pythonw` / the bat. **Ctrl + C** only works if you started him from PowerShell.
 
 ---
 
