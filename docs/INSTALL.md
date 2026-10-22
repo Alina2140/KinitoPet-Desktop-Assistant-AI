@@ -258,7 +258,7 @@ python Kinito.py
 | No speech | Install `pyttsx3`; check `GameAssets/Programs/balcon.exe` |
 | Permission errors | Run PowerShell as normal user, not from a restricted folder |
 
-See also the [Troubleshooting section in README.md](../README.md#troubleshooting).
+See also **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)**.
 
 ---
 

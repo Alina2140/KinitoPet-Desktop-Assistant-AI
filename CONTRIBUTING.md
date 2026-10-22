@@ -7,6 +7,7 @@ Thank you for helping improve KinitoPET! This project is free and open for every
 | Guide | What it covers |
 |-------|----------------|
 | [Installation (beginner)](docs/INSTALL.md) | Python, venv, dependencies, first run |
+| [Troubleshooting](docs/TROUBLESHOOTING.md) | Common install and runtime fixes |
 | [Extending Kinito](docs/EXTENDING.md) | Dialogs, websites, text, sprites, features |
 | [Publishing on GitHub](docs/GITHUB.md) | Uploading and sharing the project |
 | [README](README.md) | Overview, features, controls |
