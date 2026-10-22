@@ -256,8 +256,9 @@ class MovementMixin:
         self.mouse_click_offset_y = root_y - event.y_root
         self._record_drag_sample(root_x, root_y)
         self._stop_drag_wiggle()
-        self._set_drag_sprite("standing")
-        self._schedule_drag_wiggle_start()
+        if self._drag_sprites_allowed():
+            self._set_drag_sprite("standing")
+            self._schedule_drag_wiggle_start()
         self._start_drag_tracking()
         if hasattr(self, "_capture_speech_bubble_drag_offset"):
             self._capture_speech_bubble_drag_offset()
@@ -308,10 +309,14 @@ class MovementMixin:
         self._drag_moved = False
         self._stop_drag_tracking()
         self._clear_drag_sprite_state()
-        if hasattr(self, "tk_img_normal"):
+        if not getattr(self, "paused", False) and hasattr(self, "tk_img_normal"):
             self.change_sprite(self.tk_img_normal)
 
-        if drag_moved and speed >= self.THROW_MIN_SPEED_PX_S:
+        if (
+            drag_moved
+            and not getattr(self, "paused", False)
+            and speed >= self.THROW_MIN_SPEED_PX_S
+        ):
             self._start_throw(vx, vy)
             return
 
@@ -336,6 +341,10 @@ class MovementMixin:
         except tk.TclError:
             pass
 
+    def _drag_sprites_allowed(self) -> bool:
+        """Return False while asleep so dragging keeps the sleep pose."""
+        return not getattr(self, "paused", False)
+
     def _drag_sprite_for_state(self, state: str):
         """Return the PhotoImage for a drag visual state."""
         if state == "left":
@@ -355,6 +364,8 @@ class MovementMixin:
 
     def _set_drag_sprite(self, state: str) -> None:
         """Show left/right drag or standing sprite while the mouse button is held."""
+        if not self._drag_sprites_allowed():
+            return
         if getattr(self, "_drag_sprite_state", None) == state:
             return
         sprite = self._drag_sprite_for_state(state)
@@ -365,6 +376,8 @@ class MovementMixin:
 
     def _schedule_drag_idle_sprite(self) -> None:
         """After motion stops, fall back to standing, then maybe wiggle."""
+        if not self._drag_sprites_allowed():
+            return
         schedule_after(
             self.root,
             self,
@@ -375,7 +388,7 @@ class MovementMixin:
 
     def _on_drag_sprite_idle(self) -> None:
         """Revert to standing when still, then start the hold wiggle soon."""
-        if not getattr(self, "is_dragging", False):
+        if not getattr(self, "is_dragging", False) or not self._drag_sprites_allowed():
             return
         self._stop_drag_wiggle()
         self._set_drag_sprite("standing")
@@ -383,6 +396,8 @@ class MovementMixin:
 
     def _schedule_drag_wiggle_start(self) -> None:
         """Begin wiggling after the user has held still long enough."""
+        if not self._drag_sprites_allowed():
+            return
         schedule_after(
             self.root,
             self,
@@ -398,7 +413,7 @@ class MovementMixin:
 
     def _start_drag_wiggle(self) -> None:
         """Start cycling left → standing → right → standing while still held."""
-        if not getattr(self, "is_dragging", False):
+        if not getattr(self, "is_dragging", False) or not self._drag_sprites_allowed():
             return
         self._drag_wiggle_index = 0
         self._maybe_speak_hold_reaction()
@@ -406,7 +421,7 @@ class MovementMixin:
 
     def _drag_wiggle_tick(self) -> None:
         """Advance one frame of the hold wiggle loop."""
-        if not getattr(self, "is_dragging", False):
+        if not getattr(self, "is_dragging", False) or not self._drag_sprites_allowed():
             return
         frames = self._DRAG_WIGGLE_FRAMES
         index = int(getattr(self, "_drag_wiggle_index", 0)) % len(frames)
@@ -639,6 +654,8 @@ class MovementMixin:
 
     def _update_drag_sprite_from_dx(self, dx: float) -> None:
         """Pick left/right drag sprites from horizontal motion; idle → standing."""
+        if not self._drag_sprites_allowed():
+            return
         if abs(dx) < self.DRAG_DIR_DEADZONE_PX:
             self._schedule_drag_idle_sprite()
             return
@@ -807,6 +824,8 @@ class MovementMixin:
 
     def _start_throw(self, vx: float, vy: float) -> None:
         """Begin ballistic flight from the given release velocity."""
+        if getattr(self, "paused", False):
+            return
         self._throwing = True
         self.moving = True
         self._throw_vx = float(vx)
@@ -975,12 +994,13 @@ class MovementMixin:
             pass
 
     def change_sprite(self, new_sprite):
-        """Swap the visible sprite unless the user is currently dragging."""
-        if self.is_dragging:
+        """Swap the visible sprite unless an awake drag owns the pose."""
+        # While asleep, keep cycling sleep sprites even if the user is dragging.
+        if self.is_dragging and self._drag_sprites_allowed():
             return
 
         def _apply():
-            if self.is_dragging:
+            if self.is_dragging and self._drag_sprites_allowed():
                 return
             if self.panel.winfo_exists():
                 self.panel.config(image=new_sprite)

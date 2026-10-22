@@ -239,6 +239,13 @@ def test_change_sprite_skipped_while_dragging(movement):
     movement.panel.config.assert_not_called()
 
 
+def test_change_sprite_allowed_while_dragging_when_paused(movement):
+    movement.paused = True
+    movement.is_dragging = True
+    movement.change_sprite("sleep0")
+    movement.panel.config.assert_called_with(image="sleep0")
+
+
 def test_on_mouse_down_shows_standing_drag_sprite(movement):
     movement._start_drag_tracking = MagicMock()
     movement._sync_kinito_screen_position = MagicMock()
@@ -248,6 +255,21 @@ def test_on_mouse_down_shows_standing_drag_sprite(movement):
     movement.panel.config.assert_called_with(image="normal")
     assert movement._drag_sprite_state == "standing"
     movement.root.after.assert_called()
+
+
+def test_on_mouse_down_keeps_sleep_sprite_while_paused(movement):
+    movement.paused = True
+    movement._start_drag_tracking = MagicMock()
+    movement._sync_kinito_screen_position = MagicMock()
+    movement.x = 100
+    movement.y = 200
+    movement.panel.config.reset_mock()
+    movement.root.after.reset_mock()
+    movement.on_mouse_down(MagicMock(x_root=50, y_root=60, widget=movement.panel))
+    movement.panel.config.assert_not_called()
+    assert movement._drag_sprite_state is None
+    # No idle/wiggle timers while asleep.
+    movement.root.after.assert_not_called()
 
 
 def test_on_mouse_move_shows_drag_left_and_right(movement):
@@ -263,6 +285,19 @@ def test_on_mouse_move_shows_drag_left_and_right(movement):
     movement.on_mouse_move(MagicMock(x_root=320, y_root=400))
     movement.panel.config.assert_called_with(image="drag_right")
     assert movement._drag_sprite_state == "right"
+
+
+def test_on_mouse_move_keeps_sleep_sprite_while_paused(movement):
+    movement.paused = True
+    movement.is_dragging = True
+    movement.mouse_click_offset_x = 0
+    movement.mouse_click_offset_y = 0
+    movement.x = 300
+    movement.y = 400
+    movement.panel.config.reset_mock()
+    movement.on_mouse_move(MagicMock(x_root=250, y_root=400))
+    movement.panel.config.assert_not_called()
+    assert movement._drag_sprite_state is None
 
 
 def test_drag_sprite_idle_reverts_to_standing_and_schedules_wiggle(movement):
@@ -437,6 +472,28 @@ def test_on_mouse_up_restores_standing_sprite(movement):
         movement.on_mouse_up(MagicMock())
     movement.panel.config.assert_called_with(image="normal")
     assert movement._drag_sprite_state is None
+    movement._start_throw.assert_not_called()
+
+
+def test_on_mouse_up_keeps_sleep_sprite_while_paused(movement):
+    movement.paused = True
+    movement.is_dragging = True
+    movement._drag_moved = True
+    movement._drag_sprite_state = None
+    movement._stop_drag_tracking = MagicMock()
+    movement._follow_speech_bubble_to_kinito = MagicMock()
+    movement._start_throw = MagicMock()
+    movement.change_sprite = MagicMock()
+    now = 100.0
+    movement._drag_samples = [
+        (now - 0.2, 0.0, 0.0),
+        (now - 0.01, 401.0, 0.0),
+        (now, 401.5, 0.0),
+    ]
+    with patch("kinito.movement.time.monotonic", return_value=now):
+        movement.on_mouse_up(MagicMock())
+    movement.change_sprite.assert_not_called()
+    movement.panel.config.assert_not_called()
     movement._start_throw.assert_not_called()
 
 
@@ -1351,6 +1408,27 @@ def test_on_mouse_up_throws_when_release_speed_high(movement):
     movement.play_sfx.assert_not_called()
 
 
+def test_on_mouse_up_skips_throw_while_paused(movement):
+    movement.paused = True
+    movement.is_dragging = True
+    movement._drag_moved = True
+    movement._stop_drag_tracking = MagicMock()
+    movement._follow_speech_bubble_to_kinito = MagicMock()
+    movement._start_throw = MagicMock()
+    now = 50.0
+    movement._drag_samples = [
+        (now - 0.05, 0.0, 100.0),
+        (now, 100.0, 50.0),
+    ]
+    with patch("kinito.movement.time.monotonic", return_value=now):
+        movement.on_mouse_up(MagicMock())
+    movement._start_throw.assert_not_called()
+    # Soft place instead of throw: drop bomp, no woosh/throw line.
+    movement.play_sfx.assert_called_once()
+    movement.speak.assert_not_called()
+    assert movement._throwing is False
+
+
 def test_start_throw_plays_woosh_and_speaks(movement):
     with (
         patch("kinito.movement.random.random", return_value=0.0),
@@ -1362,6 +1440,17 @@ def test_start_throw_plays_woosh_and_speaks(movement):
     movement.play_sfx.assert_called_once()
     movement.speak.assert_called_once_with("Weeeee!")
     movement.root.after.assert_called()
+
+
+def test_start_throw_noop_while_paused(movement):
+    movement.paused = True
+    with patch("kinito.movement.random.random", return_value=0.0):
+        movement._start_throw(1200.0, -800.0)
+    assert movement._throwing is False
+    assert movement.moving is False
+    movement.play_sfx.assert_not_called()
+    movement.speak.assert_not_called()
+    movement.root.after.assert_not_called()
 
 
 def test_start_throw_skips_speech_when_busy(movement):
