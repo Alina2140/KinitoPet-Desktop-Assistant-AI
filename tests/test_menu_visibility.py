@@ -15,6 +15,7 @@ def test_menu_button_id_for_known_labels():
     assert menu_button_id_for_label(dlg.BUTTON_PAINT) == "actions.paint"
     assert menu_button_id_for_label(dlg.BUTTON_TTS_ON) == "settings.tts"
     assert menu_button_id_for_label(dlg.BUTTON_PLAYER_FOCUS_OFF) == "settings.player_focus"
+    assert menu_button_id_for_label(dlg.BUTTON_MUSIC_COMMENTS_OFF) == "settings.music_comments"
     assert menu_button_id_for_label(dlg.BUTTON_EMOJI_OFF) == "settings.emojis"
     assert menu_button_id_for_label(dlg.BUTTON_SPECIAL_DAYS_OFF) == "settings.special_days"
     assert (

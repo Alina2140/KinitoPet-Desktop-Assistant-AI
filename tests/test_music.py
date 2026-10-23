@@ -77,7 +77,9 @@ def test_play_user_mp3_plays_and_announces(music, tmp_path):
         music.play_user_mp3(str(mp3))
     music.play_mp3.assert_called_once_with(str(mp3), volume=0.75)
     assert music._user_music_path == str(mp3)
-    music.speak.assert_called_once_with("Playing My Song!", skip_ai=True)
+    music.speak.assert_called_once_with(
+        "Playing My Song!", skip_ai=True, allow_in_focus=True
+    )
 
 
 def test_play_user_mp3_can_skip_announce(music, tmp_path):
@@ -788,3 +790,153 @@ def test_silence_for_player_focus_skips_when_disabled(music):
     music._music_player_window = window
     music._silence_for_player_focus()
     music.interrupt_speech.assert_not_called()
+
+
+def test_toggle_music_comments_persists_and_confirms(music):
+    music._music_comments_enabled = True
+    with patch("kinito.features.music.dlg.pick_line", return_value="comments off"):
+        music.toggle_music_comments()
+    assert music._music_comments_enabled is False
+    music._persist_settings.assert_called()
+    music.speak.assert_called_once()
+    assert music.speak.call_args.kwargs.get("allow_in_focus") is True
+
+
+def test_maybe_trigger_music_comment_respects_disabled(music):
+    music._music_comments_enabled = False
+    music._is_music_player_open = MagicMock(return_value=True)
+    music._is_background_music_playing = MagicMock(return_value=True)
+    music._user_music_name = "TinyTune"
+    assert music.maybe_trigger_music_comment() is False
+    music.speak.assert_not_called()
+
+
+def test_maybe_trigger_music_comment_speaks_when_playing(music):
+    music._music_comments_enabled = True
+    music._music_paused = False
+    music._player_kinito_muted = False
+    music._focus_mode = False
+    music._last_music_comment_at = 0.0
+    music._user_music_name = "TinyTune"
+    music._is_music_player_open = MagicMock(return_value=True)
+    music._is_music_player_minimized = MagicMock(return_value=False)
+    music._is_busy_with_speech = MagicMock(return_value=False)
+    music._is_background_music_playing = MagicMock(return_value=True)
+    with (
+        patch("kinito.features.music.random.random", return_value=0.0),
+        patch(
+            "kinito.features.music.random.choice",
+            return_value="Still vibing to {song}.",
+        ),
+    ):
+        assert music.maybe_trigger_music_comment() is True
+    music.speak.assert_called_once()
+    assert "TinyTune" in music.speak.call_args.args[0]
+    assert music.speak.call_args.kwargs.get("allow_in_focus") is True
+    assert music.speak.call_args.kwargs.get("skip_ai") is True
+
+
+def test_maybe_trigger_music_comment_skips_when_kinito_muted(music):
+    music._music_comments_enabled = True
+    music._player_kinito_muted = True
+    music._user_music_name = "TinyTune"
+    music._is_music_player_open = MagicMock(return_value=True)
+    music._is_background_music_playing = MagicMock(return_value=True)
+    with patch("kinito.features.music.random.random", return_value=0.0):
+        assert music.maybe_trigger_music_comment() is False
+    music.speak.assert_not_called()
+
+
+def test_maybe_trigger_music_pause_nudge_after_long_pause(music):
+    import time
+
+    music._music_comments_enabled = True
+    music._music_paused = True
+    music._music_paused_at = time.monotonic() - 120
+    music._last_music_pause_nudge_at = 0.0
+    music._player_kinito_muted = False
+    music._focus_mode = False
+    music._music_scrubbing = False
+    music._user_music_name = "TinyTune"
+    music._is_music_player_open = MagicMock(return_value=True)
+    music._is_music_player_minimized = MagicMock(return_value=False)
+    music._is_busy_with_speech = MagicMock(return_value=False)
+    with (
+        patch("kinito.features.music.random.random", return_value=0.0),
+        patch(
+            "kinito.features.music.random.choice",
+            return_value="Paused {song}. Want to keep listening?",
+        ),
+    ):
+        assert music.maybe_trigger_music_pause_nudge() is True
+    music.speak.assert_called_once()
+    spoken = music.speak.call_args.args[0]
+    assert "TinyTune" in spoken
+    assert "want to keep listening" in spoken.lower()
+    assert music.speak.call_args.kwargs.get("allow_in_focus") is True
+
+
+def test_maybe_trigger_music_pause_nudge_waits_for_duration(music):
+    import time
+
+    music._music_comments_enabled = True
+    music._music_paused = True
+    music._music_paused_at = time.monotonic() - 10
+    music._user_music_name = "TinyTune"
+    music._is_music_player_open = MagicMock(return_value=True)
+    music._is_music_player_minimized = MagicMock(return_value=False)
+    music._is_busy_with_speech = MagicMock(return_value=False)
+    with patch("kinito.features.music.random.random", return_value=0.0):
+        assert music.maybe_trigger_music_pause_nudge() is False
+    music.speak.assert_not_called()
+
+
+def test_resume_user_music_if_paused(music):
+    music._music_paused = True
+    music._unpause_user_music = MagicMock()
+    music.resume_user_music_if_paused()
+    music._unpause_user_music.assert_called_once()
+    music._unpause_user_music.reset_mock()
+    music._music_paused = False
+    music.resume_user_music_if_paused()
+    music._unpause_user_music.assert_not_called()
+
+
+def test_unpause_restores_same_track_when_stream_died(music):
+    music._user_music_path = "song.mp3"
+    music._user_music_name = "song"
+    music._music_paused = True
+    music._music_pause_resume_seconds = 42.5
+    music._is_background_music_playing = MagicMock(return_value=False)
+    music._seek_user_music = MagicMock()
+    music._schedule_user_music_poll = MagicMock()
+    music._refresh_music_player_ui = MagicMock()
+    music._schedule_music_comment_tick = MagicMock()
+    with (
+        patch("kinito.features.music.pygame.mixer.get_init", return_value=True),
+        patch("kinito.features.music.pygame.mixer.music.unpause") as unpause,
+    ):
+        music._unpause_user_music()
+    unpause.assert_called_once()
+    music._seek_user_music.assert_called_once_with(42.5, resume=True)
+    music._schedule_user_music_poll.assert_not_called()
+    assert music._music_paused is False
+    assert music._music_pause_resume_seconds == 0.0
+
+
+def test_unpause_keeps_stream_when_busy(music):
+    music._user_music_path = "song.mp3"
+    music._music_paused = True
+    music._music_pause_resume_seconds = 12.0
+    music._is_background_music_playing = MagicMock(return_value=True)
+    music._seek_user_music = MagicMock()
+    music._schedule_user_music_poll = MagicMock()
+    music._refresh_music_player_ui = MagicMock()
+    music._schedule_music_comment_tick = MagicMock()
+    with (
+        patch("kinito.features.music.pygame.mixer.get_init", return_value=True),
+        patch("kinito.features.music.pygame.mixer.music.unpause"),
+    ):
+        music._unpause_user_music()
+    music._seek_user_music.assert_not_called()
+    music._schedule_user_music_poll.assert_called_once()

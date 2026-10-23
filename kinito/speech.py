@@ -990,15 +990,24 @@ class SpeechMixin:
             seen.add(voice)
             yield voice
 
-    def _run_tts(self, text, pitch=45, voice_candidates=None, speech_epoch=None):
+    def _run_tts(
+        self,
+        text,
+        pitch=45,
+        voice_candidates=None,
+        speech_epoch=None,
+        *,
+        allow_in_focus=False,
+    ):
         """Run TTS via balcon (preferred) or pyttsx3 fallback."""
         if not getattr(self, "_tts_enabled", True):
             return False
         if getattr(self, "_player_kinito_muted", False):
             return False
-        check = getattr(self, "_player_focus_active", None)
-        if callable(check) and check():
-            return False
+        if not allow_in_focus:
+            check = getattr(self, "_player_focus_active", None)
+            if callable(check) and check():
+                return False
         text = normalize_text_for_tts(text)
         if voice_candidates is None:
             voice_candidates = self.VOICE_NORMAL_CANDIDATES
@@ -1102,7 +1111,13 @@ class SpeechMixin:
 
                 if accompaniment_path:
                     self.root.after(350, start_music_soon)
-                spoke = self._run_tts(text, pitch, voice_candidates, speech_epoch=epoch)
+                spoke = self._run_tts(
+                    text,
+                    pitch,
+                    voice_candidates,
+                    speech_epoch=epoch,
+                    allow_in_focus=allow_in_focus,
+                )
                 if not spoke and getattr(self, "_tts_enabled", True) is False:
                     # Give the user time to read the bubble when voice is muted.
                     time.sleep(min(2.5, 0.35 + 0.045 * max(len(text), 1)))

@@ -168,6 +168,17 @@ MENU_VISIBILITY_SECTIONS: tuple[tuple[str, tuple[MenuEntry, ...]], ...] = (
                 ),
             ),
             (
+                "settings.music_comments",
+                "Song Comments",
+                frozenset(
+                    {
+                        dlg.BUTTON_MUSIC_COMMENTS,
+                        dlg.BUTTON_MUSIC_COMMENTS_ON,
+                        dlg.BUTTON_MUSIC_COMMENTS_OFF,
+                    }
+                ),
+            ),
+            (
                 "settings.tts_volume",
                 "TTS Volume",
                 frozenset(

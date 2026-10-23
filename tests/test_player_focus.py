@@ -53,11 +53,23 @@ def test_run_tts_is_skipped_when_player_focus_is_active(speech):
     assert speech._run_tts("Hello") is False
 
 
+def test_run_tts_allow_in_focus_bypasses_player_focus(speech):
+    speech._tts_enabled = True
+    speech._player_kinito_muted = False
+    speech._player_focus_active.return_value = True
+    with (
+        patch("kinito.speech.os.path.isfile", return_value=False),
+        patch.object(speech, "_run_pyttsx3_fallback", return_value=True) as fallback,
+    ):
+        assert speech._run_tts("Hello", allow_in_focus=True) is True
+    fallback.assert_called_once()
+
+
 def test_run_tts_is_skipped_when_player_kinito_muted(speech):
     speech._tts_enabled = True
     speech._player_kinito_muted = True
     speech._player_focus_active.return_value = False
-    assert speech._run_tts("Hello") is False
+    assert speech._run_tts("Hello", allow_in_focus=True) is False
 
 
 def test_play_sfx_is_muted_when_player_kinito_muted():

@@ -19,7 +19,12 @@ from content.facts import (
 from content.fancy_lines import FANCY_LINES
 from content.goodbye_lines import GOODBYE_LINES
 from content.hug_lines import HUG_ASK_LINES, HUG_LINES
-from content.music_player_lines import MUSIC_PLAYER_LINES
+from content.music_player_lines import (
+    MUSIC_COMMENT_LINES,
+    MUSIC_PAUSE_NUDGE_LINES,
+    MUSIC_PAUSE_NUDGE_MARKER,
+    MUSIC_PLAYER_LINES,
+)
 from content.nudge_lines import (
     CREEPY_NUDGE_LINES,
     PLAY_INVITE_NUDGE_LINES,
@@ -79,6 +84,8 @@ def _assert_non_empty_strings(items, *, min_length=1):
         (CAMERA_LINES, "camera"),
         (SCREEN_COMMENT_FALLBACK_LINES, "screen_comment_fallback"),
         (MUSIC_PLAYER_LINES, "music_player"),
+        (MUSIC_COMMENT_LINES, "music_comment"),
+        (MUSIC_PAUSE_NUDGE_LINES, "music_pause_nudge"),
     ],
 )
 def test_content_pools_are_non_empty(pool, name):
@@ -122,10 +129,12 @@ def test_get_random_wisdom_uses_quote_pool():
 
 
 def test_music_player_lines_support_song_placeholder():
-    for line in MUSIC_PLAYER_LINES:
+    for line in (*MUSIC_PLAYER_LINES, *MUSIC_COMMENT_LINES, *MUSIC_PAUSE_NUDGE_LINES):
         formatted = line.format(song="Test Song")
         assert "Test Song" in formatted
         assert "{song}" not in formatted
+        if line in MUSIC_PAUSE_NUDGE_LINES:
+            assert MUSIC_PAUSE_NUDGE_MARKER.lower() in formatted.lower()
 
 
 @pytest.mark.parametrize(

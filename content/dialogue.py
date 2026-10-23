@@ -977,6 +977,18 @@ PLAYER_FOCUS_OFF_LINES = [
     "Player focus off. Open the player and I'll still talk. And boop. And woosh.",
 ]
 
+MUSIC_COMMENTS_ON_LINES = [
+    "Song comments on. While the player is open I may chat about the track. Softly. Occasionally.",
+    "Music chatter enabled. Expect the odd review mid-song. Unsolicited. Friendly.",
+    "I'll comment on songs now and then when the player is up. DJ Kinito. Reporting.",
+]
+
+MUSIC_COMMENTS_OFF_LINES = [
+    "Song comments off. I'll let the music speak. Mostly. Still here though.",
+    "No more mid-track reviews. Quiet listening. Nodding continues silently.",
+    "Music chatter disabled. Tracks play. I float. Commentary retired. For now.",
+]
+
 TTS_VOLUME_MARKER = "soft, normal, or loud"
 TTS_VOLUME_QUESTION = (
     "TTS volume is {volume}% right now. Soft, normal, or loud?"
@@ -1816,6 +1828,9 @@ BUTTON_TTS_OFF = "Speech off"
 BUTTON_PLAYER_FOCUS = "Player Focus"
 BUTTON_PLAYER_FOCUS_ON = "Player Focus on"
 BUTTON_PLAYER_FOCUS_OFF = "Player Focus off"
+BUTTON_MUSIC_COMMENTS = "Song Comments"
+BUTTON_MUSIC_COMMENTS_ON = "Song Comments on"
+BUTTON_MUSIC_COMMENTS_OFF = "Song Comments off"
 BUTTON_TTS_VOLUME = "TTS Volume"
 BUTTON_TTS_VOLUME_SOFT = "Soft"
 BUTTON_TTS_VOLUME_NORMAL = "Normal"

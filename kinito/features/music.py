@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import random
+import time
 import tkinter as tk
 from tkinter import filedialog
 
@@ -11,7 +12,11 @@ import pygame
 from PIL import Image, ImageTk
 
 from content import dialogue as dlg
-from content.music_player_lines import MUSIC_PLAYER_LINES
+from content.music_player_lines import (
+    MUSIC_COMMENT_LINES,
+    MUSIC_PAUSE_NUDGE_LINES,
+    MUSIC_PLAYER_LINES,
+)
 from kinito.assets import (
     favicon_path,
     music_player_list_icon_path,
@@ -36,6 +41,12 @@ class MusicMixin:
     _MUSIC_POLL_GRACE_TICKS = 2
     _MUSIC_POLL_INTERVAL_MS = 250
     _MUSIC_PROGRESS_TICK_MS = 250
+    _MUSIC_COMMENT_TICK_MS = 45_000
+    _MUSIC_COMMENT_CHANCE = 0.28
+    _MUSIC_COMMENT_COOLDOWN_SECONDS = 120
+    _MUSIC_PAUSE_NUDGE_AFTER_SECONDS = 90
+    _MUSIC_PAUSE_NUDGE_CHANCE = 0.35
+    _MUSIC_PAUSE_NUDGE_COOLDOWN_SECONDS = 180
     _MUSIC_PLAYER_WIDTH = 420
     _MUSIC_PLAYER_HEIGHT = 180
     _MUSIC_VOLUME_POPUP_WIDTH = 168
@@ -92,12 +103,19 @@ class MusicMixin:
         self._music_tooltip_window = None
         self._music_tooltip_after = None
         self._music_tooltip_widget = None
+        self._music_comment_timer = None
+        self._last_music_comment_at = 0.0
+        self._music_paused_at = 0.0
+        self._music_pause_resume_seconds = 0.0
+        self._last_music_pause_nudge_at = 0.0
         if not hasattr(self, "_music_folder"):
             self._music_folder = ""
         if not hasattr(self, "_music_volume"):
             self._music_volume = 75
         if not hasattr(self, "_player_focus_enabled"):
             self._player_focus_enabled = True
+        if not hasattr(self, "_music_comments_enabled"):
+            self._music_comments_enabled = True
         self._player_kinito_muted = False
 
     def _is_player_kinito_muted(self) -> bool:
@@ -155,6 +173,101 @@ class MusicMixin:
         if callable(interrupt):
             interrupt()
 
+    def _schedule_music_comment_tick(self) -> None:
+        """Keep a soft timer running while song comments can fire."""
+        root = getattr(self, "root", None)
+        if root is None:
+            return
+        if not getattr(self, "_music_comments_enabled", True):
+            cancel_after(root, self, "_music_comment_timer")
+            return
+        if not self._is_music_player_open():
+            cancel_after(root, self, "_music_comment_timer")
+            return
+        schedule_after(
+            root,
+            self,
+            "_music_comment_timer",
+            self._MUSIC_COMMENT_TICK_MS,
+            self._music_comment_tick,
+        )
+
+    def _music_comment_tick(self) -> None:
+        """Periodic roll for pause nudges / song comments, then reschedule."""
+        self._music_comment_timer = None
+        try:
+            if not self.maybe_trigger_music_pause_nudge():
+                self.maybe_trigger_music_comment()
+        finally:
+            self._schedule_music_comment_tick()
+
+    def _music_comments_may_speak(self) -> bool:
+        """Shared gates for song comments and pause-continue prompts."""
+        if not getattr(self, "_music_comments_enabled", True):
+            return False
+        if not self._is_music_player_open() or self._is_music_player_minimized():
+            return False
+        if self._is_player_kinito_muted():
+            return False
+        if getattr(self, "_focus_mode", False):
+            return False
+        if getattr(self, "_music_scrubbing", False):
+            return False
+        return not getattr(self, "_is_busy_with_speech", lambda: False)()
+
+    def maybe_trigger_music_pause_nudge(self) -> bool:
+        """After a long pause, ask whether to keep listening."""
+        if not self._music_comments_may_speak():
+            return False
+        if not getattr(self, "_music_paused", False):
+            return False
+        song = getattr(self, "_user_music_name", None)
+        if not song:
+            return False
+        paused_at = float(getattr(self, "_music_paused_at", 0.0) or 0.0)
+        if paused_at <= 0:
+            return False
+        now = time.monotonic()
+        if now - paused_at < self._MUSIC_PAUSE_NUDGE_AFTER_SECONDS:
+            return False
+        last_at = float(getattr(self, "_last_music_pause_nudge_at", 0.0) or 0.0)
+        if last_at > 0 and now - last_at < self._MUSIC_PAUSE_NUDGE_COOLDOWN_SECONDS:
+            return False
+        if random.random() >= self._MUSIC_PAUSE_NUDGE_CHANCE:
+            return False
+        self._last_music_pause_nudge_at = now
+        line = random.choice(MUSIC_PAUSE_NUDGE_LINES).format(song=song)
+        # Question bubble (Yes/No) — allow_in_focus so Player Focus still hears it.
+        self.speak(line, 45, True, skip_ai=True, allow_in_focus=True)
+        return True
+
+    def maybe_trigger_music_comment(self) -> bool:
+        """Occasionally comment on the current song while the player is open."""
+        if not self._music_comments_may_speak():
+            return False
+        if getattr(self, "_music_paused", False):
+            return False
+        if not self._is_background_music_playing():
+            return False
+        song = getattr(self, "_user_music_name", None)
+        if not song:
+            return False
+        last_at = float(getattr(self, "_last_music_comment_at", 0.0) or 0.0)
+        if last_at > 0 and time.monotonic() - last_at < self._MUSIC_COMMENT_COOLDOWN_SECONDS:
+            return False
+        if random.random() >= self._MUSIC_COMMENT_CHANCE:
+            return False
+        self._last_music_comment_at = time.monotonic()
+        line = random.choice(MUSIC_COMMENT_LINES).format(song=song)
+        # Bypass Player Focus so intentional DJ chatter still has a voice.
+        self.speak(line, skip_ai=True, allow_in_focus=True)
+        return True
+
+    def resume_user_music_if_paused(self) -> None:
+        """Resume playback after the user accepts a pause-continue nudge."""
+        if getattr(self, "_music_paused", False):
+            self._unpause_user_music()
+
     def toggle_player_focus(self):
         """Enable or disable quiet mode while the music player is open."""
         self._player_focus_enabled = not getattr(self, "_player_focus_enabled", True)
@@ -166,6 +279,22 @@ class MusicMixin:
             dlg.PLAYER_FOCUS_ON_LINES
             if self._player_focus_enabled
             else dlg.PLAYER_FOCUS_OFF_LINES
+        )
+        self.speak(dlg.pick_line(lines), skip_ai=True, allow_in_focus=True)
+
+    def toggle_music_comments(self):
+        """Enable or disable occasional mid-track song comments."""
+        self._music_comments_enabled = not getattr(self, "_music_comments_enabled", True)
+        if hasattr(self, "_persist_settings"):
+            self._persist_settings()
+        if self._music_comments_enabled and self._is_music_player_open():
+            self._schedule_music_comment_tick()
+        else:
+            cancel_after(self.root, self, "_music_comment_timer")
+        lines = (
+            dlg.MUSIC_COMMENTS_ON_LINES
+            if self._music_comments_enabled
+            else dlg.MUSIC_COMMENTS_OFF_LINES
         )
         self.speak(dlg.pick_line(lines), skip_ai=True, allow_in_focus=True)
 
@@ -283,6 +412,8 @@ class MusicMixin:
         self._user_music_name = os.path.splitext(os.path.basename(file_path))[0]
         self._user_music_poll_misses = 0
         self._music_paused = False
+        self._music_paused_at = 0.0
+        self._music_pause_resume_seconds = 0.0
         self._music_track_duration_path = file_path
         self._music_track_duration = self._probe_track_duration(file_path)
         self._music_seek_offset = 0.0
@@ -301,6 +432,8 @@ class MusicMixin:
         self._user_music_name = None
         self._user_music_poll_misses = 0
         self._music_paused = False
+        self._music_paused_at = 0.0
+        self._music_pause_resume_seconds = 0.0
         self._music_track_duration = None
         self._music_track_duration_path = None
         self._music_seek_offset = 0.0
@@ -944,25 +1077,44 @@ class MusicMixin:
 
     def _pause_user_music(self) -> None:
         """Pause pygame music without clearing user-music state."""
+        # Capture before pause — get_pos can go stale after a long pause.
+        self._music_pause_resume_seconds = self._get_music_elapsed_seconds()
         try:
             if pygame.mixer.get_init():
                 pygame.mixer.music.pause()
         except pygame.error:
             pass
         self._music_paused = True
+        if not getattr(self, "_music_scrubbing", False):
+            self._music_paused_at = time.monotonic()
         self._refresh_music_player_ui()
 
     def _unpause_user_music(self) -> None:
-        """Resume a paused user track."""
+        """Resume a paused user track (same song, same position)."""
+        resume_at = float(getattr(self, "_music_pause_resume_seconds", 0.0) or 0.0)
+        if resume_at <= 0:
+            resume_at = self._get_music_elapsed_seconds()
         try:
             if pygame.mixer.get_init():
                 pygame.mixer.music.unpause()
         except pygame.error:
             pass
         self._music_paused = False
+        self._music_paused_at = 0.0
         self._user_music_poll_misses = 0
+
+        # After a long pause the mixer stream is often dead: unpause is a no-op,
+        # get_busy stays false, and the poll would advance to the next track.
+        if not self._is_background_music_playing() and getattr(
+            self, "_user_music_path", None
+        ):
+            self._seek_user_music(resume_at, resume=True)
+        else:
+            self._schedule_user_music_poll()
+
+        self._music_pause_resume_seconds = 0.0
         self._refresh_music_player_ui()
-        self._schedule_user_music_poll()
+        self._schedule_music_comment_tick()
 
     def _play_playlist_index(self, index: int, *, announce: bool) -> None:
         """Play playlist[*index*] if available."""
@@ -986,13 +1138,15 @@ class MusicMixin:
             return
 
         self._begin_user_music(file_path)
+        self._schedule_music_comment_tick()
         if not announce:
             return
         song_name = os.path.splitext(os.path.basename(file_path))[0]
         line = random.choice(MUSIC_PLAYER_LINES).format(song=song_name)
         # Speak on the UI thread — speak() already runs TTS in the background.
         # A nested Thread + optional AI sprite update can deadlock Tk on Windows.
-        self.speak(line, skip_ai=True)
+        # allow_in_focus: track intros should still play while Player Focus is on.
+        self.speak(line, skip_ai=True, allow_in_focus=True)
 
     @staticmethod
     def _format_queue_position(index: int, total: int) -> str:
@@ -1353,6 +1507,7 @@ class MusicMixin:
                     existing.focus_force()
                     self._refresh_music_player_ui()
                     self._schedule_music_progress_tick()
+                    self._schedule_music_comment_tick()
                     self._silence_for_player_focus()
                     return
             except tk.TclError:
@@ -1620,6 +1775,7 @@ class MusicMixin:
         window.protocol("WM_DELETE_WINDOW", self._close_music_player_window)
         self._refresh_music_player_ui()
         self._schedule_music_progress_tick()
+        self._schedule_music_comment_tick()
         self._silence_for_player_focus()
 
     def _center_music_player(self, window: tk.Toplevel) -> None:
@@ -1827,6 +1983,7 @@ class MusicMixin:
     def _minimize_music_player_window(self):
         """Hide the player UI without stopping playback."""
         self._hide_music_tooltip()
+        cancel_after(self.root, self, "_music_comment_timer")
         self._close_music_volume_popup()
         self._close_music_track_picker()
         window = getattr(self, "_music_player_window", None)
@@ -1842,6 +1999,7 @@ class MusicMixin:
         """Close the player and stop any user song that is still playing."""
         self._clear_player_kinito_mute()
         cancel_after(self.root, self, "_music_progress_timer")
+        cancel_after(self.root, self, "_music_comment_timer")
         self._hide_music_tooltip()
         self._close_music_volume_popup()
         self._close_music_track_picker()

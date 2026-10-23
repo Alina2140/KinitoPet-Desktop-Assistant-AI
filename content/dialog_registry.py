@@ -11,6 +11,10 @@ from typing import Literal
 from content import credits, game_lines
 from content import dialogue as dlg
 from content.menu_visibility import filter_visible_menu_buttons
+from content.music_player_lines import (
+    MUSIC_PAUSE_NUDGE_DECLINED_LINES,
+    MUSIC_PAUSE_NUDGE_MARKER,
+)
 from content.site_validator import pick_random_category
 from content.trivia_questions import ROUND_SIZE, check_answer
 from kinito.features.games.coin_dice import (
@@ -205,6 +209,11 @@ def settings_toggles_options_for(app) -> list[str]:
         if getattr(app, "_player_focus_enabled", True)
         else dlg.BUTTON_PLAYER_FOCUS_OFF
     )
+    music_comments_label = (
+        dlg.BUTTON_MUSIC_COMMENTS_ON
+        if getattr(app, "_music_comments_enabled", True)
+        else dlg.BUTTON_MUSIC_COMMENTS_OFF
+    )
     emoji_label = (
         dlg.BUTTON_EMOJI_ON
         if getattr(app, "_emoji_picker_enabled", True)
@@ -238,6 +247,7 @@ def settings_toggles_options_for(app) -> list[str]:
             window_play_label,
             tts_label,
             player_focus_label,
+            music_comments_label,
             emoji_label,
             special_days_label,
             mood_system_label,
@@ -649,6 +659,9 @@ def _menu_action_handlers() -> dict[str, Handler]:
         dlg.BUTTON_PLAYER_FOCUS: lambda a: a.toggle_player_focus(),
         dlg.BUTTON_PLAYER_FOCUS_ON: lambda a: a.toggle_player_focus(),
         dlg.BUTTON_PLAYER_FOCUS_OFF: lambda a: a.toggle_player_focus(),
+        dlg.BUTTON_MUSIC_COMMENTS: lambda a: a.toggle_music_comments(),
+        dlg.BUTTON_MUSIC_COMMENTS_ON: lambda a: a.toggle_music_comments(),
+        dlg.BUTTON_MUSIC_COMMENTS_OFF: lambda a: a.toggle_music_comments(),
         dlg.BUTTON_TTS_VOLUME: lambda a: a.offer_tts_volume_picker(),
         dlg.BUTTON_SFX_VOLUME: lambda a: a.offer_sfx_volume_picker(),
         dlg.BUTTON_MUSIC_FOLDER: lambda a: a.root.after(0, a.choose_music_folder),
@@ -1546,6 +1559,14 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
         dlg.MUSIC_PLAYER_QUESTION_MARKER,
         DialogUI("buttons", buttons=(dlg.BUTTON_YES, dlg.BUTTON_NO)),
         _yes_no(lambda a: a.open_music_player(), dlg.MUSIC_PLAYER_DECLINED_LINES),
+    ),
+    DialogSpec(
+        MUSIC_PAUSE_NUDGE_MARKER,
+        DialogUI("buttons", buttons=(dlg.BUTTON_YES, dlg.BUTTON_NO)),
+        _yes_no(
+            lambda a: a.resume_user_music_if_paused(),
+            MUSIC_PAUSE_NUDGE_DECLINED_LINES,
+        ),
     ),
     DialogSpec(
         dlg.HUG_QUESTION_MARKER,

@@ -68,6 +68,28 @@ def test_all_music_questions_match_registry(question):
     assert spec.marker == dlg.MUSIC_PLAYER_QUESTION_MARKER
 
 
+def test_all_music_pause_nudges_match_registry():
+    from content.music_player_lines import (
+        MUSIC_PAUSE_NUDGE_LINES,
+        MUSIC_PAUSE_NUDGE_MARKER,
+    )
+
+    for line in MUSIC_PAUSE_NUDGE_LINES:
+        question = line.format(song="TinyTune")
+        spec = find_dialog_spec(question)
+        assert spec is not None
+        assert spec.marker == MUSIC_PAUSE_NUDGE_MARKER
+
+
+def test_handle_music_pause_nudge_yes_resumes(mock_app):
+    from content.music_player_lines import MUSIC_PAUSE_NUDGE_MARKER
+
+    spec = find_dialog_spec(f"Paused TinyTune. {MUSIC_PAUSE_NUDGE_MARKER}?")
+    assert spec is not None
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_YES)
+    mock_app.resume_user_music_if_paused.assert_called_once()
+
+
 @pytest.mark.parametrize("question", dlg.HUG_QUESTIONS)
 def test_all_hug_questions_match_registry(question):
     spec = find_dialog_spec(question)

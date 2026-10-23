@@ -302,6 +302,9 @@ class FloatingAssistant(
         self._hand_photo_ref = None
         self._tts_enabled = self._settings.get("tts_enabled", True)
         self._player_focus_enabled = self._settings.get("player_focus_enabled", True)
+        self._music_comments_enabled = self._settings.get(
+            "music_comments_enabled", True
+        )
         self._tts_volume = self._settings.get_int("tts_volume", 100)
         self._sfx_volume = self._settings.get_int("sfx_volume", 100)
         self._music_volume = self._settings.get_int("music_volume", 75)
@@ -448,6 +451,9 @@ class FloatingAssistant(
             window_grab_enabled=bool(getattr(self, "_window_grab_enabled", True)),
             tts_enabled=bool(getattr(self, "_tts_enabled", True)),
             player_focus_enabled=bool(getattr(self, "_player_focus_enabled", True)),
+            music_comments_enabled=bool(
+                getattr(self, "_music_comments_enabled", True)
+            ),
             tts_volume=int(getattr(self, "_tts_volume", 100)),
             sfx_volume=int(getattr(self, "_sfx_volume", 100)),
             music_volume=int(getattr(self, "_music_volume", 75)),
