@@ -106,15 +106,8 @@ class ProgramsMixin:
 
     def _sprite_display_height(self) -> int:
         """Return the visible sprite height in pixels."""
-        panel = getattr(self, "panel", None)
-        if panel is not None:
-            try:
-                self.root.update_idletasks()
-                height = panel.winfo_height()
-                if height > 1:
-                    return height
-            except tk.TclError:
-                pass
+        if hasattr(self, "_sprite_pixel_size"):
+            return self._sprite_pixel_size()[1]
         img = getattr(self, "img_normal", None)
         return max(getattr(img, "height", 0), 1)
 
@@ -174,9 +167,18 @@ class ProgramsMixin:
         try:
             self.root.update_idletasks()
             if not getattr(self, "_assistant_controls_extended", False):
-                self._assistant_controls_prev_height = max(self.root.winfo_height(), 1)
+                if hasattr(self, "_sprite_pixel_size"):
+                    self._assistant_controls_prev_height = self._sprite_pixel_size()[1]
+                else:
+                    self._assistant_controls_prev_height = max(
+                        self.root.winfo_height(), 1
+                    )
                 self._assistant_controls_extended = True
-            width = max(self.root.winfo_width(), self._window_screen_size()[0], 1)
+            width = (
+                self._sprite_pixel_size()[0]
+                if hasattr(self, "_sprite_pixel_size")
+                else max(self.root.winfo_width(), self._window_screen_size()[0], 1)
+            )
             target_h = self._assistant_controls_window_height()
             x = getattr(self, "x", self.root.winfo_x())
             y = getattr(self, "y", self.root.winfo_y())
@@ -203,10 +205,14 @@ class ProgramsMixin:
             return
         try:
             self.root.update_idletasks()
-            width = max(self.root.winfo_width(), 1)
+            if hasattr(self, "_sprite_pixel_size"):
+                width, sprite_h = self._sprite_pixel_size()
+            else:
+                width = max(self.root.winfo_width(), 1)
+                sprite_h = self._sprite_display_height()
             height = getattr(self, "_assistant_controls_prev_height", None)
             if height is None:
-                height = self._sprite_display_height()
+                height = sprite_h
             x = getattr(self, "x", self.root.winfo_x())
             y = getattr(self, "y", self.root.winfo_y())
             self.root.geometry(f"{width}x{height}+{x}+{y}")

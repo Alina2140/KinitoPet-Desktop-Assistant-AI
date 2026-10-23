@@ -118,15 +118,16 @@ class MovementMixin:
 
     def _sync_kinito_screen_position(self):
         """Keep tracked screen coordinates aligned with the root window."""
-        if getattr(self, "moving", False):
+        # Never overwrite logical coords mid-drag/throw/surf — Configure fires on
+        # every geometry() and winfo_* can disagree across DPI monitor hops.
+        if getattr(self, "moving", False) or self._is_position_locked_by_user():
             return
         try:
             x = self.root.winfo_rootx()
             y = self.root.winfo_rooty()
         except tk.TclError:
             return
-        if x > 0 and y > 0:
-            self.x, self.y = x, y
+        self.x, self.y = int(x), int(y)
 
     def _start_drag_tracking(self):
         """Track drag globally so motion still works over other top-level windows."""
@@ -160,7 +161,9 @@ class MovementMixin:
         """Keep speech bubbles aligned whenever Kinito's window moves."""
         if event.widget is not self.root:
             return
-        if getattr(self, "moving", False):
+        # Drag/throw already follow the bubble explicitly; Configure sync snaps
+        # across monitors when Tk and Win32 briefly disagree on coordinates.
+        if getattr(self, "moving", False) or self._is_position_locked_by_user():
             return
         prev_x = getattr(self, "x", None)
         prev_y = getattr(self, "y", None)
@@ -239,7 +242,6 @@ class MovementMixin:
             self.note_user_attention()
         if getattr(self, "_throwing", False):
             self._cancel_throw()
-        self.is_dragging = True
         self._drag_moved = False
         self._drag_samples = []
         self._drag_hold_reacted = False
@@ -248,12 +250,21 @@ class MovementMixin:
         self._stop_audio_for_drag()
         if not self._should_skip_drag_sounds():
             self.play_sfx(bomp_file_path)
+        # Sync position BEFORE locking drag — _sync skips while is_dragging.
         self.root.update_idletasks()
-        self._sync_kinito_screen_position()
-        root_x = self.x
-        root_y = self.y
-        self.mouse_click_offset_x = root_x - event.x_root
-        self.mouse_click_offset_y = root_y - event.y_root
+        try:
+            self.x = int(self.root.winfo_rootx())
+            self.y = int(self.root.winfo_rooty())
+        except (tk.TclError, TypeError, ValueError):
+            pass
+        self.is_dragging = True
+        root_x = int(getattr(self, "x", 0) or 0)
+        root_y = int(getattr(self, "y", 0) or 0)
+        cursor_x = int(event.x_root)
+        cursor_y = int(event.y_root)
+        self.mouse_click_offset_x = root_x - cursor_x
+        self.mouse_click_offset_y = root_y - cursor_y
+        self._drag_last_cursor = (cursor_x, cursor_y)
         self._record_drag_sample(root_x, root_y)
         self._stop_drag_wiggle()
         if self._drag_sprites_allowed():
@@ -270,12 +281,26 @@ class MovementMixin:
         if not self.is_dragging:
             return
         self._drag_moved = True
-        prev_x = getattr(self, "x", event.x_root + self.mouse_click_offset_x)
-        new_x = event.x_root + self.mouse_click_offset_x
-        new_y = event.y_root + self.mouse_click_offset_y
-        new_x, new_y = self.clamp_position(new_x, new_y)
+        # Prefer live pointer coords — B1-Motion can lag behind a fast cursor.
+        try:
+            cursor_x = int(self.root.winfo_pointerx())
+            cursor_y = int(self.root.winfo_pointery())
+        except (tk.TclError, TypeError, ValueError):
+            cursor_x = int(event.x_root)
+            cursor_y = int(event.y_root)
+        prev_x = int(getattr(self, "x", 0) or 0)
+        offset_x = int(getattr(self, "mouse_click_offset_x", 0) or 0)
+        offset_y = int(getattr(self, "mouse_click_offset_y", 0) or 0)
+        # Absolute sticky grab — follow the cursor even across large jumps.
+        # (A distance-based "teleport re-anchor" caused drift on fast drags.)
+        new_x = cursor_x + offset_x
+        new_y = cursor_y + offset_y
+        self._drag_last_cursor = (cursor_x, cursor_y)
         self.x, self.y = new_x, new_y
-        self.root.geometry(f"+{new_x}+{new_y}")
+        try:
+            self.root.geometry(f"+{new_x}+{new_y}")
+        except tk.TclError:
+            return
         self._record_drag_sample(new_x, new_y)
         self._update_drag_sprite_from_dx(new_x - prev_x)
         self._follow_speech_bubble_to_kinito(new_x, new_y)
@@ -326,6 +351,8 @@ class MovementMixin:
         self._bubble_kinito_offset_y = None
         self._drag_samples = []
         self._follow_speech_bubble_to_kinito()
+        if hasattr(self, "_ensure_consistent_window_scale"):
+            self.root.after(0, self._ensure_consistent_window_scale)
         if hasattr(self, "ensure_on_screen"):
             self.root.after(0, self.ensure_on_screen)
         if hasattr(self, "_keep_assistant_on_top"):
@@ -885,32 +912,54 @@ class MovementMixin:
         x = float(getattr(self, "x", 0)) + vx * dt
         y = float(getattr(self, "y", 0)) + vy * dt
 
-        min_x, min_y, max_x, max_y = self.get_screen_bounds()
+        # Stay on the union of real monitors: cross freely between screens, but
+        # bounce out of virtual-desktop voids (gaps above/below shorter displays).
         bounced = False
         hit_floor = False
-        if x < min_x:
-            x = float(min_x)
-            vx = -vx * self.THROW_BOUNCE_DAMPING
-            bounced = True
-        elif x > max_x:
-            x = float(max_x)
-            vx = -vx * self.THROW_BOUNCE_DAMPING
-            bounced = True
-        if y < min_y:
-            y = float(min_y)
-            vy = -vy * self.THROW_BOUNCE_DAMPING
-            bounced = True
-        elif y > max_y:
-            y = float(max_y)
-            vy = -vy * self.THROW_BOUNCE_DAMPING
-            vx *= max(0.0, 1.0 - self.THROW_FLOOR_FRICTION * dt)
-            bounced = True
-            hit_floor = True
+        if hasattr(self, "clamp_position"):
+            clamped_x, clamped_y = self.clamp_position(x, y)
+            if abs(clamped_x - x) > 0.5:
+                x = float(clamped_x)
+                vx = -vx * self.THROW_BOUNCE_DAMPING
+                bounced = True
+            if abs(clamped_y - y) > 0.5:
+                # Pulled upward ⇒ hit a floor/void below; pulled downward ⇒ ceiling.
+                if clamped_y < y:
+                    hit_floor = True
+                y = float(clamped_y)
+                vy = -vy * self.THROW_BOUNCE_DAMPING
+                if hit_floor:
+                    vx *= max(0.0, 1.0 - self.THROW_FLOOR_FRICTION * dt)
+                bounced = True
+        else:
+            min_x, min_y, max_x, max_y = self.get_screen_bounds()
+            if x < min_x:
+                x = float(min_x)
+                vx = -vx * self.THROW_BOUNCE_DAMPING
+                bounced = True
+            elif x > max_x:
+                x = float(max_x)
+                vx = -vx * self.THROW_BOUNCE_DAMPING
+                bounced = True
+            if y < min_y:
+                y = float(min_y)
+                vy = -vy * self.THROW_BOUNCE_DAMPING
+                bounced = True
+            elif y > max_y:
+                y = float(max_y)
+                vy = -vy * self.THROW_BOUNCE_DAMPING
+                vx *= max(0.0, 1.0 - self.THROW_FLOOR_FRICTION * dt)
+                bounced = True
+                hit_floor = True
 
         if bounced:
             self._throw_bounce_count = getattr(self, "_throw_bounce_count", 0) + 1
 
-        # Extra slide kill while resting on the floor between hops.
+        # Floor friction against the monitor currently under Kinito.
+        if hasattr(self, "get_current_monitor_bounds"):
+            _min_x, _min_y, _max_x, max_y = self.get_current_monitor_bounds(x=x, y=y)
+        else:
+            _min_x, _min_y, _max_x, max_y = self.get_screen_bounds()
         if hit_floor or y >= max_y - 2:
             vx *= max(0.0, 1.0 - self.THROW_FLOOR_FRICTION * dt)
 
@@ -955,10 +1004,10 @@ class MovementMixin:
         self._bubble_kinito_offset_y = None
         if hasattr(self, "clamp_position"):
             self.x, self.y = self.clamp_position(self.x, self.y)
-            try:
-                self.root.geometry(f"+{int(self.x)}+{int(self.y)}")
-            except tk.TclError:
-                pass
+        try:
+            self.root.geometry(f"+{int(self.x)}+{int(self.y)}")
+        except tk.TclError:
+            pass
         if play_sound and was_throwing and not self._should_skip_drag_sounds():
             self.play_sfx(bomp_file_path)
         self._follow_speech_bubble_to_kinito()
@@ -1456,6 +1505,8 @@ class MovementMixin:
             self._surf_tilt_degrees(wave_phase) / self.SURF_TILT_QUANTUM
         ) * self.SURF_TILT_QUANTUM
         facing = self._surf_facing
+        # Match tk_img_surf_* size — unscaled tilted frames flashed larger/smaller.
+        scale = float(getattr(self, "_sprite_draw_scale", 1.0) or 1.0)
 
         def _apply():
             if abs(tilt) < 0.05:
@@ -1465,11 +1516,17 @@ class MovementMixin:
                 if cache is None:
                     self._surf_render_cache = {}
                     cache = self._surf_render_cache
-                cache_key = (facing, tilt)
+                cache_key = (facing, tilt, round(scale, 3))
                 photo = cache.get(cache_key)
                 if photo is None:
                     base = self.img_surf_left if facing == "left" else self.img_surf_right
                     rendered = self._rotate_sprite_padded(base, tilt)
+                    if abs(scale - 1.0) >= 0.02:
+                        width = max(1, int(round(rendered.width * scale)))
+                        height = max(1, int(round(rendered.height * scale)))
+                        rendered = rendered.resize(
+                            (width, height), Image.Resampling.NEAREST
+                        )
                     photo = ImageTk.PhotoImage(rendered, master=self.root)
                     cache[cache_key] = photo
             if self.panel.winfo_exists():
@@ -1503,13 +1560,32 @@ class MovementMixin:
 
     def _apply_surf_geometry(self, x: float, y: float, wave_phase: float) -> None:
         """Move the window along the path while bobbing on a sine wave."""
-        display_y = y + self._surf_wave_offset(wave_phase)
-        clamped_x, clamped_y = self.clamp_position(x, display_y)
-        self.x, self.y = x, y
+        target = getattr(self, "_move_target", None)
+        path_x, path_y = self.clamp_position(x, y, target=target)
+        self.x, self.y = path_x, path_y
+        # Wave bob uses a virtual fence only — a second void-clamp fights the
+        # sine and vibrates at monitor seams / DPI hops. No Win32 SetWindowPos:
+        # mixing it with Tk geometry snaps across DPI boundaries.
+        display_y = path_y + self._surf_wave_offset(wave_phase)
+        if hasattr(self, "get_screen_bounds") and hasattr(self, "_sprite_pixel_size"):
+            window_w, window_h = self._sprite_pixel_size()
+            min_x, min_y, max_x, max_y = self.get_screen_bounds(window_w, window_h)
+            clamped_x = max(min_x, min(int(path_x), max_x))
+            clamped_y = max(min_y, min(int(display_y), max_y))
+        else:
+            clamped_x, clamped_y = int(path_x), int(display_y)
 
         def _apply():
             try:
-                self.root.geometry(f"+{int(clamped_x)}+{int(clamped_y)}")
+                # Pin client size while surfing so a mismatched frame cannot grow
+                # the overrideredirect window (looked like a one-frame size glitch).
+                if hasattr(self, "_sprite_pixel_size"):
+                    sw, sh = self._sprite_pixel_size()
+                    self.root.geometry(
+                        f"{int(sw)}x{int(sh)}+{int(clamped_x)}+{int(clamped_y)}"
+                    )
+                else:
+                    self.root.geometry(f"+{int(clamped_x)}+{int(clamped_y)}")
             except tk.TclError:
                 self._stop_roaming()
                 return
@@ -1517,6 +1593,7 @@ class MovementMixin:
                 self._schedule_raise_screen_effect_overlays()
 
         self._run_on_ui(_apply)
+
     def _talking_sprite_pair(self):
         """Return the two-frame sprite pair for the current speech mode."""
         if getattr(self, "_talk_sprite_mode", "talking") == "thinking":
@@ -1766,6 +1843,8 @@ class MovementMixin:
             self.move_towards(target_x, target_y)
             self.moving = False
             self._finish_surf_movement()
+            if hasattr(self, "_ensure_consistent_window_scale"):
+                self.root.after(0, self._ensure_consistent_window_scale)
             self.root.after(0, self.ensure_on_screen)
             if hasattr(self, "_keep_assistant_on_top"):
                 self.root.after(0, self._keep_assistant_on_top)
@@ -1779,54 +1858,66 @@ class MovementMixin:
             speed = self.SURF_MOVE_SPEED
         if frame_delay is None:
             frame_delay = self.SURF_MOVE_FRAME_DELAY
-        current_x, current_y = self.root.winfo_rootx(), self.root.winfo_rooty()
-        current_x, current_y = self.clamp_position(current_x, current_y)
-        self.x, self.y = current_x, current_y
-        if (current_x, current_y) != (self.root.winfo_rootx(), self.root.winfo_rooty()):
-            clamped_x, clamped_y = current_x, current_y
+        target = (float(target_x), float(target_y))
+        self._move_target = target
+        try:
+            current_x, current_y = self.root.winfo_rootx(), self.root.winfo_rooty()
+            current_x, current_y = self.clamp_position(
+                current_x, current_y, target=target
+            )
+            self.x, self.y = current_x, current_y
+            if (current_x, current_y) != (self.root.winfo_rootx(), self.root.winfo_rooty()):
+                clamped_x, clamped_y = current_x, current_y
 
-            def _snap():
-                try:
-                    self.root.geometry(f"+{clamped_x}+{clamped_y}")
-                except tk.TclError:
-                    self._stop_roaming()
-
-            self._run_on_ui(_snap)
-
-        target_x, target_y = self.clamp_position(target_x, target_y)
-        wave_phase = 0.0
-        while self._running:
-            if self.paused or self._is_position_locked_by_user() or self._is_busy_with_speech():
-                self._finish_surf_movement()
-                self._realign_speech_bubble_after_move()
-                return
-            if not getattr(self, "moving", True):
-                return
-            current_x, current_y = self.x, self.y
-            dx = target_x - current_x
-            dy = target_y - current_y
-            distance = ((dx**2) + (dy**2)) ** 0.5
-            if distance < 1:
-                self.x, self.y = target_x, target_y
-
-                def _arrive():
+                def _snap():
                     try:
-                        self.root.geometry(f"+{int(self.x)}+{int(self.y)}")
+                        self.root.geometry(f"+{clamped_x}+{clamped_y}")
                     except tk.TclError:
                         self._stop_roaming()
 
-                self._run_on_ui(_arrive)
-                break
-            self._render_surf_sprite(dx, wave_phase)
-            steps = min(speed, distance)
-            theta = math.atan2(dy, dx)
-            next_x = current_x + steps * math.cos(theta)
-            next_y = current_y + steps * math.sin(theta)
-            wave_phase += self.SURF_WAVE_STEP
-            self._apply_surf_geometry(next_x, next_y, wave_phase)
-            # Let the Tk main thread process geometry/sprite callbacks; never call
-            # root.update() from this worker thread.
-            time.sleep(frame_delay)
+                self._run_on_ui(_snap)
+
+            # Keep the chosen destination (may sit on another monitor); only fence
+            # against leaving the virtual desktop entirely.
+            target_x, target_y = self.clamp_position(
+                target_x, target_y, target=target
+            )
+            self._move_target = (float(target_x), float(target_y))
+            wave_phase = 0.0
+            while self._running:
+                if self.paused or self._is_position_locked_by_user() or self._is_busy_with_speech():
+                    self._finish_surf_movement()
+                    self._realign_speech_bubble_after_move()
+                    return
+                if not getattr(self, "moving", True):
+                    return
+                current_x, current_y = self.x, self.y
+                dx = target_x - current_x
+                dy = target_y - current_y
+                distance = ((dx**2) + (dy**2)) ** 0.5
+                if distance < 1:
+                    self.x, self.y = target_x, target_y
+
+                    def _arrive():
+                        try:
+                            self.root.geometry(f"+{int(self.x)}+{int(self.y)}")
+                        except tk.TclError:
+                            self._stop_roaming()
+
+                    self._run_on_ui(_arrive)
+                    break
+                self._render_surf_sprite(dx, wave_phase)
+                steps = min(speed, distance)
+                theta = math.atan2(dy, dx)
+                next_x = current_x + steps * math.cos(theta)
+                next_y = current_y + steps * math.sin(theta)
+                wave_phase += self.SURF_WAVE_STEP
+                self._apply_surf_geometry(next_x, next_y, wave_phase)
+                # Let the Tk main thread process geometry/sprite callbacks; never call
+                # root.update() from this worker thread.
+                time.sleep(frame_delay)
+        finally:
+            self._move_target = None
 
     def idle_animation(self):
         """Background loop: alternate normal sprites, reading, fancy, sleep, and thinking."""

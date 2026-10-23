@@ -1,8 +1,13 @@
 """Entry point for the KinitoPET desktop virtual assistant."""
 
-import tkinter as tk
+# DPI awareness must be set before Tk loads / creates any HWND.
+from kinito.dpi import enable_per_monitor_dpi_awareness
 
-from kinito.app import FloatingAssistant
+enable_per_monitor_dpi_awareness()
+
+import tkinter as tk  # noqa: E402
+
+from kinito.app import FloatingAssistant  # noqa: E402
 
 
 def main():

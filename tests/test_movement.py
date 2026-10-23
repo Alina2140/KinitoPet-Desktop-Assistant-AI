@@ -49,6 +49,8 @@ def movement():
     stub.root.winfo_y.return_value = 100
     stub.root.winfo_rootx.return_value = 100
     stub.root.winfo_rooty.return_value = 200
+    stub.root.winfo_pointerx.return_value = 100
+    stub.root.winfo_pointery.return_value = 200
     stub.root.winfo_exists.return_value = True
     stub.root.after = MagicMock(return_value="timer")
     stub.root.after_cancel = MagicMock()
@@ -71,8 +73,16 @@ def movement():
     stub._surf_render_cache = {}
     stub._surf_facing = "right"
     stub.play_sfx = MagicMock()
-    stub.clamp_position = MagicMock(side_effect=lambda x, y: (x, y))
     stub.get_screen_bounds = MagicMock(return_value=(0, 0, 1900, 1000))
+
+    def _clamp_to_stub_bounds(x, y, **_kwargs):
+        min_x, min_y, max_x, max_y = stub.get_screen_bounds()
+        return (
+            max(min_x, min(int(round(x)), max_x)),
+            max(min_y, min(int(round(y)), max_y)),
+        )
+
+    stub.clamp_position = MagicMock(side_effect=_clamp_to_stub_bounds)
     stub._should_skip_drag_sounds = MagicMock(return_value=False)
     stub._has_active_speech_bubble = MagicMock(return_value=False)
     stub._is_busy_with_speech = MagicMock(return_value=False)
@@ -175,21 +185,49 @@ def test_on_mouse_up_skips_bomp_without_drag(movement):
     movement.play_sfx.assert_not_called()
 
 
-def test_on_mouse_move_clamps_position(movement):
+def test_on_mouse_move_follows_cursor_with_sticky_offset(movement):
+    """Absolute grab keeps the sprite under the cursor even when events are sparse."""
     movement.is_dragging = True
-    movement.mouse_click_offset_x = 10
-    movement.mouse_click_offset_y = 20
-    event = MagicMock(x_root=300, y_root=400)
-    movement.on_mouse_move(event)
-    movement.clamp_position.assert_called_once()
-    movement.root.geometry.assert_called()
+    movement.x = 100
+    movement.y = 200
+    movement.mouse_click_offset_x = -10
+    movement.mouse_click_offset_y = -20
+    movement.root.winfo_pointerx.return_value = 310
+    movement.root.winfo_pointery.return_value = 405
+    movement.on_mouse_move(MagicMock(x_root=310, y_root=405))
+    movement.clamp_position.assert_not_called()
+    movement.root.geometry.assert_called_once_with("+300+385")
+    assert movement.x == 300
+    assert movement.y == 385
+
+
+def test_on_mouse_move_follows_large_jumps_without_reanchor(movement):
+    """Fast drags must not restick the grab offset (that caused cursor drift)."""
+    movement.is_dragging = True
+    movement.x = 100
+    movement.y = 200
+    movement.mouse_click_offset_x = 0
+    movement.mouse_click_offset_y = 0
+    movement._follow_speech_bubble_to_kinito = MagicMock()
+    movement.root.winfo_pointerx.return_value = 900
+    movement.root.winfo_pointery.return_value = 400
+    movement.on_mouse_move(MagicMock(x_root=900, y_root=400))
+    movement.root.geometry.assert_called_once_with("+900+400")
+    assert movement.x == 900
+    assert movement.y == 400
+    assert movement.mouse_click_offset_x == 0
+    assert movement.mouse_click_offset_y == 0
 
 
 def test_on_mouse_move_repositions_speech_bubble(movement):
     movement.is_dragging = True
+    movement.x = 100
+    movement.y = 200
     movement.mouse_click_offset_x = 0
     movement.mouse_click_offset_y = 0
     movement._follow_speech_bubble_to_kinito = MagicMock()
+    movement.root.winfo_pointerx.return_value = 300
+    movement.root.winfo_pointery.return_value = 400
     movement.on_mouse_move(MagicMock(x_root=300, y_root=400))
     movement._follow_speech_bubble_to_kinito.assert_called_once_with(300, 400)
 
@@ -220,6 +258,15 @@ def test_on_root_moved_follows_speech_bubble(movement):
 
 def test_on_root_moved_ignores_surf_bobbing(movement):
     movement.moving = True
+    movement._sync_kinito_screen_position = MagicMock()
+    movement._follow_speech_bubble_to_kinito = MagicMock()
+    movement._on_root_moved(MagicMock(widget=movement.root))
+    movement._sync_kinito_screen_position.assert_not_called()
+    movement._follow_speech_bubble_to_kinito.assert_not_called()
+
+
+def test_on_root_moved_ignores_drag(movement):
+    movement.is_dragging = True
     movement._sync_kinito_screen_position = MagicMock()
     movement._follow_speech_bubble_to_kinito = MagicMock()
     movement._on_root_moved(MagicMock(widget=movement.root))
@@ -278,10 +325,13 @@ def test_on_mouse_move_shows_drag_left_and_right(movement):
     movement.mouse_click_offset_y = 0
     movement.x = 300
     movement.y = 400
+    movement.root.winfo_pointerx.return_value = 250
+    movement.root.winfo_pointery.return_value = 400
     movement.on_mouse_move(MagicMock(x_root=250, y_root=400))
     movement.panel.config.assert_called_with(image="drag_left")
     assert movement._drag_sprite_state == "left"
     movement.panel.config.reset_mock()
+    movement.root.winfo_pointerx.return_value = 320
     movement.on_mouse_move(MagicMock(x_root=320, y_root=400))
     movement.panel.config.assert_called_with(image="drag_right")
     assert movement._drag_sprite_state == "right"
@@ -295,6 +345,8 @@ def test_on_mouse_move_keeps_sleep_sprite_while_paused(movement):
     movement.x = 300
     movement.y = 400
     movement.panel.config.reset_mock()
+    movement.root.winfo_pointerx.return_value = 250
+    movement.root.winfo_pointery.return_value = 400
     movement.on_mouse_move(MagicMock(x_root=250, y_root=400))
     movement.panel.config.assert_not_called()
     assert movement._drag_sprite_state is None
@@ -554,10 +606,12 @@ def test_surf_wave_offset_oscillates():
 
 
 def test_apply_surf_geometry_bobs_display_y(movement):
+    movement._sprite_pixel_size = MagicMock(return_value=(128, 128))
+    movement.get_screen_bounds = MagicMock(return_value=(0, 0, 1900, 1000))
     movement._apply_surf_geometry(120, 200, math.pi / 2)
-    movement.clamp_position.assert_called_once_with(120, 200 + MovementMixin.SURF_WAVE_AMPLITUDE)
+    movement.clamp_position.assert_called_once_with(120, 200, target=None)
     movement.root.geometry.assert_called_once_with(
-        f"+120+{int(200 + MovementMixin.SURF_WAVE_AMPLITUDE)}"
+        f"128x128+120+{int(200 + MovementMixin.SURF_WAVE_AMPLITUDE)}"
     )
     assert movement.x == 120
     assert movement.y == 200
@@ -1364,6 +1418,8 @@ def test_on_mouse_move_records_drag_samples(movement):
     movement.is_dragging = True
     movement.mouse_click_offset_x = 0
     movement.mouse_click_offset_y = 0
+    movement.root.winfo_pointerx.return_value = 300
+    movement.root.winfo_pointery.return_value = 400
     movement.on_mouse_move(MagicMock(x_root=300, y_root=400))
     assert len(movement._drag_samples) == 1
     assert movement._drag_samples[0][1:] == (300.0, 400.0)
@@ -1492,6 +1548,47 @@ def test_throw_tick_bounces_and_damps(movement):
     assert movement._throw_vx < 0
     assert abs(movement._throw_vx) < 2000.0 * movement.THROW_BOUNCE_DAMPING + 50
     assert movement._throw_bounce_count == 1
+
+
+def test_throw_tick_bounces_out_of_virtual_desktop_void(movement):
+    """Throwing into a gap above a shorter monitor must bounce, not disappear."""
+    movement._throwing = True
+    movement.moving = True
+    movement.x = 2800.0
+    movement.y = 380.0
+    movement._throw_vx = 0.0
+    movement._throw_vy = -2000.0
+    movement._throw_bounce_count = 0
+    movement._throw_last_t = 1.0
+    movement._follow_speech_bubble_to_kinito = MagicMock()
+    # Union clamp: void above secondary snaps to y=370.
+    movement.clamp_position = MagicMock(side_effect=lambda x, y: (int(x), 370))
+    movement.get_current_monitor_bounds = MagicMock(return_value=(2570, 370, 3702, 942))
+    with patch("kinito.movement.time.monotonic", return_value=1.02):
+        movement._throw_tick()
+    assert movement.y == 370.0
+    assert movement._throw_vy > 0
+    assert movement._throw_bounce_count == 1
+
+
+def test_throw_tick_can_cross_onto_another_monitor(movement):
+    """Positions already valid on another display must not be bounced back."""
+    movement._throwing = True
+    movement.moving = True
+    movement.x = 2500.0
+    movement.y = 500.0
+    movement._throw_vx = 2000.0
+    movement._throw_vy = 0.0
+    movement._throw_bounce_count = 0
+    movement._throw_last_t = 1.0
+    movement._follow_speech_bubble_to_kinito = MagicMock()
+    # Keep whatever position physics reaches — simulates "already on a monitor".
+    movement.clamp_position = MagicMock(side_effect=lambda x, y: (int(round(x)), int(round(y))))
+    movement.get_current_monitor_bounds = MagicMock(return_value=(2570, 370, 3702, 942))
+    with patch("kinito.movement.time.monotonic", return_value=1.02):
+        movement._throw_tick()
+    assert movement.x > 2500.0
+    assert movement._throw_bounce_count == 0
 
 
 def test_throw_stops_after_max_bounces(movement):

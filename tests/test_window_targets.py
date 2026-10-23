@@ -9,13 +9,21 @@ from kinito.window_targets import (
     WindowRect,
     centered_origin_on_rect,
     choose_grab_side,
+    clamp_origin_for_movement,
+    clamp_origin_onto_monitors,
     clamp_window_origin,
     hand_sprite_for_side,
     hand_tuck_geometry,
+    monitor_rect_for_point,
+    movement_allows_void_transit,
+    origin_bounds_on_rect,
+    origin_fully_on_any_monitor,
     pick_window_target,
+    point_on_any_monitor,
     position_diverged,
     primary_monitor_rect,
     random_fully_visible_origin,
+    window_center_on_any_monitor,
 )
 
 
@@ -70,6 +78,107 @@ def test_primary_monitor_rect_prefers_origin_monitor():
 def test_centered_origin_on_rect():
     assert centered_origin_on_rect(200, 100, (0, 0, 2560, 1440)) == (1180, 670)
     assert centered_origin_on_rect(400, 300, (-1920, 0, 1920, 1080)) == (-1920 + 760, 390)
+
+
+def test_monitor_rect_for_point_prefers_containing_display():
+    monitors = [(0, 0, 2560, 1440), (2560, 360, 1280, 720)]
+    assert monitor_rect_for_point(2800, 500, monitors=monitors) == monitors[1]
+    assert monitor_rect_for_point(100, 100, monitors=monitors) == monitors[0]
+
+
+def test_monitor_rect_for_point_falls_back_to_nearest():
+    monitors = [(0, 0, 2560, 1440), (2560, 360, 1280, 720)]
+    # Above the short secondary — still nearer to that display's center.
+    assert monitor_rect_for_point(2800, 50, monitors=monitors) == monitors[1]
+
+
+def test_clamp_origin_onto_monitors_pulls_center_out_of_void():
+    monitors = [(0, 0, 2560, 1440), (2560, 360, 1280, 720)]
+    # Center at y=104 is above the short secondary → project onto y=360.
+    x, y = clamp_origin_onto_monitors(
+        2800, 40, 128, 128, margin=10, monitors=monitors
+    )
+    assert x == 2800
+    assert y == 360 - 64  # center on top edge, origin = center - half height
+    assert window_center_on_any_monitor(x, y, 128, 128, monitors=monitors)
+
+
+def test_clamp_origin_allows_straddling_monitor_seam():
+    """Full-window fit would reject this; center-based clamp must keep it."""
+    monitors = [(0, 0, 2560, 1440), (2560, 0, 1920, 1080)]
+    # Window spans the seam; center is still on the left display.
+    x, y = 2500, 200
+    assert not origin_fully_on_any_monitor(x, y, 128, 128, margin=10, monitors=monitors)
+    assert window_center_on_any_monitor(x, y, 128, 128, monitors=monitors)
+    assert clamp_origin_onto_monitors(x, y, 128, 128, monitors=monitors) == (2500, 200)
+
+
+def test_clamp_origin_onto_monitors_preserves_valid_cross_monitor_position():
+    """Already-visible centers on either screen must not be pulled back."""
+    monitors = [(0, 0, 2560, 1440), (2560, 360, 1280, 720)]
+    assert clamp_origin_onto_monitors(
+        2800, 500, 128, 128, margin=10, monitors=monitors
+    ) == (2800, 500)
+    assert clamp_origin_onto_monitors(
+        100, 100, 128, 128, margin=10, monitors=monitors
+    ) == (100, 100)
+
+
+def test_origin_fully_on_any_monitor_rejects_virtual_void():
+    monitors = [(0, 0, 2560, 1440), (2560, 360, 1280, 720)]
+    assert not origin_fully_on_any_monitor(
+        2800, 40, 128, 128, margin=10, monitors=monitors
+    )
+    assert not point_on_any_monitor(2864, 104, monitors=monitors)
+
+
+def test_void_transit_allows_throw_toward_short_secondary():
+    """From the large screen toward the short one, the gap is a bridge."""
+    monitors = [(0, 0, 2560, 1440), (2560, 360, 1280, 720)]
+    # Center just past the large monitor, above the short secondary.
+    cx, cy = 2600.0, 164.0
+    assert not point_on_any_monitor(cx, cy, monitors=monitors)
+    assert movement_allows_void_transit(
+        cx, cy, vx=800.0, vy=0.0, monitors=monitors
+    )
+    # Keep origin during transit (caller applies virtual fence only).
+    assert clamp_origin_for_movement(
+        2600 - 64, 164 - 64, 128, 128, vx=800.0, vy=0.0, monitors=monitors
+    ) == (2536, 100)
+
+
+def test_void_transit_blocks_dead_end_above_short_screen():
+    """Thrown off the top of the short screen must still bounce."""
+    monitors = [(0, 0, 2560, 1440), (2560, 360, 1280, 720)]
+    cx, cy = 2864.0, 300.0  # just above secondary
+    assert not movement_allows_void_transit(
+        cx, cy, vx=0.0, vy=-900.0, monitors=monitors
+    )
+    x, y = clamp_origin_for_movement(
+        2800, 236, 128, 128, vx=0.0, vy=-900.0, monitors=monitors
+    )
+    assert window_center_on_any_monitor(x, y, 128, 128, monitors=monitors)
+
+
+def test_void_transit_allows_surf_when_target_on_other_monitor():
+    monitors = [(0, 0, 2560, 1440), (2560, 360, 1280, 720)]
+    assert movement_allows_void_transit(
+        2600.0,
+        164.0,
+        vx=0.0,
+        vy=0.0,
+        target=(3000.0, 500.0),
+        monitors=monitors,
+    )
+
+
+def test_origin_bounds_on_rect():
+    assert origin_bounds_on_rect(128, 128, (2560, 360, 1280, 720), margin=10) == (
+        2570,
+        370,
+        2560 + 1280 - 128 - 10,
+        360 + 720 - 128 - 10,
+    )
 
 
 def test_choose_grab_side_prefers_nearer_edge():

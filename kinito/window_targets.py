@@ -381,6 +381,250 @@ def centered_origin_on_rect(
     return mx + (int(mw) - int(window_w)) // 2, my + (int(mh) - int(window_h)) // 2
 
 
+def monitor_rect_for_point(
+    x: float,
+    y: float,
+    *,
+    monitors: list[tuple[int, int, int, int]] | None = None,
+) -> tuple[int, int, int, int]:
+    """Return the monitor containing (*x*, *y*), or the nearest by center distance."""
+    rects = list(monitors) if monitors is not None else list_monitor_rects()
+    if not rects:
+        return (0, 0, 1920, 1080)
+    px, py = float(x), float(y)
+    for mx, my, mw, mh in rects:
+        if mx <= px < mx + mw and my <= py < my + mh:
+            return mx, my, mw, mh
+    best = rects[0]
+    best_dist = float("inf")
+    for rect in rects:
+        mx, my, mw, mh = rect
+        cx = mx + mw * 0.5
+        cy = my + mh * 0.5
+        dist = (cx - px) * (cx - px) + (cy - py) * (cy - py)
+        if dist < best_dist:
+            best_dist = dist
+            best = rect
+    return best
+
+
+def origin_bounds_on_rect(
+    window_w: int,
+    window_h: int,
+    rect: tuple[int, int, int, int],
+    *,
+    margin: int = 10,
+) -> tuple[int, int, int, int]:
+    """Return ``(min_x, min_y, max_x, max_y)`` so the window stays inside *rect*."""
+    mx, my, mw, mh = rect
+    pad = max(0, int(margin))
+    min_x = mx + pad
+    min_y = my + pad
+    max_x = mx + int(mw) - int(window_w) - pad
+    max_y = my + int(mh) - int(window_h) - pad
+    return (
+        min_x,
+        min_y,
+        max(min_x, max_x),
+        max(min_y, max_y),
+    )
+
+
+def point_on_any_monitor(
+    x: float,
+    y: float,
+    *,
+    monitors: list[tuple[int, int, int, int]] | None = None,
+) -> bool:
+    """Return True when (*x*, *y*) lies on at least one real monitor."""
+    rects = list(monitors) if monitors is not None else list_monitor_rects()
+    px, py = float(x), float(y)
+    return any(mx <= px < mx + mw and my <= py < my + mh for mx, my, mw, mh in rects)
+
+
+def clamp_point_onto_monitors(
+    x: float,
+    y: float,
+    *,
+    monitors: list[tuple[int, int, int, int]] | None = None,
+) -> tuple[float, float]:
+    """Project a point onto the union of monitor rectangles (nearest edge)."""
+    rects = list(monitors) if monitors is not None else list_monitor_rects()
+    px, py = float(x), float(y)
+    if not rects:
+        return px, py
+    if point_on_any_monitor(px, py, monitors=rects):
+        return px, py
+    best_x, best_y = px, py
+    best_dist = float("inf")
+    for mx, my, mw, mh in rects:
+        # Inclusive right/bottom-1 so the point stays inside the half-open rect.
+        cand_x = max(float(mx), min(px, float(mx + mw - 1)))
+        cand_y = max(float(my), min(py, float(my + mh - 1)))
+        dist = (cand_x - px) ** 2 + (cand_y - py) ** 2
+        if dist < best_dist:
+            best_dist = dist
+            best_x, best_y = cand_x, cand_y
+    return best_x, best_y
+
+
+def origin_fully_on_any_monitor(
+    x: float,
+    y: float,
+    window_w: int,
+    window_h: int,
+    *,
+    margin: int = 10,
+    monitors: list[tuple[int, int, int, int]] | None = None,
+) -> bool:
+    """Return True when the window fits fully on at least one real monitor."""
+    rects = list(monitors) if monitors is not None else list_monitor_rects()
+    px, py = float(x), float(y)
+    for rect in rects:
+        min_x, min_y, max_x, max_y = origin_bounds_on_rect(
+            window_w, window_h, rect, margin=margin
+        )
+        if min_x <= px <= max_x and min_y <= py <= max_y:
+            return True
+    return False
+
+
+def window_center_on_any_monitor(
+    x: float,
+    y: float,
+    window_w: int,
+    window_h: int,
+    *,
+    monitors: list[tuple[int, int, int, int]] | None = None,
+) -> bool:
+    """Return True when the window center sits on some real monitor.
+
+    This allows the sprite to straddle two displays while crossing — unlike a
+    full-window fit check, which snaps Kinito back at every monitor seam.
+    """
+    cx = float(x) + max(int(window_w), 1) * 0.5
+    cy = float(y) + max(int(window_h), 1) * 0.5
+    return point_on_any_monitor(cx, cy, monitors=monitors)
+
+
+def clamp_origin_onto_monitors(
+    x: float,
+    y: float,
+    window_w: int,
+    window_h: int,
+    *,
+    margin: int = 10,
+    monitors: list[tuple[int, int, int, int]] | None = None,
+) -> tuple[int, int]:
+    """Hard clamp: keep the window *center* on a real monitor.
+
+    - Crossing / straddling monitor seams is allowed (no sideways snap).
+    - Centers in virtual-desktop voids are projected onto the nearest display.
+    - *margin* is unused here; full-fit checks use :func:`origin_fully_on_any_monitor`.
+    """
+    del margin  # center-based movement clamp; full-fit uses origin_fully_on_any_monitor
+    rects = list(monitors) if monitors is not None else list_monitor_rects()
+    if not rects:
+        return int(round(x)), int(round(y))
+
+    width = max(int(window_w), 1)
+    height = max(int(window_h), 1)
+    cx = float(x) + width * 0.5
+    cy = float(y) + height * 0.5
+    if point_on_any_monitor(cx, cy, monitors=rects):
+        return int(round(x)), int(round(y))
+
+    ncx, ncy = clamp_point_onto_monitors(cx, cy, monitors=rects)
+    return int(round(ncx - width * 0.5)), int(round(ncy - height * 0.5))
+
+
+def movement_allows_void_transit(
+    cx: float,
+    cy: float,
+    *,
+    vx: float = 0.0,
+    vy: float = 0.0,
+    target: tuple[float, float] | None = None,
+    monitors: list[tuple[int, int, int, int]] | None = None,
+) -> bool:
+    """Return True when a void is a bridge toward another monitor.
+
+    Dead-end cliffs (e.g. thrown off the top of a short screen with nothing
+    above) return False so callers can bounce. Gaps above/beside offset
+    monitors return True when travel aims at that display (including sideways
+    motion in the strip above a shorter screen — gravity/surf can drop in).
+    """
+    rects = list(monitors) if monitors is not None else list_monitor_rects()
+    if not rects or point_on_any_monitor(cx, cy, monitors=rects):
+        return False
+
+    dx, dy = float(vx), float(vy)
+    if target is not None and abs(dx) < 1e-6 and abs(dy) < 1e-6:
+        dx = float(target[0]) - float(cx)
+        dy = float(target[1]) - float(cy)
+    if dx * dx + dy * dy < 1e-6:
+        return False
+
+    for mx, my, mw, mh in rects:
+        if target is not None:
+            tx, ty = float(target[0]), float(target[1])
+            if mx <= tx < mx + mw and my <= ty < my + mh:
+                return True
+
+        in_x_slab = float(mx) <= cx < float(mx + mw)
+        in_y_slab = float(my) <= cy < float(my + mh)
+        # Directly above/below this monitor: allow unless fleeing further away.
+        if in_x_slab and cy < float(my) and dy >= -1e-6:
+            return True
+        if in_x_slab and cy >= float(my + mh) and dy <= 1e-6:
+            return True
+        # Beside this monitor: only when actually moving toward its X range.
+        if in_y_slab and cx < float(mx) and dx > 1e-6:
+            return True
+        if in_y_slab and cx >= float(mx + mw) and dx < -1e-6:
+            return True
+
+        closest_x = max(float(mx), min(float(cx), float(mx + mw - 1)))
+        closest_y = max(float(my), min(float(cy), float(my + mh - 1)))
+        if (closest_x - cx) * dx + (closest_y - cy) * dy > 0:
+            return True
+    return False
+
+
+def clamp_origin_for_movement(
+    x: float,
+    y: float,
+    window_w: int,
+    window_h: int,
+    *,
+    vx: float = 0.0,
+    vy: float = 0.0,
+    target: tuple[float, float] | None = None,
+    margin: int = 10,
+    monitors: list[tuple[int, int, int, int]] | None = None,
+) -> tuple[int, int]:
+    """Movement clamp: transit through inter-monitor gaps, block dead-end voids.
+
+    When the center already sits on a monitor, or travel is heading toward
+    another monitor (throw/surf onto a shorter display), the origin is kept.
+    Otherwise the center is projected out of the void (bounce / land).
+    """
+    rects = list(monitors) if monitors is not None else list_monitor_rects()
+    width = max(int(window_w), 1)
+    height = max(int(window_h), 1)
+    cx = float(x) + width * 0.5
+    cy = float(y) + height * 0.5
+    if point_on_any_monitor(cx, cy, monitors=rects):
+        return int(round(x)), int(round(y))
+    if movement_allows_void_transit(
+        cx, cy, vx=vx, vy=vy, target=target, monitors=rects
+    ):
+        return int(round(x)), int(round(y))
+    return clamp_origin_onto_monitors(
+        x, y, width, height, margin=margin, monitors=rects
+    )
+
+
 def random_fully_visible_origin(
     window_w: int,
     window_h: int,
