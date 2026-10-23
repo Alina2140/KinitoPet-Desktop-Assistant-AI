@@ -54,6 +54,9 @@ class MusicMixin:
     _MUSIC_PROGRESS_FG = "#6b5e52"
     _MUSIC_REPEAT_ONE = "one"
     _MUSIC_REPEAT_ALL = "all"
+    _MUSIC_TOOLTIP_DELAY_MS = 350
+    _MUSIC_TOOLTIP_BG = "#111111"
+    _MUSIC_TOOLTIP_FG = "#ffffff"
 
     def setup_music_player(self):
         """Initialize music-player state (no on-sprite controls)."""
@@ -86,6 +89,9 @@ class MusicMixin:
         self._music_scrub_seconds = 0.0
         self._music_was_playing_before_scrub = False
         self._music_progress_updating = False
+        self._music_tooltip_window = None
+        self._music_tooltip_after = None
+        self._music_tooltip_widget = None
         if not hasattr(self, "_music_folder"):
             self._music_folder = ""
         if not hasattr(self, "_music_volume"):
@@ -1415,6 +1421,7 @@ class MusicMixin:
             normal_fg="#111111",
             hover_fg="#ffffff",
         )
+        self._attach_music_tooltip(close_btn, "close")
 
         minimize_btn = tk.Button(
             titlebar,
@@ -1435,6 +1442,7 @@ class MusicMixin:
             self._MUSIC_TITLEBAR_BG,
             self._MUSIC_TITLEBAR_HOVER_BG,
         )
+        self._attach_music_tooltip(minimize_btn, "minimize")
 
         for widget in (titlebar, icon_label, title_label):
             widget.bind("<ButtonPress-1>", self._start_music_player_drag)
@@ -1549,6 +1557,7 @@ class MusicMixin:
         volume_slot.grid(row=0, column=0, sticky="w")
         volume_btn = _icon_button(volume_slot, "volume", self.toggle_music_volume_popup)
         volume_btn.pack(side="left")
+        self._attach_music_tooltip(volume_btn, "volume")
 
         controls = tk.Frame(controls_row, bg=self._MUSIC_UI_BG)
         controls.grid(row=0, column=1)
@@ -1557,6 +1566,7 @@ class MusicMixin:
         list_slot.grid(row=0, column=2, sticky="e")
         list_btn = _icon_button(list_slot, "list", self.toggle_music_track_picker)
         list_btn.pack(side="right")
+        self._attach_music_tooltip(list_btn, "list")
 
         shuffle_btn = _icon_button(controls, "order", self.toggle_music_shuffle)
         prev_btn = _icon_button(controls, "prev", self.play_previous_track)
@@ -1568,6 +1578,11 @@ class MusicMixin:
         play_btn.pack(side="left", padx=4)
         next_btn.pack(side="left", padx=4)
         repeat_btn.pack(side="left", padx=4)
+        self._attach_music_tooltip(shuffle_btn, "shuffle")
+        self._attach_music_tooltip(prev_btn, "prev")
+        self._attach_music_tooltip(play_btn, "play")
+        self._attach_music_tooltip(next_btn, "next")
+        self._attach_music_tooltip(repeat_btn, "repeat")
 
         mute_row = tk.Frame(body, bg=self._MUSIC_UI_BG)
         mute_row.pack(fill="x", pady=(10, 0))
@@ -1590,6 +1605,7 @@ class MusicMixin:
             self._MUSIC_BTN_BG,
             self._MUSIC_BTN_HOVER_BG,
         )
+        self._attach_music_tooltip(kinito_mute_btn, "kinito_mute")
         kinito_mute_btn.pack(anchor="center")
         widgets["shuffle"] = shuffle_btn
         widgets["play"] = play_btn
@@ -1667,11 +1683,150 @@ class MusicMixin:
             except tk.TclError:
                 pass
 
-        button.bind("<Enter>", _enter)
-        button.bind("<Leave>", _leave)
+        button.bind("<Enter>", _enter, add="+")
+        button.bind("<Leave>", _leave, add="+")
+
+    def _music_playback_is_showing_pause(self) -> bool:
+        """Return True when the play button currently shows the pause icon."""
+        if getattr(self, "_music_scrubbing", False):
+            return bool(getattr(self, "_music_was_playing_before_scrub", False))
+        return (
+            bool(getattr(self, "_user_music_path", None))
+            and not getattr(self, "_music_paused", False)
+            and bool(self._is_background_music_playing())
+        )
+
+    def _music_control_tooltip_text(self, key: str) -> str:
+        """Return the current hover label for a music-player control *key*."""
+        if key == "volume":
+            return "Volume"
+        if key == "shuffle":
+            if getattr(self, "_music_shuffle", False):
+                return "Disable shuffle"
+            return "Enable shuffle"
+        if key == "prev":
+            return "Previous"
+        if key == "play":
+            return "Pause" if self._music_playback_is_showing_pause() else "Play"
+        if key == "next":
+            return "Next"
+        if key == "repeat":
+            if (
+                getattr(self, "_music_repeat_mode", self._MUSIC_REPEAT_ALL)
+                == self._MUSIC_REPEAT_ONE
+            ):
+                return "Repeat one"
+            return "Repeat all"
+        if key == "list":
+            return "Playlist"
+        if key == "kinito_mute":
+            if self._is_player_kinito_muted():
+                return "Unmute Kinito"
+            return "Mute Kinito"
+        if key == "minimize":
+            return "Minimize"
+        if key == "close":
+            return "Close"
+        return key.replace("_", " ").title()
+
+    def _attach_music_tooltip(self, widget: tk.Misc, key: str) -> None:
+        """Show a delayed hover tip whose text follows the control's current state."""
+
+        def _schedule(_event=None):
+            self._schedule_music_tooltip(widget, key)
+
+        def _hide(_event=None):
+            self._hide_music_tooltip(widget)
+
+        widget.bind("<Enter>", _schedule, add="+")
+        widget.bind("<Leave>", _hide, add="+")
+        widget.bind("<ButtonPress>", _hide, add="+")
+
+    def _schedule_music_tooltip(self, widget: tk.Misc, key: str) -> None:
+        """Start the tooltip delay for *widget*."""
+        self._hide_music_tooltip()
+        self._music_tooltip_widget = widget
+        root = getattr(self, "root", None)
+        if root is None:
+            return
+        schedule_after(
+            root,
+            self,
+            "_music_tooltip_after",
+            self._MUSIC_TOOLTIP_DELAY_MS,
+            lambda: self._show_music_tooltip(widget, key),
+        )
+
+    def _show_music_tooltip(self, widget: tk.Misc, key: str) -> None:
+        """Create the tooltip window under the pointer if *widget* is still hovered."""
+        self._music_tooltip_after = None
+        if getattr(self, "_music_tooltip_widget", None) is not widget:
+            return
+        try:
+            if not widget.winfo_exists():
+                return
+        except tk.TclError:
+            return
+        text = self._music_control_tooltip_text(key)
+        if not text:
+            return
+        parent = getattr(self, "_music_player_window", None) or getattr(self, "root", None)
+        if parent is None:
+            return
+        self._hide_music_tooltip(clear_widget=False)
+        tip = tk.Toplevel(parent)
+        tip.overrideredirect(True)
+        tip.wm_attributes("-topmost", True)
+        tip.configure(bg=self._MUSIC_TOOLTIP_BG)
+        label = tk.Label(
+            tip,
+            text=text,
+            bg=self._MUSIC_TOOLTIP_BG,
+            fg=self._MUSIC_TOOLTIP_FG,
+            font=("Segoe UI", 9),
+            padx=8,
+            pady=3,
+        )
+        label.pack()
+        try:
+            tip.update_idletasks()
+            x = int(widget.winfo_rootx()) + max(0, (int(widget.winfo_width()) - tip.winfo_reqwidth()) // 2)
+            y = int(widget.winfo_rooty()) + int(widget.winfo_height()) + 4
+            tip.geometry(f"+{x}+{y}")
+        except tk.TclError:
+            try:
+                tip.destroy()
+            except tk.TclError:
+                pass
+            return
+        self._music_tooltip_window = tip
+
+    def _hide_music_tooltip(self, widget: tk.Misc | None = None, *, clear_widget: bool = True) -> None:
+        """Cancel a pending tip and destroy any open tooltip window."""
+        if widget is not None and getattr(self, "_music_tooltip_widget", None) not in (
+            None,
+            widget,
+        ):
+            return
+        root = getattr(self, "root", None)
+        if root is not None:
+            cancel_after(root, self, "_music_tooltip_after")
+        else:
+            self._music_tooltip_after = None
+        tip = getattr(self, "_music_tooltip_window", None)
+        self._music_tooltip_window = None
+        if clear_widget:
+            self._music_tooltip_widget = None
+        if tip is None:
+            return
+        try:
+            tip.destroy()
+        except tk.TclError:
+            pass
 
     def _minimize_music_player_window(self):
         """Hide the player UI without stopping playback."""
+        self._hide_music_tooltip()
         self._close_music_volume_popup()
         self._close_music_track_picker()
         window = getattr(self, "_music_player_window", None)
@@ -1687,6 +1842,7 @@ class MusicMixin:
         """Close the player and stop any user song that is still playing."""
         self._clear_player_kinito_mute()
         cancel_after(self.root, self, "_music_progress_timer")
+        self._hide_music_tooltip()
         self._close_music_volume_popup()
         self._close_music_track_picker()
         if getattr(self, "_user_music_path", None):
@@ -1739,16 +1895,7 @@ class MusicMixin:
             if queue_label is not None:
                 queue_label.config(text=queue_text)
             if play_btn is not None:
-                if getattr(self, "_music_scrubbing", False):
-                    playing = bool(
-                        getattr(self, "_music_was_playing_before_scrub", False)
-                    )
-                else:
-                    playing = (
-                        bool(getattr(self, "_user_music_path", None))
-                        and not getattr(self, "_music_paused", False)
-                        and self._is_background_music_playing()
-                    )
+                playing = self._music_playback_is_showing_pause()
                 icon = photos.get("pause" if playing else "play")
                 if icon is not None:
                     play_btn.config(image=icon)

@@ -635,6 +635,36 @@ def test_bind_music_player_button_hover_swaps_colors():
     button.configure.assert_any_call(fg="#111111")
 
 
+def test_music_control_tooltip_text_follows_state(music):
+    music._is_background_music_playing = MagicMock(return_value=False)
+    music._user_music_path = None
+    music._music_paused = False
+    music._music_shuffle = False
+    music._music_repeat_mode = MusicMixin._MUSIC_REPEAT_ALL
+    music._player_kinito_muted = False
+
+    assert music._music_control_tooltip_text("volume") == "Volume"
+    assert music._music_control_tooltip_text("shuffle") == "Enable shuffle"
+    assert music._music_control_tooltip_text("prev") == "Previous"
+    assert music._music_control_tooltip_text("play") == "Play"
+    assert music._music_control_tooltip_text("next") == "Next"
+    assert music._music_control_tooltip_text("repeat") == "Repeat all"
+    assert music._music_control_tooltip_text("list") == "Playlist"
+    assert music._music_control_tooltip_text("kinito_mute") == "Mute Kinito"
+    assert music._music_control_tooltip_text("minimize") == "Minimize"
+    assert music._music_control_tooltip_text("close") == "Close"
+
+    music._user_music_path = "song.mp3"
+    music._is_background_music_playing = MagicMock(return_value=True)
+    music._music_shuffle = True
+    music._music_repeat_mode = MusicMixin._MUSIC_REPEAT_ONE
+    music._player_kinito_muted = True
+    assert music._music_control_tooltip_text("play") == "Pause"
+    assert music._music_control_tooltip_text("shuffle") == "Disable shuffle"
+    assert music._music_control_tooltip_text("repeat") == "Repeat one"
+    assert music._music_control_tooltip_text("kinito_mute") == "Unmute Kinito"
+
+
 def test_format_queue_position():
     assert MusicMixin._format_queue_position(0, 87) == "1/87"
     assert MusicMixin._format_queue_position(4, 87) == "5/87"
