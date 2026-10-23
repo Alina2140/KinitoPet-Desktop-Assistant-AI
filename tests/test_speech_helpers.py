@@ -596,11 +596,10 @@ def test_run_tts_skips_pyttsx3_when_interrupted(speech):
     fallback.assert_not_called()
 
 
-def test_play_bubble_sfx_uses_tts_volume(speech):
-    speech._tts_volume = 40
+def test_play_bubble_sfx_uses_play_sfx(speech):
     speech.play_sfx = MagicMock()
     speech._play_bubble_sfx("StartTalking.mp3")
-    speech.play_sfx.assert_called_once_with("StartTalking.mp3", volume=0.4)
+    speech.play_sfx.assert_called_once_with("StartTalking.mp3")
 
 
 def test_show_speech_bubble_ignores_stale_epoch(speech):

@@ -351,6 +351,7 @@ class FloatingAssistant(
         self._tts_enabled = self._settings.get("tts_enabled", True)
         self._player_focus_enabled = self._settings.get("player_focus_enabled", True)
         self._tts_volume = self._settings.get_int("tts_volume", 100)
+        self._sfx_volume = self._settings.get_int("sfx_volume", 100)
         self._music_volume = self._settings.get_int("music_volume", 75)
         self._music_folder = self._settings.get_music_folder()
         self._music_shuffle = bool(self._settings.get("music_shuffle", False))
@@ -496,6 +497,7 @@ class FloatingAssistant(
             tts_enabled=bool(getattr(self, "_tts_enabled", True)),
             player_focus_enabled=bool(getattr(self, "_player_focus_enabled", True)),
             tts_volume=int(getattr(self, "_tts_volume", 100)),
+            sfx_volume=int(getattr(self, "_sfx_volume", 100)),
             music_volume=int(getattr(self, "_music_volume", 75)),
             music_folder=str(getattr(self, "_music_folder", "") or ""),
             music_shuffle=bool(getattr(self, "_music_shuffle", False)),
@@ -1097,6 +1099,38 @@ class FloatingAssistant(
         self.speak(dlg.pick_line(lines), skip_ai=True)
 
     def play_sfx(self, file_path, volume=1.0):
+    def get_sfx_volume(self) -> int:
+        """Return the current sound-effects volume in 0–100."""
+        from kinito.settings_store import clamp_sfx_volume
+
+        return clamp_sfx_volume(getattr(self, "_sfx_volume", 100))
+
+    def offer_sfx_volume_picker(self) -> None:
+        """Ask the user to pick a sound-effects volume preset."""
+        from content import dialogue as dlg
+
+        volume = self.get_sfx_volume()
+        self.speak(
+            dlg.SFX_VOLUME_QUESTION.format(volume=volume),
+            45,
+            True,
+            skip_ai=True,
+        )
+
+    def set_sfx_volume(self, volume: int) -> None:
+        """Set and persist sound-effects volume, then confirm aloud."""
+        from content import dialogue as dlg
+        from kinito.settings_store import clamp_sfx_volume
+
+        self._sfx_volume = clamp_sfx_volume(volume)
+        if hasattr(self, "_persist_settings"):
+            self._persist_settings()
+        self.speak(
+            dlg.pick_line(dlg.SFX_VOLUME_SET_LINES).format(volume=self._sfx_volume),
+            skip_ai=True,
+        )
+
+    def play_sfx(self, file_path, volume=1.0, *, respect_sfx_volume=True):
         """Play a short sound effect without interrupting background music."""
         if not getattr(self, "_sound_effects_enabled", True):
             return

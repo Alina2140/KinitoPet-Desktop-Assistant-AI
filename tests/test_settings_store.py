@@ -5,7 +5,12 @@ import os
 
 import pytest
 
-from kinito.settings_store import SettingsStore, clamp_music_volume, clamp_tts_volume
+from kinito.settings_store import (
+    SettingsStore,
+    clamp_music_volume,
+    clamp_sfx_volume,
+    clamp_tts_volume,
+)
 
 
 def test_clamp_tts_volume():
@@ -13,6 +18,13 @@ def test_clamp_tts_volume():
     assert clamp_tts_volume(150) == 100
     assert clamp_tts_volume(-5) == 0
     assert clamp_tts_volume("nope") == 100
+
+
+def test_clamp_sfx_volume():
+    assert clamp_sfx_volume(40) == 40
+    assert clamp_sfx_volume(150) == 100
+    assert clamp_sfx_volume(-5) == 0
+    assert clamp_sfx_volume("nope") == 100
 
 
 def test_clamp_music_volume():
@@ -45,6 +57,7 @@ def test_defaults_when_missing(store):
     assert store.get("player_focus_enabled") is True
     assert store.get("music_shuffle") is False
     assert store.get_int("tts_volume") == 100
+    assert store.get_int("sfx_volume") == 100
     assert store.get_int("music_volume") == 75
     assert store.get_music_folder() == ""
     assert store.get("special_days_enabled") is True
@@ -67,6 +80,7 @@ def test_update_and_reload_roundtrip(store, settings_dir):
         tts_enabled=False,
         player_focus_enabled=False,
         tts_volume=40,
+        sfx_volume=70,
         music_volume=55,
         music_folder=r"C:\Music",
         music_shuffle=True,
@@ -88,6 +102,7 @@ def test_update_and_reload_roundtrip(store, settings_dir):
     assert reloaded.get("tts_enabled") is False
     assert reloaded.get("player_focus_enabled") is False
     assert reloaded.get_int("tts_volume") == 40
+    assert reloaded.get_int("sfx_volume") == 70
     assert reloaded.get_int("music_volume") == 55
     assert reloaded.get_music_folder() == r"C:\Music"
     assert reloaded.get("music_shuffle") is True
@@ -103,6 +118,13 @@ def test_tts_volume_clamped(store):
     assert store.get_int("tts_volume") == 100
     store.update(tts_volume=-10)
     assert store.get_int("tts_volume") == 0
+
+
+def test_sfx_volume_clamped(store):
+    store.update(sfx_volume=250)
+    assert store.get_int("sfx_volume") == 100
+    store.update(sfx_volume=-10)
+    assert store.get_int("sfx_volume") == 0
 
 
 def test_music_volume_clamped(store):

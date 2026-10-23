@@ -180,6 +180,11 @@ MENU_VISIBILITY_SECTIONS: tuple[tuple[str, tuple[MenuEntry, ...]], ...] = (
                 ),
             ),
             (
+                "settings.sfx_volume",
+                "SFX Volume",
+                frozenset({dlg.BUTTON_SFX_VOLUME}),
+            ),
+            (
                 "settings.music_folder",
                 "Music Folder",
                 frozenset({dlg.BUTTON_MUSIC_FOLDER}),

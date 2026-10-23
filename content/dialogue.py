@@ -991,6 +991,21 @@ TTS_VOLUME_SET_LINES = [
     "TTS volume: {volume}%. Adjust anytime in Settings.",
 ]
 
+# Marker must be more specific than TTS_VOLUME_MARKER and registered first.
+SFX_VOLUME_MARKER = "sound effects volume"
+SFX_VOLUME_QUESTION = (
+    "Sound effects volume is {volume}% right now. Soft, normal, or loud?"
+)
+SFX_VOLUME_SOFT = 40
+SFX_VOLUME_NORMAL = 70
+SFX_VOLUME_LOUD = 100
+
+SFX_VOLUME_SET_LINES = [
+    "SFX volume set to {volume}%. Woosh and bomp, dialed in.",
+    "Okay! Sound effects at {volume}% now. Soft clicks. Soft boops.",
+    "Sound effects volume: {volume}%. Adjust anytime in Settings.",
+]
+
 EMOJI_PICKER_ON_LINES = [
     "Emoji button on! Pixel faces in chat. Soft smiles.",
     "Chat emojis enabled. Tap the smile. Express yourself.",
@@ -1805,6 +1820,7 @@ BUTTON_TTS_VOLUME = "TTS Volume"
 BUTTON_TTS_VOLUME_SOFT = "Soft"
 BUTTON_TTS_VOLUME_NORMAL = "Normal"
 BUTTON_TTS_VOLUME_LOUD = "Loud"
+BUTTON_SFX_VOLUME = "SFX Volume"
 BUTTON_MUSIC_FOLDER = "Music Folder"
 BUTTON_EMOJI = "Emojis"
 BUTTON_EMOJI_ON = "Emojis on"

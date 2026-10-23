@@ -35,12 +35,17 @@ DEFAULT_BOOL_SETTINGS: dict[str, bool] = {
 # Integer settings (clamped on load/save).
 DEFAULT_INT_SETTINGS: dict[str, int] = {
     "tts_volume": 100,
+    "sfx_volume": 100,
     "music_volume": 75,
 }
 
 TTS_VOLUME_MIN = 0
 TTS_VOLUME_MAX = 100
 TTS_VOLUME_DEFAULT = 100
+
+SFX_VOLUME_MIN = 0
+SFX_VOLUME_MAX = 100
+SFX_VOLUME_DEFAULT = 100
 
 MUSIC_VOLUME_MIN = 0
 MUSIC_VOLUME_MAX = 100
@@ -60,6 +65,15 @@ def clamp_tts_volume(value: int | float) -> int:
     except (TypeError, ValueError):
         return TTS_VOLUME_DEFAULT
     return max(TTS_VOLUME_MIN, min(TTS_VOLUME_MAX, volume))
+
+
+def clamp_sfx_volume(value: int | float) -> int:
+    """Clamp sound-effects volume to the supported 0–100 range."""
+    try:
+        volume = int(round(float(value)))
+    except (TypeError, ValueError):
+        return SFX_VOLUME_DEFAULT
+    return max(SFX_VOLUME_MIN, min(SFX_VOLUME_MAX, volume))
 
 
 def clamp_music_volume(value: int | float) -> int:
@@ -129,6 +143,8 @@ class SettingsStore:
             value = raw.get(key, default)
             if key == "tts_volume":
                 data[key] = clamp_tts_volume(value if value is not None else default)
+            elif key == "sfx_volume":
+                data[key] = clamp_sfx_volume(value if value is not None else default)
             elif key == "music_volume":
                 data[key] = clamp_music_volume(value if value is not None else default)
             elif isinstance(value, bool):
@@ -139,6 +155,7 @@ class SettingsStore:
                 data[key] = int(value)
             else:
                 data[key] = default
+
         hidden = raw.get(HIDDEN_MENU_BUTTONS_KEY, [])
         if isinstance(hidden, list):
             data[HIDDEN_MENU_BUTTONS_KEY] = [
@@ -166,9 +183,12 @@ class SettingsStore:
             value = self._data[key]
             if key == "tts_volume":
                 return clamp_tts_volume(value)
+            if key == "sfx_volume":
+                return clamp_sfx_volume(value)
             if key == "music_volume":
                 return clamp_music_volume(value)
             return value
+
         if default is not None:
             return int(default)
         return int(DEFAULT_INT_SETTINGS.get(key, 0))
@@ -193,6 +213,8 @@ class SettingsStore:
                 elif key in DEFAULT_INT_SETTINGS:
                     if key == "tts_volume":
                         coerced = clamp_tts_volume(value)
+                    elif key == "sfx_volume":
+                        coerced = clamp_sfx_volume(value)
                     elif key == "music_volume":
                         coerced = clamp_music_volume(value)
                     else:

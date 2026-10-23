@@ -761,11 +761,10 @@ class SpeechMixin:
         return clamp_tts_volume(getattr(self, "_tts_volume", 100))
 
     def _play_bubble_sfx(self, file_path: str) -> None:
-        """Play a bubble open/close sound scaled to the TTS volume setting."""
+        """Play a bubble open/close sound (respects the SFX volume setting)."""
         if not hasattr(self, "play_sfx"):
             return
-        volume = max(0.0, min(1.0, self.get_tts_volume() / 100.0))
-        self.play_sfx(file_path, volume=volume)
+        self.play_sfx(file_path)
 
     def offer_tts_volume_picker(self) -> None:
         """Ask the user to pick a TTS volume preset."""

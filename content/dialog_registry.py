@@ -141,6 +141,7 @@ def settings_options_for(app) -> list[str]:
         [
             dlg.BUTTON_TURN_ON_OFF,
             dlg.BUTTON_TTS_VOLUME,
+            dlg.BUTTON_SFX_VOLUME,
             dlg.BUTTON_MUSIC_FOLDER,
             dlg.BUTTON_RESET_MOOD,
             dlg.BUTTON_MENU_BUTTONS,
@@ -649,6 +650,7 @@ def _menu_action_handlers() -> dict[str, Handler]:
         dlg.BUTTON_PLAYER_FOCUS_ON: lambda a: a.toggle_player_focus(),
         dlg.BUTTON_PLAYER_FOCUS_OFF: lambda a: a.toggle_player_focus(),
         dlg.BUTTON_TTS_VOLUME: lambda a: a.offer_tts_volume_picker(),
+        dlg.BUTTON_SFX_VOLUME: lambda a: a.offer_sfx_volume_picker(),
         dlg.BUTTON_MUSIC_FOLDER: lambda a: a.root.after(0, a.choose_music_folder),
         dlg.BUTTON_EMOJI: lambda a: a.toggle_emoji_picker_setting(),
         dlg.BUTTON_EMOJI_ON: lambda a: a.toggle_emoji_picker_setting(),
@@ -943,6 +945,21 @@ def _handle_tts_volume(app, response: str) -> None:
         app.set_tts_volume(volume)
 
 
+def _handle_sfx_volume(app, response: str) -> None:
+    """Apply a sound-effects volume preset from the picker."""
+    volume_map = {
+        dlg.BUTTON_TTS_VOLUME_SOFT: dlg.SFX_VOLUME_SOFT,
+        dlg.BUTTON_TTS_VOLUME_NORMAL: dlg.SFX_VOLUME_NORMAL,
+        dlg.BUTTON_TTS_VOLUME_LOUD: dlg.SFX_VOLUME_LOUD,
+    }
+    if response == dlg.BUTTON_BACK:
+        _open_settings_menu(app)
+        return
+    volume = volume_map.get(response)
+    if volume is not None and hasattr(app, "set_sfx_volume"):
+        app.set_sfx_volume(volume)
+
+
 def _handle_coin_dice_mode(app, response: str) -> None:
     """Choose coin flip or dice roll."""
     if response == dlg.BUTTON_FLIP_COIN:
@@ -1166,6 +1183,19 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
         dlg.SETTINGS_TOGGLES_MARKER,
         DialogUI("buttons"),
         _handle_settings_toggles_menu,
+    ),
+    DialogSpec(
+        dlg.SFX_VOLUME_MARKER,
+        DialogUI(
+            "buttons",
+            buttons=(
+                dlg.BUTTON_TTS_VOLUME_SOFT,
+                dlg.BUTTON_TTS_VOLUME_NORMAL,
+                dlg.BUTTON_TTS_VOLUME_LOUD,
+                dlg.BUTTON_BACK,
+            ),
+        ),
+        _handle_sfx_volume,
     ),
     DialogSpec(
         dlg.TTS_VOLUME_MARKER,

@@ -291,6 +291,29 @@ def test_handle_tts_volume_back_opens_settings(mock_app):
     assert dlg.SETTINGS_MENU_MARKER.lower() in spoken.lower()
 
 
+def test_handle_sfx_volume_soft(mock_app):
+    question = dlg.SFX_VOLUME_QUESTION.format(volume=100)
+    spec = find_dialog_spec(question)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_TTS_VOLUME_SOFT)
+    mock_app.set_sfx_volume.assert_called_once_with(dlg.SFX_VOLUME_SOFT)
+
+
+def test_handle_sfx_volume_back_opens_settings(mock_app):
+    question = dlg.SFX_VOLUME_QUESTION.format(volume=70)
+    spec = find_dialog_spec(question)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_BACK)
+    mock_app.speak.assert_called()
+    spoken = mock_app.speak.call_args[0][0]
+    assert dlg.SETTINGS_MENU_MARKER.lower() in spoken.lower()
+
+
+def test_sfx_volume_question_does_not_match_tts_handler(mock_app):
+    question = dlg.SFX_VOLUME_QUESTION.format(volume=40)
+    spec = find_dialog_spec(question)
+    assert spec is not None
+    assert dlg.SFX_VOLUME_MARKER.lower() in spec.marker.lower()
+
+
 def test_handle_settings_turn_on_off_opens_toggles(mock_app):
     spec = find_dialog_spec(dlg.SETTINGS_MENU_QUESTION)
     handle_dialog_response(mock_app, spec, dlg.BUTTON_TURN_ON_OFF)
