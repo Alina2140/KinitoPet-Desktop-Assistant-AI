@@ -57,6 +57,7 @@ DEFAULT_SETTINGS = DEFAULT_BOOL_SETTINGS
 
 HIDDEN_MENU_BUTTONS_KEY = "hidden_menu_buttons"
 MUSIC_FOLDER_KEY = "music_folder"
+SFX_CHANNEL_VOLUMES_KEY = "sfx_channel_volumes"
 
 
 def clamp_tts_volume(value: int | float) -> int:
@@ -110,7 +111,25 @@ class SettingsStore:
             **DEFAULT_INT_SETTINGS,
             HIDDEN_MENU_BUTTONS_KEY: [],
             MUSIC_FOLDER_KEY: "",
+            SFX_CHANNEL_VOLUMES_KEY: {},
         }
+
+    @staticmethod
+    def _normalize_sfx_channel_volumes(raw: Any) -> dict[str, int]:
+        """Keep only known channel ids with clamped 0–100 volumes."""
+        from kinito.sfx_channels import SFX_CHANNEL_IDS
+
+        if not isinstance(raw, dict):
+            return {}
+        cleaned: dict[str, int] = {}
+        for key, value in raw.items():
+            channel_id = str(key)
+            if channel_id not in SFX_CHANNEL_IDS:
+                continue
+            cleaned[channel_id] = clamp_sfx_volume(
+                value if value is not None else SFX_VOLUME_DEFAULT
+            )
+        return cleaned
 
     def load(self) -> None:
         """Load settings from disk, or start with defaults if missing/invalid."""
@@ -166,6 +185,9 @@ class SettingsStore:
             data[HIDDEN_MENU_BUTTONS_KEY] = []
         folder = raw.get(MUSIC_FOLDER_KEY, "")
         data[MUSIC_FOLDER_KEY] = str(folder).strip() if isinstance(folder, str) else ""
+        data[SFX_CHANNEL_VOLUMES_KEY] = self._normalize_sfx_channel_volumes(
+            raw.get(SFX_CHANNEL_VOLUMES_KEY, {})
+        )
         return data
 
     def get(self, key: str, default: bool | None = None) -> bool:
@@ -258,3 +280,35 @@ class SettingsStore:
     def set_music_folder(self, folder: str) -> None:
         """Persist the music playlist folder path."""
         self.update(**{MUSIC_FOLDER_KEY: folder})
+
+    def get_sfx_channel_volumes(self) -> dict[str, int]:
+        """Return per-sound SFX volumes (missing keys mean 100%)."""
+        raw = self._data.get(SFX_CHANNEL_VOLUMES_KEY, {})
+        return self._normalize_sfx_channel_volumes(raw)
+
+    def set_sfx_channel_volume(self, channel_id: str, volume: int | float) -> None:
+        """Persist one channel volume (0–100)."""
+        from kinito.sfx_channels import SFX_CHANNEL_IDS
+
+        channel_id = str(channel_id)
+        if channel_id not in SFX_CHANNEL_IDS:
+            return
+        clamped = clamp_sfx_volume(volume)
+        with self._lock:
+            volumes = self._normalize_sfx_channel_volumes(
+                self._data.get(SFX_CHANNEL_VOLUMES_KEY, {})
+            )
+            if volumes.get(channel_id) == clamped:
+                return
+            volumes[channel_id] = clamped
+            self._data[SFX_CHANNEL_VOLUMES_KEY] = volumes
+            self.save()
+
+    def set_sfx_channel_volumes(self, volumes: dict[str, int] | None) -> None:
+        """Replace the whole per-channel volume map."""
+        cleaned = self._normalize_sfx_channel_volumes(volumes or {})
+        with self._lock:
+            if self._data.get(SFX_CHANNEL_VOLUMES_KEY) == cleaned:
+                return
+            self._data[SFX_CHANNEL_VOLUMES_KEY] = cleaned
+            self.save()

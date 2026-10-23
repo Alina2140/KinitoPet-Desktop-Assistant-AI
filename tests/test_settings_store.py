@@ -130,6 +130,17 @@ def test_sfx_volume_clamped(store):
     assert store.get_int("sfx_volume") == 0
 
 
+def test_sfx_channel_volumes_roundtrip(store, settings_dir):
+    assert store.get_sfx_channel_volumes() == {}
+    store.set_sfx_channel_volume("surf", 40)
+    store.set_sfx_channel_volume("nope", 10)  # unknown ignored
+    assert store.get_sfx_channel_volumes() == {"surf": 40}
+    reloaded = SettingsStore(directory=settings_dir)
+    assert reloaded.get_sfx_channel_volumes() == {"surf": 40}
+    reloaded.set_sfx_channel_volumes({"reading": 70, "surf": 250, "bogus": 1})
+    assert reloaded.get_sfx_channel_volumes() == {"reading": 70, "surf": 100}
+
+
 def test_music_volume_clamped(store):
     store.update(music_volume=250)
     assert store.get_int("music_volume") == 100

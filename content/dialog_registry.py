@@ -33,6 +33,7 @@ from kinito.features.games.number_guess import (
     parse_guess,
 )
 from kinito.features.games.rock_paper_scissors import MOVES, rps_winner
+from kinito.sfx_channels import SFX_CHANNELS
 
 Handler = Callable[..., None]
 
@@ -75,6 +76,8 @@ def apply_dialog_ui(app, spec: DialogSpec) -> None:
             buttons = settings_options_for(app)
         elif spec.marker == dlg.SETTINGS_TOGGLES_MARKER:
             buttons = settings_toggles_options_for(app)
+        elif spec.marker == dlg.SFX_VOLUME_MENU_MARKER:
+            buttons = sfx_volume_menu_options_for(app)
         elif spec.marker == dlg.ACTIONS_MENU_MARKER:
             buttons = actions_options_for(app)
         else:
@@ -155,6 +158,32 @@ def settings_options_for(app) -> list[str]:
             dlg.BUTTON_BACK,
         ],
     )
+
+
+_SFX_CHANNEL_BUTTONS: dict[str, str] = {
+    "surf": dlg.BUTTON_SFX_SURF,
+    "magic": dlg.BUTTON_SFX_MAGIC,
+    "poem": dlg.BUTTON_SFX_POEM,
+    "bubble_open": dlg.BUTTON_SFX_BUBBLE_OPEN,
+    "bubble_close": dlg.BUTTON_SFX_BUBBLE_CLOSE,
+    "reading": dlg.BUTTON_SFX_READING,
+    "woosh": dlg.BUTTON_SFX_WOOSH,
+    "bomp": dlg.BUTTON_SFX_BOMP,
+    "snoring": dlg.BUTTON_SFX_SNORING,
+    "timer": dlg.BUTTON_SFX_TIMER,
+}
+
+
+def sfx_volume_menu_options_for(app) -> list[str]:
+    """Return SFX volume submenu: all sounds, then each channel, then Back."""
+    del app
+    buttons = [dlg.BUTTON_SFX_ALL]
+    for channel in SFX_CHANNELS:
+        label = _SFX_CHANNEL_BUTTONS.get(channel["id"])
+        if label:
+            buttons.append(label)
+    buttons.append(dlg.BUTTON_BACK)
+    return buttons
 
 
 def settings_toggles_options_for(app) -> list[str]:
@@ -663,7 +692,7 @@ def _menu_action_handlers() -> dict[str, Handler]:
         dlg.BUTTON_MUSIC_COMMENTS_ON: lambda a: a.toggle_music_comments(),
         dlg.BUTTON_MUSIC_COMMENTS_OFF: lambda a: a.toggle_music_comments(),
         dlg.BUTTON_TTS_VOLUME: lambda a: a.offer_tts_volume_picker(),
-        dlg.BUTTON_SFX_VOLUME: lambda a: a.offer_sfx_volume_picker(),
+        dlg.BUTTON_SFX_VOLUME: lambda a: a.offer_sfx_volume_menu(),
         dlg.BUTTON_MUSIC_FOLDER: lambda a: a.root.after(0, a.choose_music_folder),
         dlg.BUTTON_EMOJI: lambda a: a.toggle_emoji_picker_setting(),
         dlg.BUTTON_EMOJI_ON: lambda a: a.toggle_emoji_picker_setting(),
@@ -958,18 +987,45 @@ def _handle_tts_volume(app, response: str) -> None:
         app.set_tts_volume(volume)
 
 
+def _handle_sfx_volume_menu(app, response: str) -> None:
+    """Open the master or per-channel Soft/Normal/Loud picker."""
+    if response == dlg.BUTTON_BACK:
+        _open_settings_menu(app)
+        return
+    if response == dlg.BUTTON_SFX_ALL:
+        if hasattr(app, "offer_sfx_volume_picker"):
+            app.offer_sfx_volume_picker(channel_id=None)
+        return
+    button_to_channel = {label: channel_id for channel_id, label in _SFX_CHANNEL_BUTTONS.items()}
+    channel_id = button_to_channel.get(response)
+    if channel_id and hasattr(app, "offer_sfx_volume_picker"):
+        app.offer_sfx_volume_picker(channel_id=channel_id)
+
+
 def _handle_sfx_volume(app, response: str) -> None:
-    """Apply a sound-effects volume preset from the picker."""
+    """Apply a sound-effects volume preset from the Soft/Normal/Loud picker."""
     volume_map = {
         dlg.BUTTON_TTS_VOLUME_SOFT: dlg.SFX_VOLUME_SOFT,
         dlg.BUTTON_TTS_VOLUME_NORMAL: dlg.SFX_VOLUME_NORMAL,
         dlg.BUTTON_TTS_VOLUME_LOUD: dlg.SFX_VOLUME_LOUD,
     }
     if response == dlg.BUTTON_BACK:
-        _open_settings_menu(app)
+        if hasattr(app, "offer_sfx_volume_menu"):
+            app.offer_sfx_volume_menu()
+        else:
+            _open_settings_menu(app)
         return
     volume = volume_map.get(response)
-    if volume is not None and hasattr(app, "set_sfx_volume"):
+    if volume is None:
+        return
+    channel_id = getattr(app, "_sfx_volume_edit_channel", None)
+    if (
+        isinstance(channel_id, str)
+        and channel_id
+        and hasattr(app, "set_sfx_channel_volume")
+    ):
+        app.set_sfx_channel_volume(channel_id, volume)
+    elif hasattr(app, "set_sfx_volume"):
         app.set_sfx_volume(volume)
 
 
@@ -1196,6 +1252,11 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
         dlg.SETTINGS_TOGGLES_MARKER,
         DialogUI("buttons"),
         _handle_settings_toggles_menu,
+    ),
+    DialogSpec(
+        dlg.SFX_VOLUME_MENU_MARKER,
+        DialogUI("buttons"),
+        _handle_sfx_volume_menu,
     ),
     DialogSpec(
         dlg.SFX_VOLUME_MARKER,

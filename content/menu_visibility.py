@@ -193,7 +193,22 @@ MENU_VISIBILITY_SECTIONS: tuple[tuple[str, tuple[MenuEntry, ...]], ...] = (
             (
                 "settings.sfx_volume",
                 "SFX Volume",
-                frozenset({dlg.BUTTON_SFX_VOLUME}),
+                frozenset(
+                    {
+                        dlg.BUTTON_SFX_VOLUME,
+                        dlg.BUTTON_SFX_ALL,
+                        dlg.BUTTON_SFX_SURF,
+                        dlg.BUTTON_SFX_MAGIC,
+                        dlg.BUTTON_SFX_POEM,
+                        dlg.BUTTON_SFX_BUBBLE_OPEN,
+                        dlg.BUTTON_SFX_BUBBLE_CLOSE,
+                        dlg.BUTTON_SFX_READING,
+                        dlg.BUTTON_SFX_WOOSH,
+                        dlg.BUTTON_SFX_BOMP,
+                        dlg.BUTTON_SFX_SNORING,
+                        dlg.BUTTON_SFX_TIMER,
+                    }
+                ),
             ),
             (
                 "settings.music_folder",

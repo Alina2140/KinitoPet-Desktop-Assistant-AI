@@ -307,6 +307,8 @@ class FloatingAssistant(
         )
         self._tts_volume = self._settings.get_int("tts_volume", 100)
         self._sfx_volume = self._settings.get_int("sfx_volume", 100)
+        self._sfx_channel_volumes = dict(self._settings.get_sfx_channel_volumes())
+        self._sfx_volume_edit_channel: str | None = None
         self._music_volume = self._settings.get_int("music_volume", 75)
         self._music_folder = self._settings.get_music_folder()
         self._music_shuffle = bool(self._settings.get("music_shuffle", False))
@@ -465,6 +467,9 @@ class FloatingAssistant(
             color_guess_voice_enabled=bool(
                 getattr(self, "_color_guess_voice_enabled", True)
             ),
+        )
+        store.set_sfx_channel_volumes(
+            getattr(self, "_sfx_channel_volumes", {}) or {}
         )
         store.set_hidden_menu_buttons(getattr(self, "_hidden_menu_buttons", set()))
 
@@ -1330,15 +1335,46 @@ class FloatingAssistant(
         self.speak(dlg.pick_line(lines), skip_ai=True)
 
     def get_sfx_volume(self) -> int:
-        """Return the current sound-effects volume in 0–100."""
+        """Return the current master sound-effects volume in 0–100."""
         from kinito.settings_store import clamp_sfx_volume
 
         return clamp_sfx_volume(getattr(self, "_sfx_volume", 100))
 
-    def offer_sfx_volume_picker(self) -> None:
-        """Ask the user to pick a sound-effects volume preset."""
+    def get_sfx_channel_volume(self, channel_id: str) -> int:
+        """Return one channel's volume (0–100); missing channels default to 100."""
+        from kinito.settings_store import clamp_sfx_volume
+        from kinito.sfx_channels import SFX_CHANNEL_IDS
+
+        if channel_id not in SFX_CHANNEL_IDS:
+            return 100
+        volumes = getattr(self, "_sfx_channel_volumes", None) or {}
+        return clamp_sfx_volume(volumes.get(channel_id, 100))
+
+    def offer_sfx_volume_menu(self) -> None:
+        """Open the SFX volume submenu (all sounds + per-effect entries)."""
         from content import dialogue as dlg
 
+        self._sfx_volume_edit_channel = None
+        self.speak(dlg.SFX_VOLUME_MENU_QUESTION, 45, True, skip_ai=True)
+
+    def offer_sfx_volume_picker(self, channel_id: str | None = None) -> None:
+        """Ask Soft/Normal/Loud for the master bus or one *channel_id*."""
+        from content import dialogue as dlg
+        from kinito.sfx_channels import channel_label
+
+        self._sfx_volume_edit_channel = channel_id
+        if channel_id:
+            volume = self.get_sfx_channel_volume(channel_id)
+            self.speak(
+                dlg.SFX_CHANNEL_VOLUME_QUESTION.format(
+                    label=channel_label(channel_id),
+                    volume=volume,
+                ),
+                45,
+                True,
+                skip_ai=True,
+            )
+            return
         volume = self.get_sfx_volume()
         self.speak(
             dlg.SFX_VOLUME_QUESTION.format(volume=volume),
@@ -1348,15 +1384,42 @@ class FloatingAssistant(
         )
 
     def set_sfx_volume(self, volume: int) -> None:
-        """Set and persist sound-effects volume, then confirm aloud."""
+        """Set and persist master sound-effects volume, then confirm aloud."""
         from content import dialogue as dlg
         from kinito.settings_store import clamp_sfx_volume
 
         self._sfx_volume = clamp_sfx_volume(volume)
+        self._sfx_volume_edit_channel = None
         if hasattr(self, "_persist_settings"):
             self._persist_settings()
         self.speak(
             dlg.pick_line(dlg.SFX_VOLUME_SET_LINES).format(volume=self._sfx_volume),
+            skip_ai=True,
+        )
+
+    def set_sfx_channel_volume(self, channel_id: str, volume: int) -> None:
+        """Set and persist one SFX channel volume, preview, then confirm aloud."""
+        from content import dialogue as dlg
+        from kinito.settings_store import clamp_sfx_volume
+        from kinito.sfx_channels import channel_by_id, channel_label
+
+        channel = channel_by_id(channel_id)
+        if channel is None:
+            return
+        clamped = clamp_sfx_volume(volume)
+        volumes = dict(getattr(self, "_sfx_channel_volumes", {}) or {})
+        volumes[channel_id] = clamped
+        self._sfx_channel_volumes = volumes
+        self._sfx_volume_edit_channel = None
+        if hasattr(self, "_persist_settings"):
+            self._persist_settings()
+        if channel["kind"] == "sfx":
+            self.play_sfx(channel["path"], volume=1.0)
+        self.speak(
+            dlg.pick_line(dlg.SFX_CHANNEL_VOLUME_SET_LINES).format(
+                label=channel_label(channel_id),
+                volume=clamped,
+            ),
             skip_ai=True,
         )
 
@@ -1371,6 +1434,8 @@ class FloatingAssistant(
         if not os.path.isfile(file_path):
             return
         try:
+            from kinito.sfx_channels import channel_id_for_path
+
             self._ensure_mixer()
             if not hasattr(self, "_sfx_cache"):
                 self._sfx_cache = {}
@@ -1380,6 +1445,9 @@ class FloatingAssistant(
             effective = float(volume)
             if respect_sfx_volume:
                 effective *= self.get_sfx_volume() / 100.0
+                channel_id = channel_id_for_path(file_path)
+                if channel_id:
+                    effective *= self.get_sfx_channel_volume(channel_id) / 100.0
             sound.set_volume(max(0.0, min(1.0, effective)))
             sound.play()
         except (OSError, pygame.error):
@@ -1394,9 +1462,18 @@ class FloatingAssistant(
         if not os.path.isfile(file_path):
             return
         try:
+            from kinito.sfx_channels import channel_id_for_path
+
             self._ensure_mixer()
+            play_volume = float(volume)
+            if speech_accompaniment:
+                # Poem / fancy tunes share the SFX master + per-channel dials.
+                play_volume *= self.get_sfx_volume() / 100.0
+                channel_id = channel_id_for_path(file_path)
+                if channel_id:
+                    play_volume *= self.get_sfx_channel_volume(channel_id) / 100.0
             pygame.mixer.music.load(file_path)
-            pygame.mixer.music.set_volume(volume)
+            pygame.mixer.music.set_volume(max(0.0, min(1.0, play_volume)))
             pygame.mixer.music.play()
             self._speech_accompaniment_active = bool(speech_accompaniment)
         except (OSError, pygame.error):

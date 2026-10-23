@@ -298,13 +298,33 @@ def test_handle_sfx_volume_soft(mock_app):
     mock_app.set_sfx_volume.assert_called_once_with(dlg.SFX_VOLUME_SOFT)
 
 
-def test_handle_sfx_volume_back_opens_settings(mock_app):
+def test_handle_sfx_volume_back_opens_sfx_menu(mock_app):
     question = dlg.SFX_VOLUME_QUESTION.format(volume=70)
     spec = find_dialog_spec(question)
     handle_dialog_response(mock_app, spec, dlg.BUTTON_BACK)
-    mock_app.speak.assert_called()
-    spoken = mock_app.speak.call_args[0][0]
-    assert dlg.SETTINGS_MENU_MARKER.lower() in spoken.lower()
+    mock_app.offer_sfx_volume_menu.assert_called_once()
+
+
+def test_handle_sfx_volume_menu_all_opens_picker(mock_app):
+    spec = find_dialog_spec(dlg.SFX_VOLUME_MENU_QUESTION)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_SFX_ALL)
+    mock_app.offer_sfx_volume_picker.assert_called_once_with(channel_id=None)
+
+
+def test_handle_sfx_volume_menu_surf_opens_channel_picker(mock_app):
+    spec = find_dialog_spec(dlg.SFX_VOLUME_MENU_QUESTION)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_SFX_SURF)
+    mock_app.offer_sfx_volume_picker.assert_called_once_with(channel_id="surf")
+
+
+def test_handle_sfx_channel_volume_soft(mock_app):
+    mock_app._sfx_volume_edit_channel = "reading"
+    question = dlg.SFX_CHANNEL_VOLUME_QUESTION.format(label="Reading", volume=100)
+    spec = find_dialog_spec(question)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_TTS_VOLUME_SOFT)
+    mock_app.set_sfx_channel_volume.assert_called_once_with(
+        "reading", dlg.SFX_VOLUME_SOFT
+    )
 
 
 def test_sfx_volume_question_does_not_match_tts_handler(mock_app):
@@ -312,6 +332,12 @@ def test_sfx_volume_question_does_not_match_tts_handler(mock_app):
     spec = find_dialog_spec(question)
     assert spec is not None
     assert dlg.SFX_VOLUME_MARKER.lower() in spec.marker.lower()
+
+
+def test_sfx_volume_menu_question_matches_menu_spec():
+    spec = find_dialog_spec(dlg.SFX_VOLUME_MENU_QUESTION)
+    assert spec is not None
+    assert spec.marker == dlg.SFX_VOLUME_MENU_MARKER
 
 
 def test_handle_settings_turn_on_off_opens_toggles(mock_app):

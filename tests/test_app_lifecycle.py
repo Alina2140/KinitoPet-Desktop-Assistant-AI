@@ -189,6 +189,7 @@ def test_play_sfx_skips_when_sound_effects_disabled(goodbye_app, tmp_path):
 def test_play_sfx_scales_volume_by_sfx_setting(goodbye_app, tmp_path):
     goodbye_app._sound_effects_enabled = True
     goodbye_app._sfx_volume = 40
+    goodbye_app._sfx_channel_volumes = {}
     goodbye_app._player_kinito_muted = False
     goodbye_app._player_sounds_muted = MagicMock(return_value=False)
     mp3 = tmp_path / "test.mp3"
@@ -197,10 +198,30 @@ def test_play_sfx_scales_volume_by_sfx_setting(goodbye_app, tmp_path):
     with (
         patch.object(goodbye_app, "_ensure_mixer"),
         patch("kinito.app.pygame.mixer.Sound", return_value=sound),
+        patch("kinito.sfx_channels.channel_id_for_path", return_value=None),
     ):
         goodbye_app.play_sfx(str(mp3), volume=0.5)
     sound.set_volume.assert_called_once_with(pytest.approx(0.2))
     sound.play.assert_called_once()
+
+
+def test_play_sfx_scales_by_channel_and_master(goodbye_app, tmp_path):
+    goodbye_app._sound_effects_enabled = True
+    goodbye_app._sfx_volume = 50
+    goodbye_app._sfx_channel_volumes = {"surf": 40}
+    goodbye_app._player_kinito_muted = False
+    goodbye_app._player_sounds_muted = MagicMock(return_value=False)
+    mp3 = tmp_path / "surf.mp3"
+    mp3.write_bytes(b"x")
+    sound = MagicMock()
+    with (
+        patch.object(goodbye_app, "_ensure_mixer"),
+        patch("kinito.app.pygame.mixer.Sound", return_value=sound),
+        patch("kinito.sfx_channels.channel_id_for_path", return_value="surf"),
+    ):
+        # 1.0 * 0.50 master * 0.40 channel = 0.20
+        goodbye_app.play_sfx(str(mp3), volume=1.0)
+    sound.set_volume.assert_called_once_with(pytest.approx(0.2))
 
 
 def test_play_sfx_can_skip_sfx_volume_scaling(goodbye_app, tmp_path):
