@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import tkinter as tk
 
-from kinito.assets import favicon_path, icon_path
+from kinito.assets import favicon_path, icon_path, icon_path_legacy
 
 _cached_photo: tk.PhotoImage | None = None
 
@@ -17,7 +17,7 @@ def window_icon_path() -> str:
 
 def browser_window_icon_path() -> str | None:
     """Return an icon path for pywebview; prefer ICO on Windows."""
-    for path in (icon_path, favicon_path):
+    for path in (icon_path, icon_path_legacy, favicon_path):
         if os.path.isfile(path):
             return os.path.abspath(path)
     return None
@@ -38,14 +38,18 @@ def _load_photo() -> tk.PhotoImage | None:
 
 
 def _apply_ico_fallback(window: tk.Misc, *, default: bool) -> None:
-    """Fall back to Icon.ico when PNG favicon loading fails."""
-    if not os.path.isfile(icon_path):
+    """Fall back to .ico when PNG favicon loading fails."""
+    ico = next(
+        (p for p in (icon_path, icon_path_legacy) if os.path.isfile(p)),
+        None,
+    )
+    if not ico:
         return
     try:
         if default:
-            window.iconbitmap(default=icon_path)
+            window.iconbitmap(default=ico)
         else:
-            window.iconbitmap(icon_path)
+            window.iconbitmap(ico)
     except tk.TclError:
         pass
 

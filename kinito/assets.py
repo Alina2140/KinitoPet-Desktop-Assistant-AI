@@ -110,7 +110,9 @@ sprite_path_blush_left = os.path.join(sprites_blushing_directory, "KinitoBlushLe
 sprite_path_blush_right = os.path.join(sprites_blushing_directory, "KinitoBlushRight.png")
 sprite_path_blush_down = os.path.join(sprites_blushing_directory, "KinitoBlushDown.png")
 
-icon_path = os.path.join(icons_directory, "Icon.ico")
+# Prefer Kinito.ico (cache-busting name); Icon.ico kept as identical copy.
+icon_path = os.path.join(icons_directory, "Kinito.ico")
+icon_path_legacy = os.path.join(icons_directory, "Icon.ico")
 favicon_path = os.path.join(icons_directory, "Favicon.png")
 
 music_player_play_icon_path = os.path.join(music_player_directory, "play.png")
