@@ -14,18 +14,28 @@ DISPLAY_SIZE = 28
 BUTTON_ICON_SIZE = 18
 PICKER_COLS = 11
 PICKER_BG = "#FFF8E7"
+PICKER_BG_RGB = (255, 248, 231)  # matches PICKER_BG / speech bubble cream
+BUTTON_ICON_BG_RGB = (255, 241, 206)  # matches BUBBLE_BTN_BG
 PICKER_BORDER = "#000000"
 PICKER_HEIGHT = 132
 TILE_PAD = 1
 MIN_TILE_CONTENT = 20
+# Speech bubbles use -transparentcolor white; pure #FFFFFF becomes a hole
+# (Kinito shows through eyes/teeth, and clicks fall through those pixels).
+TK_SAFE_WHITE = (254, 254, 254)
 _VARIATION_SELECTOR = "\ufe0f"
 
 
 def normalize_emoji_char(char: str) -> str:
-    """Return *char* unchanged (kept for API stability / catalog loading)."""
+    """Strip emoji variation selectors that blow up Tk Entry advance width.
+
+    Catalog red heart is ``❤️`` (U+2764 + U+FE0F). With the bubble font
+    (Tahoma), FE0F is not zero-width and leaves a large gap beside the glyph.
+    Other hearts are single supplementary-plane code points and measure fine.
+    """
     if not char:
         return char
-    return char
+    return char.replace("\ufe0f", "").replace("\ufe0e", "")
 
 
 def _utf16_len(text: str) -> int:
@@ -99,13 +109,37 @@ def _content_bbox(tile: Image.Image) -> tuple[int, int, int, int] | None:
     return min(xs), min(ys), max(xs) + 1, max(ys) + 1
 
 
+def flatten_for_transparent_bubble(
+    image: Image.Image,
+    *,
+    background: tuple[int, int, int] = PICKER_BG_RGB,
+    safe_white: tuple[int, int, int] = TK_SAFE_WHITE,
+) -> Image.Image:
+    """Composite RGBA onto *background* and remap pure white for Tk chromakey.
+
+    The chat bubble window uses ``-transparentcolor white``, so any exact
+    ``(255, 255, 255)`` pixel becomes a see-through / click-through hole.
+    """
+    rgba = image.convert("RGBA")
+    base = Image.new("RGBA", rgba.size, (*background, 255))
+    composited = Image.alpha_composite(base, rgba).convert("RGB")
+    pixels = composited.load()
+    width, height = composited.size
+    for y in range(height):
+        for x in range(width):
+            if pixels[x, y] == (255, 255, 255):
+                pixels[x, y] = safe_white
+    return composited
+
+
 def crop_emoji_tile(
     sheet: Image.Image,
     entry: dict,
     *,
     display_size: int = DISPLAY_SIZE,
+    background: tuple[int, int, int] = PICKER_BG_RGB,
 ) -> Image.Image | None:
-    """Crop, trim neighbor pixels, square-pad, and nearest-scale one tile."""
+    """Crop, trim neighbor pixels, square-pad, nearest-scale, and flatten for Tk."""
     try:
         x, y, w, h = entry["x"], entry["y"], entry["w"], entry["h"]
         box = (x, y, x + w, y + h)
@@ -124,7 +158,7 @@ def crop_emoji_tile(
         canvas.paste(trimmed, ((side - tw) // 2, (side - th) // 2), trimmed)
         if display_size != side:
             canvas = canvas.resize((display_size, display_size), Image.Resampling.NEAREST)
-        return canvas
+        return flatten_for_transparent_bubble(canvas, background=background)
     except (KeyError, TypeError, ValueError, OSError):
         return None
 
@@ -142,7 +176,12 @@ def load_emoji_button_icon(
         sheet = Image.open(sheet_path).convert("RGBA")
     except OSError:
         return None
-    tile = crop_emoji_tile(sheet, catalog[0], display_size=display_size)
+    tile = crop_emoji_tile(
+        sheet,
+        catalog[0],
+        display_size=display_size,
+        background=BUTTON_ICON_BG_RGB,
+    )
     if tile is None:
         return None
     return ImageTk.PhotoImage(tile)
@@ -150,6 +189,7 @@ def load_emoji_button_icon(
 
 def insert_emoji_into_entry(entry: tk.Entry, char: str) -> None:
     """Insert *char* at the Entry cursor."""
+    char = normalize_emoji_char(char)
     if entry is None or not char:
         return
     try:
@@ -308,6 +348,8 @@ class EmojiPickerMixin:
         window_id = canvas.create_window((0, 0), window=grid, anchor="nw")
 
         photos: list[ImageTk.PhotoImage] = []
+        # Approx cell size used to pick a column count that fills the canvas.
+        cell_pitch = DISPLAY_SIZE + 2 * TILE_PAD + 2
 
         def _on_mousewheel(event) -> None:
             delta = 0
@@ -320,13 +362,13 @@ class EmojiPickerMixin:
             if delta:
                 canvas.yview_scroll(delta, "units")
 
+        buttons: list[tk.Label] = []
         for item in catalog:
             tile = crop_emoji_tile(sheet, item)
             if tile is None:
                 continue
             photo = ImageTk.PhotoImage(tile)
             photos.append(photo)
-            row, col = divmod(len(photos) - 1, PICKER_COLS)
             btn = tk.Label(
                 grid,
                 image=photo,
@@ -337,22 +379,46 @@ class EmojiPickerMixin:
                 pady=TILE_PAD,
             )
             btn.image = photo  # type: ignore[attr-defined]
-            btn.grid(row=row, column=col, padx=1, pady=1)
-            btn.bind("<Button-1>", lambda _e, ch=item["char"]: self._on_emoji_picked(ch))
+            # ButtonRelease is more reliable than Button-1: destroying the
+            # picker mid-press can drop the event on overrideredirect bubbles.
+            btn.bind(
+                "<ButtonRelease-1>",
+                lambda _e, ch=item["char"]: self._on_emoji_picked(ch),
+            )
             btn.bind("<Enter>", lambda _e, b=btn: b.configure(bg="#FFE9A8"))
             btn.bind("<Leave>", lambda _e, b=btn: b.configure(bg=PICKER_BG))
             btn.bind("<MouseWheel>", _on_mousewheel)
             btn.bind("<Button-4>", _on_mousewheel)
             btn.bind("<Button-5>", _on_mousewheel)
+            buttons.append(btn)
 
         self._emoji_picker_photos = photos
         self._emoji_picker_frame = frame
+        layout_cols = {"n": PICKER_COLS}
+
+        def _layout_grid(cols: int) -> None:
+            cols = max(1, cols)
+            for index, btn in enumerate(buttons):
+                row, col = divmod(index, cols)
+                btn.grid(row=row, column=col, padx=1, pady=1, sticky="nsew")
+            # Drop stale column weights when the count shrinks.
+            for c in range(max(layout_cols["n"], cols)):
+                if c < cols:
+                    grid.columnconfigure(c, weight=1, uniform="emoji")
+                else:
+                    grid.columnconfigure(c, weight=0, uniform="")
+            layout_cols["n"] = cols
+
+        _layout_grid(PICKER_COLS)
 
         def _sync_scroll(_event=None) -> None:
-            canvas.configure(scrollregion=canvas.bbox("all"))
             canvas_width = canvas.winfo_width()
             if canvas_width > 1:
                 canvas.itemconfigure(window_id, width=canvas_width)
+                cols = max(PICKER_COLS, canvas_width // max(cell_pitch, 1))
+                if cols != layout_cols["n"]:
+                    _layout_grid(cols)
+            canvas.configure(scrollregion=canvas.bbox("all"))
 
         grid.bind("<Configure>", _sync_scroll)
         canvas.bind("<Configure>", _sync_scroll)
@@ -367,9 +433,20 @@ class EmojiPickerMixin:
         self._refit_bubble_after_picker()
 
     def _on_emoji_picked(self, char: str) -> None:
+        if not self._emoji_picker_is_open():
+            return
         entry = getattr(self, "_chat_entry_widget", None)
         insert_emoji_into_entry(entry, char)
-        self._close_emoji_picker()
+        # Close after the current event finishes so the Label under the cursor
+        # is not destroyed mid-release on the transparent bubble window.
+        try:
+            parent = getattr(self, "_emoji_dropdown_parent", None)
+            if parent is not None and parent.winfo_exists():
+                parent.after_idle(self._close_emoji_picker)
+            else:
+                self._close_emoji_picker()
+        except tk.TclError:
+            self._close_emoji_picker()
         if entry is not None:
             try:
                 if entry.winfo_exists():

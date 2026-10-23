@@ -10,12 +10,15 @@ from PIL import Image
 
 from kinito.assets import emoji_catalog_path, emoji_sheet_path
 from kinito.features.emoji_picker import (
+    TK_SAFE_WHITE,
     _py_index_to_tk,
     _tk_index_to_py,
     crop_emoji_tile,
     delete_char_before_cursor,
+    flatten_for_transparent_bubble,
     insert_emoji_into_entry,
     load_emoji_catalog,
+    normalize_emoji_char,
 )
 
 
@@ -73,11 +76,32 @@ def test_crop_emoji_tile_from_sheet():
     tile = crop_emoji_tile(sheet, entries[0], display_size=28)
     assert tile is not None
     assert tile.size == (28, 28)
+    assert tile.mode == "RGB"
+    # No pure white — would punch through the bubble's transparentcolor.
+    assert (255, 255, 255) not in {tile.getpixel((x, y)) for y in range(tile.height) for x in range(tile.width)}
+
+
+def test_flatten_for_transparent_bubble_remaps_white_and_fills_alpha():
+    src = Image.new("RGBA", (4, 4), (0, 0, 0, 0))
+    src.putpixel((1, 1), (255, 255, 255, 255))
+    src.putpixel((2, 2), (240, 206, 105, 255))
+    flat = flatten_for_transparent_bubble(src, background=(255, 248, 231))
+    assert flat.mode == "RGB"
+    assert flat.getpixel((0, 0)) == (255, 248, 231)
+    assert flat.getpixel((1, 1)) == TK_SAFE_WHITE
+    assert flat.getpixel((2, 2)) == (240, 206, 105)
 
 
 def test_crop_emoji_tile_out_of_bounds():
     sheet = Image.new("RGBA", (10, 10), (0, 0, 0, 0))
     assert crop_emoji_tile(sheet, {"x": 0, "y": 0, "w": 24, "h": 24, "char": "😀"}) is None
+
+
+def test_normalize_emoji_char_strips_variation_selectors():
+    assert normalize_emoji_char("❤️") == "❤"
+    assert normalize_emoji_char("🧡") == "🧡"
+    assert normalize_emoji_char("😀") == "😀"
+    assert normalize_emoji_char("") == ""
 
 
 def test_insert_emoji_into_entry():
@@ -86,6 +110,14 @@ def test_insert_emoji_into_entry():
     insert_emoji_into_entry(entry, "😀")
     entry.insert.assert_called_once()
     assert entry.insert.call_args[0][1] == "😀"
+
+
+def test_insert_red_heart_strips_fe0f_for_tk_spacing():
+    entry = MagicMock()
+    entry.winfo_exists.return_value = True
+    insert_emoji_into_entry(entry, "❤️")
+    entry.insert.assert_called_once()
+    assert entry.insert.call_args[0][1] == "❤"
 
 
 def test_insert_emoji_into_entry_noop_when_missing():
