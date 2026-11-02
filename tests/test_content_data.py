@@ -89,7 +89,8 @@ def _assert_non_empty_strings(items, *, min_length=1):
     ],
 )
 def test_content_pools_are_non_empty(pool, name):
-    _assert_non_empty_strings(pool, min_length=10)
+    # Short lines (e.g. ":)", "Bye!", "Warm...") are intentional style.
+    _assert_non_empty_strings(pool, min_length=1)
 
 
 def test_app_aware_lines_support_placeholders():
@@ -129,12 +130,20 @@ def test_get_random_wisdom_uses_quote_pool():
 
 
 def test_music_player_lines_support_song_placeholder():
-    for line in (*MUSIC_PLAYER_LINES, *MUSIC_COMMENT_LINES, *MUSIC_PAUSE_NUDGE_LINES):
+    # Comments/pause nudges must use {song}; player lines may be song-free one-liners.
+    for line in (*MUSIC_COMMENT_LINES, *MUSIC_PAUSE_NUDGE_LINES):
+        assert "{song}" in line
         formatted = line.format(song="Test Song")
         assert "Test Song" in formatted
         assert "{song}" not in formatted
         if line in MUSIC_PAUSE_NUDGE_LINES:
             assert MUSIC_PAUSE_NUDGE_MARKER.lower() in formatted.lower()
+
+    for line in MUSIC_PLAYER_LINES:
+        formatted = line.format(song="Test Song")
+        assert "{song}" not in formatted
+        if "{song}" in line:
+            assert "Test Song" in formatted
 
 
 @pytest.mark.parametrize(

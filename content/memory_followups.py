@@ -34,6 +34,7 @@ MEMORY_FOLLOWUPS: tuple[MemoryFollowup, ...] = (
         (
             "{user_names}, got any plans for the weekend?",
             "Hey {user_names}! Anything fun coming up soon?",
+            "{user_names}, what's on the agenda this weekend?",
         ),
         "textbox",
     ),
@@ -43,6 +44,7 @@ MEMORY_FOLLOWUPS: tuple[MemoryFollowup, ...] = (
         (
             "You like {favorite_food}! Do you cook it yourself?",
             "{favorite_food} sounds great. Do you make it at home?",
+            "Craving {favorite_food} today? Do you cook it?",
         ),
         "yes_no",
     ),
@@ -63,6 +65,7 @@ MEMORY_FOLLOWUPS: tuple[MemoryFollowup, ...] = (
             "Does {pets} keep you company while you work?",
             "I bet {pets} is nearby right now. Am I right?",
             "How is {pets} doing today?",
+            "Give {pets} a hello from me? Or don't. I'll know either way.",
         ),
         "yes_no",
     ),
@@ -72,6 +75,7 @@ MEMORY_FOLLOWUPS: tuple[MemoryFollowup, ...] = (
         (
             "Is {favorite_colors} your color everywhere, or just sometimes?",
             "I remember you like {favorite_colors}. Do you wear it often?",
+            "Seeing {favorite_colors} around today? Still your vibe?",
         ),
         "textbox",
     ),
@@ -81,6 +85,7 @@ MEMORY_FOLLOWUPS: tuple[MemoryFollowup, ...] = (
         (
             "Would you read {favorite_book} again?",
             "Is {favorite_book} still one of your favorites?",
+            "Thinking of picking up {favorite_book} again sometime?",
         ),
         "yes_no",
     ),
@@ -142,6 +147,7 @@ MEMORY_FOLLOWUPS: tuple[MemoryFollowup, ...] = (
         (
             "How's {job} treating you lately?",
             "Still deep in {job} mode today?",
+            "Anything interesting happening with {job}?",
         ),
         "textbox",
     ),
@@ -151,6 +157,7 @@ MEMORY_FOLLOWUPS: tuple[MemoryFollowup, ...] = (
         (
             "Been playing {favorite_game} lately?",
             "Would you play {favorite_game} with me if I could?",
+            "Got a {favorite_game} session planned soon?",
         ),
         "yes_no",
     ),
@@ -160,6 +167,7 @@ MEMORY_FOLLOWUPS: tuple[MemoryFollowup, ...] = (
         (
             "Still aiming for around {bedtime} for sleep?",
             "Did you make it to bed near {bedtime} last night?",
+            "How's the {bedtime} sleep schedule holding up?",
         ),
         "yes_no",
     ),
@@ -169,6 +177,7 @@ MEMORY_FOLLOWUPS: tuple[MemoryFollowup, ...] = (
         (
             "Earlier you said your day was {mood_today}. Still feeling that way?",
             "Checking in — still a {mood_today} day?",
+            "Mood check: still {mood_today}, or did it shift?",
         ),
         "yes_no",
     ),
@@ -369,6 +378,7 @@ MEMORY_FOLLOWUPS: tuple[MemoryFollowup, ...] = (
         (
             "Still dreaming about {dream_destination}?",
             "Any new plans involving {dream_destination}?",
+            "If you could teleport to {dream_destination} today, would you?",
         ),
         "textbox",
     ),
@@ -378,6 +388,7 @@ MEMORY_FOLLOWUPS: tuple[MemoryFollowup, ...] = (
         (
             "Had any {comfort_food} lately?",
             "Is {comfort_food} still your comfort pick?",
+            "Does {comfort_food} still hit the spot when you need it?",
         ),
         "yes_no",
     ),

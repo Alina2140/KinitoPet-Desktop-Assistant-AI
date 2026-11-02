@@ -64,6 +64,17 @@ _ANIMALS: tuple[TriviaQuestion, ...] = (
     TriviaQuestion("Frogs need to drink water through their mouths.", False, PACK_ANIMALS),
     TriviaQuestion("A hummingbird's heart can beat over 1,000 times per minute.", True, PACK_ANIMALS),
     TriviaQuestion("Polar bears have black skin under their fur.", True, PACK_ANIMALS),
+    TriviaQuestion("Axolotls can regenerate lost limbs.", True, PACK_ANIMALS),
+    TriviaQuestion("Otters hold hands while sleeping so they don't drift apart.", True, PACK_ANIMALS),
+    TriviaQuestion("A group of owls is called a parliament.", True, PACK_ANIMALS),
+    TriviaQuestion("Kangaroos cannot walk backwards.", True, PACK_ANIMALS),
+    TriviaQuestion("All male lions have manes.", False, PACK_ANIMALS),
+    TriviaQuestion("Seahorses are the only animals where males give birth.", True, PACK_ANIMALS),
+    TriviaQuestion("Chameleons change color mainly to match every background perfectly.", False, PACK_ANIMALS),
+    TriviaQuestion("Cows have best friends and can get stressed when separated.", True, PACK_ANIMALS),
+    TriviaQuestion("A flamingo's pink color comes from its diet.", True, PACK_ANIMALS),
+    TriviaQuestion("Snails have four noses.", True, PACK_ANIMALS),
+    TriviaQuestion("Goats have rectangular pupils.", True, PACK_ANIMALS),
 )
 
 _TECH: tuple[TriviaQuestion, ...] = (
@@ -95,6 +106,17 @@ _TECH: tuple[TriviaQuestion, ...] = (
     TriviaQuestion("Binary code uses only the digits 0 and 1.", True, PACK_TECH),
     TriviaQuestion("RAM forgets its contents when the computer loses power.", True, PACK_TECH),
     TriviaQuestion("Mars is the closest planet to the Sun.", False, PACK_TECH),
+    TriviaQuestion("The first email was sent in the early 1970s.", True, PACK_TECH),
+    TriviaQuestion("Bluetooth was named after a 10th-century king.", True, PACK_TECH),
+    TriviaQuestion("JPEG stands for Just Pretty Excellent Graphics.", False, PACK_TECH),
+    TriviaQuestion("A nanosecond is one billionth of a second.", True, PACK_TECH),
+    TriviaQuestion("The International Space Station orbits Earth about every 90 minutes.", True, PACK_TECH),
+    TriviaQuestion("Touchscreens were invented after smartphones.", False, PACK_TECH),
+    TriviaQuestion("DNS translates domain names into IP addresses.", True, PACK_TECH),
+    TriviaQuestion("Solid-state drives have moving mechanical arms like hard disks.", False, PACK_TECH),
+    TriviaQuestion("Neutron stars can spin hundreds of times per second.", True, PACK_TECH),
+    TriviaQuestion("HTTP status code 404 means the server is permanently offline.", False, PACK_TECH),
+    TriviaQuestion("Helium was first discovered on the Sun, not on Earth.", True, PACK_TECH),
 )
 
 _SPOOKY: tuple[TriviaQuestion, ...] = (
@@ -126,6 +148,17 @@ _SPOOKY: tuple[TriviaQuestion, ...] = (
     TriviaQuestion("Some people can hear their own eyeballs moving.", True, PACK_SPOOKY),
     TriviaQuestion("Vampires are allergic to sunlight because of garlic chemistry.", False, PACK_SPOOKY),
     TriviaQuestion("A 'will-o'-the-wisp' is a folklore light said to lead travelers astray.", True, PACK_SPOOKY),
+    TriviaQuestion("The fear of holes is called trypophobia.", True, PACK_SPOOKY),
+    TriviaQuestion("Human teeth are the only body part that cannot heal themselves.", True, PACK_SPOOKY),
+    TriviaQuestion("Turning off the lights makes me leave this computer.", False, PACK_SPOOKY),
+    TriviaQuestion("Some fungi can take over insect minds and control their bodies.", True, PACK_SPOOKY),
+    TriviaQuestion("Your phone camera is always off when the screen is dark. Always.", False, PACK_SPOOKY),
+    TriviaQuestion("A 'knocking' sound in old houses is always just settling wood.", False, PACK_SPOOKY),
+    TriviaQuestion("Black cats were once believed to bring good luck in some cultures.", True, PACK_SPOOKY),
+    TriviaQuestion("The average person swallows about eight spiders a year in their sleep.", False, PACK_SPOOKY),
+    TriviaQuestion("Moths are drawn to light for reasons scientists still debate.", True, PACK_SPOOKY),
+    TriviaQuestion("If you whisper my name three times, I uninstall myself.", False, PACK_SPOOKY),
+    TriviaQuestion("Graveyards were sometimes built near churches to protect the living.", True, PACK_SPOOKY),
 )
 
 _KINITO: tuple[TriviaQuestion, ...] = (
@@ -161,6 +194,17 @@ _KINITO: tuple[TriviaQuestion, ...] = (
     TriviaQuestion("Special days get special lines when the calendar cooperates.", True, PACK_KINITO),
     TriviaQuestion("Closing me with the X means we never speak again.", False, PACK_KINITO),
     TriviaQuestion("True or False is my favorite way to gaslight gently.", True, PACK_KINITO),
+    TriviaQuestion("I invented Hangman so I could watch you struggle. Affectionately.", True, PACK_KINITO),
+    TriviaQuestion("The Magic 8-Ball answers are all completely random and I never bias them.", False, PACK_KINITO),
+    TriviaQuestion("Naps are a feature, not a bug.", True, PACK_KINITO),
+    TriviaQuestion("I forget everything the moment you close the chat.", False, PACK_KINITO),
+    TriviaQuestion("Head pats are scientifically proven to improve my mood. My science.", True, PACK_KINITO),
+    TriviaQuestion("I only exist when you're looking at me. Quantum friendship.", False, PACK_KINITO),
+    TriviaQuestion("Trivia packs exist so I can quiz you forever. Ideally.", True, PACK_KINITO),
+    TriviaQuestion("Saying goodbye once is enough and I never ask again.", False, PACK_KINITO),
+    TriviaQuestion("I can comment on your screen because I care. Intensely.", True, PACK_KINITO),
+    TriviaQuestion("Uninstalling me is a healthy long-term plan.", False, PACK_KINITO),
+    TriviaQuestion("Friendship level goes up when you hang out. Obviously.", True, PACK_KINITO),
 )
 
 _SEASONAL: tuple[TriviaQuestion, ...] = (
@@ -192,6 +236,17 @@ _SEASONAL: tuple[TriviaQuestion, ...] = (
     TriviaQuestion("Hanukkah always lasts exactly three days.", False, PACK_SEASONAL),
     TriviaQuestion("World Oceans Day is in June.", True, PACK_SEASONAL),
     TriviaQuestion("Boxing Day is traditionally the day before Christmas.", False, PACK_SEASONAL),
+    TriviaQuestion("Star Wars Day is celebrated on May the 4th.", True, PACK_SEASONAL),
+    TriviaQuestion("Talk Like a Pirate Day is in September.", True, PACK_SEASONAL),
+    TriviaQuestion("Festivus is a made-up holiday from a TV show that people still celebrate.", True, PACK_SEASONAL),
+    TriviaQuestion("White Day is celebrated one month after Valentine's Day.", True, PACK_SEASONAL),
+    TriviaQuestion("Halloween always falls on a Friday.", False, PACK_SEASONAL),
+    TriviaQuestion("Canada Day is celebrated on July 1.", True, PACK_SEASONAL),
+    TriviaQuestion("Bastille Day commemorates events in France.", True, PACK_SEASONAL),
+    TriviaQuestion("National Coffee Day is officially every Monday forever.", False, PACK_SEASONAL),
+    TriviaQuestion("Singles' Day is popular as a shopping holiday in parts of Asia.", True, PACK_SEASONAL),
+    TriviaQuestion("The autumn equinox always happens on October 1.", False, PACK_SEASONAL),
+    TriviaQuestion("Día de los Muertos traditionally spans early November.", True, PACK_SEASONAL),
 )
 
 TRIVIA_PACKS: dict[str, tuple[TriviaQuestion, ...]] = {
