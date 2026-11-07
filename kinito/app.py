@@ -56,6 +56,7 @@ from kinito.features.ads import AdsMixin
 from kinito.features.app_awareness import AppAwarenessMixin
 from kinito.features.browser import BrowserMixin
 from kinito.features.camera import CameraMixin
+from kinito.features.color_settings import ColorSettingsMixin
 from kinito.features.content import ContentMixin
 from kinito.features.games import GamesMixin
 from kinito.features.glitch import GlitchMixin
@@ -147,6 +148,7 @@ class FloatingAssistant(
     ScreenCommentsMixin,
     PaintMixin,
     MenuSettingsMixin,
+    ColorSettingsMixin,
     MovementMixin,
     MoodMixin,
     HugMixin,
@@ -319,6 +321,9 @@ class FloatingAssistant(
             "color_guess_voice_enabled", True
         )
         self._trivia_recap_enabled = self._settings.get("trivia_recap_enabled", True)
+        self._snake_color = self._settings.get_str("snake_color")
+        self._chat_name_color = self._settings.get_str("chat_name_color")
+        self._color_settings_window = None
         self._hidden_menu_buttons = self._settings.get_hidden_menu_buttons()
         self._menu_settings_window = None
         self._init_app_awareness(
@@ -469,6 +474,8 @@ class FloatingAssistant(
                 getattr(self, "_color_guess_voice_enabled", True)
             ),
             trivia_recap_enabled=bool(getattr(self, "_trivia_recap_enabled", True)),
+            snake_color=self.snake_color(),
+            chat_name_color=self.chat_name_color(),
         )
         store.set_sfx_channel_volumes(
             getattr(self, "_sfx_channel_volumes", {}) or {}

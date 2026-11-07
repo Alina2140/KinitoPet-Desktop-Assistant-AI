@@ -9,6 +9,7 @@ from collections.abc import Iterable
 from typing import Any
 
 from kinito.assets import user_media_directory
+from kinito.colors import normalize_hex_color
 from kinito.memory.store import _write_text_atomic
 
 SETTINGS_VERSION = 1
@@ -39,6 +40,12 @@ DEFAULT_INT_SETTINGS: dict[str, int] = {
     "tts_volume": 100,
     "sfx_volume": 100,
     "music_volume": 75,
+}
+
+# Color settings (#rrggbb); invalid values fall back to the default.
+DEFAULT_COLOR_SETTINGS: dict[str, str] = {
+    "snake_color": "#22c55e",
+    "chat_name_color": "#6a25eb",
 }
 
 TTS_VOLUME_MIN = 0
@@ -110,6 +117,7 @@ class SettingsStore:
             "version": SETTINGS_VERSION,
             **DEFAULT_BOOL_SETTINGS,
             **DEFAULT_INT_SETTINGS,
+            **DEFAULT_COLOR_SETTINGS,
             HIDDEN_MENU_BUTTONS_KEY: [],
             MUSIC_FOLDER_KEY: "",
             SFX_CHANNEL_VOLUMES_KEY: {},
@@ -176,6 +184,8 @@ class SettingsStore:
                 data[key] = int(value)
             else:
                 data[key] = default
+        for key, default in DEFAULT_COLOR_SETTINGS.items():
+            data[key] = normalize_hex_color(raw.get(key), default)
 
         hidden = raw.get(HIDDEN_MENU_BUTTONS_KEY, [])
         if isinstance(hidden, list):
@@ -246,6 +256,12 @@ class SettingsStore:
                             coerced = int(value)
                         except (TypeError, ValueError):
                             continue
+                    if self._data.get(key) != coerced:
+                        self._data[key] = coerced
+                        changed = True
+                elif key in DEFAULT_COLOR_SETTINGS:
+                    current = self.get_str(key, DEFAULT_COLOR_SETTINGS[key])
+                    coerced = normalize_hex_color(value, current)
                     if self._data.get(key) != coerced:
                         self._data[key] = coerced
                         changed = True

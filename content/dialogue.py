@@ -1102,6 +1102,12 @@ MENU_BUTTONS_OPEN_LINES = [
     "Menu buttons panel open. Hide what you don't need.",
 ]
 
+COLOR_SETTINGS_OPEN_LINES = [
+    "Color time! Pick a snake color and a color for your name.",
+    "Let's repaint things. Snake and chat name, your call.",
+    "Colors panel open. Make it look like you.",
+]
+
 FOCUS_ON_LINES = [
     "Focus mode on. I'll wander quietly. No chatter, no surprises. Just... presence.",
     "Quiet mode engaged. I'll keep moving, but I won't bother you. I'll still notice.",
@@ -1889,6 +1895,7 @@ BUTTON_TRIVIA_RECAP_ON = "Trivia Answers on"
 BUTTON_TRIVIA_RECAP_OFF = "Trivia Answers off"
 BUTTON_RESET_MOOD = "Reset Mood"
 BUTTON_MENU_BUTTONS = "Menu Buttons"
+BUTTON_ADJUST_COLORS = "Adjust colors"
 BUTTON_SING_SONG = "Sing"
 BUTTON_FUN_FACT = "Fun Fact"
 BUTTON_CHAT = "Chat"

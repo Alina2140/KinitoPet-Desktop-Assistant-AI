@@ -66,6 +66,8 @@ def test_defaults_when_missing(store):
     assert store.get("mood_system_enabled") is True
     assert store.get("color_guess_voice_enabled") is True
     assert store.get("trivia_recap_enabled") is True
+    assert store.get_str("snake_color") == "#22c55e"
+    assert store.get_str("chat_name_color") == "#6a25eb"
     assert store.get_hidden_menu_buttons() == set()
 
 
@@ -92,6 +94,8 @@ def test_update_and_reload_roundtrip(store, settings_dir):
         mood_system_enabled=False,
         color_guess_voice_enabled=False,
         trivia_recap_enabled=False,
+        snake_color="#3B82F6",
+        chat_name_color="#dc2626",
     )
     store.set_hidden_menu_buttons({"main.chat", "actions.hug"})
     reloaded = SettingsStore(directory=settings_dir)
@@ -116,7 +120,21 @@ def test_update_and_reload_roundtrip(store, settings_dir):
     assert reloaded.get("mood_system_enabled") is False
     assert reloaded.get("color_guess_voice_enabled") is False
     assert reloaded.get("trivia_recap_enabled") is False
+    assert reloaded.get_str("snake_color") == "#3b82f6"
+    assert reloaded.get_str("chat_name_color") == "#dc2626"
     assert reloaded.get_hidden_menu_buttons() == {"main.chat", "actions.hug"}
+
+
+def test_invalid_colors_are_ignored(store, settings_dir):
+    store.update(snake_color="#123abc")
+    store.update(snake_color="green", chat_name_color=42)
+    assert store.get_str("snake_color") == "#123abc"
+    assert store.get_str("chat_name_color") == "#6a25eb"
+
+    with open(os.path.join(settings_dir, "settings.json"), "w", encoding="utf-8") as handle:
+        json.dump({"snake_color": "#zzzzzz"}, handle)
+    reloaded = SettingsStore(directory=settings_dir)
+    assert reloaded.get_str("snake_color") == "#22c55e"
 
 
 def test_tts_volume_clamped(store):

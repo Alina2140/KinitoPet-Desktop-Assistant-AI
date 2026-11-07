@@ -216,6 +216,11 @@ MENU_VISIBILITY_SECTIONS: tuple[tuple[str, tuple[MenuEntry, ...]], ...] = (
                 frozenset({dlg.BUTTON_MUSIC_FOLDER}),
             ),
             (
+                "settings.adjust_colors",
+                "Adjust Colors",
+                frozenset({dlg.BUTTON_ADJUST_COLORS}),
+            ),
+            (
                 "settings.emojis",
                 "Emojis",
                 frozenset({dlg.BUTTON_EMOJI, dlg.BUTTON_EMOJI_ON, dlg.BUTTON_EMOJI_OFF}),

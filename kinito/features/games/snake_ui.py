@@ -7,6 +7,7 @@ from tkinter import Button, Canvas, Frame, Label
 
 from content import dialogue as dlg
 from content import game_lines
+from kinito.colors import lighten_hex, normalize_hex_color
 from kinito.features.games.base import open_game_window
 from kinito.features.games.snake import (
     DOWN,
@@ -24,10 +25,15 @@ CELL_PX = 22
 PAD = 2
 BG_COLOR = "#1a1a2e"
 GRID_COLOR = "#16213e"
-SNAKE_HEAD = "#4ade80"
 SNAKE_BODY = "#22c55e"
+SNAKE_HEAD_LIGHTEN = 0.2
 FOOD_COLOR = "#f87171"
 DEAD_COLOR = "#94a3b8"
+
+
+def snake_palette(body: str) -> tuple[str, str]:
+    """Return (head, body) colors for a snake whose body is *body*."""
+    return lighten_hex(body, SNAKE_HEAD_LIGHTEN), body
 
 
 class SnakeGame:
@@ -226,8 +232,11 @@ class SnakeGame:
             outline="",
         )
 
-        body_color = SNAKE_BODY if self.state["alive"] else DEAD_COLOR
-        head_color = SNAKE_HEAD if self.state["alive"] else DEAD_COLOR
+        color_fn = getattr(self.app, "snake_color", None)
+        base = normalize_hex_color(color_fn() if callable(color_fn) else None, SNAKE_BODY)
+        head_color, body_color = snake_palette(base)
+        if not self.state["alive"]:
+            head_color = body_color = DEAD_COLOR
         for index, (x, y) in enumerate(self.state["snake"]):
             color = head_color if index == 0 else body_color
             self.canvas.create_rectangle(

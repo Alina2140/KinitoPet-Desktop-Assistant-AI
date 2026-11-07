@@ -511,9 +511,26 @@ class SpeechChatMixin(EmojiPickerMixin):
         )
         log.tag_configure(
             "chat_user",
-            foreground=self.CHAT_USER_COLOR,
+            foreground=self._chat_user_color(),
             underline=True,
         )
+
+    def _chat_user_color(self) -> str:
+        """Return the user's chosen chat name color (Settings -> Adjust colors)."""
+        color_fn = getattr(self, "chat_name_color", None)
+        if callable(color_fn):
+            return color_fn()
+        return self.CHAT_USER_COLOR
+
+    def apply_chat_name_color(self) -> None:
+        """Restyle the user's name in an open chat log after a color change."""
+        log = getattr(self, "_chat_log_widget", None)
+        if log is None:
+            return
+        try:
+            log.tag_configure("chat_user", foreground=self._chat_user_color())
+        except tk.TclError:
+            pass
 
     def _resolve_chat_user_label(self) -> str:
         """Return one chat log label for the user (from memory when available)."""
