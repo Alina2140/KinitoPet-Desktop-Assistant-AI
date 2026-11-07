@@ -254,6 +254,17 @@ MENU_VISIBILITY_SECTIONS: tuple[tuple[str, tuple[MenuEntry, ...]], ...] = (
                 ),
             ),
             (
+                "settings.trivia_recap",
+                "Trivia Answers",
+                frozenset(
+                    {
+                        dlg.BUTTON_TRIVIA_RECAP,
+                        dlg.BUTTON_TRIVIA_RECAP_ON,
+                        dlg.BUTTON_TRIVIA_RECAP_OFF,
+                    }
+                ),
+            ),
+            (
                 "settings.reset_mood",
                 "Reset Mood",
                 frozenset({dlg.BUTTON_RESET_MOOD}),

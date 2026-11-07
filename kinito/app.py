@@ -318,6 +318,7 @@ class FloatingAssistant(
         self._color_guess_voice_enabled = self._settings.get(
             "color_guess_voice_enabled", True
         )
+        self._trivia_recap_enabled = self._settings.get("trivia_recap_enabled", True)
         self._hidden_menu_buttons = self._settings.get_hidden_menu_buttons()
         self._menu_settings_window = None
         self._init_app_awareness(
@@ -467,6 +468,7 @@ class FloatingAssistant(
             color_guess_voice_enabled=bool(
                 getattr(self, "_color_guess_voice_enabled", True)
             ),
+            trivia_recap_enabled=bool(getattr(self, "_trivia_recap_enabled", True)),
         )
         store.set_sfx_channel_volumes(
             getattr(self, "_sfx_channel_volumes", {}) or {}

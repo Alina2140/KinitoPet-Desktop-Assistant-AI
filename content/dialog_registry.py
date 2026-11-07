@@ -263,6 +263,11 @@ def settings_toggles_options_for(app) -> list[str]:
         if getattr(app, "_color_guess_voice_enabled", True)
         else dlg.BUTTON_COLOR_GUESS_VOICE_OFF
     )
+    trivia_recap_label = (
+        dlg.BUTTON_TRIVIA_RECAP_ON
+        if getattr(app, "_trivia_recap_enabled", True)
+        else dlg.BUTTON_TRIVIA_RECAP_OFF
+    )
     return _visible_menu_buttons(
         app,
         [
@@ -281,6 +286,7 @@ def settings_toggles_options_for(app) -> list[str]:
             special_days_label,
             mood_system_label,
             color_guess_voice_label,
+            trivia_recap_label,
             dlg.BUTTON_BACK,
         ],
     )
@@ -706,6 +712,9 @@ def _menu_action_handlers() -> dict[str, Handler]:
         dlg.BUTTON_COLOR_GUESS_VOICE: lambda a: a.toggle_color_guess_voice(),
         dlg.BUTTON_COLOR_GUESS_VOICE_ON: lambda a: a.toggle_color_guess_voice(),
         dlg.BUTTON_COLOR_GUESS_VOICE_OFF: lambda a: a.toggle_color_guess_voice(),
+        dlg.BUTTON_TRIVIA_RECAP: lambda a: a.toggle_trivia_recap(),
+        dlg.BUTTON_TRIVIA_RECAP_ON: lambda a: a.toggle_trivia_recap(),
+        dlg.BUTTON_TRIVIA_RECAP_OFF: lambda a: a.toggle_trivia_recap(),
         dlg.BUTTON_RESET_MOOD: lambda a: a.reset_mood(),
         dlg.BUTTON_MENU_BUTTONS: lambda a: a.open_menu_button_settings(),
         dlg.BUTTON_TURN_ON_OFF: _open_settings_toggles_menu,
@@ -956,10 +965,10 @@ def _handle_board_games(app, response: str) -> None:
         action(app)
 
 
-def _offer_play_again(app, line: str, restart_fn) -> None:
+def _offer_play_again(app, line: str, restart_fn, *, separator: str = " ") -> None:
     """Speak *line* and show Play Again / Back buttons."""
     app._play_again_restart = restart_fn
-    app.speak(f"{line} {dlg.GAME_PLAY_AGAIN_SUFFIX}", 45, True)
+    app.speak(f"{line}{separator}{dlg.GAME_PLAY_AGAIN_SUFFIX}", 45, True)
 
 
 def _handle_play_again(app, response: str) -> None:
@@ -1092,6 +1101,15 @@ def _handle_magic_8_ball(app, response: str) -> None:
     _offer_play_again(app, line, lambda a: a.start_magic_8_ball())
 
 
+def _trivia_recap(history) -> str:
+    """Return a spoken recap listing each round question with its correct answer."""
+    items = [
+        f"{question.statement.rstrip('.!?')}: {'true' if question.answer else 'false'}."
+        for question in history
+    ]
+    return "\n".join([game_lines.TRIVIA_RECAP_INTRO, *items])
+
+
 def _handle_true_false(app, response: str) -> None:
     """Check a true-or-false answer and continue or end the round."""
     from kinito.features.mood import GAME_KINITO_WIN, GAME_PLAYER_WIN
@@ -1110,6 +1128,12 @@ def _handle_true_false(app, response: str) -> None:
     else:
         correct_label = "true" if question.answer else "false"
         feedback = dlg.pick_line(game_lines.TRIVIA_WRONG_LINES).format(correct=correct_label)
+
+    history = getattr(app, "_trivia_history", None)
+    if not isinstance(history, list):
+        history = []
+        app._trivia_history = history
+    history.append(question)
 
     app._trivia_round = getattr(app, "_trivia_round", 0) + 1
     app._trivia_current = None
@@ -1138,10 +1162,15 @@ def _handle_true_false(app, response: str) -> None:
             else game_lines.TRIVIA_ROUND_END_LINES
         )
         line = dlg.pick_line(pool).format(**fmt)
+        recap_enabled = getattr(app, "is_trivia_recap_enabled", None)
+        if not callable(recap_enabled) or recap_enabled():
+            line = f"{line}\n{_trivia_recap(history)}"
         outcome = GAME_PLAYER_WIN if score >= 3 else GAME_KINITO_WIN
         _report_game_outcome(app, outcome)
         pack = getattr(app, "_trivia_pack", None)
-        _offer_play_again(app, line, lambda a, p=pack: a.start_true_false_pack(p))
+        _offer_play_again(
+            app, line, lambda a, p=pack: a.start_true_false_pack(p), separator="\n"
+        )
         return
 
     app.speak(feedback, 45, False, skip_ai=True)

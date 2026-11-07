@@ -54,6 +54,7 @@ def _menu_app(**kwargs):
     app._emoji_picker_enabled = kwargs.get("emoji_picker_enabled", True)
     app._mood_system_enabled = kwargs.get("mood_system_enabled", True)
     app._color_guess_voice_enabled = kwargs.get("color_guess_voice_enabled", True)
+    app._trivia_recap_enabled = kwargs.get("trivia_recap_enabled", True)
     app._hidden_menu_buttons = kwargs.get("hidden_menu_buttons", set())
     app._is_music_player_minimized = lambda: bool(
         kwargs.get("music_player_minimized", False)
@@ -206,6 +207,7 @@ def test_settings_and_actions_options():
         dlg.BUTTON_SPECIAL_DAYS_ON,
         dlg.BUTTON_MOOD_SYSTEM_ON,
         dlg.BUTTON_COLOR_GUESS_VOICE_ON,
+        dlg.BUTTON_TRIVIA_RECAP_ON,
         dlg.BUTTON_BACK,
     ]
     assert settings_toggles_options_for(_menu_app(screen_effects_enabled=False))[0] == (
@@ -251,6 +253,9 @@ def test_settings_and_actions_options():
     assert settings_toggles_options_for(_menu_app(color_guess_voice_enabled=False))[14] == (
         dlg.BUTTON_COLOR_GUESS_VOICE_OFF
     )
+    assert settings_toggles_options_for(_menu_app(trivia_recap_enabled=False))[15] == (
+        dlg.BUTTON_TRIVIA_RECAP_OFF
+    )
     assert settings_toggles_options_for(
         _menu_app(hidden_menu_buttons={"settings.snoring", "main.chat"})
     ) == [
@@ -268,6 +273,7 @@ def test_settings_and_actions_options():
         dlg.BUTTON_SPECIAL_DAYS_ON,
         dlg.BUTTON_MOOD_SYSTEM_ON,
         dlg.BUTTON_COLOR_GUESS_VOICE_ON,
+        dlg.BUTTON_TRIVIA_RECAP_ON,
         dlg.BUTTON_BACK,
     ]
 

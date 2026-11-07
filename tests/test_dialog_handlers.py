@@ -243,6 +243,59 @@ def test_handle_true_false_round_end_offers_play_again(mock_app):
     mock_app.start_true_false_pack.assert_called_once_with("animals")
 
 
+def test_handle_true_false_round_end_recaps_answers(mock_app):
+    from content.trivia_questions import ROUND_SIZE, TriviaQuestion
+
+    earlier = [TriviaQuestion(f"Fact number {i}.", i % 2 == 0) for i in range(ROUND_SIZE - 1)]
+    mock_app._trivia_history = list(earlier)
+    mock_app._trivia_current = TriviaQuestion("Sharks are mammals.", False)
+    mock_app._trivia_score = 0
+    mock_app._trivia_round = ROUND_SIZE - 1
+    spec = find_dialog_spec("True or false: Sharks are mammals.")
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_TRUE)
+    spoken = mock_app.speak.call_args[0][0]
+    lines = spoken.split("\n")
+    assert "Fact number 0: true." in lines
+    assert "Fact number 1: false." in lines
+    assert "Sharks are mammals: false." in lines
+    assert lines[-1] == dlg.GAME_PLAY_AGAIN_SUFFIX
+    assert len(mock_app._trivia_history) == ROUND_SIZE
+    assert find_dialog_spec(spoken).marker == dlg.GAME_PLAY_AGAIN_MARKER
+
+
+def test_handle_true_false_round_end_skips_recap_when_disabled(mock_app):
+    from content.trivia_questions import ROUND_SIZE, TriviaQuestion
+
+    mock_app.is_trivia_recap_enabled.return_value = False
+    mock_app._trivia_history = []
+    mock_app._trivia_current = TriviaQuestion("Sharks are mammals.", False)
+    mock_app._trivia_score = 0
+    mock_app._trivia_round = ROUND_SIZE - 1
+    spec = find_dialog_spec("True or false: Sharks are mammals.")
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_TRUE)
+    spoken = mock_app.speak.call_args[0][0]
+    assert "Sharks are mammals" not in spoken
+    assert dlg.GAME_PLAY_AGAIN_MARKER.lower() in spoken.lower()
+
+
+def test_trivia_recap_toggle_lines_do_not_open_dialogs():
+    for line in dlg.TRIVIA_RECAP_ON_LINES + dlg.TRIVIA_RECAP_OFF_LINES:
+        assert find_dialog_spec(line) is None
+
+
+def test_handle_true_false_records_history(mock_app):
+    from content.trivia_questions import TriviaQuestion
+
+    question = TriviaQuestion("The sky is blue.", True)
+    mock_app._trivia_history = []
+    mock_app._trivia_current = question
+    mock_app._trivia_score = 0
+    mock_app._trivia_round = 0
+    spec = find_dialog_spec("True or false: The sky is blue.")
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_FALSE)
+    assert mock_app._trivia_history == [question]
+
+
 def test_handle_trivia_pack_animals(mock_app):
     from content.trivia_questions import PACK_ANIMALS
 
@@ -484,6 +537,12 @@ def test_handle_menu_toggle_color_guess_voice(mock_app):
     spec = find_dialog_spec(dlg.SETTINGS_MENU_QUESTION)
     handle_dialog_response(mock_app, spec, dlg.BUTTON_COLOR_GUESS_VOICE_ON)
     mock_app.toggle_color_guess_voice.assert_called_once()
+
+
+def test_handle_menu_toggle_trivia_recap(mock_app):
+    spec = find_dialog_spec(dlg.SETTINGS_MENU_QUESTION)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_TRIVIA_RECAP_OFF)
+    mock_app.toggle_trivia_recap.assert_called_once()
 
 
 def test_handle_menu_open_menu_buttons(mock_app):

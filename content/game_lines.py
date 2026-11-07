@@ -357,6 +357,8 @@ TRIVIA_ROUND_END_LINES = [
     "End of round! {score}/{total}. Record {best}. Streak {streak}.",
 ]
 
+TRIVIA_RECAP_INTRO = "Here are the answers:"
+
 TRIVIA_NEW_BEST_LINES = [
     "New trivia best! {score}/{total}! Record: {best}. Streak: {streak}.",
     "Personal best broken — {score} out of {total}. Best is now {best}. Streak: {streak}.",

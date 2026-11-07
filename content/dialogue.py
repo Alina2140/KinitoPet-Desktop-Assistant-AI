@@ -1078,6 +1078,18 @@ COLOR_GUESS_VOICE_OFF_LINES = [
     "No more Color Guess win lines. Just the visual feedback.",
 ]
 
+TRIVIA_RECAP_ON_LINES = [
+    "Trivia answers on! I'll list every answer after a trivia round.",
+    "Answer recap enabled. You'll see what was true and what was false.",
+    "After each trivia round I'll go through the answers again.",
+]
+
+TRIVIA_RECAP_OFF_LINES = [
+    "Trivia answers off. Just your score after a round.",
+    "Answer recap disabled. The truth stays a mystery.",
+    "No more answer lists after trivia. Score only.",
+]
+
 MOOD_RESET_LINES = [
     "Mood reset! Fresh start. Neutral. Like a reboot, but cuter.",
     "All feelings cleared. Back to baseline friendship mode.",
@@ -1872,6 +1884,9 @@ BUTTON_MOOD_SYSTEM_OFF = "Mood System off"
 BUTTON_COLOR_GUESS_VOICE = "Color Guess Voice"
 BUTTON_COLOR_GUESS_VOICE_ON = "Color Guess Voice on"
 BUTTON_COLOR_GUESS_VOICE_OFF = "Color Guess Voice off"
+BUTTON_TRIVIA_RECAP = "Trivia Answers"
+BUTTON_TRIVIA_RECAP_ON = "Trivia Answers on"
+BUTTON_TRIVIA_RECAP_OFF = "Trivia Answers off"
 BUTTON_RESET_MOOD = "Reset Mood"
 BUTTON_MENU_BUTTONS = "Menu Buttons"
 BUTTON_SING_SONG = "Sing"

@@ -22,6 +22,7 @@ def test_menu_button_id_for_known_labels():
         menu_button_id_for_label(dlg.BUTTON_COLOR_GUESS_VOICE_OFF)
         == "settings.color_guess_voice"
     )
+    assert menu_button_id_for_label(dlg.BUTTON_TRIVIA_RECAP_ON) == "settings.trivia_recap"
 
 
 def test_filter_hides_optional_keeps_locked():

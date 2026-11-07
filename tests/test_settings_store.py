@@ -65,6 +65,7 @@ def test_defaults_when_missing(store):
     assert store.get("music_comments_enabled") is True
     assert store.get("mood_system_enabled") is True
     assert store.get("color_guess_voice_enabled") is True
+    assert store.get("trivia_recap_enabled") is True
     assert store.get_hidden_menu_buttons() == set()
 
 
@@ -90,6 +91,7 @@ def test_update_and_reload_roundtrip(store, settings_dir):
         emoji_picker_enabled=False,
         mood_system_enabled=False,
         color_guess_voice_enabled=False,
+        trivia_recap_enabled=False,
     )
     store.set_hidden_menu_buttons({"main.chat", "actions.hug"})
     reloaded = SettingsStore(directory=settings_dir)
@@ -113,6 +115,7 @@ def test_update_and_reload_roundtrip(store, settings_dir):
     assert reloaded.get("emoji_picker_enabled") is False
     assert reloaded.get("mood_system_enabled") is False
     assert reloaded.get("color_guess_voice_enabled") is False
+    assert reloaded.get("trivia_recap_enabled") is False
     assert reloaded.get_hidden_menu_buttons() == {"main.chat", "actions.hug"}
 
 

@@ -104,6 +104,22 @@ class GamesMixin:
         )
         self.speak(dlg.pick_line(lines), skip_ai=True)
 
+    def is_trivia_recap_enabled(self) -> bool:
+        """Return whether True or False rounds end with a list of all answers."""
+        return bool(getattr(self, "_trivia_recap_enabled", True))
+
+    def toggle_trivia_recap(self) -> None:
+        """Enable or disable the answer recap after a True or False round."""
+        self._trivia_recap_enabled = not self.is_trivia_recap_enabled()
+        if hasattr(self, "_persist_settings"):
+            self._persist_settings()
+        lines = (
+            dlg.TRIVIA_RECAP_ON_LINES
+            if self._trivia_recap_enabled
+            else dlg.TRIVIA_RECAP_OFF_LINES
+        )
+        self.speak(dlg.pick_line(lines), skip_ai=True)
+
     def _is_game_active(self) -> bool:
         """Return True while any mini-game is in progress."""
         window = getattr(self, "_game_window", None)
@@ -202,6 +218,7 @@ class GamesMixin:
         self._trivia_score = 0
         self._trivia_round = 0
         self._trivia_used = set()
+        self._trivia_history = []
         self._ask_next_trivia()
 
     def _ask_next_trivia(self):
