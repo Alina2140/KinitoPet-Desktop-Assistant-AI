@@ -1,4 +1,4 @@
-# Creates/replaces Desktop\Kinito.lnk with the high-res transparent icon.
+# Creates/replaces Desktop\Kinito.lnk with the given icon.
 param(
     [Parameter(Mandatory = $true)][string]$ProjectDir,
     [Parameter(Mandatory = $true)][string]$LauncherPath,

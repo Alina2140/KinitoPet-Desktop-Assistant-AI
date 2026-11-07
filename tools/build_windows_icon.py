@@ -16,6 +16,8 @@ ROOT = Path(__file__).resolve().parents[1]
 SRC_PNG = ROOT / "gameAssets" / "icons" / "Icon.png"
 OUT_ICO = ROOT / "gameAssets" / "icons" / "Kinito.ico"
 OUT_ICO_LEGACY = ROOT / "gameAssets" / "icons" / "Icon.ico"
+SRC_PIXEL_PNG = ROOT / "gameAssets" / "icons" / "IconPixel.png"
+OUT_PIXEL_ICO = ROOT / "gameAssets" / "icons" / "KinitoPixel.ico"
 SIZES = (16, 24, 32, 48, 64, 128, 256)
 
 
@@ -82,10 +84,14 @@ def _rgba_to_bmp_icon_bytes(im: Image.Image) -> bytes:
     return header + bytes(xor) + and_mask
 
 
-def build_ico(src: Image.Image, sizes: tuple[int, ...] = SIZES) -> bytes:
+def build_ico(
+    src: Image.Image,
+    sizes: tuple[int, ...] = SIZES,
+    resample: Image.Resampling = Image.Resampling.LANCZOS,
+) -> bytes:
     entries: list[tuple[int, bytes]] = []
     for size in sizes:
-        frame = src.resize((size, size), Image.Resampling.LANCZOS)
+        frame = src.resize((size, size), resample)
         # Keep fully transparent corners after resize.
         px = frame.load()
         for y in range(size):
@@ -134,6 +140,13 @@ def main() -> None:
     OUT_ICO_LEGACY.write_bytes(data)
     print(f"wrote {OUT_ICO} ({len(data)} bytes)")
     print(f"wrote {OUT_ICO_LEGACY} ({len(data)} bytes)")
+
+    if SRC_PIXEL_PNG.is_file():
+        # Nearest-neighbour keeps the retro pixel look crisp at every size.
+        pixel_src = Image.open(SRC_PIXEL_PNG).convert("RGBA")
+        pixel_data = build_ico(pixel_src, resample=Image.Resampling.NEAREST)
+        OUT_PIXEL_ICO.write_bytes(pixel_data)
+        print(f"wrote {OUT_PIXEL_ICO} ({len(pixel_data)} bytes)")
 
 
 if __name__ == "__main__":
