@@ -746,7 +746,7 @@ class SpeechMixin:
         if engine is None:
             return False
         try:
-            volume = max(0.0, min(1.0, self.get_tts_volume() / 100.0))
+            volume = max(0.0, min(1.0, self._effective_tts_volume() / 100.0))
             engine.setProperty("volume", volume)
             engine.say(text)
             engine.runAndWait()
@@ -759,6 +759,11 @@ class SpeechMixin:
         from kinito.settings_store import clamp_tts_volume
 
         return clamp_tts_volume(getattr(self, "_tts_volume", 100))
+
+    def _effective_tts_volume(self) -> float:
+        """Return the TTS volume for the current line (setting x per-line scale)."""
+        scale = float(getattr(self, "_speech_volume_scale", 1.0))
+        return self.get_tts_volume() * max(0.0, min(1.0, scale))
 
     def _play_bubble_sfx(self, file_path: str) -> None:
         """Play a bubble open/close sound (respects the SFX volume setting)."""
@@ -864,7 +869,7 @@ class SpeechMixin:
         if not os.path.isfile(wav_path) or os.path.getsize(wav_path) <= 0:
             return False
 
-        volume = max(0.0, min(1.0, self.get_tts_volume() / 100.0))
+        volume = max(0.0, min(1.0, self._effective_tts_volume() / 100.0))
         if volume <= 0.0:
             return True
 
@@ -946,7 +951,7 @@ class SpeechMixin:
             return False
 
         # Direct speak preserves the classic Kinito voice path.
-        if self.get_tts_volume() >= 100:
+        if self._effective_tts_volume() >= 100:
             ok, _stderr = self._run_balcon_process(
                 voice, text, pitch, speech_epoch=speech_epoch
             )
@@ -1064,8 +1069,12 @@ class SpeechMixin:
         skip_ai=False,
         speech_accompaniment_path=None,
         speech_accompaniment_volume=None,
+        volume_scale=1.0,
     ):
-        """Speak *text* in a background thread; optionally show and auto-close a bubble."""
+        """Speak *text* in a background thread; optionally show and auto-close a bubble.
+
+        *volume_scale* (0-1) makes this line quieter than the TTS volume setting.
+        """
         del ai_hint, skip_ai  # handled by LLMMixin when present in the MRO
         if not allow_in_focus:
             if getattr(self, "_focus_mode", False):
@@ -1076,6 +1085,7 @@ class SpeechMixin:
         if show_bubble and not self._may_start_speech(text):
             return
         self.interrupt_speech()
+        self._speech_volume_scale = volume_scale
         if hasattr(self, "_stop_roaming"):
             self._stop_roaming()
         epoch = self._speech_epoch

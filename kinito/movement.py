@@ -71,6 +71,10 @@ class MovementMixin:
     SNORING_CHANCE = 0.38
     SNORING_VOLUME = 0.5
     SNORING_COOLDOWN_SECONDS = 5.0
+    SLEEP_TALK_CHANCE = 0.08
+    SLEEP_TALK_COOLDOWN_SECONDS = 45.0
+    NIGHTMARE_CHANCE = 0.3
+    SLEEP_TALK_VOLUME_SCALE = 0.35
     THROW_SAMPLE_WINDOW_MS = 80
     THROW_MIN_SPEED_PX_S = 900
     THROW_MAX_SPEED_PX_S = 4500
@@ -1397,6 +1401,47 @@ class MovementMixin:
         if callable(play_sfx):
             play_sfx(snoring_file_path, volume=self.SNORING_VOLUME)
 
+    def _maybe_sleep_talk(self) -> bool:
+        """Sometimes mumble a sleep or nightmare line while asleep; return True if scheduled."""
+        if not getattr(self, "_sleep_talk_enabled", True):
+            return False
+        if not getattr(self, "paused", False) or getattr(self, "talking", False):
+            return False
+        if getattr(self, "_focus_mode", False):
+            return False
+        last_at = float(getattr(self, "_last_sleep_talk_at", 0.0))
+        if last_at > 0 and time.monotonic() - last_at < self.SLEEP_TALK_COOLDOWN_SECONDS:
+            return False
+        if random.random() >= self.SLEEP_TALK_CHANCE:
+            return False
+        from content import dialogue as dlg
+
+        nightmare = random.random() < self.NIGHTMARE_CHANCE
+        line = dlg.pick_line(dlg.NIGHTMARE_LINES if nightmare else dlg.SLEEP_TALK_LINES)
+        self._last_sleep_talk_at = time.monotonic()
+        self.root.after(0, lambda: self._say_sleep_line(line))
+        return True
+
+    def _say_sleep_line(self, line: str) -> None:
+        """Speak *line* on the UI thread if Kinito is still asleep."""
+        if not getattr(self, "paused", False) or not getattr(self, "_sleep_talk_enabled", True):
+            return
+        self.speak(line, skip_ai=True, volume_scale=self.SLEEP_TALK_VOLUME_SCALE)
+
+    def toggle_sleep_talk(self):
+        """Enable or disable sleep and nightmare lines while asleep."""
+        from content import dialogue as dlg
+
+        self._sleep_talk_enabled = not getattr(self, "_sleep_talk_enabled", True)
+        if hasattr(self, "_persist_settings"):
+            self._persist_settings()
+        lines = (
+            dlg.SLEEP_TALK_ON_LINES
+            if self._sleep_talk_enabled
+            else dlg.SLEEP_TALK_OFF_LINES
+        )
+        self.speak(dlg.pick_line(lines), skip_ai=True)
+
     def toggle_snoring(self):
         """Enable or disable snoring sounds while asleep."""
         from content import dialogue as dlg
@@ -1966,7 +2011,8 @@ class MovementMixin:
             self.change_sprite(self._pick_normal_idle_sprite(crouch=True))
             time.sleep(1)
         elif self.paused:
-            self._maybe_play_snoring()
+            if not self._maybe_sleep_talk():
+                self._maybe_play_snoring()
             for sprite in (
                 self.tk_img_sleep,
                 self.tk_img_sleep1,

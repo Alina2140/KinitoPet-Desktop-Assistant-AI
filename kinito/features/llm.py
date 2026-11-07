@@ -81,6 +81,7 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
         skip_ai=False,
         speech_accompaniment_path=None,
         speech_accompaniment_volume=None,
+        volume_scale=1.0,
     ):
         """Speak *text*, optionally replacing scripted lines with Ollama output."""
         if show_bubble and not self._may_start_speech(str(text)):
@@ -107,6 +108,7 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
                 question=question,
                 speech_accompaniment_path=speech_accompaniment_path,
                 speech_accompaniment_volume=speech_accompaniment_volume,
+                volume_scale=volume_scale,
             )
             return
 

@@ -577,6 +577,35 @@ def test_play_tts_wav_applies_configured_volume(speech):
     assert play.call_args.args[1] == 22050
 
 
+def test_play_tts_wav_applies_line_volume_scale_even_at_full_volume(speech):
+    speech._tts_volume = 100
+    speech._speech_volume_scale = 0.35
+    speech._speech_epoch = 1
+    samples = np.array([1000, -1000], dtype=np.int16)
+    stream = MagicMock()
+    stream.active = False
+
+    with (
+        patch("kinito.speech.os.path.isfile", return_value=True),
+        patch("kinito.speech.os.path.getsize", return_value=128),
+        patch.object(speech, "_load_wav_pcm", return_value=(samples, 22050)),
+        patch("kinito.speech.sd.play") as play,
+        patch("kinito.speech.sd.get_stream", return_value=stream),
+    ):
+        assert speech._play_tts_wav("voice.wav", speech_epoch=1) is True
+
+    assert int(play.call_args.args[0][0]) == 350
+
+
+def test_effective_tts_volume_scales_setting(speech):
+    speech._tts_volume = 60
+    assert speech._effective_tts_volume() == 60
+    speech._speech_volume_scale = 0.5
+    assert speech._effective_tts_volume() == 30
+    speech._tts_volume = 100
+    assert speech._effective_tts_volume() < 100
+
+
 def test_stop_active_tts_stops_sounddevice(speech):
     speech._tts_sd_active = True
     speech._tts_process = None

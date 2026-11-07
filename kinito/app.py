@@ -4,6 +4,7 @@ import os
 import random
 import sys
 import threading
+import time
 import tkinter as tk
 
 import pygame
@@ -330,6 +331,7 @@ class FloatingAssistant(
             enabled=self._settings.get("app_awareness_enabled", True)
         )
         self._snoring_enabled = self._settings.get("snoring_enabled", True)
+        self._sleep_talk_enabled = self._settings.get("sleep_talk_enabled", True)
         self._sound_effects_enabled = self._settings.get("sound_effects_enabled", True)
         self._focus_mode = False
         self._preserve_sprite = False
@@ -372,6 +374,7 @@ class FloatingAssistant(
         self._dizzy_orbit_started_at = 0.0
         self._dizzy_ready_at = 0.0
         self._last_snore_at = 0.0
+        self._last_sleep_talk_at = 0.0
         self.root.wm_attributes("-topmost", True)
 
         self._log_optional_deps()
@@ -453,6 +456,7 @@ class FloatingAssistant(
             ),
             paint_recall_enabled=bool(getattr(self, "_paint_recall_enabled", True)),
             snoring_enabled=bool(getattr(self, "_snoring_enabled", True)),
+            sleep_talk_enabled=bool(getattr(self, "_sleep_talk_enabled", True)),
             sound_effects_enabled=bool(
                 getattr(self, "_sound_effects_enabled", True)
             ),
@@ -1175,6 +1179,7 @@ class FloatingAssistant(
             dlg.pick_line_for_mood(dlg.PAUSE_LINES, mood=mood, intensity=intensity, mood_lines=mood_lines)
         )
         self.paused = True
+        self._last_sleep_talk_at = time.monotonic()
         if spontaneous:
             delay_ms = random.randint(*self.AUTO_WAKE_NAP_SECONDS) * 1000
             self._auto_wake_timer = self.root.after(delay_ms, self._wake_from_spontaneous_nap)

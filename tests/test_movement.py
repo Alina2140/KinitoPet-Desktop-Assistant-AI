@@ -1237,6 +1237,87 @@ def test_toggle_snoring_disables_and_enables(movement):
     assert movement.speak.call_args[0][0] in dlg.SNORING_ON_LINES
 
 
+def _configure_sleep_talk(movement):
+    _configure_mouse_attention(movement)
+    movement.paused = True
+    movement.talking = False
+    movement._sleep_talk_enabled = True
+    movement._last_sleep_talk_at = 0.0
+    movement.root = MagicMock()
+    movement.root.after.side_effect = lambda _ms, fn: fn()
+    movement.speak = MagicMock()
+
+
+@pytest.mark.parametrize(
+    ("nightmare_roll", "pool_name"),
+    [(0.0, "NIGHTMARE_LINES"), (0.99, "SLEEP_TALK_LINES")],
+)
+def test_maybe_sleep_talk_speaks_dream_or_nightmare(movement, nightmare_roll, pool_name):
+    from content import dialogue as dlg
+
+    _configure_sleep_talk(movement)
+    with patch("kinito.movement.random.random", side_effect=[0.0, nightmare_roll]):
+        assert movement._maybe_sleep_talk() is True
+    line = movement.speak.call_args[0][0]
+    assert line in getattr(dlg, pool_name)
+    assert movement.speak.call_args.kwargs.get("skip_ai") is True
+    assert movement.speak.call_args.kwargs.get("volume_scale") == (
+        movement.SLEEP_TALK_VOLUME_SCALE
+    )
+    assert movement.SLEEP_TALK_VOLUME_SCALE < 1.0
+    assert movement._last_sleep_talk_at > 0
+
+
+def test_maybe_sleep_talk_respects_disabled(movement):
+    _configure_sleep_talk(movement)
+    movement._sleep_talk_enabled = False
+    with patch("kinito.movement.random.random", return_value=0.0):
+        assert movement._maybe_sleep_talk() is False
+    movement.speak.assert_not_called()
+
+
+def test_maybe_sleep_talk_skips_when_awake_talking_or_on_cooldown(movement):
+    _configure_sleep_talk(movement)
+    with patch("kinito.movement.random.random", return_value=0.0):
+        movement.paused = False
+        assert movement._maybe_sleep_talk() is False
+        movement.paused = True
+        movement.talking = True
+        assert movement._maybe_sleep_talk() is False
+        movement.talking = False
+        movement._last_sleep_talk_at = time.monotonic()
+        assert movement._maybe_sleep_talk() is False
+    movement.speak.assert_not_called()
+
+
+def test_maybe_sleep_talk_respects_chance(movement):
+    _configure_sleep_talk(movement)
+    with patch("kinito.movement.random.random", return_value=0.99):
+        assert movement._maybe_sleep_talk() is False
+    movement.speak.assert_not_called()
+
+
+def test_say_sleep_line_skips_after_waking(movement):
+    _configure_sleep_talk(movement)
+    movement.paused = False
+    movement._say_sleep_line("zzz")
+    movement.speak.assert_not_called()
+
+
+def test_toggle_sleep_talk_disables_and_enables(movement):
+    from content import dialogue as dlg
+
+    _configure_mouse_attention(movement)
+    movement._sleep_talk_enabled = True
+    movement.speak = MagicMock()
+    movement.toggle_sleep_talk()
+    assert movement._sleep_talk_enabled is False
+    assert movement.speak.call_args[0][0] in dlg.SLEEP_TALK_OFF_LINES
+    movement.toggle_sleep_talk()
+    assert movement._sleep_talk_enabled is True
+    assert movement.speak.call_args[0][0] in dlg.SLEEP_TALK_ON_LINES
+
+
 def test_idle_skips_sprite_when_mouse_look_active(movement):
     _configure_mouse_attention(movement)
     movement._mouse_look_active = True

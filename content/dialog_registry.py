@@ -219,6 +219,11 @@ def settings_toggles_options_for(app) -> list[str]:
         if getattr(app, "_snoring_enabled", True)
         else dlg.BUTTON_SNORING_OFF
     )
+    sleep_talk_label = (
+        dlg.BUTTON_SLEEP_TALK_ON
+        if getattr(app, "_sleep_talk_enabled", True)
+        else dlg.BUTTON_SLEEP_TALK_OFF
+    )
     sound_effects_label = (
         dlg.BUTTON_SOUND_EFFECTS_ON
         if getattr(app, "_sound_effects_enabled", True)
@@ -278,6 +283,7 @@ def settings_toggles_options_for(app) -> list[str]:
             screen_comments_label,
             paint_recall_label,
             snoring_label,
+            sleep_talk_label,
             sound_effects_label,
             window_play_label,
             tts_label,
@@ -683,6 +689,9 @@ def _menu_action_handlers() -> dict[str, Handler]:
         dlg.BUTTON_SNORING: lambda a: a.toggle_snoring(),
         dlg.BUTTON_SNORING_ON: lambda a: a.toggle_snoring(),
         dlg.BUTTON_SNORING_OFF: lambda a: a.toggle_snoring(),
+        dlg.BUTTON_SLEEP_TALK: lambda a: a.toggle_sleep_talk(),
+        dlg.BUTTON_SLEEP_TALK_ON: lambda a: a.toggle_sleep_talk(),
+        dlg.BUTTON_SLEEP_TALK_OFF: lambda a: a.toggle_sleep_talk(),
         dlg.BUTTON_SOUND_EFFECTS: lambda a: a.toggle_sound_effects(),
         dlg.BUTTON_SOUND_EFFECTS_ON: lambda a: a.toggle_sound_effects(),
         dlg.BUTTON_SOUND_EFFECTS_OFF: lambda a: a.toggle_sound_effects(),

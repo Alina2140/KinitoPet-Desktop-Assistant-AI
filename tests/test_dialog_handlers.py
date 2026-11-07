@@ -491,6 +491,29 @@ def test_handle_menu_toggle_snoring(mock_app):
     mock_app.toggle_snoring.assert_called_once()
 
 
+def test_handle_menu_toggle_sleep_talk(mock_app):
+    spec = find_dialog_spec(dlg.SETTINGS_MENU_QUESTION)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_SLEEP_TALK_ON)
+    mock_app.toggle_sleep_talk.assert_called_once()
+
+
+def test_sleep_talk_lines_do_not_open_dialogs():
+    for line in (
+        dlg.SLEEP_TALK_LINES
+        + dlg.NIGHTMARE_LINES
+        + dlg.SLEEP_TALK_ON_LINES
+        + dlg.SLEEP_TALK_OFF_LINES
+    ):
+        assert find_dialog_spec(line) is None
+
+
+def test_sleep_talk_pools_are_large_and_unique():
+    assert len(dlg.SLEEP_TALK_LINES) >= 18
+    assert len(dlg.NIGHTMARE_LINES) >= 17
+    combined = dlg.SLEEP_TALK_LINES + dlg.NIGHTMARE_LINES
+    assert len(set(combined)) == len(combined)
+
+
 def test_handle_menu_toggle_sound_effects(mock_app):
     spec = find_dialog_spec(dlg.SETTINGS_MENU_QUESTION)
     handle_dialog_response(mock_app, spec, dlg.BUTTON_SOUND_EFFECTS_ON)

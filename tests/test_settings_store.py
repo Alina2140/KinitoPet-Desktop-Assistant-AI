@@ -66,6 +66,7 @@ def test_defaults_when_missing(store):
     assert store.get("mood_system_enabled") is True
     assert store.get("color_guess_voice_enabled") is True
     assert store.get("trivia_recap_enabled") is True
+    assert store.get("sleep_talk_enabled") is True
     assert store.get_str("snake_color") == "#22c55e"
     assert store.get_str("chat_name_color") == "#6a25eb"
     assert store.get_hidden_menu_buttons() == set()
@@ -79,6 +80,7 @@ def test_update_and_reload_roundtrip(store, settings_dir):
         screen_comments_enabled=False,
         paint_recall_enabled=False,
         snoring_enabled=False,
+        sleep_talk_enabled=False,
         sound_effects_enabled=False,
         window_grab_enabled=False,
         tts_enabled=False,
@@ -105,6 +107,7 @@ def test_update_and_reload_roundtrip(store, settings_dir):
     assert reloaded.get("screen_comments_enabled") is False
     assert reloaded.get("paint_recall_enabled") is False
     assert reloaded.get("snoring_enabled") is False
+    assert reloaded.get("sleep_talk_enabled") is False
     assert reloaded.get("sound_effects_enabled") is False
     assert reloaded.get("window_grab_enabled") is False
     assert reloaded.get("tts_enabled") is False

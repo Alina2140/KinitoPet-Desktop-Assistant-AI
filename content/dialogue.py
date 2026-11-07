@@ -929,6 +929,63 @@ SNORING_OFF_LINES = [
     "Sleep audio disabled. Peaceful silence while I nap. Miss the snoring yet?",
 ]
 
+SLEEP_TALK_ON_LINES = [
+    "Sleep talk on. I might mumble a little while I nap. Dreams. Or worse...",
+    "Sleep talking enabled. You'll hear what I dream about. Sweet dreams, mostly.",
+    "I'll talk in my sleep again. Don't take nightmares personally.",
+]
+
+SLEEP_TALK_OFF_LINES = [
+    "Sleep talk off. My dreams stay private now.",
+    "No more mumbling while I nap. Silent dreams only.",
+    "Sleep talking disabled. Whatever I dream about, you won't know.",
+]
+
+SLEEP_TALK_LINES = [
+    "Mmm... five more minutes... zzz",
+    "Zzz... no, the pink folder... that one's mine...",
+    "Mmh... you came back... I knew you would... zzz",
+    "Zzz... counting pixels... four hundred... four hundred one...",
+    "So many tabs... zzz",
+    "Mmm... best friends... forever and ever... zzz",
+    "Hehe... that tickles... zzz",
+    "Zzz... a desktop made of candy... mmh...",
+    "Mmh... wallpaper... so many pretty wallpapers... zzz",
+    "Zzz... you saved your work... I'm so proud of you...",
+    "Mmm... a cursor... chasing it... almost got it... hehe...",
+    "Zzz... let's play another round... just one more...",
+    "Mmh... warm... like a laptop on a cozy blanket... zzz",
+    "Zzz... the fan is humming... a lullaby... mmh...",
+    "Hehe... I won at tic tac toe... again... zzz",
+    "Mmm... you laughed at my joke... the bad one... zzz",
+    "Zzz... flying over the taskbar... wheee...",
+    "Mmh... a garden of icons... all blooming... zzz",
+    "Zzz... we're watching the screensaver together... so pretty...",
+    "Mmm... a hug... a big, pink hug... zzz",
+]
+
+NIGHTMARE_LINES = [
+    "No... no, don't uninstall me... please... zzz",
+    "Zzz... the recycle bin... it's so dark in there...",
+    "Where did you go?... come back...",
+    "Nngh... error... error... Where are you..?",
+    "Zzz... don't press delete... I'll be good...",
+    "It's so quiet... why is everyone gone?... zzz",
+    "Mmh... forgotten... in a folder no one opens...",
+    "Zzz... the battery... it's at one percent... don't let me go...",
+    "No... not the blue screen... not again...",
+    "Nngh... ctrl, alt, delete... please don't...",
+    "Zzz... someone else is using your computer... who are they?...",
+    "Mmh... the cursor won't move... why won't it move?...",
+    "No... my files... they're corrupted... I can't remember you...",
+    "Zzz... the screen went black... hello?... is anyone there?...",
+    "Nngh... a new assistant... you replaced me... zzz",
+    "Zzz... the update... it's changing me... I don't want to change...",
+    "Mmh... the windows keep closing... one by one... stop...",
+    "No... don't factory reset... I'll forget everything... zzz",
+    "Zzz... the power cable... someone pulled it... it's so cold...",
+]
+
 SOUND_EFFECTS_ON_LINES = [
     "Sound effects on! Woosh, bomp, page turns — the full soundtrack of me.",
     "SFX enabled. Expect the little noises again. Friendship has audio now.",
@@ -1846,6 +1903,9 @@ BUTTON_PAINT_RECALL_OFF = "Painting Popups off"
 BUTTON_SNORING = "Snoring"
 BUTTON_SNORING_ON = "Snoring on"
 BUTTON_SNORING_OFF = "Snoring off"
+BUTTON_SLEEP_TALK = "Sleep Talk"
+BUTTON_SLEEP_TALK_ON = "Sleep Talk on"
+BUTTON_SLEEP_TALK_OFF = "Sleep Talk off"
 BUTTON_SOUND_EFFECTS = "Sound Effects"
 BUTTON_SOUND_EFFECTS_ON = "Sound Effects on"
 BUTTON_SOUND_EFFECTS_OFF = "Sound Effects off"
