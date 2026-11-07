@@ -84,6 +84,62 @@ def test_wait_for_browser_process_closes_with_horror_line(browser):
     browser.speak.assert_called_once_with("spooky bye")
 
 
+@pytest.mark.parametrize("category", ["animals", "knowledge", "games", "horror"])
+def test_browser_line_pool_uses_category_lines(browser, category):
+    from content.browser_lines import BROWSER_LINES, CATEGORY_BROWSER_LINES
+
+    with patch("kinito.features.browser.random.random", return_value=0.99):
+        pool = browser._browser_line_pool(category, CATEGORY_BROWSER_LINES, BROWSER_LINES)
+    assert pool is CATEGORY_BROWSER_LINES[category]
+
+
+def test_browser_line_pool_sometimes_uses_general_lines(browser):
+    from content.browser_lines import BROWSER_LINES, CATEGORY_BROWSER_LINES
+
+    with patch("kinito.features.browser.random.random", return_value=0.0):
+        assert (
+            browser._browser_line_pool("games", CATEGORY_BROWSER_LINES, BROWSER_LINES)
+            is BROWSER_LINES
+        )
+        assert (
+            browser._browser_line_pool("horror", CATEGORY_BROWSER_LINES, BROWSER_LINES)
+            is CATEGORY_BROWSER_LINES["horror"]
+        )
+    assert browser._browser_line_pool("unknown", CATEGORY_BROWSER_LINES, BROWSER_LINES) is (
+        BROWSER_LINES
+    )
+
+
+def test_wait_for_browser_process_closes_with_category_line(browser):
+    process = MagicMock()
+    process.stderr = MagicMock()
+    process.stderr.read.return_value = ""
+    process.wait.return_value = 0
+    browser._browser_process = process
+
+    with (
+        patch("kinito.features.browser.random.random", return_value=0.99),
+        patch("kinito.features.browser.dlg.pick_line", return_value="gg") as pick,
+    ):
+        browser._wait_for_browser_process("games")
+
+    pick.assert_called_with(dlg.BROWSER_GAMES_CLOSE_LINES)
+    browser.speak.assert_called_once_with("gg")
+
+
+def test_browser_line_pools_are_large_and_unique():
+    from content.browser_lines import BROWSER_LINES, CATEGORY_BROWSER_LINES
+
+    open_pools = [BROWSER_LINES, *CATEGORY_BROWSER_LINES.values()]
+    close_pools = [dlg.BROWSER_CLOSE_LINES, *BrowserMixin.CATEGORY_CLOSE_LINES.values()]
+    for pool in open_pools:
+        assert len(pool) >= 20
+    for pool in close_pools:
+        assert len(pool) >= 8
+    for pool in (*open_pools, *close_pools):
+        assert len(set(pool)) == len(pool)
+
+
 def test_offer_browser_visit_skips_when_busy(browser):
     browser._is_busy_with_speech.return_value = True
     browser.offer_browser_visit()

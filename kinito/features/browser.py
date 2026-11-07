@@ -9,7 +9,7 @@ import time
 import webbrowser
 
 from content import dialogue as dlg
-from content.browser_lines import BROWSER_LINES, HORROR_BROWSER_LINES
+from content.browser_lines import BROWSER_LINES, CATEGORY_BROWSER_LINES
 from content.site_validator import is_allowed_url, pick_random_site
 from kinito.assets import kinito_pet_url, list_image_files, websites_directory
 
@@ -22,6 +22,29 @@ class BrowserMixin:
     BROWSER_MIN_WIDTH = 480
     BROWSER_MIN_HEIGHT = 360
     WEBSITE_SURPRISE_CHANCE = 0.05
+    GENERAL_BROWSER_LINE_CHANCE = 0.3
+    CATEGORY_CLOSE_LINES = {
+        "animals": dlg.BROWSER_ANIMALS_CLOSE_LINES,
+        "knowledge": dlg.BROWSER_KNOWLEDGE_CLOSE_LINES,
+        "games": dlg.BROWSER_GAMES_CLOSE_LINES,
+        "horror": dlg.BROWSER_HORROR_CLOSE_LINES,
+    }
+
+    def _browser_line_pool(self, category, category_pools, general_pool):
+        """Return the category's pool, or sometimes the general one (horror always stays spooky)."""
+        pool = category_pools.get(category)
+        if not pool:
+            return general_pool
+        if category != "horror" and random.random() < self.GENERAL_BROWSER_LINE_CHANCE:
+            return general_pool
+        return pool
+
+    def _browser_close_line(self, category):
+        """Pick a closing line that fits the category of the site that was open."""
+        pool = self._browser_line_pool(
+            category, self.CATEGORY_CLOSE_LINES, dlg.BROWSER_CLOSE_LINES
+        )
+        return dlg.pick_line(pool)
 
     def _has_pywebview(self):
         """Return True if the pywebview package is installed."""
@@ -66,10 +89,9 @@ class BrowserMixin:
         self._browser_category = category
         x, y = self._get_browser_position()
 
-        if category == "horror":
-            browse_line = random.choice(HORROR_BROWSER_LINES)
-        else:
-            browse_line = random.choice(BROWSER_LINES)
+        browse_line = random.choice(
+            self._browser_line_pool(category, CATEGORY_BROWSER_LINES, BROWSER_LINES)
+        )
 
         surprise = self._roll_browser_surprise()
         if surprise == "kinitopet":
@@ -157,11 +179,7 @@ class BrowserMixin:
             time.sleep(0.1)
         if not self._running:
             return
-        if category == "horror":
-            line = dlg.pick_line(dlg.BROWSER_HORROR_CLOSE_LINES)
-        else:
-            line = dlg.pick_line(dlg.BROWSER_CLOSE_LINES)
-        self.speak(line)
+        self.speak(self._browser_close_line(category))
 
     def _launch_browser(self, url, x, y, intro):
         """Speak the intro, then open the URL in pywebview or the default browser."""
@@ -235,11 +253,7 @@ class BrowserMixin:
         if not self._running:
             return
 
-        if category == "horror":
-            line = dlg.pick_line(dlg.BROWSER_HORROR_CLOSE_LINES)
-        else:
-            line = dlg.pick_line(dlg.BROWSER_CLOSE_LINES)
-        self.speak(line)
+        self.speak(self._browser_close_line(category))
 
     def close_browser(self):
         """Terminate the browser subprocess if it is still running."""

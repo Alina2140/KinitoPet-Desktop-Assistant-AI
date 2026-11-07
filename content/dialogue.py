@@ -738,6 +738,41 @@ BROWSER_CLOSE_LINES = [
     "Window's closed! That was fun. Stay with me now.",
     "All done browsing! See you next time. I'm still here.",
     "I closed the window. Thanks for surfing with me! Don't wander alone next time.",
+    "All closed! Back to just us :)",
+    "Tab closed. Welcome back!",
+    "That was nice! Let's browse again soon.",
+    "Done exploring? Good.",
+    "Window gone! Missed me?",
+]
+BROWSER_ANIMALS_CLOSE_LINES = [
+    "Bye bye, animals! That was adorable.",
+    "All done! Did you find your favorite?",
+    "The animals waved goodbye. I'm sure of it.",
+    "Cute! Anyway.",
+    "Back to the desktop! I'm cute too, you know.",
+    "That was fluffy. Thanks for visiting with me!",
+    "The critters say bye! See you next time.",
+    "Animal break over. Feeling better?",
+]
+BROWSER_KNOWLEDGE_CLOSE_LINES = [
+    "Done learning! You're officially smarter.",
+    "Class dismissed! That was interesting.",
+    "Did you learn something new? I did!",
+    "Brain refreshed! Nice reading.",
+    "Knowledge acquired. Great job!",
+    "All done! Tell me a fun fact sometime.",
+    "Well, that was educational.",
+    "Closing the book. Well, the tab.",
+]
+BROWSER_GAMES_CLOSE_LINES = [
+    "Game over! Did you win?",
+    "GG! That was fun to watch.",
+    "Back already? Hope you got a high score!",
+    "Nice playing! Want another round some time?",
+    "Controller down, Kinito up! Hi again.",
+    "That was a good game!",
+    "Player one has left the game. Welcome back!",
+    "Games done! You played great. I think.",
 ]
 BROWSER_HORROR_CLOSE_LINES = [
     "The window is gone. But I'm still here. Always.",
@@ -745,6 +780,11 @@ BROWSER_HORROR_CLOSE_LINES = [
     "That's enough spooks for one day. Maybe.",
     "The window closes. The feeling lingers. So do I.",
     "Done with the horror? Me too. For now. Sleep well.",
+    "You survived! I'm proud of you.",
+    "The page is gone. The shadows stayed. Kidding!",
+    "Back to safety. Well, back to me.",
+    "Closed it. Don't check under the desk.",
+    "Spooky time over. You can breathe now.",
 ]
 BROWSER_BLOCKED_LINES = [
     "I can't go there — that link isn't on my list!",

@@ -7,7 +7,13 @@ import pytest
 from content import dialogue as dlg
 from content.allowed_sites import ALLOWED_SITES
 from content.app_lines import APP_AWARE_IDLE_LINES, APP_AWARE_NUDGE_LINES
-from content.browser_lines import BROWSER_LINES, HORROR_BROWSER_LINES
+from content.browser_lines import (
+    ANIMALS_BROWSER_LINES,
+    BROWSER_LINES,
+    GAMES_BROWSER_LINES,
+    HORROR_BROWSER_LINES,
+    KNOWLEDGE_BROWSER_LINES,
+)
 from content.camera_lines import CAMERA_LINES
 from content.facts import (
     FACTS,
@@ -81,6 +87,9 @@ def _assert_non_empty_strings(items, *, min_length=1):
         (APP_AWARE_IDLE_LINES, "app_aware_idle"),
         (BROWSER_LINES, "browser"),
         (HORROR_BROWSER_LINES, "horror_browser"),
+        (ANIMALS_BROWSER_LINES, "animals_browser"),
+        (KNOWLEDGE_BROWSER_LINES, "knowledge_browser"),
+        (GAMES_BROWSER_LINES, "games_browser"),
         (CAMERA_LINES, "camera"),
         (SCREEN_COMMENT_FALLBACK_LINES, "screen_comment_fallback"),
         (MUSIC_PLAYER_LINES, "music_player"),
