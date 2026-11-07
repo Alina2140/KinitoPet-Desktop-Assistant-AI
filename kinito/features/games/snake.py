@@ -35,10 +35,10 @@ def _spawn_food(snake: list[Point], rng: random.Random) -> Point:
 
 
 def new_game(rng: random.Random | None = None) -> dict:
-    """Create a new snake game state with a short snake in the center."""
+    """Create a new snake game state with a short snake at the left edge, heading right."""
     source = rng or random
     mid = GRID_SIZE // 2
-    snake: list[Point] = [(mid - i, mid) for i in range(START_LENGTH)]
+    snake: list[Point] = [(START_LENGTH - 1 - i, mid) for i in range(START_LENGTH)]
     return {
         "snake": snake,
         "direction": RIGHT,

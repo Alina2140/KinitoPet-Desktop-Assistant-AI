@@ -310,6 +310,16 @@ def test_battleships_lose_when_out_of_shots():
     assert not all_sunk(state)
 
 
+def test_snake_starts_at_left_edge_heading_right():
+    state = snake_game.new_game(rng=random.Random(0))
+    row = snake_game.GRID_SIZE // 2
+    assert state["snake"] == [
+        (snake_game.START_LENGTH - 1 - i, row) for i in range(snake_game.START_LENGTH)
+    ]
+    assert state["snake"][-1] == (0, row)
+    assert state["direction"] == RIGHT
+
+
 def test_snake_rejects_180_turn():
     state = snake_game.new_game(rng=random.Random(0))
     assert state["direction"] == RIGHT
