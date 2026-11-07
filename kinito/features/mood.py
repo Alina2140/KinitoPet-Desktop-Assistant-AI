@@ -62,6 +62,7 @@ _BASE_ACTION_WEIGHTS = {
     "compliment": 0.4,
     "nap": 1.0,
     "special_day": 0.6,
+    "countdown": 0.5,
     "birthday": 0.5,
     "anniversary": 0.5,
     "friendship": 0.5,

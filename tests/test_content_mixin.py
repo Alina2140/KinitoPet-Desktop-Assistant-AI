@@ -68,6 +68,7 @@ def test_perform_random_menu_action_calls_one_handler(content):
     content.say_random_poem = MagicMock()
     content.say_random_fact = MagicMock()
     content.maybe_announce_special_day = MagicMock()
+    content.maybe_announce_special_day_countdown = MagicMock()
     content.maybe_announce_birthday = MagicMock()
     content.maybe_announce_met_anniversary = MagicMock()
     content.maybe_mention_friendship_duration = MagicMock()

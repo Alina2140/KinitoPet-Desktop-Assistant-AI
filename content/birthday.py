@@ -212,6 +212,24 @@ def is_birthday_today(stored: str | None, today: date | datetime | None = None) 
     return moment.month == month and moment.day == day
 
 
+def days_until_birthday(stored: str | None, today: date | datetime | None = None) -> int | None:
+    """Return days until the next birthday (0 = today), or None if unknown."""
+    parts = birthday_month_day(stored)
+    if parts is None:
+        return None
+    moment = date.today() if today is None else (today.date() if isinstance(today, datetime) else today)
+    month, day = parts
+    for year in (moment.year, moment.year + 1):
+        if month == 2 and day == 29 and not calendar.isleap(year):
+            # Leap-day birthdays are celebrated on Feb 28 in non-leap years.
+            occasion = date(year, 2, 28)
+        else:
+            occasion = date(year, month, day)
+        if occasion >= moment:
+            return (occasion - moment).days
+    return None
+
+
 def pick_birthday_congrats_line(
     lines: list[str] | tuple[str, ...],
     *,

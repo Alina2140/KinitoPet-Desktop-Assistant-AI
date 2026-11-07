@@ -14,6 +14,7 @@ from content.special_days import (
     pick_special_day_line,
     seasonal_modifiers,
     special_day_for,
+    upcoming_special_days,
 )
 from content.stories import STORIES
 from content.wisdom import get_random_wisdom
@@ -28,6 +29,7 @@ class ContentMixin:
     MEMORY_FOLLOWUP_CHANCE = 0.25
     FANCY_SPEECH_START_TIMEOUT = 3.0
     FANCY_SPRITE_SWAP_SECONDS = 0.45
+    COUNTDOWN_HORIZON_DAYS = 45
 
     def _seasonal_modifiers_if_enabled(self) -> dict:
         """Seasonal chance weights when special days are enabled; else empty."""
@@ -98,6 +100,7 @@ class ContentMixin:
             ("compliment", self.ask_for_compliment),
             ("nap", self.spontaneous_nap),
             ("special_day", self.maybe_announce_special_day),
+            ("countdown", self.maybe_announce_special_day_countdown),
             ("birthday", self.maybe_announce_birthday),
             ("anniversary", self.maybe_announce_met_anniversary),
             ("friendship", self.maybe_mention_friendship_duration),
@@ -137,6 +140,44 @@ class ContentMixin:
         line = pick_special_day_line()
         if not line:
             return False
+        self.speak(line, skip_ai=True)
+        return True
+
+    def _special_day_countdowns(self) -> list[tuple[str, int, bool]]:
+        """Return (name, days_away, is_birthday) for occasions inside the countdown horizon."""
+        from content.birthday import days_until_birthday
+
+        horizon = self.COUNTDOWN_HORIZON_DAYS
+        countdowns = [
+            (occasion.name, days, False)
+            for occasion, days in upcoming_special_days(horizon_days=horizon)
+        ]
+        memory = getattr(self, "_memory", None)
+        if memory is not None:
+            days = days_until_birthday(memory.get_fact("birthday"))
+            if days is not None and 1 <= days <= horizon:
+                countdowns.append(("your birthday", days, True))
+        return countdowns
+
+    def maybe_announce_special_day_countdown(self) -> bool:
+        """Say how many days are left until an upcoming special day or the user's birthday."""
+        if not getattr(self, "_special_days_enabled", True):
+            return False
+        if not self._can_initiate_spontaneous_speech():
+            return False
+        countdowns = self._special_day_countdowns()
+        if not countdowns:
+            return False
+        name, days, is_birthday = random.choice(countdowns)
+        if is_birthday:
+            user = self.chat_user_label() if hasattr(self, "chat_user_label") else None
+            pool = dlg.BIRTHDAY_TOMORROW_LINES if days == 1 else dlg.BIRTHDAY_COUNTDOWN_LINES
+            line = random.choice(pool).format(name=user or "friend", days=days)
+        else:
+            pool = (
+                dlg.SPECIAL_DAY_TOMORROW_LINES if days == 1 else dlg.SPECIAL_DAY_COUNTDOWN_LINES
+            )
+            line = random.choice(pool).format(name=name, days=days)
         self.speak(line, skip_ai=True)
         return True
 

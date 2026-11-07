@@ -11,6 +11,7 @@ from content.birthday import (
     birthday_age,
     birthday_month_day,
     birthday_year,
+    days_until_birthday,
     format_birthday_display,
     is_birthday_today,
     parse_birthday,
@@ -19,6 +20,24 @@ from content.birthday import (
 from content.dialog_registry import find_dialog_spec, handle_dialog_response
 from content.memory_keys import ALLOWED_FACT_KEYS, ASK_ONCE_MARKERS
 from kinito.memory.store import MemoryStore
+
+
+@pytest.mark.parametrize(
+    ("stored", "today", "expected"),
+    [
+        ("03-15", date(2026, 3, 15), 0),
+        ("03-15", date(2026, 3, 14), 1),
+        ("1990-03-15", date(2026, 3, 1), 14),
+        ("03-15", date(2026, 3, 16), 364),
+        ("01-02", date(2026, 12, 30), 3),
+        ("02-29", date(2026, 2, 20), 8),
+        ("02-29", date(2027, 12, 1), 90),
+        (BIRTHDAY_DECLINED, date(2026, 3, 1), None),
+        (None, date(2026, 3, 1), None),
+    ],
+)
+def test_days_until_birthday(stored, today, expected):
+    assert days_until_birthday(stored, today) == expected
 
 
 @pytest.mark.parametrize(

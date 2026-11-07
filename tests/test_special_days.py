@@ -9,7 +9,119 @@ from content.special_days import (
     seasonal_multiplier,
     special_day_for,
     special_days_for,
+    upcoming_special_days,
 )
+
+
+def test_upcoming_special_days_includes_christmas_in_november():
+    upcoming = dict(
+        (day.name, days) for day, days in upcoming_special_days(date(2026, 11, 7))
+    )
+    assert upcoming["Christmas"] == 48
+    assert upcoming["Thanksgiving"] == 19
+    assert upcoming["Singles' Day"] == 4
+
+
+def test_upcoming_special_days_skips_today_and_respects_horizon():
+    upcoming = upcoming_special_days(date(2026, 12, 25), horizon_days=3)
+    names = [day.name for day, _days in upcoming]
+    assert "Christmas" not in names
+    assert names == ["Boxing Day"]
+    assert upcoming[0][1] == 1
+
+
+def _countdown_stub(countdowns=None, birthday_days=None, enabled=True):
+    from kinito.features.content import ContentMixin
+
+    class Stub(ContentMixin):
+        pass
+
+    stub = Stub()
+    stub._special_days_enabled = enabled
+    stub._can_initiate_spontaneous_speech = MagicMock(return_value=True)
+    stub.speak = MagicMock()
+    stub.chat_user_label = MagicMock(return_value="Alina")
+    stub._memory = MagicMock()
+    stub._memory.get_fact.return_value = "03-15"
+    patches = (
+        patch(
+            "kinito.features.content.upcoming_special_days",
+            return_value=countdowns or [],
+        ),
+        patch("content.birthday.days_until_birthday", return_value=birthday_days),
+    )
+    return stub, patches
+
+
+def test_countdown_announces_special_day_days_away():
+    from content import dialogue as dlg
+
+    christmas = special_day_for(date(2026, 12, 25))
+    stub, (p1, p2) = _countdown_stub([(christmas, 48)])
+    with p1, p2:
+        assert stub.maybe_announce_special_day_countdown() is True
+    line = stub.speak.call_args[0][0]
+    assert "Christmas" in line and "48" in line
+    assert any(
+        line == template.format(name="Christmas", days=48)
+        for template in dlg.SPECIAL_DAY_COUNTDOWN_LINES
+    )
+
+
+def test_countdown_uses_tomorrow_lines_for_one_day():
+    from content import dialogue as dlg
+
+    christmas = special_day_for(date(2026, 12, 25))
+    stub, (p1, p2) = _countdown_stub([(christmas, 1)])
+    with p1, p2:
+        assert stub.maybe_announce_special_day_countdown() is True
+    line = stub.speak.call_args[0][0]
+    assert line in [t.format(name="Christmas") for t in dlg.SPECIAL_DAY_TOMORROW_LINES]
+
+
+def test_countdown_includes_user_birthday():
+    from content import dialogue as dlg
+
+    stub, (p1, p2) = _countdown_stub([], birthday_days=12)
+    with p1, p2:
+        assert stub.maybe_announce_special_day_countdown() is True
+    line = stub.speak.call_args[0][0]
+    assert line in [
+        t.format(name="Alina", days=12) for t in dlg.BIRTHDAY_COUNTDOWN_LINES
+    ]
+
+
+def test_countdown_skips_birthday_today_or_far_away():
+    for days in (0, 200, None):
+        stub, (p1, p2) = _countdown_stub([], birthday_days=days)
+        with p1, p2:
+            assert stub.maybe_announce_special_day_countdown() is False
+        stub.speak.assert_not_called()
+
+
+def test_countdown_line_pools_are_large_unique_and_formattable():
+    from content import dialogue as dlg
+
+    pools = {
+        "SPECIAL_DAY_COUNTDOWN_LINES": 15,
+        "SPECIAL_DAY_TOMORROW_LINES": 10,
+        "BIRTHDAY_COUNTDOWN_LINES": 12,
+        "BIRTHDAY_TOMORROW_LINES": 8,
+    }
+    for name, minimum in pools.items():
+        lines = getattr(dlg, name)
+        assert len(lines) >= minimum, name
+        assert len(set(lines)) == len(lines), name
+        for line in lines:
+            line.format(name="Christmas", days=5)
+
+
+def test_countdown_skips_when_special_days_disabled():
+    christmas = special_day_for(date(2026, 12, 25))
+    stub, (p1, p2) = _countdown_stub([(christmas, 10)], enabled=False)
+    with p1, p2:
+        assert stub.maybe_announce_special_day_countdown() is False
+    stub.speak.assert_not_called()
 
 
 def test_special_day_for_fixed_holiday():

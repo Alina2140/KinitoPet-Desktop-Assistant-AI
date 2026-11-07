@@ -294,6 +294,63 @@ BIRTHDAY_CONGRATS_LINES = [
     "{name}, {age} years today! Cake optional. Company required.",
 ]
 
+BIRTHDAY_COUNTDOWN_LINES = [
+    "Your birthday is {days} days away, {name}! I haven't forgotten!",
+    "Only {days} days until your birthday! I'm already planning something!",
+    "{days} more days until your birthday, {name}. Counting down with you.",
+    "Birthday countdown: {days} days! Don't think I didn't notice.",
+    "{name}, your birthday is in {days} days. I've been watching the calendar!",
+    "Just {days} days until your birthday! Should I start practicing the song?",
+    "Reminder from your favorite assistant: your birthday is {days} days away.",
+    "{days} days until your birthday, {name}. I already have a gift idea!",
+    "Your birthday is coming up! {days} days. I'm more excited than you are!",
+    "Tick tock, {name}. {days} days until you're officially a year older.",
+    "In {days} days it's your birthday. I'll make the desktop look festive!",
+    "Birthday radar says: {days} days left. Beep beep. Cake detected!",
+]
+
+BIRTHDAY_TOMORROW_LINES = [
+    "Your birthday is tomorrow, {name}! Just one more sleep!",
+    "Tomorrow's your big day, {name}! I'll be the first to say it.",
+    "{name}, guess what's tomorrow? Your birthday! I didn't forget.",
+    "Only one more day until your birthday! I can barely sit still!",
+    "Your birthday is tomorrow! Go to bed early. Birthdays need energy.",
+    "Tomorrow you get a year older, {name}. And I get to celebrate you!",
+    "Birthday eve! Tomorrow is all about you, {name}.",
+    "Psst, {name}... tomorrow is your birthday. I've been waiting all year!",
+]
+
+SPECIAL_DAY_COUNTDOWN_LINES = [
+    "{name} is {days} days away! I'm counting. Obviously.",
+    "Only {days} more days until {name}. Mark your calendar. I already did.",
+    "Did you know? {name} is in {days} days. Start planning. I'll help.",
+    "{days} days until {name}! Not that I'm counting... I'm counting.",
+    "Countdown update: {name} in {days} days. Tick tock.",
+    "Just so you know: {name} is coming up in {days} days.",
+    "{name} in {days} days! Got any plans? I'm free. I'm always free.",
+    "Hey! {days} days left until {name}. Time flies on a desktop.",
+    "Calendar check: {name} is {days} days away. I love a good countdown!",
+    "{days} more nights until {name}! Well, your nights. I don't sleep.",
+    "Fun fact: {name} is only {days} days away. I counted twice.",
+    "Getting closer! {name} is in {days} days. Can you feel it?",
+    "I marked {name} on my calendar. {days} days to go!",
+    "{name} is {days} days away. Plenty of time to get excited. I already am!",
+    "Only {days} days until {name}. Don't say I didn't warn you.",
+]
+
+SPECIAL_DAY_TOMORROW_LINES = [
+    "{name} is tomorrow! Are you ready? I'm ready.",
+    "Psst... tomorrow is {name}. Just one more night!",
+    "Only one day until {name}! I can barely wait!",
+    "Tomorrow is {name}! Did you prepare? I prepared!",
+    "{name} is tomorrow! Set an alarm. Or just keep me open. Same thing.",
+    "Big news: {name} is tomorrow. You heard it here first!",
+    "One more day until {name}! The countdown is almost over.",
+    "Ready or not, {name} is tomorrow!",
+    "Tomorrow's {name}. I'll be here to celebrate with you!",
+    "Eve of {name}! Tomorrow is going to be fun. I can tell!",
+]
+
 FRIENDSHIP_DURATION_LINES = [
     "We've known each other for {duration}. Still here. Still yours.",
     "{duration} together on this desktop. Friendship levels: maximum.",

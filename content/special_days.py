@@ -5,7 +5,7 @@ from __future__ import annotations
 import calendar
 import random
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Literal
 
 SpecialDayKind = Literal["international", "joke"]
@@ -330,6 +330,25 @@ def special_day_for(moment: date | datetime | None = None) -> SpecialDay | None:
     if not matches:
         return None
     return random.choice(matches)
+
+
+def upcoming_special_days(
+    moment: date | datetime | None = None, horizon_days: int = 60
+) -> list[tuple[SpecialDay, int]]:
+    """Return (day, days_away) for each special day in the next *horizon_days* (not today)."""
+    if moment is None:
+        moment = date.today()
+    elif isinstance(moment, datetime):
+        moment = moment.date()
+    upcoming: list[tuple[SpecialDay, int]] = []
+    seen: set[str] = set()
+    for offset in range(1, horizon_days + 1):
+        for occasion in special_days_for(moment + timedelta(days=offset)):
+            if occasion.name in seen:
+                continue
+            seen.add(occasion.name)
+            upcoming.append((occasion, offset))
+    return upcoming
 
 
 def pick_special_day_line(day: SpecialDay | None = None, moment: date | datetime | None = None) -> str | None:
