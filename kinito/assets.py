@@ -114,6 +114,7 @@ sprite_path_blush_down = os.path.join(sprites_blushing_directory, "KinitoBlushDo
 icon_path = os.path.join(icons_directory, "Kinito.ico")
 icon_path_legacy = os.path.join(icons_directory, "Icon.ico")
 favicon_path = os.path.join(icons_directory, "Favicon.png")
+minesweeper_flag_icon_path = os.path.join(icons_directory, "flag.png")
 
 music_player_play_icon_path = os.path.join(music_player_directory, "play.png")
 music_player_pause_icon_path = os.path.join(music_player_directory, "pause.png")

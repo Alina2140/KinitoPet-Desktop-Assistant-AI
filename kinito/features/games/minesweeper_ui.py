@@ -7,6 +7,7 @@ from tkinter import Button, Frame, Label
 
 from content import dialogue as dlg
 from content import game_lines
+from kinito.assets import minesweeper_flag_icon_path
 from kinito.features.games.base import create_uniform_grid, open_game_window
 from kinito.features.games.minesweeper import (
     COLS,
@@ -20,6 +21,7 @@ from kinito.features.games.minesweeper import (
 )
 
 FLAG = "F"
+FLAG_COLOR = "#dc2626"
 MINE = "*"
 HIDDEN = ""
 
@@ -35,6 +37,14 @@ NUMBER_COLORS = {
 }
 
 
+def _load_flag_image(master) -> tk.PhotoImage | None:
+    """Return the red flag icon, or None so cells fall back to the FLAG letter."""
+    try:
+        return tk.PhotoImage(file=minesweeper_flag_icon_path, master=master)
+    except tk.TclError:
+        return None
+
+
 class MinesweeperGame:
     """9x9 minesweeper: left-click reveal, right-click flag."""
 
@@ -44,6 +54,7 @@ class MinesweeperGame:
         self.buttons: list[Button] = []
         self.status_label: Label | None = None
         self.window = None
+        self._flag_image: tk.PhotoImage | None = None
         self._ended = False
 
     def open(self):
@@ -56,6 +67,7 @@ class MinesweeperGame:
             min_width=360,
             min_height=460,
         )
+        self._flag_image = _load_flag_image(self.window)
 
         main = Frame(self.window)
         main.pack(fill=tk.BOTH, expand=True)
@@ -95,15 +107,21 @@ class MinesweeperGame:
         self.state = new_game()
         self._ended = False
         for button in self.buttons:
-            button.config(text=HIDDEN, fg="black", state="normal", relief=tk.RAISED)
+            button.config(text=HIDDEN, image="", fg="black", state="normal", relief=tk.RAISED)
         if self.status_label:
             self.status_label.config(text=self._status_text())
 
     def _refresh_cell(self, index: int):
         button = self.buttons[index]
         if index in self.state["flags"] and index not in self.state["revealed"]:
-            button.config(text=FLAG, fg="#dc2626", disabledforeground="#dc2626", state="normal")
+            if self._flag_image is not None:
+                button.config(text="", image=self._flag_image, state="normal")
+            else:
+                button.config(
+                    text=FLAG, fg=FLAG_COLOR, disabledforeground=FLAG_COLOR, state="normal"
+                )
             return
+        button.config(image="")
         if index not in self.state["revealed"]:
             button.config(
                 text=HIDDEN,

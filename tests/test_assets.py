@@ -78,6 +78,7 @@ def test_asset_subdirectories(directory_attr, relative_path):
         ("icon_path", "Kinito.ico", "icons_directory"),
         ("icon_path_legacy", "Icon.ico", "icons_directory"),
         ("favicon_path", "Favicon.png", "icons_directory"),
+        ("minesweeper_flag_icon_path", "flag.png", "icons_directory"),
         ("music_player_play_icon_path", "play.png", "music_player_directory"),
         ("music_player_pause_icon_path", "pause.png", "music_player_directory"),
         (
@@ -163,7 +164,7 @@ def test_sprite_paths_stay_under_sprites_directory(path_attr):
 
 @pytest.mark.parametrize(
     "path_attr",
-    ["icon_path", "icon_path_legacy", "favicon_path"],
+    ["icon_path", "icon_path_legacy", "favicon_path", "minesweeper_flag_icon_path"],
 )
 def test_icon_paths_stay_under_icons_directory(path_attr):
     path = getattr(assets, path_attr)
@@ -282,6 +283,7 @@ def test_packaged_asset_files_exist_on_disk():
         assets.icon_path,
         assets.icon_path_legacy,
         assets.favicon_path,
+        assets.minesweeper_flag_icon_path,
         assets.timer_file_path,
         assets.starttalk_file_path,
         assets.balconexe_directory,
