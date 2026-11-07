@@ -16,6 +16,7 @@ from kinito.features.games.color_guess import (
 )
 
 NEUTRAL_HEX_FG = "#555555"
+UI_BG = "#e6ded5"
 GRID_GAP = 8
 GRID_PADDING = 12
 CIRCLE_DIAMETER = 72
@@ -64,38 +65,43 @@ class ColorGuessGame:
             min_height=420,
         )
 
-        main = Frame(self.window)
+        self.window.configure(bg=UI_BG)
+        main = Frame(self.window, bg=UI_BG)
         main.pack(fill=tk.BOTH, expand=True, padx=16, pady=10)
 
-        footer = Frame(main)
+        footer = Frame(main, bg=UI_BG)
         footer.pack(side=tk.BOTTOM, fill=tk.X, pady=(8, 0))
-        Label(footer, text="DIFFICULTY:", font=("Arial", 9)).pack(side=tk.LEFT)
+        Label(footer, text="DIFFICULTY:", font=("Arial", 9), bg=UI_BG).pack(side=tk.LEFT)
         for value in DIFFICULTIES:
             button = Button(
                 footer,
                 text=str(value),
                 width=3,
                 relief=tk.FLAT,
+                bg=UI_BG,
+                activebackground=UI_BG,
                 font=("Arial", 9, "bold" if value == self.difficulty else "normal"),
                 command=lambda n=value: self._set_difficulty(n),
             )
             button.pack(side=tk.LEFT, padx=1)
             self.difficulty_buttons[value] = button
 
-        controls = Frame(main)
+        controls = Frame(main, bg=UI_BG)
         controls.pack(side=tk.BOTTOM, fill=tk.X, pady=(4, 0))
         self.prompt_label = Label(
             controls,
             text="GUESS THE COLOR",
             font=("Arial", 10),
             fg=NEUTRAL_HEX_FG,
+            bg=UI_BG,
         )
         self.prompt_label.pack()
-        self.status_label = Label(controls, text="", font=("Arial", 12, "bold"))
+        self.status_label = Label(controls, text="", font=("Arial", 12, "bold"), bg=UI_BG)
         self.status_label.pack()
         self.new_game_button = Button(
             controls,
             text="NEW GAME",
+            bg=UI_BG,
             command=self._reset,
         )
         self.new_game_button.pack(pady=(4, 0))
@@ -106,10 +112,11 @@ class ColorGuessGame:
             text=self.state["target_hex"],
             font=("Arial", 32, "bold"),
             fg=NEUTRAL_HEX_FG,
+            bg=UI_BG,
         )
         self.hex_label.pack(side=tk.TOP, pady=(8, 12))
 
-        self.canvas_frame = Frame(main)
+        self.canvas_frame = Frame(main, bg=UI_BG)
         self.canvas_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 8))
         self.canvas = tk.Canvas(self.canvas_frame, highlightthickness=0, bg="white")
         self.v_scroll = tk.Scrollbar(
