@@ -3,7 +3,7 @@ name: Pixel Emoji Picker
 overview: Emoji-Button links neben dem Chat-× mit Kuteken-Pixel-Spritesheet im Picker; Klick fügt Unicode in das Eingabefeld ein (Chat-Log bleibt bei System-Emojis).
 todos:
   - id: assets-kuteken
-    content: ai-info/emojis.png nach GameAssets/emojis/ kopieren; ATTRIBUTION + catalog.json (x/y/w/h/char fuer Faces/Cats/Hearts); Pfad in assets.py
+    content: ai-info/emojis.png nach gameAssets/emojis/ kopieren; ATTRIBUTION + catalog.json (x/y/w/h/char fuer Faces/Cats/Hearts); Pfad in assets.py
     status: completed
   - id: emoji-picker-module
     content: "kinito/features/emoji_picker.py: Crop aus Sheet, Toplevel-Grid, Unicode in Entry einfuegen"
@@ -35,7 +35,7 @@ flowchart LR
 
 ## Assets (einzelnes Spritesheet reicht)
 
-Quelle liegt bereits unter [`ai-info/emojis.png`](ai-info/emojis.png) (Kuteken). Beim Implementieren nach [`GameAssets/emojis/emojis.png`](GameAssets/emojis/emojis.png) kopieren + kurze `ATTRIBUTION.txt` (Kuteken, CC0, [itch.io](https://kuteken.itch.io/pixel-art-emoji)).
+Quelle liegt bereits unter [`ai-info/emojis.png`](ai-info/emojis.png) (Kuteken). Beim Implementieren nach [`gameAssets/emojis/emojis.png`](gameAssets/emojis/emojis.png) kopieren + kurze `ATTRIBUTION.txt` (Kuteken, CC0, [itch.io](https://kuteken.itch.io/pixel-art-emoji)).
 
 **Sheet-Analyse (bereits geprüft):**
 
@@ -44,7 +44,7 @@ Quelle liegt bereits unter [`ai-info/emojis.png`](ai-info/emojis.png) (Kuteken).
 - Zellpitch der Smileys/Cats/Hearts ca. **24×24** (15–16 Spalten).
 - Inhalt: ~7 Reihen gelbe Faces, Clown/Poop, Alien/Invader/Robot, Cat-Faces, farbige Hearts, danach **Farbpalette + Flags + Kartensymbole** (unregelmäßig — für den Chat-Picker weglassen).
 
-**Catalog** [`GameAssets/emojis/catalog.json`](GameAssets/emojis/catalog.json): Einträge `{ "x", "y", "w", "h", "char" }` (Pixel-Crop + Unicode). Keine fertige Map im Pack — Mapping manuell für Faces/Cats/Hearts/Suits. Palette und Flags nicht aufnehmen.
+**Catalog** [`gameAssets/emojis/catalog.json`](gameAssets/emojis/catalog.json): Einträge `{ "x", "y", "w", "h", "char" }` (Pixel-Crop + Unicode). Keine fertige Map im Pack — Mapping manuell für Faces/Cats/Hearts/Suits. Palette und Flags nicht aufnehmen.
 
 Pfad-Konstante in [`kinito/assets.py`](kinito/assets.py).
 

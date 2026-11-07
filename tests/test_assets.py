@@ -6,22 +6,22 @@ from kinito import assets
 
 
 def test_assets_directory_is_under_project_root():
-    assert assets.assets_directory.endswith("GameAssets")
+    assert assets.assets_directory.endswith("gameAssets")
     assert os.path.isabs(assets.assets_directory)
 
 
 @pytest.mark.parametrize(
     "directory_attr,relative_path",
     [
-        ("sprites_directory", os.path.join("GameAssets", "sprites")),
-        ("icons_directory", os.path.join("GameAssets", "icons")),
-        ("music_player_directory", os.path.join("GameAssets", "musicPlayer")),
-        ("sounds_directory", os.path.join("GameAssets", "sounds")),
-        ("secret_images_directory", os.path.join("GameAssets", "SecretImages")),
-        ("programs_directory", os.path.join("GameAssets", "Programs")),
-        ("ads_directory", os.path.join("GameAssets", "ads")),
-        ("websites_directory", os.path.join("GameAssets", "websites")),
-        ("crash_directory", os.path.join("GameAssets", "crash")),
+        ("sprites_directory", os.path.join("gameAssets", "sprites")),
+        ("icons_directory", os.path.join("gameAssets", "icons")),
+        ("music_player_directory", os.path.join("gameAssets", "musicPlayer")),
+        ("sounds_directory", os.path.join("gameAssets", "sounds")),
+        ("secret_images_directory", os.path.join("gameAssets", "secretImages")),
+        ("programs_directory", os.path.join("gameAssets", "programs")),
+        ("ads_directory", os.path.join("gameAssets", "ads")),
+        ("websites_directory", os.path.join("gameAssets", "websites")),
+        ("crash_directory", os.path.join("gameAssets", "crash")),
     ],
 )
 def test_asset_subdirectories(directory_attr, relative_path):
@@ -259,7 +259,7 @@ def test_look_direction_from_delta(dx, dy, expected):
 
 @pytest.mark.skipif(
     not os.path.isdir(assets.assets_directory),
-    reason="GameAssets folder is not present in this checkout",
+    reason="gameAssets folder is not present in this checkout",
 )
 def test_packaged_asset_files_exist_on_disk():
     expected_files = [

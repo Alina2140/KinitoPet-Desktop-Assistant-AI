@@ -62,7 +62,7 @@ The `.gitignore` file already excludes:
 **Do upload:**
 
 - All `.py` files
-- `GameAssets/` — sprites and sounds (required for users!)
+- `gameAssets/` — sprites and sounds (required for users!)
 - `requirements.txt`, `README.md`, `LICENSE`, `docs/`
 - `tests/`
 
@@ -138,7 +138,7 @@ For non-technical users who don’t want Git:
 1. Repository → **Releases** → **Create a new release**
 2. Tag: `v1.0.0`
 3. Title: `v1.0.0 — First public release`
-4. Upload a **ZIP** of the project (include `GameAssets`!)
+4. Upload a **ZIP** of the project (include `gameAssets`!)
 5. Publish
 
 Users can download the ZIP from Releases instead of cloning.
@@ -196,7 +196,7 @@ The README asks for **attribution** — good practice, not a legal requirement b
 
 **KinitoPET character:** This is a **fan project**. State clearly that it is not official. The README already mentions [kinitopet.com](https://www.kinitopet.com/).
 
-**Third-party assets:** Ensure you have the right to distribute sprites/sounds in `GameAssets/`. If some assets are not yours, document that in the README or replace them before publishing.
+**Third-party assets:** Ensure you have the right to distribute sprites/sounds in `gameAssets/`. If some assets are not yours, document that in the README or replace them before publishing.
 
 ---
 
@@ -244,7 +244,7 @@ This is optional but builds trust for contributors.
 
 ## Checklist before going public
 
-- [ ] `GameAssets/` is included and complete
+- [ ] `gameAssets/` is included and complete
 - [ ] `README.md` instructions tested on a clean PC
 - [ ] `LICENSE` file present
 - [ ] `.gitignore` excludes `.venv`

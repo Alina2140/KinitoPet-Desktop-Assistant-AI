@@ -1,12 +1,12 @@
 @echo off
-REM Creates a Desktop shortcut named "Kinito" with GameAssets\icons\Kinito.ico.
+REM Creates a Desktop shortcut named "Kinito" with gameAssets\icons\Kinito.ico.
 setlocal EnableExtensions
 cd /d "%~dp0"
 
 set "KINITO_PROJECT=%~dp0"
 if "%KINITO_PROJECT:~-1%"=="\" set "KINITO_PROJECT=%KINITO_PROJECT:~0,-1%"
 set "KINITO_LAUNCHER=%KINITO_PROJECT%\Start-Kinito.bat"
-set "KINITO_ICON=%KINITO_PROJECT%\GameAssets\icons\Kinito.ico"
+set "KINITO_ICON=%KINITO_PROJECT%\gameAssets\icons\Kinito.ico"
 set "KINITO_PS1=%KINITO_PROJECT%\tools\Create-Desktop-Shortcut.ps1"
 
 if not exist "%KINITO_LAUNCHER%" (

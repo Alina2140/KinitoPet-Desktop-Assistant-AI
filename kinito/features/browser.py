@@ -109,7 +109,7 @@ class BrowserMixin:
         return "kinitopet"
 
     def _pick_website_image(self):
-        """Return a random screenshot from GameAssets/websites/, if any exist."""
+        """Return a random screenshot from gameAssets/websites/, if any exist."""
         images = list_image_files(websites_directory)
         if not images:
             return None

@@ -94,7 +94,7 @@ def settings_file_path(directory: str | None = None) -> str:
 
 
 class SettingsStore:
-    """Load and persist assistant settings under GameAssets/UserMedia/."""
+    """Load and persist assistant settings under gameAssets/userMedia/."""
 
     def __init__(self, directory: str | None = None) -> None:
         self._directory = directory or user_media_directory

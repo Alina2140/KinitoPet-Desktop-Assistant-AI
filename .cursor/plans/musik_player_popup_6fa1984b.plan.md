@@ -54,7 +54,7 @@ In [`kinito/features/music.py`](kinito/features/music.py) ein topmost-`Toplevel`
 - Mitte: Text **„Kinito's Musik Player“**
 - Rechts: Schließen-Button (✕)
 - Body: **Titel** + **Dauer** (`m:ss`, Länge via `pygame.mixer.Sound(path).get_length()` — kein neues Dependency)
-- Controls mit Bootstrap-Icons aus [`GameAssets/musicPlayer/`](GameAssets/musicPlayer/):
+- Controls mit Bootstrap-Icons aus [`gameAssets/musicPlayer/`](gameAssets/musicPlayer/):
   - `skip-backward.svg` | `play.svg` / `pause.svg` (Toggle) | `skip-forward.svg`
 - **Lautstärke:** `tk.Scale` 0–100, live `pygame.mixer.music.set_volume`
 

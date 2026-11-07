@@ -52,7 +52,7 @@ A free, open-source desktop companion inspired by **KinitoPET**. Kinito lives on
 - **Windows 10 or 11**
 - **Python 3.11 or 3.12** (recommended) — [python.org/downloads](https://www.python.org/downloads/)
   - During install, check **“Add python.exe to PATH”**
-- This repository folder, including the **`GameAssets`** directory (sprites, sounds, `balcon.exe`)
+- This repository folder, including the **`gameAssets`** directory (sprites, sounds, `balcon.exe`)
 
 ### Steps
 
@@ -167,7 +167,7 @@ KinitoPET-Python-Virtual-Assistant/
 │   ├── speech_chat.py       # Multi-turn chat bubble UI
 │   ├── bubble_ui.py         # Chamfered bubble chrome & buttons
 │   ├── movement.py          # Drag, wander, idle animations
-│   ├── assets.py            # Paths to GameAssets files
+│   ├── assets.py            # Paths to gameAssets files
 │   ├── llm/                 # Ollama client & config
 │   └── features/            # Browser, camera, music, hug, llm, programs, content, games
 ├── content/                 # All dialogue & data (easy to edit!)
@@ -177,7 +177,7 @@ KinitoPET-Python-Virtual-Assistant/
 │   ├── allowed_sites.py     # Browser whitelist
 │   ├── facts.py, poems.py, stories.py, ...
 │   └── site_validator.py    # URL safety checks
-├── GameAssets/              # Sprites, MP3s, balcon.exe (required)
+├── gameAssets/              # Sprites, MP3s, balcon.exe (required)
 ├── tests/                   # Automated tests (800+)
 ├── docs/                    # Detailed guides
 ├── requirements.txt         # Runtime dependencies
@@ -239,11 +239,11 @@ Kinito can remember personal facts across sessions — no database required.
 
 - **Dialog answers** (name, favorite color, food, hobby, etc.) are saved automatically and those questions are not asked again.
 - **Chat notes** are extracted in the background when Ollama is available (stable facts the user clearly stated).
-- Files live in `GameAssets/UserMedia/`:
+- Files live in `gameAssets/userMedia/`:
   - `memory.json` — structured facts and notes (auto-managed)
   - `paintings/` — PNGs saved from **Actions → Paint**
 
-These files are local only (listed in `.gitignore`) and are not uploaded to Git. You do **not** need to create them manually — Kinito creates `memory.json` automatically the first time something is saved (e.g. when you answer a name question or a memory follow-up). After cloning the repo, the `UserMedia/` folder already exists; your personal memory starts empty until you use the app.
+These files are local only (listed in `.gitignore`) and are not uploaded to Git. You do **not** need to create them manually — Kinito creates `memory.json` automatically the first time something is saved (e.g. when you answer a name question or a memory follow-up). After cloning the repo, the `userMedia/` folder already exists; your personal memory starts empty until you use the app.
 
 Right-click Kinito → **Settings** → **Memories** to open the memory editor (view, edit, or delete individual facts and notes, then **Save**).  
 Right-click Kinito → **Settings** → **Forget** to clear saved memory — you will be asked to confirm first.
@@ -252,12 +252,12 @@ Dialog-based memory works without Ollama. Chat note extraction requires Ollama.
 
 **Memory questions:** Kinito can ask interactive questions (textbox or Yes/No) during idle roaming. With Ollama, most AI-planned questions are open and random (day, mood, events, hypotheticals, etc.); only sometimes they follow up on known facts. Without Ollama, scripted template follow-ups are used when facts exist. Answers are saved to `memory.json`.
 
-### GameAssets folder
+### gameAssets folder
 
-The app expects a `GameAssets` folder next to `Kinito.py`:
+The app expects a `gameAssets` folder next to `Kinito.py`:
 
 ```
-GameAssets/
+gameAssets/
 ├── sprites/
 │   ├── Standing/      # KinitoNormal.png + look-around variants
 │   ├── Crouching/     # crouch pose + look-around variants
@@ -269,16 +269,16 @@ GameAssets/
 │   ├── Thinking/
 │   └── Hugging/
 ├── Timer.mp3, Woosh.mp3, StartTalking.mp3, ...       # Sounds
-├── Programs/balcon.exe                               # Windows TTS (optional fallback: pyttsx3)
+├── programs/balcon.exe                               # Windows TTS (optional fallback: pyttsx3)
 ├── musicPlayer/                                      # Music player control icons
-├── SecretImages/                                     # Optional images for easter egg
-└── UserMedia/                                        # Personal data (gitignored)
+├── secretImages/                                     # Optional images for easter egg
+└── userMedia/                                        # Personal data (gitignored)
     ├── memory.json                                   # Saved facts & notes (auto-created)
     ├── settings.json                                 # Local app settings
     └── paintings/                                    # Saved Paint PNGs
 ```
 
-The `UserMedia/` directory is created when Kinito starts. `memory.json` appears automatically when you first save a fact — nothing to copy or create by hand after `git clone`. The `paintings/` subfolder is created at startup (and again when saving a drawing).
+The `userMedia/` directory is created when Kinito starts. `memory.json` appears automatically when you first save a fact — nothing to copy or create by hand after `git clone`. The `paintings/` subfolder is created at startup (and again when saving a drawing).
 
 If a sprite is missing, Kinito falls back to `Standing/KinitoNormal.png`.
 

@@ -760,7 +760,7 @@ class PaintWindow:
                 pass
 
     def save(self) -> str | None:
-        """Write the current painting to UserMedia/paintings and speak a save line."""
+        """Write the current painting to userMedia/paintings and speak a save line."""
         ensure_user_media_directories()
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         name = f"paint_{stamp}.png"

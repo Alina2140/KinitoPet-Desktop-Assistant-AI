@@ -194,7 +194,7 @@ def _configure_insecure_hf_backend_legacy() -> Callable[[], None]:
 
 
 def _ensure_whisper_files() -> str:
-    """Download the tiny model into UserMedia if needed; return local path."""
+    """Download the tiny model into userMedia if needed; return local path."""
     local_dir = whisper_model_directory()
     os.makedirs(local_dir, exist_ok=True)
     marker = os.path.join(local_dir, "model.bin")

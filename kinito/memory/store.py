@@ -102,7 +102,7 @@ def _write_text_atomic(path: str, payload: str, *, attempts: int = 5) -> None:
 
 
 class MemoryStore:
-    """Load, update, and persist user memory under GameAssets/UserMedia/."""
+    """Load, update, and persist user memory under gameAssets/userMedia/."""
 
     def __init__(self, directory: str | None = None) -> None:
         self._directory = directory or user_media_directory

@@ -11,7 +11,7 @@ except Exception:
     engine = None
 
 script_directory = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-assets_directory = os.path.join(script_directory, "GameAssets")
+assets_directory = os.path.join(script_directory, "gameAssets")
 sprites_directory = os.path.join(assets_directory, "sprites")
 sprites_standing_directory = os.path.join(sprites_directory, "Standing")
 sprites_crouching_directory = os.path.join(sprites_directory, "Crouching")
@@ -29,11 +29,11 @@ sprites_blushing_directory = os.path.join(sprites_directory, "Blushing")
 icons_directory = os.path.join(assets_directory, "icons")
 music_player_directory = os.path.join(assets_directory, "musicPlayer")
 sounds_directory = os.path.join(assets_directory, "sounds")
-secret_images_directory = os.path.join(assets_directory, "SecretImages")
-programs_directory = os.path.join(assets_directory, "Programs")
+secret_images_directory = os.path.join(assets_directory, "secretImages")
+programs_directory = os.path.join(assets_directory, "programs")
 ads_directory = os.path.join(assets_directory, "ads")
 websites_directory = os.path.join(assets_directory, "websites")
-user_media_directory = os.path.join(assets_directory, "UserMedia")
+user_media_directory = os.path.join(assets_directory, "userMedia")
 paintings_directory = os.path.join(user_media_directory, "paintings")
 emojis_directory = os.path.join(assets_directory, "emojis")
 emoji_sheet_path = os.path.join(emojis_directory, "emojis.png")
@@ -148,7 +148,7 @@ _IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp")
 
 
 def ensure_user_media_directories():
-    """Create GameAssets/UserMedia (and paintings/) if they do not exist yet."""
+    """Create gameAssets/userMedia (and paintings/) if they do not exist yet."""
     os.makedirs(user_media_directory, exist_ok=True)
     os.makedirs(paintings_directory, exist_ok=True)
 

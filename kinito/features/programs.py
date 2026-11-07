@@ -491,7 +491,7 @@ class ProgramsMixin:
             pass
 
     def show_image(self):
-        """Pick a random image from SecretImages and display it."""
+        """Pick a random image from secretImages and display it."""
         secret_images_folder = secret_images_directory
 
         if os.path.exists(secret_images_folder) and os.path.isdir(secret_images_folder):

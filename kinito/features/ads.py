@@ -1,4 +1,4 @@
-"""Rare surprise ad popups from GameAssets/ads/."""
+"""Rare surprise ad popups from gameAssets/ads/."""
 
 import random
 import threading

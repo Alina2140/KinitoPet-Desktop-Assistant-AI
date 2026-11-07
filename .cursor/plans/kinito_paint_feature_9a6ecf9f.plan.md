@@ -1,6 +1,6 @@
 ---
 name: Kinito Paint Feature
-overview: Eigenes Paint-Feature unter Actions mit Retro-UI (tkinter Canvas), Speichern als PNG unter UserMedia/paintings/, Galerie-Ansicht, sowie feste und KI-generierte Dialogzeilen — ohne Bildanalyse in v1.
+overview: Eigenes Paint-Feature unter Actions mit Retro-UI (tkinter Canvas), Speichern als PNG unter userMedia/paintings/, Galerie-Ansicht, sowie feste und KI-generierte Dialogzeilen — ohne Bildanalyse in v1.
 todos:
   - id: assets-lines
     content: paintings_directory + paint_lines.py + PAINT_PROMPT
@@ -33,7 +33,7 @@ isProject: false
 - **Menü:** eigener Actions-Button **Paint** → Untermenü **Draw** / **My Paintings** / Back
 - **KI & Bild:** in v1 **kein** Vision/Bild-Upload; Reaktionen über feste Lines + LLM-Rewrite/`ai_hint` (wie Hug). „KI malt mit“ und echte Bildverarbeitung sind **später** vielleicht, nicht Teil dieses Plans
 - **Formen v1:** Linie, Kreis, Rechteck
-- **Speicherort:** `GameAssets/UserMedia/paintings/*.png` (gitignore wie übriges UserMedia)
+- **Speicherort:** `gameAssets/userMedia/paintings/*.png` (gitignore wie übriges userMedia)
 
 ## Architektur
 
@@ -97,7 +97,7 @@ Neu: [`content/paint_lines.py`](content/paint_lines.py)
 
 ## Speichern & Galerie
 
-- [`kinito/assets.py`](kinito/assets.py): `paintings_directory = …/UserMedia/paintings`, in `ensure_user_media_directories()` anlegen
+- [`kinito/assets.py`](kinito/assets.py): `paintings_directory = …/userMedia/paintings`, in `ensure_user_media_directories()` anlegen
 - Speichern: Timestamp-Dateiname `paint_YYYYMMDD_HHMMSS.png`
 - Galerie: Speech-Bubble-Liste der Dateinamen (ggf. gekürzt) oder kurzes Toplevel mit Listbox + „Open“ — bei vielen Dateien besser **kleines Toplevel-Listbox** (wie Settings-Scroll), Anzeige über bestehende [`show_popup_image`](kinito/features/programs.py) / ähnlich
 - Leere Galerie → feste Line + Back

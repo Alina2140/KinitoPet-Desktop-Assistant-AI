@@ -52,7 +52,7 @@ def test_hex_to_rgb():
 
 
 def test_ensure_user_media_creates_paintings(tmp_path, monkeypatch):
-    media = tmp_path / "UserMedia"
+    media = tmp_path / "userMedia"
     paints = media / "paintings"
     monkeypatch.setattr("kinito.assets.user_media_directory", str(media))
     monkeypatch.setattr("kinito.assets.paintings_directory", str(paints))

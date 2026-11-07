@@ -1,4 +1,4 @@
-"""Persistent highscores for selected mini-games under UserMedia."""
+"""Persistent highscores for selected mini-games under userMedia."""
 
 from __future__ import annotations
 
@@ -61,7 +61,7 @@ def scores_file_path(directory: str | None = None) -> str:
 
 
 class GameScoresStore:
-    """Load and persist mini-game highscores under GameAssets/UserMedia/."""
+    """Load and persist mini-game highscores under gameAssets/userMedia/."""
 
     def __init__(self, directory: str | None = None) -> None:
         self._directory = directory or user_media_directory

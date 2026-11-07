@@ -29,7 +29,7 @@ Or install packages one by one. **Minimum to start:** `Pillow`, `pygame`, `pytts
 
 ### No voice / TTS silent
 
-1. Check that `GameAssets/Programs/balcon.exe` exists
+1. Check that `gameAssets/programs/balcon.exe` exists
 2. Ensure `pyttsx3` is installed: `pip install pyttsx3`
 3. Check Windows sound output device and volume
 
@@ -59,7 +59,7 @@ Run from a terminal to see the error:
 python Kinito.py
 ```
 
-Common causes: missing `GameAssets`, missing `Pillow`, or no display (won’t run headless).
+Common causes: missing `gameAssets`, missing `Pillow`, or no display (won’t run headless).
 
 ### Speech bubble buttons do nothing
 

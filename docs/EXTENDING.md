@@ -263,7 +263,7 @@ To add a **new category**:
 
 ### Sprites (PNG)
 
-Place files under `GameAssets/sprites/` in pose folders. Paths are defined in `kinito/assets.py`:
+Place files under `gameAssets/sprites/` in pose folders. Paths are defined in `kinito/assets.py`:
 
 | Constant | Default file |
 |----------|--------------|
@@ -285,7 +285,7 @@ If a file is missing, Kinito falls back to `Standing/KinitoNormal.png`.
 
 ### Sound effects (MP3)
 
-Also in `GameAssets/`. Used paths in `assets.py`:
+Also in `gameAssets/`. Used paths in `assets.py`:
 
 - `Woosh.mp3` — drag start
 - `Bomp.mp3` — drag release
@@ -316,7 +316,7 @@ POEMS = [
 When Kinito offers to show a generated image and you accept, he opens a random file from:
 
 ```
-GameAssets/SecretImages/
+gameAssets/secretImages/
 ```
 
 Supported formats: `.jpg`, `.jpeg`, `.png`

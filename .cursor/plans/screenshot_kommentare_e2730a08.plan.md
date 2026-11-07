@@ -50,7 +50,7 @@ flowchart TD
 
 | Darf | Darf nicht |
 |------|------------|
-| `ImageGrab.grab()` nur lokale Variable | Datei unter `UserMedia/`, Temp, Cache |
+| `ImageGrab.grab()` nur lokale Variable | Datei unter `userMedia/`, Temp, Cache |
 | Kurz downscalen (z.B. max. Kante ~768–1024 px, JPEG Qualität mittel) im RAM | Clipboard setzen |
 | Einmalig base64 im **localhost**-HTTP-Request an Ollama | Bild in `ConversationHistory` / `memory.json` |
 | Nur den **Text**-Kommentar behalten/sprechen | Bild loggen, debug-dump, speichern |

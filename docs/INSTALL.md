@@ -14,7 +14,7 @@ You are **not** installing a normal `.exe` app from a store. Kinito is a **Pytho
 
 1. **Python** — the language the app is written in (free from python.org)
 2. **Libraries** — extra code Kinito needs (installed automatically via `pip`)
-3. **GameAssets** — images and sounds (already in the project folder)
+3. **gameAssets** — images and sounds (already in the project folder)
 4. **Kinito.py** — the file you run to start the app
 
 Nothing here costs money. Nothing sends your data to a server.
@@ -40,18 +40,18 @@ cd KinitoPET-Python-Virtual-Assistant
 
 Replace `YOUR_USERNAME` with the actual repository owner.
 
-### Check: GameAssets must exist
+### Check: gameAssets must exist
 
 Open the folder. You should see:
 
 ```
-GameAssets/
+gameAssets/
 Kinito.py
 kinito/
 content/
 ```
 
-If `GameAssets` is missing, sprites and sounds will not load. Contact the repository owner or restore that folder from the full release.
+If `gameAssets` is missing, sprites and sounds will not load. Contact the repository owner or restore that folder from the full release.
 
 ---
 
@@ -201,13 +201,13 @@ After Steps 4–5 you can open Kinito **without** PowerShell or an IDE. There is
 
 ### Desktop shortcut with the Kinito icon
 
-Windows shortcuts can use a custom icon; a `.bat` file itself cannot. The project ships `GameAssets/icons/Kinito.ico` (plus an identical `Icon.ico` copy).
+Windows shortcuts can use a custom icon; a `.bat` file itself cannot. The project ships `gameAssets/icons/Kinito.ico` (plus an identical `Icon.ico` copy).
 
 1. Double-click **`Create-Desktop-Shortcut.bat`** once
 2. A **Kinito** shortcut appears on your Desktop (with the Kinito icon)
 3. Use that shortcut to start him from then on
 
-If you already made a shortcut via **Send to → Desktop**, either run `Create-Desktop-Shortcut.bat` (replaces/creates `Kinito.lnk`) or set the icon manually: right-click shortcut → **Properties** → **Change Icon…** → browse to `GameAssets\icons\Kinito.ico`.
+If you already made a shortcut via **Send to → Desktop**, either run `Create-Desktop-Shortcut.bat` (replaces/creates `Kinito.lnk`) or set the icon manually: right-click shortcut → **Properties** → **Change Icon…** → browse to `gameAssets\icons\Kinito.ico`.
 
 In the Windows “Change Icon” dialog, transparent areas often look **white** — that is the dialog background, not a white box baked into the file. On the desktop the icon should sit cleanly on your wallpaper. If Explorer still shows an old blurry icon, delete `Kinito.lnk` and run the script again (icons are cached by path).
 
@@ -228,7 +228,7 @@ In the Windows “Change Icon” dialog, transparent areas often look **white** 
 C:\Users\YourName\Documents\KinitoPET-Python-Virtual-Assistant
 ```
 
-6. Click **Change Icon…** and choose `GameAssets\icons\Kinito.ico`
+6. Click **Change Icon…** and choose `gameAssets\icons\Kinito.ico`
 
 `pythonw.exe` runs Python **without** a console window. If nothing appears, run `python Kinito.py` from PowerShell once (Step 6) to see the real error text.
 
@@ -286,9 +286,9 @@ python Kinito.py
 | Problem | Try this |
 |---------|----------|
 | Black window flashes and closes | Run `python Kinito.py` in PowerShell and read the red error text |
-| No character visible | Check `GameAssets/Kinito.png` exists |
+| No character visible | Check `gameAssets/Kinito.png` exists |
 | No sound | Check volume; install `pygame` |
-| No speech | Install `pyttsx3`; check `GameAssets/Programs/balcon.exe` |
+| No speech | Install `pyttsx3`; check `gameAssets/programs/balcon.exe` |
 | Permission errors | Run PowerShell as normal user, not from a restricted folder |
 
 See also **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)**.

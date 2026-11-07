@@ -1,9 +1,9 @@
 ---
 name: Kinito Memory System
-overview: "Ein hybrides, dateibasiertes Memory-System unter `GameAssets/UserMedia/`: deterministische Fakten aus Dialog-Antworten (mit „einmal fragen“-Filter) plus KI-gestützte Freitext-Notizen aus dem Chat — ohne Datenbank."
+overview: "Ein hybrides, dateibasiertes Memory-System unter `gameAssets/userMedia/`: deterministische Fakten aus Dialog-Antworten (mit „einmal fragen“-Filter) plus KI-gestützte Freitext-Notizen aus dem Chat — ohne Datenbank."
 todos:
   - id: memory-store
-    content: MemoryStore in kinito/memory/store.py mit memory.json unter GameAssets/UserMedia/, load/save, facts, answered_markers, notes
+    content: MemoryStore in kinito/memory/store.py mit memory.json unter gameAssets/userMedia/, load/save, facts, answered_markers, notes
     status: completed
   - id: memory-keys
     content: "content/memory_keys.py: Mapping persönlicher Dialog-Marker zu Fact-Keys + ASK_ONCE_MARKERS-Liste"
@@ -59,8 +59,8 @@ Deine Idee (KI schreibt Stichpunkte in eine Datei) passt gut zum Charakter von K
 
 | Datei | Inhalt | Wer schreibt |
 |-------|--------|--------------|
-| [`GameAssets/UserMedia/memory.json`](GameAssets/UserMedia/memory.json) | Strukturierte Fakten + Metadaten | Code (Dialog-Antworten) + validierte KI-Extraktion |
-| [`GameAssets/UserMedia/notes.txt`](GameAssets/UserMedia/notes.txt) | Menschenlesbare Stichpunkte (optional gespiegelt) | Code schreibt nach KI-Entscheidung |
+| [`gameAssets/userMedia/memory.json`](gameAssets/userMedia/memory.json) | Strukturierte Fakten + Metadaten | Code (Dialog-Antworten) + validierte KI-Extraktion |
+| [`gameAssets/userMedia/notes.txt`](gameAssets/userMedia/notes.txt) | Menschenlesbare Stichpunkte (optional gespiegelt) | Code schreibt nach KI-Entscheidung |
 
 Die KI **entscheidet**, was sie merken will — aber **schreibt nicht direkt auf die Platte**. Stattdessen liefert sie strukturiertes JSON (`add` / `remove` / `update`), und ein kleines Python-Modul validiert und persistiert. Das verhindert kaputte Dateien und erlaubt trotzdem „Kinito merkt sich das von selbst“.
 
@@ -99,7 +99,7 @@ flowchart LR
 
 **Neues Modul:** `kinito/memory/store.py`
 
-**Pfad:** `GameAssets/UserMedia/memory.json` (neben bestehendem [`user_media_directory`](kinito/assets.py))
+**Pfad:** `gameAssets/userMedia/memory.json` (neben bestehendem [`user_media_directory`](kinito/assets.py))
 
 **Schema (Vorschlag):**
 
@@ -291,7 +291,7 @@ Diese Punkte fehlen in der Grundidee, lohnen sich aber:
 2. **Memory anzeigen** — optionaler Menüpunkt „What do you remember?“ → Kinito liest kompakte Zusammenfassung vor (aus `as_prompt_block()`)
 3. **Persönliche Begrüßung** — Startup-/Chat-Greeting mit Namen, wenn bekannt
 4. **Zeitstempel auf Notizen** — alte Chat-Notizen später bereinigen oder überschreiben
-5. **Manuell editierbar** — `notes.txt` und `memory.json` liegen im User-Ordner; README-Eintrag in [`GameAssets/UserMedia/README.txt`](GameAssets/UserMedia/README.txt)
+5. **Manuell editierbar** — `notes.txt` und `memory.json` liegen im User-Ordner; README-Eintrag in [`gameAssets/userMedia/README.txt`](gameAssets/userMedia/README.txt)
 
 ---
 
@@ -311,7 +311,7 @@ Diese Punkte fehlen in der Grundidee, lohnen sich aber:
 | Neu | `kinito/memory/store.py`, `kinito/memory/extractor.py`, `content/memory_keys.py` |
 | Ändern | [`kinito/features/content.py`](kinito/features/content.py), [`content/dialog_registry.py`](content/dialog_registry.py), [`kinito/features/llm.py`](kinito/features/llm.py), [`content/llm_prompts.py`](content/llm_prompts.py), [`kinito/assets.py`](kinito/assets.py), [`kinito/app.py`](kinito/app.py) |
 | Tests | `tests/test_memory_store.py`, `tests/test_memory_questions.py`, `tests/test_memory_extractor.py` (mit Mock) |
-| Doku | [`README.md`](README.md) Abschnitt „Memory“, [`GameAssets/UserMedia/README.txt`](GameAssets/UserMedia/README.txt) |
+| Doku | [`README.md`](README.md) Abschnitt „Memory“, [`gameAssets/userMedia/README.txt`](gameAssets/userMedia/README.txt) |
 
 ---
 

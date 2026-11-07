@@ -13,9 +13,9 @@ from pathlib import Path
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
-SRC_PNG = ROOT / "GameAssets" / "icons" / "Icon.png"
-OUT_ICO = ROOT / "GameAssets" / "icons" / "Kinito.ico"
-OUT_ICO_LEGACY = ROOT / "GameAssets" / "icons" / "Icon.ico"
+SRC_PNG = ROOT / "gameAssets" / "icons" / "Icon.png"
+OUT_ICO = ROOT / "gameAssets" / "icons" / "Kinito.ico"
+OUT_ICO_LEGACY = ROOT / "gameAssets" / "icons" / "Icon.ico"
 SIZES = (16, 24, 32, 48, 64, 128, 256)
 
 

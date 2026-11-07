@@ -42,6 +42,6 @@ skills.lock.json
 credentials.json
 
 # User-specific memory (personal data — never commit)
-GameAssets/UserMedia/*
-!GameAssets/UserMedia/.gitkeep
-!GameAssets/UserMedia/README.txt
+gameAssets/userMedia/*
+!gameAssets/userMedia/.gitkeep
+!gameAssets/userMedia/README.txt

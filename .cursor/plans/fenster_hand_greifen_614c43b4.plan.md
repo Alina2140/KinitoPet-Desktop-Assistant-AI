@@ -35,7 +35,7 @@ isProject: false
 
 ## Visualisierung (Hand-Griff)
 
-Referenz: Sprites `GameAssets/sprites/Hand/HandToLeft.png` und `HandToRight.png` (hellblaue Handschuhe).
+Referenz: Sprites `gameAssets/sprites/Hand/HandToLeft.png` und `HandToRight.png` (hellblaue Handschuhe).
 
 ```text
   [Kinito] ----fliegen---->  |Fenster|
