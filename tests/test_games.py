@@ -440,6 +440,27 @@ def test_connect_four_full_column_rejects_drop():
     assert c4.drop_disc(board, 3, c4.KINITO) is None
 
 
+def test_connect_four_custom_board_sizes():
+    for cols, rows in ((9, 7), (11, 8)):
+        board = c4.new_board(rows, cols)
+        assert len(board) == rows and len(board[0]) == cols
+        assert c4.drop_disc(board, cols - 1, c4.PLAYER, rows, cols) == (rows - 1, cols - 1)
+        assert c4.valid_columns(board, cols) == list(range(cols))
+        # Fill a diagonal-ish win horizontally on the bottom row.
+        board2 = c4.new_board(rows, cols)
+        for col in range(4):
+            c4.drop_disc(board2, col, c4.PLAYER, rows, cols)
+        assert c4.check_winner(board2, rows, cols) == c4.PLAYER
+
+
+def test_connect_four_ai_works_on_big_board():
+    board = c4.new_board(7, 9)
+    for col in range(3):
+        c4.drop_disc(board, col, c4.KINITO, 7, 9)
+    col = c4.choose_ai_column(board, rows=7, cols=9)
+    assert col == 3
+
+
 def test_connect_four_horizontal_win():
     board = c4.new_board()
     row = c4.ROWS - 1

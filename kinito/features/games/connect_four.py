@@ -24,76 +24,98 @@ EMPTY_MARK = "○"
 DISC_MARK = "●"
 
 # Soft center bias for scoring (not a hard pick order).
-_CENTER_WEIGHT = (1, 2, 3, 4, 3, 2, 1)
+def _center_weight(col: int, cols: int) -> int:
+    """Symmetric center weight for a column of a *cols*-wide board."""
+    return min(col + 1, cols - col)
 
 
-def new_board() -> list[list[str]]:
-    """Create an empty 6x7 board (row 0 = top)."""
-    return [[EMPTY for _ in range(COLS)] for _ in range(ROWS)]
+# Selectable board sizes: (label, cols, rows). Classic is the original 7x6.
+BOARD_SIZES = [
+    ("Classic 7×6", 7, 6),
+    ("Big 9×7", 9, 7),
+    ("Huge 11×8", 11, 8),
+]
 
 
-def valid_columns(board: list[list[str]]) -> list[int]:
+def new_board(rows: int = ROWS, cols: int = COLS) -> list[list[str]]:
+    """Create an empty board (row 0 = top)."""
+    return [[EMPTY for _ in range(cols)] for _ in range(rows)]
+
+
+def valid_columns(board: list[list[str]], cols: int = COLS) -> list[int]:
     """Return columns that still have an empty top cell."""
-    return [col for col in range(COLS) if board[0][col] == EMPTY]
+    return [col for col in range(cols) if board[0][col] == EMPTY]
 
 
-def drop_disc(board: list[list[str]], col: int, player: str) -> tuple[int, int] | None:
+def drop_disc(
+    board: list[list[str]], col: int, player: str, rows: int = ROWS, cols: int = COLS
+) -> tuple[int, int] | None:
     """Drop *player*'s disc into *col*. Return (row, col) or None if full/invalid."""
-    if col < 0 or col >= COLS:
+    if col < 0 or col >= cols:
         return None
-    for row in range(ROWS - 1, -1, -1):
+    for row in range(rows - 1, -1, -1):
         if board[row][col] == EMPTY:
             board[row][col] = player
             return row, col
     return None
 
 
-def _four_in_a_row(board: list[list[str]], row: int, col: int, dr: int, dc: int) -> str | None:
+def _four_in_a_row(
+    board: list[list[str]], row: int, col: int, dr: int, dc: int,
+    rows: int = ROWS, cols: int = COLS,
+) -> str | None:
     """If four equal discs start at (row, col) along (dr, dc), return that player."""
     piece = board[row][col]
     if piece == EMPTY:
         return None
     for step in range(1, 4):
         r, c = row + dr * step, col + dc * step
-        if not (0 <= r < ROWS and 0 <= c < COLS) or board[r][c] != piece:
+        if not (0 <= r < rows and 0 <= c < cols) or board[r][c] != piece:
             return None
     return piece
 
 
-def check_winner(board: list[list[str]]) -> str | None:
+def check_winner(board: list[list[str]], rows: int = ROWS, cols: int = COLS) -> str | None:
     """Return PLAYER, KINITO, 'draw', or None if the game continues."""
     directions = ((0, 1), (1, 0), (1, 1), (1, -1))
-    for row in range(ROWS):
-        for col in range(COLS):
+    for row in range(rows):
+        for col in range(cols):
             for dr, dc in directions:
-                winner = _four_in_a_row(board, row, col, dr, dc)
+                winner = _four_in_a_row(board, row, col, dr, dc, rows, cols)
                 if winner:
                     return winner
-    if all(board[0][col] != EMPTY for col in range(COLS)):
+    if all(board[0][col] != EMPTY for col in range(cols)):
         return "draw"
     return None
 
 
-def winning_column(board: list[list[str]], player: str) -> int | None:
+def winning_column(
+    board: list[list[str]], player: str, rows: int = ROWS, cols: int = COLS
+) -> int | None:
     """Return a column where *player* would win immediately, if any."""
-    for col in valid_columns(board):
+    for col in valid_columns(board, cols):
         trial = copy.deepcopy(board)
-        if drop_disc(trial, col, player) is None:
+        if drop_disc(trial, col, player, rows, cols) is None:
             continue
-        if check_winner(trial) == player:
+        if check_winner(trial, rows, cols) == player:
             return col
     return None
 
 
-def _gives_opponent_immediate_win(board: list[list[str]], col: int) -> bool:
+def _gives_opponent_immediate_win(
+    board: list[list[str]], col: int, rows: int = ROWS, cols: int = COLS
+) -> bool:
     """True if dropping in *col* lets the player win on the next move."""
     trial = copy.deepcopy(board)
-    if drop_disc(trial, col, KINITO) is None:
+    if drop_disc(trial, col, KINITO, rows, cols) is None:
         return True
-    return winning_column(trial, PLAYER) is not None
+    return winning_column(trial, PLAYER, rows, cols) is not None
 
 
-def _adjacent_score(board: list[list[str]], row: int, col: int, player: str) -> int:
+def _adjacent_score(
+    board: list[list[str]], row: int, col: int, player: str,
+    rows: int = ROWS, cols: int = COLS,
+) -> int:
     """Score nearby friendly discs; horizontal/diagonal outweigh pure vertical."""
     score = 0
     weights = (
@@ -108,47 +130,55 @@ def _adjacent_score(board: list[list[str]], row: int, col: int, player: str) -> 
     )
     for (dr, dc), weight in weights:
         r, c = row + dr, col + dc
-        if 0 <= r < ROWS and 0 <= c < COLS and board[r][c] == player:
+        if 0 <= r < rows and 0 <= c < cols and board[r][c] == player:
             score += weight
     return score
 
 
-def _score_column(board: list[list[str]], col: int) -> int:
+def _score_column(
+    board: list[list[str]], col: int, rows: int = ROWS, cols: int = COLS
+) -> int:
     """Heuristic value of dropping Kinito's disc in *col*."""
     trial = copy.deepcopy(board)
-    placed = drop_disc(trial, col, KINITO)
+    placed = drop_disc(trial, col, KINITO, rows, cols)
     if placed is None:
         return -10_000
     row, c = placed
-    score = _CENTER_WEIGHT[c] * 2
-    score += _adjacent_score(trial, row, c, KINITO)
+    score = _center_weight(c, cols) * 2
+    score += _adjacent_score(trial, row, c, KINITO, rows, cols)
     # Prefer setting up an immediate threat the opponent must answer.
-    if winning_column(trial, KINITO) is not None:
+    if winning_column(trial, KINITO, rows, cols) is not None:
         score += 12
     # Discourage lonely vertical towers that gift diagonal setups.
-    own_in_col = sum(1 for r in range(ROWS) if board[r][c] == KINITO)
+    own_in_col = sum(1 for r in range(rows) if board[r][c] == KINITO)
     if own_in_col >= 1:
         score -= own_in_col * 2
     return score
 
 
-def choose_ai_column(board: list[list[str]], rng: random.Random | None = None) -> int:
+def choose_ai_column(
+    board: list[list[str]], rng: random.Random | None = None,
+    rows: int = ROWS, cols: int = COLS,
+) -> int:
     """Pick a column: win, block, then scored safe move with light randomness."""
     source = rng or random
-    win = winning_column(board, KINITO)
+    win = winning_column(board, KINITO, rows, cols)
     if win is not None:
         return win
-    block = winning_column(board, PLAYER)
+    block = winning_column(board, PLAYER, rows, cols)
     if block is not None:
         return block
 
-    valid = valid_columns(board)
+    valid = valid_columns(board, cols)
     if not valid:
         raise ValueError("no valid columns")
 
-    safe = [col for col in valid if not _gives_opponent_immediate_win(board, col)]
+    safe = [
+        col for col in valid
+        if not _gives_opponent_immediate_win(board, col, rows, cols)
+    ]
     pool = safe or valid
-    scored = [(_score_column(board, col), col) for col in pool]
+    scored = [(_score_column(board, col, rows, cols), col) for col in pool]
     best = max(score for score, _ in scored)
     # Near-best ties keep openings varied instead of always stacking center.
     top = [col for score, col in scored if score >= best - 2]
@@ -160,9 +190,13 @@ class ConnectFourGame:
 
     def __init__(self, app):
         self.app = app
+        self.rows = ROWS
+        self.cols = COLS
         self.board = new_board()
         self.buttons: list[list[Button]] = []
         self.status_label: Label | None = None
+        self._board_frame = None
+        self._size_var = None
         self.finished = False
         self._busy = False
         self.window = None
@@ -187,13 +221,45 @@ class ConnectFourGame:
         )
         self.status_label.pack(pady=8)
 
-        grid = create_uniform_grid(main, ROWS, COLS, uniform="connect_four")
-        mark_font = ("Segoe UI Symbol", 18, "bold")
+        # Board size picker: three options, rebuilds the grid on change.
+        size_row = Frame(main)
+        size_row.pack(pady=(0, 6))
+        self._size_var = tk.StringVar(value=BOARD_SIZES[0][0])
+        for label, cols, rows in BOARD_SIZES:
+            tk.Radiobutton(
+                size_row,
+                text=label,
+                value=label,
+                variable=self._size_var,
+                command=lambda c=cols, r=rows: self._set_size(c, r),
+            ).pack(side=tk.LEFT, padx=6)
 
+        self._board_frame = Frame(main)
+        self._board_frame.pack(fill=tk.BOTH, expand=True)
+        self._build_board()
+
+        Button(main, text="New Game", command=self._reset).pack(pady=(0, 10))
+        self.app._connect_four_game = self
+        self.window.bind("<Destroy>", self._on_destroy)
+
+    def _set_size(self, cols: int, rows: int):
+        """Switch to a new board size and start a fresh board."""
+        self.cols = cols
+        self.rows = rows
+        self._reset()
+
+    def _build_board(self):
+        """(Re)build the grid of cell buttons for the current size."""
+        for child in self._board_frame.winfo_children():
+            child.destroy()
+        grid = create_uniform_grid(
+            self._board_frame, self.rows, self.cols, uniform="connect_four"
+        )
+        mark_font = ("Segoe UI Symbol", 18, "bold")
         self.buttons = []
-        for row in range(ROWS):
+        for row in range(self.rows):
             row_buttons: list[Button] = []
-            for col in range(COLS):
+            for col in range(self.cols):
                 button = Button(
                     grid,
                     text=EMPTY_MARK,
@@ -207,10 +273,10 @@ class ConnectFourGame:
                 button.grid(row=row, column=col, padx=3, pady=3, sticky="nsew")
                 row_buttons.append(button)
             self.buttons.append(row_buttons)
-
-        Button(main, text="New Game", command=self._reset).pack(pady=(0, 10))
-        self.app._connect_four_game = self
-        self.window.bind("<Destroy>", self._on_destroy)
+        if self.window is not None:
+            self.window.geometry(
+                f"{self.cols * 56 + 40}x{self.rows * 56 + 160}"
+            )
 
     def _on_destroy(self, event):
         if event.widget is self.window and getattr(
@@ -220,25 +286,17 @@ class ConnectFourGame:
 
     def refresh_player_colors(self) -> None:
         """Recolor every placed player disc (called when the color setting changes)."""
-        for row in range(ROWS):
-            for col in range(COLS):
+        for row in range(self.rows):
+            for col in range(self.cols):
                 if self.board[row][col] == PLAYER:
                     self._refresh_cell(row, col)
 
     def _reset(self):
         """Start a fresh board."""
-        self.board = new_board()
+        self.board = new_board(self.rows, self.cols)
         self.finished = False
         self._busy = False
-        for row in range(ROWS):
-            for col in range(COLS):
-                self.buttons[row][col].config(
-                    text=EMPTY_MARK,
-                    fg="black",
-                    disabledforeground="gray50",
-                    bg=EMPTY_BG,
-                    state="normal",
-                )
+        self._build_board()
         if self.status_label:
             self.status_label.config(text="Click a column — your turn!")
 
@@ -293,13 +351,13 @@ class ConnectFourGame:
         """Handle a click aiming at column *col*."""
         if self.finished or self._busy:
             return
-        placed = drop_disc(self.board, col, PLAYER)
+        placed = drop_disc(self.board, col, PLAYER, self.rows, self.cols)
         if placed is None:
             return
         row, c = placed
         self._refresh_cell(row, c)
 
-        result = check_winner(self.board)
+        result = check_winner(self.board, self.rows, self.cols)
         if result:
             self._end_game(result)
             return
@@ -317,8 +375,10 @@ class ConnectFourGame:
         if self.finished:
             self._busy = False
             return
-        col = choose_ai_column(self.board)
-        placed = drop_disc(self.board, col, KINITO)
+        col = choose_ai_column(
+            self.board, rows=self.rows, cols=self.cols
+        )
+        placed = drop_disc(self.board, col, KINITO, self.rows, self.cols)
         self._busy = False
         if placed is None:
             if self.status_label:
@@ -327,7 +387,7 @@ class ConnectFourGame:
         row, c = placed
         self._refresh_cell(row, c)
 
-        result = check_winner(self.board)
+        result = check_winner(self.board, self.rows, self.cols)
         if result:
             self._end_game(result)
         elif self.status_label:
