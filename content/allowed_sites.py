@@ -89,6 +89,46 @@ ALLOWED_SITES = {
             "title": "Living Desert Zoo",
             "url": "https://www.livingdesert.org/animals/",
         },
+        {
+            "title": "explore.org — Live Animal Cams",
+            "url": "https://explore.org/livecams",
+        },
+        {
+            "title": "Smithsonian's National Zoo — Webcams",
+            "url": "https://nationalzoo.si.edu/webcams",
+        },
+        {
+            "title": "Monterey Bay Aquarium — Live Cams",
+            "url": "https://www.montereybayaquarium.org/animals/live-cams",
+        },
+        {
+            "title": "Cornell Lab — All About Birds",
+            "url": "https://www.allaboutbirds.org/",
+        },
+        {
+            "title": "eBird",
+            "url": "https://ebird.org/home",
+        },
+        {
+            "title": "iNaturalist",
+            "url": "https://www.inaturalist.org/",
+        },
+        {
+            "title": "Taronga Zoo",
+            "url": "https://taronga.org.au/",
+        },
+        {
+            "title": "Georgia Aquarium — Animals",
+            "url": "https://www.georgiaaquarium.org/",
+        },
+        {
+            "title": "The Dodo — Animals",
+            "url": "https://www.thedodo.com/",
+        },
+        {
+            "title": "Petfinder",
+            "url": "https://www.petfinder.com/",
+        },
     ],
     "knowledge": [
         {
@@ -179,6 +219,46 @@ ALLOWED_SITES = {
             "title": "NASA for Kids",
             "url": "https://www.nasa.gov/learning-resources/for-kids-and-students/",
         },
+        {
+            "title": "Wikipedia",
+            "url": "https://www.wikipedia.org/",
+        },
+        {
+            "title": "Internet Archive",
+            "url": "https://archive.org/",
+        },
+        {
+            "title": "Project Gutenberg — Free eBooks",
+            "url": "https://www.gutenberg.org/",
+        },
+        {
+            "title": "CIA World Factbook",
+            "url": "https://www.cia.gov/the-world-factbook/",
+        },
+        {
+            "title": "Old Maps Online",
+            "url": "https://www.oldmapsonline.org/",
+        },
+        {
+            "title": "Google Arts & Culture",
+            "url": "https://artsandculture.google.com/",
+        },
+        {
+            "title": "Math is Fun",
+            "url": "https://www.mathsisfun.com/",
+        },
+        {
+            "title": "OpenLearn — Free Courses",
+            "url": "https://www.open.edu/openlearn/",
+        },
+        {
+            "title": "Wolfram Demonstrations Project",
+            "url": "https://demonstrations.wolfram.com/",
+        },
+        {
+            "title": "The Wayback Machine",
+            "url": "https://web.archive.org/",
+        },
     ],
     "games": [
         {
@@ -268,6 +348,50 @@ ALLOWED_SITES = {
         {
             "title": "itch.io — Dungeon Crawlers",
             "url": "https://itch.io/games/tag-dungeon-crawler",
+        },
+        {
+            "title": "Internet Archive — MS-DOS Games",
+            "url": "https://archive.org/details/softwarelibrary_msdos_games",
+        },
+        {
+            "title": "The Internet Arcade",
+            "url": "https://archive.org/details/internetarcade",
+        },
+        {
+            "title": "ClassicReload",
+            "url": "https://classicreload.com/",
+        },
+        {
+            "title": "My Abandonware",
+            "url": "https://www.myabandonware.com/",
+        },
+        {
+            "title": "DOS Games Archive",
+            "url": "https://www.dosgamesarchive.com/",
+        },
+        {
+            "title": "RetroGames.cz",
+            "url": "https://www.retrogames.cz/",
+        },
+        {
+            "title": "Playclassic.games",
+            "url": "https://playclassic.games/",
+        },
+        {
+            "title": "Neave Interactive — Classic Games",
+            "url": "https://neave.com/",
+        },
+        {
+            "title": "Emupedia — EmuOS",
+            "url": "https://emupedia.net/beta/emuos/",
+        },
+        {
+            "title": "Windows 93 — Retro Desktop",
+            "url": "https://windows93.net/",
+        },
+        {
+            "title": "itch.io — 8-bit Games",
+            "url": "https://itch.io/games/tag-8-bit",
         },
     ],
     "horror": [
@@ -366,6 +490,54 @@ ALLOWED_SITES = {
         {
             "title": "KinitoPET — Store",
             "url": "https://www.kinitopet.com/store",
+        },
+        {
+            "title": "TV Tropes — Creepypasta",
+            "url": "https://tvtropes.org/pmwiki/pmwiki.php/Main/Creepypasta",
+        },
+        {
+            "title": "SCP Foundation — Series 4",
+            "url": "https://scp-wiki.wikidot.com/scp-series-4",
+        },
+        {
+            "title": "Creepypasta — Famous Rituals",
+            "url": "https://creepypasta.fandom.com/wiki/Category:Ritual",
+        },
+        {
+            "title": "The Slender Man Wiki",
+            "url": "https://theslenderman.fandom.com/",
+        },
+        {
+            "title": "Laughing Jack — Creepypasta Wiki",
+            "url": "https://creepypasta.fandom.com/wiki/Laughing_Jack",
+        },
+        {
+            "title": "Ben Drowned — Jadusable Wiki",
+            "url": "https://jadusable.fandom.com/",
+        },
+        {
+            "title": "Petscop Wiki",
+            "url": "https://petscop.fandom.com/",
+        },
+        {
+            "title": "Kane Pixels Backrooms Wiki",
+            "url": "https://kanepixelsbackrooms.fandom.com/",
+        },
+        {
+            "title": "Welcome Home — Clown Illustration",
+            "url": "https://www.clownillustration.com/",
+        },
+        {
+            "title": "Don't Hug Me I'm Scared Wiki",
+            "url": "https://donthugme.fandom.com/",
+        },
+        {
+            "title": "Chilla's Art Wiki",
+            "url": "https://chillas-art.fandom.com/",
+        },
+        {
+            "title": "Five Nights at Freddy's Wiki",
+            "url": "https://freddy-fazbears-pizza.fandom.com/",
         },
     ],
 }
