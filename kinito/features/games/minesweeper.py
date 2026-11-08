@@ -1,4 +1,4 @@
-"""Minesweeper game logic (9x9, 10 mines) — no UI."""
+"""Minesweeper game logic (16x16, 40 mines, classic intermediate) — no UI."""
 
 from __future__ import annotations
 
@@ -6,9 +6,9 @@ import random
 from collections import deque
 from typing import Literal
 
-ROWS = 9
-COLS = 9
-MINE_COUNT = 10
+ROWS = 16
+COLS = 16
+MINE_COUNT = 40
 CELL_COUNT = ROWS * COLS
 
 RevealResult = Literal["ok", "ignored", "lose", "win"]

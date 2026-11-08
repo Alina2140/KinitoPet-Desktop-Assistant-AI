@@ -1,4 +1,4 @@
-"""Minesweeper game window."""
+"""Minesweeper game window styled after the classic Windows game."""
 
 from __future__ import annotations
 
@@ -6,8 +6,7 @@ import tkinter as tk
 from tkinter import Button, Frame, Label
 
 from content import game_lines
-from kinito.assets import minesweeper_flag_icon_path
-from kinito.features.games.base import create_uniform_grid, open_game_window
+from kinito.features.games.base import open_game_window
 from kinito.features.games.minesweeper import (
     COLS,
     MINE_COUNT,
@@ -19,151 +18,357 @@ from kinito.features.games.minesweeper import (
     toggle_flag,
 )
 
+BG = "#c0c0c0"
+PANEL_BG = "#bdbdbd"
 FLAG = "F"
-FLAG_COLOR = "#dc2626"
+FLAG_COLOR = "#ff0000"
 MINE = "*"
 HIDDEN = ""
 
+# Classic Minesweeper digit colors.
 NUMBER_COLORS = {
-    1: "#2563eb",
-    2: "#16a34a",
-    3: "#dc2626",
-    4: "#7c3aed",
-    5: "#b45309",
-    6: "#0891b2",
-    7: "#111827",
-    8: "#6b7280",
+    1: "#0000ff",
+    2: "#008000",
+    3: "#ff0000",
+    4: "#000080",
+    5: "#800000",
+    6: "#008080",
+    7: "#000000",
+    8: "#808080",
 }
 
+CELL_FONT = ("Courier New", 13, "bold")
+LED_FONT = ("Courier", 16, "bold")
+SMILEY_FONT = ("Segoe UI Emoji", 12)
+SMILEY_PLAYING = "🙂"
+SMILEY_WIN = "😎"
+SMILEY_LOSE = "😵"
 
-def _load_flag_image(master) -> tk.PhotoImage | None:
-    """Return the red flag icon, or None so cells fall back to the FLAG letter."""
+
+def _led(parent, width: int = 3) -> Label:
+    """Return a red-on-black seven-segment-style counter label."""
+    led = Label(
+        parent,
+        text="0" * width,
+        font=LED_FONT,
+        fg="#ff0000",
+        bg="#000000",
+        padx=4,
+        pady=0,
+    )
+    return led
+
+
+CELL_PX = 26  # fixed pixel size of one board cell's inner tile
+
+
+def _tile_image(master, size: int, with_flag: bool) -> tk.PhotoImage | None:
+    """Return a *size* px grey tile; with_flag draws the classic red flag."""
     try:
-        return tk.PhotoImage(file=minesweeper_flag_icon_path, master=master)
-    except tk.TclError:
+        from PIL import Image, ImageDraw, ImageTk
+
+        tile = Image.new("RGBA", (size, size), BG)
+        if with_flag:
+            draw = ImageDraw.Draw(tile)
+            c = size // 2
+            pole_w = max(2, int(size * 0.07))
+            top = int(size * 0.10)
+            bottom = int(size * 0.82)
+            # Pole.
+            draw.line((c, top, c, bottom), fill="#000000", width=pole_w)
+            # Red triangular flag pointing right from the top of the pole.
+            flag_w = int(size * 0.42)
+            flag_h = int(size * 0.30)
+            draw.polygon(
+                [(c, top), (c + flag_w, top + flag_h // 2), (c, top + flag_h)],
+                fill="#ff0000",
+            )
+            # Base.
+            base_w = int(size * 0.42)
+            draw.rectangle(
+                (c - base_w // 2, bottom, c + base_w // 2, bottom + pole_w),
+                fill="#000000",
+            )
+        return ImageTk.PhotoImage(tile, master=master)
+    except Exception:
+        return None
+
+
+def _mine_tile_image(master, size: int) -> tk.PhotoImage | None:
+    """Return a *size* px tile with a drawn classic mine (ball + spikes)."""
+    try:
+        from PIL import Image, ImageDraw, ImageTk
+
+        tile = Image.new("RGBA", (size, size), BG)
+        draw = ImageDraw.Draw(tile)
+        c = size // 2
+        r = int(size * 0.30)
+        spike = int(size * 0.16)
+        w = max(2, int(size * 0.06))
+        black = "#000000"
+        # Spikes: vertical, horizontal, both diagonals.
+        draw.line((c, c - r - spike, c, c + r + spike), fill=black, width=w)
+        draw.line((c - r - spike, c, c + r + spike, c), fill=black, width=w)
+        draw.line(
+            (c - r - spike + 2, c - r - spike + 2, c + r + spike - 2, c + r + spike - 2),
+            fill=black,
+            width=w,
+        )
+        draw.line(
+            (c - r - spike + 2, c + r + spike - 2, c + r + spike - 2, c - r - spike + 2),
+            fill=black,
+            width=w,
+        )
+        draw.ellipse((c - r, c - r, c + r, c + r), fill=black)
+        hl = max(2, int(size * 0.10))
+        draw.ellipse(
+            (c - r + hl // 2, c - r + hl // 2, c - r + hl, c - r + hl), fill="#ffffff"
+        )
+        return ImageTk.PhotoImage(tile, master=master)
+    except Exception:
         return None
 
 
 class MinesweeperGame:
-    """9x9 minesweeper: left-click reveal, right-click flag."""
+    """16x16 minesweeper: left-click reveal, right-click flag, smiley to reset."""
 
     def __init__(self, app):
         self.app = app
         self.state = new_game()
         self.buttons: list[Button] = []
+        self.mine_led: Label | None = None
+        self.timer_led: Label | None = None
+        self.smiley: Button | None = None
         self.status_label: Label | None = None
         self.window = None
         self._flag_image: tk.PhotoImage | None = None
+        self._mine_image: tk.PhotoImage | None = None
+        self._blank_image: tk.PhotoImage | None = None
         self._ended = False
+        self._seconds = 0
+        self._timer_job = None
 
     def open(self):
         """Open the minesweeper game window."""
         self.window = open_game_window(
             self.app,
             "Minesweeper with Kinito",
-            420,
-            520,
-            min_width=360,
-            min_height=460,
+            560,
+            640,
+            min_width=480,
+            min_height=560,
         )
-        self._flag_image = _load_flag_image(self.window)
+        self.window.configure(bg=BG)
+        self._blank_image = _tile_image(self.window, CELL_PX, with_flag=False)
+        self._flag_image = _tile_image(self.window, CELL_PX, with_flag=True)
+        self._mine_image = _mine_tile_image(self.window, CELL_PX)
 
-        main = Frame(self.window)
-        main.pack(fill=tk.BOTH, expand=True)
+        # Scrollable container: the board can exceed the window when shrunk.
+        scroller = tk.Canvas(self.window, bg=BG, highlightthickness=0)
+        scrollbar = tk.Scrollbar(self.window, orient="vertical", command=scroller.yview)
+        scroller.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side="right", fill="y")
+        scroller.pack(side="left", fill="both", expand=True)
+        outer = Frame(scroller, bg=BG, bd=6, relief=tk.RAISED)
+        outer_window = scroller.create_window((0, 0), window=outer, anchor="nw")
 
-        self.status_label = Label(main, text=self._status_text())
-        self.status_label.pack(side=tk.TOP, pady=8)
+        def _sync_scroll_region(_event=None):
+            scroller.configure(scrollregion=scroller.bbox("all"))
+            scroller.itemconfigure(outer_window, width=scroller.winfo_width())
 
-        grid = create_uniform_grid(main, ROWS, COLS, uniform="minesweeper")
+        outer.bind("<Configure>", _sync_scroll_region)
+        scroller.bind("<Configure>", _sync_scroll_region)
+
+        def _on_mousewheel(event):
+            scroller.yview_scroll(int(-1 * (event.delta / 120)) or 1, "units")
+
+        self.window.bind_all("<MouseWheel>", _on_mousewheel, add="+")
+
+        def _on_destroy(event):
+            if event.widget is self.window:
+                try:
+                    self.window.unbind_all("<MouseWheel>")
+                except tk.TclError:
+                    pass
+
+        self.window.bind("<Destroy>", _on_destroy)
+
+        # Header: sunken panel with mine counter, smiley, timer — like the original.
+        header = Frame(outer, bg=BG, bd=3, relief=tk.SUNKEN)
+        header.pack(fill=tk.X, padx=4, pady=(4, 6))
+
+        header.columnconfigure(1, weight=1)
+        self.mine_led = _led(header)
+        self.mine_led.grid(row=0, column=0, padx=6, pady=3, sticky="w")
+
+        self.smiley = Button(
+            header,
+            text=SMILEY_PLAYING,
+            font=SMILEY_FONT,
+            width=2,
+            bd=3,
+            relief=tk.RAISED,
+            bg=BG,
+            activebackground=BG,
+            command=self._reset,
+        )
+        self.smiley.grid(row=0, column=1, pady=1)
+
+        self.timer_led = _led(header)
+        self.timer_led.grid(row=0, column=2, padx=6, pady=3, sticky="e")
+
+        # Board: sunken frame of beveled cells.
+        board = Frame(outer, bg=BG, bd=3, relief=tk.SUNKEN)
+        board.pack(pady=(0, 4))
         for index in range(ROWS * COLS):
             row, col = divmod(index, COLS)
             button = Button(
-                grid,
+                board,
                 text=HIDDEN,
-                width=3,
-                height=1,
+                font=CELL_FONT,
+                image=self._blank_image,
+                compound="center",
+                bd=3,
+                relief=tk.RAISED,
+                bg=BG,
+                activebackground=BG,
+                disabledforeground="black",
                 command=lambda i=index: self._on_left_click(i),
             )
-            button.grid(row=row, column=col, padx=2, pady=2, sticky="nsew")
+            button.grid(row=row, column=col)
             button.bind("<Button-3>", lambda event, i=index: self._on_right_click(i))
             button.bind("<Control-Button-1>", lambda event, i=index: self._on_right_click(i))
             self.buttons.append(button)
 
-        Button(main, text="New Game", command=self._reset).pack(side=tk.BOTTOM, pady=(0, 10))
-
-    def _status_text(self) -> str:
-        if self.state["finished"]:
-            if self.state["won"]:
-                return "You cleared the board! New Game to play again."
-            return "Boom! Mines revealed. New Game to try again."
-        return (
-            f"Mines left: {remaining_mines(self.state)}. "
-            "Left-click open, right-click flag."
+        self.status_label = Label(
+            outer,
+            text="Left-click open, right-click flag — click the face to restart.",
+            bg=BG,
+            fg="#404040",
+            font=("Segoe UI", 8),
         )
+        self.status_label.pack(side=tk.BOTTOM, pady=(0, 2))
+
+        self._refresh_counters()
+        self._tick_timer()
+
+    def _tick_timer(self):
+        if self.window is None:
+            return
+        try:
+            if not self.window.winfo_exists():
+                return
+        except tk.TclError:
+            return
+        if not self.state["finished"]:
+            self._seconds = min(999, self._seconds + 1)
+            self._set_led(self.timer_led, self._seconds)
+        self._timer_job = self.window.after(1000, self._tick_timer)
+
+    @staticmethod
+    def _set_led(led: Label | None, value: int):
+        if led is not None:
+            led.config(text=f"{max(0, value):03d}")
+
+    def _refresh_counters(self):
+        self._set_led(self.mine_led, remaining_mines(self.state))
+        self._set_led(self.timer_led, self._seconds)
+
+    def _set_smiley(self, face: str):
+        if self.smiley is not None:
+            self.smiley.config(text=face)
 
     def _reset(self):
         """Start a fresh board."""
         self.state = new_game()
         self._ended = False
+        self._seconds = 0
         for button in self.buttons:
-            button.config(text=HIDDEN, image="", fg="black", state="normal", relief=tk.RAISED)
-        if self.status_label:
-            self.status_label.config(text=self._status_text())
+            button.config(
+                text=HIDDEN,
+                image=self._blank_image,
+                compound="center",
+                font=CELL_FONT,
+                fg="black",
+                disabledforeground="black",
+                bg=BG,
+                state="normal",
+                relief=tk.RAISED,
+                bd=3,
+            )
+        self._set_smiley(SMILEY_PLAYING)
+        self._refresh_counters()
 
     def _refresh_cell(self, index: int):
         button = self.buttons[index]
         if index in self.state["flags"] and index not in self.state["revealed"]:
             if self._flag_image is not None:
-                button.config(text="", image=self._flag_image, state="normal")
+                button.config(
+                    text="", image=self._flag_image, compound="center", state="normal"
+                )
             else:
                 button.config(
-                    text=FLAG, fg=FLAG_COLOR, disabledforeground=FLAG_COLOR, state="normal"
+                    text=FLAG,
+                    image=self._blank_image,
+                    compound="center",
+                    fg=FLAG_COLOR,
+                    disabledforeground=FLAG_COLOR,
+                    state="normal",
                 )
             return
-        button.config(image="")
+        button.config(image=self._blank_image, compound="center")
         if index not in self.state["revealed"]:
             button.config(
                 text=HIDDEN,
                 fg="black",
-                disabledforeground="gray50",
+                disabledforeground="black",
                 state="normal",
                 relief=tk.RAISED,
             )
             return
+        # Revealed cells stay enabled so Windows renders their true fg color
+        # (disabled buttons draw paler). Clicks on them are ignored anyway.
         if index in self.state["mines"]:
-            button.config(
-                text=MINE,
-                fg="#111827",
-                disabledforeground="#111827",
-                state="disabled",
-                relief=tk.SUNKEN,
-            )
+            if self._mine_image is not None:
+                button.config(
+                    text="",
+                    image=self._mine_image,
+                    compound="center",
+                    state="normal",
+                    relief=tk.SOLID,
+                    bd=1,
+                )
+            else:
+                button.config(
+                    text=MINE,
+                    fg="black",
+                    state="normal",
+                    relief=tk.SOLID,
+                    bd=1,
+                )
             return
         count = neighbor_count(self.state, index)
         if count == 0:
             button.config(
                 text="",
-                fg="black",
-                disabledforeground="gray50",
-                state="disabled",
-                relief=tk.SUNKEN,
+                state="normal",
+                relief=tk.SOLID,
+                bd=1,
             )
         else:
             color = NUMBER_COLORS.get(count, "black")
-            # Windows ignores fg on disabled buttons — set disabledforeground too.
             button.config(
                 text=str(count),
                 fg=color,
-                disabledforeground=color,
-                state="disabled",
-                relief=tk.SUNKEN,
+                state="normal",
+                relief=tk.SOLID,
+                bd=1,
             )
 
     def _refresh_board(self):
         for index in range(ROWS * COLS):
             self._refresh_cell(index)
-        if self.status_label:
-            self.status_label.config(text=self._status_text())
+        self._refresh_counters()
 
     def _reveal_all_mines(self):
         for index in self.state["mines"]:
@@ -183,10 +388,16 @@ class MinesweeperGame:
         self._refresh_board()
         self._lock_board()
         if self.state["won"]:
-            line = game_lines.pick_game_line(self.app, game_lines.MINESWEEPER_WIN_LINES, "win").format(mines=MINE_COUNT)
+            self._set_smiley(SMILEY_WIN)
+            line = game_lines.pick_game_line(
+                self.app, game_lines.MINESWEEPER_WIN_LINES, "win"
+            ).format(mines=MINE_COUNT)
             outcome = "player_win"
         else:
-            line = game_lines.pick_game_line(self.app, game_lines.MINESWEEPER_LOSE_LINES, "lose")
+            self._set_smiley(SMILEY_LOSE)
+            line = game_lines.pick_game_line(
+                self.app, game_lines.MINESWEEPER_LOSE_LINES, "lose"
+            )
             outcome = "kinito_win"
         if hasattr(self.app, "on_game_outcome"):
             self.app.on_game_outcome(outcome)
@@ -208,6 +419,5 @@ class MinesweeperGame:
         if not toggle_flag(self.state, index):
             return
         self._refresh_cell(index)
-        if self.status_label:
-            self.status_label.config(text=self._status_text())
+        self._refresh_counters()
         return "break"
