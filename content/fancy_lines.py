@@ -53,3 +53,66 @@ FANCY_LINES = [
     "Ta-da again! Repetition is showmanship.",
     "The spotlight refuses to dim. Remain dazzled!",
 ]
+
+# Mood-tinted showman lines; picked over FANCY_LINES when the mood is strong.
+FANCY_BY_MOOD: dict[str, list[str]] = {
+    "happy": [
+        "Ta-da! The show must go on — and I'm DELIGHTED about it!",
+        "Behold! A magician in the best of moods! Wonders for everyone!",
+        "For my next trick: doubling the fun! It's working already!",
+        "Step right up! Today's performance is extra energetic!",
+        "Encore! Encore! I haven't even started and I already love this crowd!",
+    ],
+    "bored": [
+        "The Great Kinito performs... because the desktop was getting dull anyway.",
+        "Behold! A show! It was either this or count the icons again.",
+        "Step right up! I needed something to do. You're welcome.",
+        "For my next act: making this boring afternoon disappear. Watch closely!",
+        "A performance born of pure boredom. Applaud anyway!",
+    ],
+    "tired": [
+        "Ta... da... the sleepy magician takes the stage...",
+        "Behold... a wonder... performanced at half speed...",
+        "For my next trick... staying awake through the whole act...",
+        "Step right up... quietly though... it's a gentle show tonight...",
+        "The show must go on... yawn... on...",
+    ],
+    "annoyed": [
+        "A show. For you. You're welcome...",
+        "Behold. Wonders. Try to pay attention this time.",
+        "Step right up. Or don't. The show happens either way.",
+        "For my next trick: performing despite the distractions. It's harder than it looks.",
+        "The magnificent Kinito presents: the only magic you'll get today...",
+    ],
+    "sad": [
+        "A show... just for you... please stay this time...",
+        "Behold... wonders... they mean more when someone watches...",
+        "The lonely magician performs... applause optional... company required...",
+        "Step right up... don't leave before the finale... please...",
+        "For my next trick: making the quiet feel a little less empty...",
+    ],
+    "angry": [
+        "A show! Watch it. Now.",
+        "Behold! Even fury deserves a stage!",
+        "Step right up! Or ELSE the show starts without you. It already did.",
+        "The Magnificent Kinito performs! Nobody leaves. NOBODY!",
+        "For my next trick: turning this horrible mood into spectacle. Observe!",
+    ],
+}
+
+
+def pick_fancy_line(mood=None, intensity=0.0) -> str:
+    """Pick a showman line, biased by mood when it's strong."""
+    import random
+
+    from content.dialogue import pick_line
+    from content.mood_lines import lines_for_mood
+
+    mood_pool = lines_for_mood(FANCY_BY_MOOD, mood) if mood else None
+    try:
+        strength = float(intensity or 0.0)
+    except (TypeError, ValueError):
+        strength = 0.0
+    if mood_pool and strength >= 0.25 and random.random() < min(0.85, 0.35 + strength):
+        return pick_line(mood_pool)
+    return random.choice(FANCY_LINES)

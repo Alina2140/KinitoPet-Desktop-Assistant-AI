@@ -7,7 +7,7 @@ import time
 from content import dialogue as dlg
 from content import llm_prompts as prompts
 from content.facts import get_random_fact
-from content.fancy_lines import FANCY_LINES
+from content.fancy_lines import pick_fancy_line
 from content.poems import pick_poem
 from content.questions import QUESTIONS
 from content.special_days import (
@@ -377,7 +377,10 @@ class ContentMixin:
         if not self._can_initiate_spontaneous_speech():
             return
         self.speak(
-            random.choice(FANCY_LINES),
+            pick_fancy_line(
+                self.get_mood() if hasattr(self, "get_mood") else None,
+                self.get_mood_intensity() if hasattr(self, "get_mood_intensity") else 0.0,
+            ),
             skip_ai=True,
             speech_accompaniment_path=tune_file_path,
             speech_accompaniment_volume=self.POEM_BACKGROUND_MUSIC_VOLUME,
