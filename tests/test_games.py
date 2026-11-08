@@ -340,6 +340,31 @@ def test_snake_step_without_food_keeps_length():
     assert state["alive"] is True
 
 
+def test_tetris_next_preview_centers_every_piece():
+    from unittest.mock import MagicMock
+
+    from kinito.features.games.tetris import SHAPES
+    from kinito.features.games.tetris_ui import NEXT_CELL, PAD, TetrisGame
+
+    size = 4 * NEXT_CELL + PAD * 2
+    for piece_type in SHAPES:
+        game = TetrisGame.__new__(TetrisGame)
+        game.state = {"next_type": piece_type}
+        game.next_canvas = MagicMock()
+        game._draw_next()
+
+        rects = [
+            call.args
+            for call in game.next_canvas.mock_calls
+            if call[0] == "create_rectangle" and call.kwargs.get("outline") == ""
+        ]
+        assert rects, piece_type
+        center_x = (min(r[0] for r in rects) + max(r[2] for r in rects)) / 2
+        center_y = (min(r[1] for r in rects) + max(r[3] for r in rects)) / 2
+        assert abs(center_x - size / 2) <= 1, piece_type
+        assert abs(center_y - size / 2) <= 1, piece_type
+
+
 def test_snake_eating_plays_crunch_sound():
     from unittest.mock import MagicMock
 

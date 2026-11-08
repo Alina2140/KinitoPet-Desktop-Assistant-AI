@@ -295,9 +295,20 @@ class TetrisGame:
         self.next_canvas.create_rectangle(0, 0, size, size, fill=BG_COLOR, outline=GRID_COLOR)
         piece_type = self.state["next_type"]
         color = PIECE_COLORS[piece_type]
-        for x, y in cells_for(piece_type, 0, 0, 0):
+        cells = cells_for(piece_type, 0, 0, 0)
+        xs = [x for x, _y in cells]
+        ys = [y for _x, y in cells]
+        offset_x = (4 - (max(xs) - min(xs) + 1)) / 2 - min(xs)
+        offset_y = (4 - (max(ys) - min(ys) + 1)) / 2 - min(ys)
+        dx = offset_x * NEXT_CELL
+        dy = offset_y * NEXT_CELL
+        for x, y in cells:
+            left, top, right, bottom = self._cell_rect(x, y, cell=NEXT_CELL)
             self.next_canvas.create_rectangle(
-                *self._cell_rect(x, y, cell=NEXT_CELL),
+                left + dx,
+                top + dy,
+                right + dx,
+                bottom + dy,
                 fill=color,
                 outline="",
             )
