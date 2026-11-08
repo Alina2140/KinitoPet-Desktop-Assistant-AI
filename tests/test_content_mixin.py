@@ -221,6 +221,25 @@ def test_run_fancy_idle_aborts_when_chat_opens_before_speech(content):
     assert content.change_sprite.call_args_list[-1].args[0] == "normal"
 
 
+def test_run_fancy_idle_aborts_mid_speech_when_question_opens(content):
+    """A follow-up question (chat/play) during the show must stop the magician cycle."""
+    content._magician_sprites = ("magic", "magic2")
+    content.tk_img_magic_2 = "magic2"
+    content.perform_fancy_show = MagicMock()
+
+    def fake_sleep(_seconds):
+        content.talking = True
+        if content.change_sprite.call_count >= 2:
+            content._awaiting_response = True
+
+    with patch("kinito.features.content.time.sleep", side_effect=fake_sleep):
+        content._run_fancy_idle()
+
+    assert content._fancy_mode is False
+    assert content.change_sprite.call_count <= 4
+    content._awaiting_response = False
+
+
 def test_run_fancy_idle_skips_when_busy(content):
     content._can_initiate_spontaneous_speech.return_value = False
     content.perform_fancy_show = MagicMock()

@@ -483,9 +483,14 @@ class ContentMixin:
                     break
                 frame += 1
                 self.change_sprite(magician_sprites[frame % len(magician_sprites)])
+                blocked = self._fancy_idle_blocked_before_speech()
                 if self.talking:
                     speech_started = True
-                elif speech_started or waited >= self.FANCY_SPEECH_START_TIMEOUT or self._fancy_idle_blocked_before_speech():
+                    # Another action (game, chat, focus) took over mid-speech:
+                    # stop the magician cycle; the speech itself may continue.
+                    if blocked:
+                        break
+                elif speech_started or waited >= self.FANCY_SPEECH_START_TIMEOUT or blocked:
                     break
         finally:
             self._fancy_mode = False
