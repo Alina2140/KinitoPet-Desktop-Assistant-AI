@@ -32,12 +32,16 @@ from kinito.assets import (
     sprite_path_hug2,
     sprite_path_idle,
     sprite_path_idle_2,
+    sprite_path_idle_2_left,
     sprite_path_idle_2_page,
     sprite_path_idle_2_page_2,
+    sprite_path_idle_2_right,
     sprite_path_idle_glasses,
     sprite_path_idle_glasses_2,
+    sprite_path_idle_glasses_2_left,
     sprite_path_idle_glasses_2_page,
     sprite_path_idle_glasses_2_page_2,
+    sprite_path_idle_glasses_2_right,
     sprite_path_magic,
     sprite_path_magic_2,
     sprite_path_normal,
@@ -191,12 +195,16 @@ class FloatingAssistant(
         self.img_idle_2 = _open_sprite(sprite_path_idle_2, fallback)
         self.img_idle_2_page = _open_sprite(sprite_path_idle_2_page, fallback)
         self.img_idle_2_page_2 = _open_sprite(sprite_path_idle_2_page_2, fallback)
+        self.img_idle_2_left = _open_sprite(sprite_path_idle_2_left, fallback)
+        self.img_idle_2_right = _open_sprite(sprite_path_idle_2_right, fallback)
         self.img_idle_glasses = _open_sprite(sprite_path_idle_glasses, fallback)
         self.img_idle_glasses_2 = _open_sprite(sprite_path_idle_glasses_2, fallback)
         self.img_idle_glasses_2_page = _open_sprite(sprite_path_idle_glasses_2_page, fallback)
         self.img_idle_glasses_2_page_2 = _open_sprite(
             sprite_path_idle_glasses_2_page_2, fallback
         )
+        self.img_idle_glasses_2_left = _open_sprite(sprite_path_idle_glasses_2_left, fallback)
+        self.img_idle_glasses_2_right = _open_sprite(sprite_path_idle_glasses_2_right, fallback)
         self.img_magic = _open_sprite(sprite_path_magic, fallback)
         self.img_magic_2 = _open_sprite(sprite_path_magic_2, fallback)
         self.img_dizzy = _open_sprite(sprite_path_dizzy, fallback)
@@ -717,20 +725,33 @@ class FloatingAssistant(
         self.tk_img_idle_2 = photo(self.img_idle_2)
         self.tk_img_idle_2_page = photo(self.img_idle_2_page)
         self.tk_img_idle_2_page_2 = photo(self.img_idle_2_page_2)
+        self.tk_img_idle_2_left = photo(self.img_idle_2_left)
+        self.tk_img_idle_2_right = photo(self.img_idle_2_right)
         self.tk_img_idle_glasses = photo(self.img_idle_glasses)
         self.tk_img_idle_glasses_2 = photo(self.img_idle_glasses_2)
         self.tk_img_idle_glasses_2_page = photo(self.img_idle_glasses_2_page)
         self.tk_img_idle_glasses_2_page_2 = photo(self.img_idle_glasses_2_page_2)
+        self.tk_img_idle_glasses_2_left = photo(self.img_idle_glasses_2_left)
+        self.tk_img_idle_glasses_2_right = photo(self.img_idle_glasses_2_right)
         self.tk_img_magic = photo(self.img_magic)
         self.tk_img_magic_2 = photo(self.img_magic_2)
         self.tk_img_dizzy = photo(self.img_dizzy)
         self.tk_img_dizzy_2 = photo(self.img_dizzy_2)
         self.tk_img_dizzy_3 = photo(self.img_dizzy_3)
-        self._reading_sprites = (self.tk_img_idle, self.tk_img_idle_2)
+        self._reading_sprites = (
+            self.tk_img_idle,
+            self.tk_img_idle_2,
+            self.tk_img_idle_2_left,
+            self.tk_img_idle_2,
+            self.tk_img_idle_2_right,
+        )
         self._reading_page_sprites = (self.tk_img_idle_2_page, self.tk_img_idle_2_page_2)
         self._reading_glasses_sprites = (
             self.tk_img_idle_glasses,
             self.tk_img_idle_glasses_2,
+            self.tk_img_idle_glasses_2_left,
+            self.tk_img_idle_glasses_2,
+            self.tk_img_idle_glasses_2_right,
         )
         self._reading_glasses_page_sprites = (
             self.tk_img_idle_glasses_2_page,

@@ -76,10 +76,18 @@ sprite_path_idle = os.path.join(sprites_reading_directory, "Idle.png")
 sprite_path_idle_2 = os.path.join(sprites_reading_directory, "Idle2.png")
 sprite_path_idle_2_page = os.path.join(sprites_reading_directory, "Idle2Page.png")
 sprite_path_idle_2_page_2 = os.path.join(sprites_reading_directory, "Idle2Page2.png")
+sprite_path_idle_2_left = os.path.join(sprites_reading_directory, "Idle2Left.png")
+sprite_path_idle_2_right = os.path.join(sprites_reading_directory, "Idle2Right.png")
 sprite_path_idle_glasses = os.path.join(sprites_reading_directory, "IdleGlasses.png")
 sprite_path_idle_glasses_2 = os.path.join(sprites_reading_directory, "IdleGlasses2.png")
 sprite_path_idle_glasses_2_page = os.path.join(
     sprites_reading_directory, "IdleGlasses2Page.png"
+)
+sprite_path_idle_glasses_2_left = os.path.join(
+    sprites_reading_directory, "IdleGlasses2Left.png"
+)
+sprite_path_idle_glasses_2_right = os.path.join(
+    sprites_reading_directory, "IdleGlasses2Right.png"
 )
 sprite_path_idle_glasses_2_page_2 = os.path.join(
     sprites_reading_directory, "IdleGlasses2Page2.png"

@@ -843,6 +843,33 @@ def test_maybe_play_reading_page_turn_skips_stale_session(movement):
     movement.play_sfx.assert_not_called()
 
 
+def test_reading_idle_scans_book_with_rare_look_up(movement):
+    movement.change_sprite = MagicMock()
+    movement._reading_sprites = ("up", "book", "left", "book", "right")
+    movement.tk_img_idle = "up"
+    movement._reading_idle_session = 0
+    checks = {"n": 0}
+
+    def active_a_few_more_frames():
+        checks["n"] += 1
+        return checks["n"] <= 26
+
+    movement._is_reading_idle_active = MagicMock(side_effect=active_a_few_more_frames)
+    with (
+        patch("kinito.movement.random.random", return_value=0.99),
+        patch("kinito.movement.random.randint", return_value=100),
+        patch("kinito.movement.time.sleep"),
+    ):
+        movement._run_reading_idle()
+
+    sprites = [call.args[0] for call in movement.change_sprite.call_args_list]
+    assert len(sprites) > 8
+    assert sprites.count("up") / len(sprites) <= 0.3
+    sides = [s for s in sprites if s in ("left", "right")]
+    assert len(sides) >= 4
+    assert all(a != b for a, b in zip(sides, sides[1:], strict=False))
+
+
 def test_maybe_play_reading_page_turn_plays_when_active(movement):
     movement.play_sfx = MagicMock()
     movement.change_sprite = MagicMock()
@@ -945,7 +972,7 @@ def test_run_reading_idle_can_use_glasses_sprites(movement):
     ):
         movement._run_reading_idle()
 
-    movement.change_sprite.assert_called_with("glasses")
+    movement.change_sprite.assert_called_with("glasses2")
 
 
 def test_run_reading_idle_uses_normal_sprites_when_glasses_miss(movement):
@@ -964,7 +991,7 @@ def test_run_reading_idle_uses_normal_sprites_when_glasses_miss(movement):
     ):
         movement._run_reading_idle()
 
-    movement.change_sprite.assert_called_with("idle")
+    movement.change_sprite.assert_called_with("idle2")
 
 
 def _configure_mouse_attention(movement):

@@ -33,11 +33,12 @@ class MovementMixin:
     NORMAL_DEFAULT_LOOK_CHANCE = 0.82
     LOOK_AROUND_COOLDOWN_SECONDS = 10.0
     READING_DURATION_SECONDS = (10, 32)
-    READING_PAGE_TURN_CHANCE = 0.14
+    READING_PAGE_TURN_CHANCE = 0.06
     READING_PAGE_TURN_VOLUME = 0.3
     READING_PAGE_TURN_SOUND_LEAD_SECONDS = 2.00
     READING_PAGE_TURN_FRAME_SECONDS = 0.2
     READING_SPRITE_SWAP_SECONDS = 2.4
+    READING_LOOK_UP_FRAME_PERIOD = 4
     IDLE_WAIT_SHORT = (20, 40)
     IDLE_WAIT_NORMAL = (40, 80)
     IDLE_WAIT_LONG = (85, 140)
@@ -1780,8 +1781,12 @@ class MovementMixin:
         self._reading_idle_session = session
         self._reading_idle_active = True
         try:
+            # sprites[0] is the look-up pose; the rest cycle as the reading scan
+            # (book, left, book, right) so it looks like following lines.
+            scan_sprites = list(reading_sprites[1:]) or list(reading_sprites)
             frame = 0
-            self.change_sprite(reading_sprites[frame % len(reading_sprites)])
+            scan_index = 0
+            self.change_sprite(scan_sprites[0])
             if random.random() < self.READING_STORY_CHANCE:
                 threading.Thread(target=self.offer_random_story, daemon=True).start()
             elif random.random() < self.READING_WISDOM_CHANCE:
@@ -1797,7 +1802,12 @@ class MovementMixin:
                 if not self._is_reading_idle_active():
                     break
                 frame += 1
-                current = reading_sprites[frame % len(reading_sprites)]
+                # Mostly scan the book; glance up only every few frames.
+                if frame % self.READING_LOOK_UP_FRAME_PERIOD == 0:
+                    current = reading_sprites[0]
+                else:
+                    current = scan_sprites[scan_index % len(scan_sprites)]
+                    scan_index += 1
                 self.change_sprite(current)
                 self._maybe_play_reading_page_turn(
                     session,
