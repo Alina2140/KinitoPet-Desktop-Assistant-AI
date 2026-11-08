@@ -276,3 +276,68 @@ def test_print_current_datetime_includes_date_and_time():
     assert "Tuesday" in spoken
     assert "July" in spoken
     assert "28" in spoken
+
+
+def test_past_special_days_finds_recent_holiday():
+    from content.special_days import past_special_days
+
+    past = past_special_days(date(2026, 11, 2), lookback_days=7)
+    names = [day.name for day, _ in past]
+    assert "Halloween" in names
+    for _, ago in past:
+        assert 1 <= ago <= 7
+    assert not past_special_days(date(2026, 10, 30), lookback_days=1)
+
+
+def _missed_stub(missed, enabled=True):
+    from kinito.features.content import ContentMixin
+
+    class Stub(ContentMixin):
+        pass
+
+    stub = Stub()
+    stub._special_days_enabled = enabled
+    stub._can_initiate_spontaneous_speech = MagicMock(return_value=True)
+    stub.speak = MagicMock()
+    stub._memory = MagicMock()
+    stub._memory.is_topic_on_cooldown.return_value = False
+    stub._missed_special_days = missed
+    return stub
+
+
+def test_maybe_ask_missed_special_day_asks_about_missed_day():
+    from content import dialogue as dlg
+
+    stub = _missed_stub([("Halloween", "2026-10-31")])
+    assert stub.maybe_ask_missed_special_day() is True
+    line = stub.speak.call_args[0][0]
+    assert "Halloween" in line
+    assert line in [
+        t.format(name="Halloween")
+        for t in dlg.MISSED_DAY_LINES + sum(dlg.MISSED_DAY_BY_MOOD.values(), [])
+    ]
+    stub._memory.mark_topic_asked.assert_called_once_with(
+        "missed_special_day:2026-10-31"
+    )
+
+
+def test_maybe_ask_missed_special_day_skips_cooldown_and_disabled():
+    stub = _missed_stub([("Halloween", "2026-10-31")])
+    stub._memory.is_topic_on_cooldown.return_value = True
+    assert stub.maybe_ask_missed_special_day() is False
+    stub = _missed_stub([("Halloween", "2026-10-31")], enabled=False)
+    assert stub.maybe_ask_missed_special_day() is False
+    stub = _missed_stub([])
+    assert stub.maybe_ask_missed_special_day() is False
+
+
+def test_missed_day_line_pools_are_formattable_and_cover_moods():
+    from content import dialogue as dlg
+
+    assert len(dlg.MISSED_DAY_LINES) >= 5
+    for mood, lines in dlg.MISSED_DAY_BY_MOOD.items():
+        assert len(lines) >= 2, mood
+        assert len(set(lines)) == len(lines), mood
+    for line in dlg.MISSED_DAY_LINES + sum(dlg.MISSED_DAY_BY_MOOD.values(), []):
+        assert "{name}" in line
+        line.format(name="Halloween")

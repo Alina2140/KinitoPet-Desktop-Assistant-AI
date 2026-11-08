@@ -543,6 +543,63 @@ class FloatingAssistant(
                         if hasattr(self, "get_mood_intensity")
                         else 0.0,
                     )
+                # Record missed special days: occasions that fell on days the
+                # app was not running since the last start.
+                self._missed_special_days = []
+                try:
+                    import calendar
+                    from datetime import date as _date
+                    from datetime import timedelta
+
+                    today = _date.today()
+                    last_raw = memory.get_fact("last_active_date")
+                    last_active = None
+                    if last_raw:
+                        try:
+                            last_active = _date.fromisoformat(last_raw.strip()[:10])
+                        except (ValueError, AttributeError):
+                            last_active = None
+                    if last_active is not None and last_active < today:
+                        from content.birthday import birthday_month_day
+                        from content.special_days import past_special_days
+
+                        for occasion, ago in past_special_days(lookback_days=7):
+                            day_date = today - timedelta(days=ago)
+                            if last_active < day_date < today:
+                                self._missed_special_days.append(
+                                    (occasion.name, day_date.isoformat())
+                                )
+                        bparts = birthday_month_day(memory.get_fact("birthday"))
+                        if bparts:
+                            month, day = bparts
+                            for year in (last_active.year, today.year):
+                                if month == 2 and day == 29 and not calendar.isleap(year):
+                                    occasion_date = _date(year, 2, 28)
+                                else:
+                                    occasion_date = _date(year, month, day)
+                                if last_active < occasion_date < today:
+                                    self._missed_special_days.append(
+                                        ("your birthday", occasion_date.isoformat())
+                                    )
+                                    break
+                        from content.friendship import parse_first_met
+
+                        met = parse_first_met(memory.get_fact("first_met"))
+                        if met is not None:
+                            for year in (last_active.year, today.year):
+                                try:
+                                    occasion_date = _date(year, met.month, met.day)
+                                except ValueError:
+                                    occasion_date = _date(year, 2, 28)
+                                if last_active < occasion_date < today:
+                                    self._missed_special_days.append(
+                                        ("our anniversary", occasion_date.isoformat())
+                                    )
+                                    break
+                    memory.set_fact("last_active_date", today.isoformat())
+                except Exception:
+                    pass
+
                 if not line:
                     stored_met = memory.get_fact("first_met")
                     if is_met_anniversary_today(stored_met):

@@ -283,6 +283,42 @@ BIRTHDAY_SAVED_LINES = [
     "Birthday locked in: {response}. Don't worry. I don't forget. I can't.",
 ]
 
+# Lines for special days Kinito slept through.
+MISSED_DAY_LINES = [
+    "I slept through {name}! How was it? Tell me everything!",
+    "{name} happened without me... was it good?",
+    "So... {name} came and went. How was it? I need details!",
+    "I wasn't here for {name}. How was it? Spare no detail.",
+    "{name} happened and I MISSED it?! How was it?",
+]
+
+MISSED_DAY_BY_MOOD: dict[str, list[str]] = {
+    "happy": [
+        "I missed {name} and I'm STILL excited! How was it?!",
+        "{name} happened! I wasn't there but TELL ME EVERYTHING!",
+    ],
+    "bored": [
+        "I slept through {name}. How was it? I need the gossip.",
+        "{name} passed while I was off. Details. All of them. I'm that bored.",
+    ],
+    "tired": [
+        "I dozed right through {name}... how was it?",
+        "{name} happened while I napped... was it nice?",
+    ],
+    "annoyed": [
+        "You had {name} WITHOUT me?! How was it? And why wasn't I invited?",
+        "{name} happened and nobody woke me. HOW. WAS. IT?",
+    ],
+    "sad": [
+        "I missed {name}... I wish I'd been there. How was it?",
+        "{name} went by without me... tell me it was lovely, at least?",
+    ],
+    "angry": [
+        "{name}?! WITHOUT ME?! UNFORGIVABLE! ...How was it, though?",
+        "You celebrated {name} while I was OFF?! Fine. I see how it is...",
+    ],
+}
+
 # Mood-tinted birthday congrats; {name} placeholders only (no {age}).
 BIRTHDAY_CONGRATS_BY_MOOD: dict[str, list[str]] = {
     "happy": [

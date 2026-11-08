@@ -351,6 +351,25 @@ def upcoming_special_days(
     return upcoming
 
 
+def past_special_days(
+    moment: date | datetime | None = None, lookback_days: int = 5
+) -> list[tuple[SpecialDay, int]]:
+    """Return (day, days_ago) for special days in the last *lookback_days* (not today)."""
+    if moment is None:
+        moment = date.today()
+    elif isinstance(moment, datetime):
+        moment = moment.date()
+    past: list[tuple[SpecialDay, int]] = []
+    seen: set[str] = set()
+    for offset in range(1, lookback_days + 1):
+        for occasion in special_days_for(moment - timedelta(days=offset)):
+            if occasion.name in seen:
+                continue
+            seen.add(occasion.name)
+            past.append((occasion, offset))
+    return past
+
+
 def pick_special_day_line(day: SpecialDay | None = None, moment: date | datetime | None = None) -> str | None:
     """Return a formatted line for *day*, or look up today when *day* is None."""
     occasion = day if day is not None else special_day_for(moment)

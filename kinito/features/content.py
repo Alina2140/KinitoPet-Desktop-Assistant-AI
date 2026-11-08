@@ -115,6 +115,7 @@ class ContentMixin:
             ("countdown", self.maybe_announce_special_day_countdown),
             ("birthday", self.maybe_announce_birthday),
             ("anniversary", self.maybe_announce_met_anniversary),
+            ("missed_day", self.maybe_ask_missed_special_day),
             ("friendship", self.maybe_mention_friendship_duration),
         ]
         if hasattr(self, "mood_action_weights"):
@@ -218,6 +219,40 @@ class ContentMixin:
         )
         self.speak(line, skip_ai=True)
         return True
+
+    def maybe_ask_missed_special_day(self) -> bool:
+        """Ask how a special day was that passed while the app was not running."""
+        if not getattr(self, "_special_days_enabled", True):
+            return False
+        if not self._can_initiate_spontaneous_speech():
+            return False
+        memory = getattr(self, "_memory", None)
+        candidates = getattr(self, "_missed_special_days", None) or []
+        if memory is None or not candidates:
+            return False
+        random.shuffle(candidates)
+        for name, iso in candidates:
+            topic = f"missed_special_day:{iso}"
+            if memory.is_topic_on_cooldown(topic, days=1):
+                continue
+            mood = self.get_mood() if hasattr(self, "get_mood") else None
+            intensity = (
+                self.get_mood_intensity()
+                if hasattr(self, "get_mood_intensity")
+                else 0.0
+            )
+            if mood:
+                from content.mood_lines import pick_mood_aware_line
+
+                template = pick_mood_aware_line(
+                    dlg.MISSED_DAY_LINES, dlg.MISSED_DAY_BY_MOOD, mood, intensity
+                )
+            else:
+                template = random.choice(dlg.MISSED_DAY_LINES)
+            memory.mark_topic_asked(topic)
+            self.speak(template.format(name=name), 45, True)
+            return True
+        return False
 
     def maybe_announce_met_anniversary(self) -> bool:
         """Celebrate the anniversary of first meeting when it falls today."""
