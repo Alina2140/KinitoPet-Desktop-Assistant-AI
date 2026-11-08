@@ -41,6 +41,10 @@ class MovementMixin:
     READING_MOUSE_LOOK_CHANCE = 0.35
     READING_MOUSE_LOOK_COOLDOWN_SECONDS = (9.0, 22.0)
     READING_INTERRUPT_LINE_CHANCE = 0.35
+    READING_RELOCATE_CHANCE = 0.3
+    READING_RELOCATE_COOLDOWN_SECONDS = 15.0
+    READING_RELOCATE_MOODS = ("annoyed", "angry")
+    READING_RELOCATE_MIN_DISTANCE_PX = 380.0
     READING_LOOK_UP_FRAME_PERIOD = 4
     IDLE_WAIT_SHORT = (20, 40)
     IDLE_WAIT_NORMAL = (40, 80)
@@ -1798,6 +1802,62 @@ class MovementMixin:
         self._maybe_speak_reading_interrupt()
         return sprite
 
+    def _maybe_reading_relocate(self) -> bool:
+        """Roll whether an annoyed/angry Kinito surfs away from a close cursor."""
+        mood = self.get_mood() if hasattr(self, "get_mood") else None
+        if mood not in self.READING_RELOCATE_MOODS:
+            return None
+        if time.monotonic() < float(getattr(self, "_reading_relocate_ready_at", 0.0)):
+            return None
+        try:
+            cursor = self._cursor_screen_pos()
+        except (tk.TclError, AttributeError):
+            cursor = None
+        if cursor is None:
+            return None
+        center_x, center_y = self._buddy_center()
+        if math.hypot(cursor[0] - center_x, cursor[1] - center_y) > self.MOUSE_LOOK_RADIUS_PX:
+            return None
+        if random.random() >= self.READING_RELOCATE_CHANCE:
+            return None
+        self._reading_relocate_ready_at = (
+            time.monotonic() + self.READING_RELOCATE_COOLDOWN_SECONDS
+        )
+        return cursor
+
+    def _reading_relocate_target(self, cursor):
+        """Pick a roam target away from *cursor* (best of a few random spots)."""
+        try:
+            candidates = [self.random_position_on_screen() for _ in range(4)]
+        except Exception:
+            candidates = []
+        if not candidates:
+            return None
+        return max(
+            candidates,
+            key=lambda pos: math.hypot(pos[0] - cursor[0], pos[1] - cursor[1]),
+        )
+
+    def _surf_to_reading_spot(self, target) -> None:
+        """Surf to *target* and resume reading there when still appropriate."""
+        target_x, target_y = target
+        self.moving = True
+        try:
+            current_x = self.root.winfo_rootx()
+            self._render_surf_sprite(target_x - current_x, 0.0)
+            self.play_sfx(surf_file_path)
+            self.move_towards(target_x, target_y)
+        finally:
+            self.moving = False
+            self._finish_surf_movement()
+        self._maybe_speak_reading_interrupt()
+        if (
+            self._running
+            and not getattr(self, "paused", False)
+            and not getattr(self, "moving", False)
+        ):
+            self._run_reading_idle()
+
     def _maybe_speak_reading_interrupt(self) -> None:
         """Sometimes comment on being disturbed while reading (mood-dependent)."""
         if getattr(self, "_focus_mode", False):
@@ -1864,6 +1924,10 @@ class MovementMixin:
                 else:
                     current = scan_sprites[scan_index % len(scan_sprites)]
                     scan_index += 1
+                cursor_pos = self._maybe_reading_relocate()
+                if cursor_pos is not None:
+                    self._reading_relocate_pending = cursor_pos
+                    break
                 glance = self._maybe_reading_mouse_glance(
                     getattr(
                         self,
@@ -1882,6 +1946,12 @@ class MovementMixin:
         finally:
             if getattr(self, "_reading_idle_session", None) == session:
                 self._reading_idle_active = False
+        pending = getattr(self, "_reading_relocate_pending", None)
+        if pending is not None:
+            self._reading_relocate_pending = None
+            target = self._reading_relocate_target(pending)
+            if target is not None:
+                self._surf_to_reading_spot(target)
 
     def smooth_movement(self):
         """Background loop: roam the screen or trigger spontaneous speech/actions."""

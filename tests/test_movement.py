@@ -916,6 +916,48 @@ def test_reading_mouse_glance_speaks_interrupt_line(movement):
     assert movement.speak.call_args.args[0] in READING_INTERRUPT_BY_MOOD["angry"]
 
 
+def test_reading_relocate_only_when_grumpy_and_close(movement):
+    movement._reading_relocate_ready_at = 0.0
+    movement.get_mood = lambda: "neutral"
+    with patch("kinito.movement.random.random", return_value=0.0):
+        assert movement._maybe_reading_relocate() is None
+    movement.get_mood = lambda: "annoyed"
+    with patch("kinito.movement.random.random", return_value=0.0):
+        assert movement._maybe_reading_relocate() is not None
+    # Cooldown blocks an immediate second flee.
+    assert movement._maybe_reading_relocate() is None
+
+
+def test_reading_relocate_ignores_far_cursor(movement):
+    movement._reading_relocate_ready_at = 0.0
+    movement.get_mood = lambda: "angry"
+    movement.root.winfo_pointerx.return_value = 5000
+    movement.root.winfo_pointery.return_value = 5000
+    with patch("kinito.movement.random.random", return_value=0.0):
+        assert movement._maybe_reading_relocate() is None
+
+
+def test_reading_idle_surfs_away_when_relocate_hits(movement):
+    movement.change_sprite = MagicMock()
+    movement._reading_sprites = ("up", "book")
+    movement.tk_img_idle = "up"
+    movement._reading_idle_session = 0
+    movement._is_reading_idle_active = MagicMock(return_value=True)
+    movement.random_position_on_screen = MagicMock(return_value=(500.0, 400.0))
+    movement._surf_to_reading_spot = MagicMock()
+    movement.offer_random_story = MagicMock()
+    movement.say_random_wisdom = MagicMock()
+    movement.get_mood = lambda: "angry"
+    movement._reading_relocate_ready_at = 0.0
+    with (
+        patch("kinito.movement.random.random", return_value=0.0),
+        patch("kinito.movement.random.randint", return_value=100),
+        patch("kinito.movement.time.sleep"),
+    ):
+        movement._run_reading_idle()
+    movement._surf_to_reading_spot.assert_called_once_with((500.0, 400.0))
+
+
 def test_maybe_play_reading_page_turn_plays_when_active(movement):
     movement.play_sfx = MagicMock()
     movement.change_sprite = MagicMock()
