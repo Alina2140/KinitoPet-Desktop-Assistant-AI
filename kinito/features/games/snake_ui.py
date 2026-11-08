@@ -7,6 +7,7 @@ from tkinter import Button, Canvas, Frame, Label
 
 from content import dialogue as dlg
 from content import game_lines
+from kinito.assets import crunch_file_path
 from kinito.colors import brightness, darken_hex, lighten_hex, normalize_hex_color
 from kinito.features.games.base import open_game_window
 from kinito.features.games.snake import (
@@ -161,6 +162,10 @@ class SnakeGame:
             return
 
         result = step(self.state)
+        if result == "ate":
+            play_sfx = getattr(self.app, "play_sfx", None)
+            if callable(play_sfx):
+                play_sfx(crunch_file_path)
         self._draw()
         if self.status_label:
             self.status_label.config(text=self._status_text())

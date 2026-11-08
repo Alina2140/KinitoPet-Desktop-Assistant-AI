@@ -792,6 +792,7 @@ def _handle_credits(app, response: str) -> None:
     links = {
         dlg.BUTTON_CREDITS_STEAM: credits.CREDITS_URL_STEAM,
         dlg.BUTTON_CREDITS_GITHUB: credits.CREDITS_URL_GITHUB,
+        dlg.BUTTON_CREDITS_SNAKE_SOUND: credits.CREDITS_URL_SNAKE_SOUND,
     }
     url = links.get(response)
     if url:
@@ -1336,6 +1337,7 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
             buttons=(
                 dlg.BUTTON_CREDITS_STEAM,
                 dlg.BUTTON_CREDITS_GITHUB,
+                dlg.BUTTON_CREDITS_SNAKE_SOUND,
             ),
         ),
         _handle_credits,

@@ -118,6 +118,7 @@ def test_asset_subdirectories(directory_attr, relative_path):
         ("bomp_file_path", "Bomp.mp3", "sounds_directory"),
         ("tune_file_path", "TinyTune.mp3", "sounds_directory"),
         ("newbeginnings_file_path", "NewBeginningsPoemEdit.mp3", "sounds_directory"),
+        ("crunch_file_path", "crunch.wav", "sounds_directory"),
         ("balconexe_directory", "balcon.exe", "programs_directory"),
     ],
 )
@@ -184,6 +185,7 @@ def test_icon_paths_stay_under_icons_directory(path_attr):
         "newbeginnings_file_path",
         "page_turn_file_path",
         "snoring_file_path",
+        "crunch_file_path",
     ],
 )
 def test_sound_paths_stay_under_sounds_directory(path_attr):
@@ -287,6 +289,14 @@ def test_packaged_asset_files_exist_on_disk():
         assets.timer_file_path,
         assets.starttalk_file_path,
         assets.balconexe_directory,
+        assets.crunch_file_path,
     ]
     missing = [path for path in expected_files if not os.path.isfile(path)]
     assert missing == []
+
+
+def test_crunch_sound_is_registered_as_sfx_channel():
+    from kinito.sfx_channels import channel_by_id, channel_id_for_path
+
+    assert channel_id_for_path(assets.crunch_file_path) == "crunch"
+    assert channel_by_id("crunch")["path"] == assets.crunch_file_path

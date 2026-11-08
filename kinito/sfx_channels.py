@@ -7,6 +7,7 @@ from typing import TypedDict
 
 from kinito.assets import (
     bomp_file_path,
+    crunch_file_path,
     newbeginnings_file_path,
     page_turn_file_path,
     snoring_file_path,
@@ -86,6 +87,12 @@ SFX_CHANNELS: tuple[SfxChannel, ...] = (
         "id": "timer",
         "label": "Timer",
         "path": timer_file_path,
+        "kind": "sfx",
+    },
+    {
+        "id": "crunch",
+        "label": "Snake Crunch",
+        "path": crunch_file_path,
         "kind": "sfx",
     },
 )

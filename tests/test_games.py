@@ -340,6 +340,28 @@ def test_snake_step_without_food_keeps_length():
     assert state["alive"] is True
 
 
+def test_snake_eating_plays_crunch_sound():
+    from unittest.mock import MagicMock
+
+    from kinito.assets import crunch_file_path
+    from kinito.features.games.snake_ui import SnakeGame
+
+    app = MagicMock()
+    game = SnakeGame.__new__(SnakeGame)
+    game.app = app
+    game.state = snake_game.new_game(rng=random.Random(0))
+    game.state["food"] = (game.state["snake"][0][0] + 1, game.state["snake"][0][1])
+    game.highscore = 0
+    game.canvas = MagicMock()
+    game.status_label = MagicMock()
+    game.window = MagicMock()
+    game._running = True
+
+    game._tick()
+
+    app.play_sfx.assert_called_once_with(crunch_file_path)
+
+
 def test_snake_eating_grows_and_scores():
     state = snake_game.new_game(rng=random.Random(0))
     head = state["snake"][0]

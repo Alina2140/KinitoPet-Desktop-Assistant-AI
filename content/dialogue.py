@@ -2118,6 +2118,7 @@ BUTTON_KNOWN_SINCE = "Known Since"
 BUTTON_SHOW_CREDITS = "Credits"
 BUTTON_CREDITS_STEAM = "KinitoPET on Steam"
 BUTTON_CREDITS_GITHUB = "GitHub (TimTamCoder)"
+BUTTON_CREDITS_SNAKE_SOUND = "Snake sound (GitHub)"
 BUTTON_SAY_GOODBYE = "Goodbye"
 
 # Backwards-compatible aliases
