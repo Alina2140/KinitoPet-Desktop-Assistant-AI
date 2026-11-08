@@ -16,6 +16,7 @@ sprites_directory = os.path.join(assets_directory, "sprites")
 sprites_standing_directory = os.path.join(sprites_directory, "Standing")
 sprites_crouching_directory = os.path.join(sprites_directory, "Crouching")
 sprites_reading_directory = os.path.join(sprites_directory, "Reading")
+sprites_reading_glasses_directory = os.path.join(sprites_directory, "ReadingGlasses")
 sprites_magic_directory = os.path.join(sprites_directory, "Magic")
 sprites_dizzy_directory = os.path.join(sprites_directory, "Dizzy")
 sprites_surfing_directory = os.path.join(sprites_directory, "Surfing")
@@ -73,24 +74,52 @@ _STANDING_DIRECTION_SUFFIXES: dict[str, str] = {
 sprite_path_normal = os.path.join(sprites_standing_directory, SPRITE_NORMAL_DEFAULT)
 sprite_path_crouching = os.path.join(sprites_crouching_directory, SPRITE_CROUCHING_DEFAULT)
 sprite_path_idle = os.path.join(sprites_reading_directory, "Idle.png")
-sprite_path_idle_2 = os.path.join(sprites_reading_directory, "Idle2.png")
-sprite_path_idle_2_page = os.path.join(sprites_reading_directory, "Idle2Page.png")
-sprite_path_idle_2_page_2 = os.path.join(sprites_reading_directory, "Idle2Page2.png")
-sprite_path_idle_2_left = os.path.join(sprites_reading_directory, "Idle2Left.png")
-sprite_path_idle_2_right = os.path.join(sprites_reading_directory, "Idle2Right.png")
-sprite_path_idle_glasses = os.path.join(sprites_reading_directory, "IdleGlasses.png")
-sprite_path_idle_glasses_2 = os.path.join(sprites_reading_directory, "IdleGlasses2.png")
-sprite_path_idle_glasses_2_page = os.path.join(
-    sprites_reading_directory, "IdleGlasses2Page.png"
+sprite_path_idle_page = os.path.join(sprites_reading_directory, "IdlePage.png")
+sprite_path_idle_page_2 = os.path.join(sprites_reading_directory, "IdlePage2.png")
+sprite_path_idle_left = os.path.join(sprites_reading_directory, "IdleLeft.png")
+sprite_path_idle_right = os.path.join(sprites_reading_directory, "IdleRight.png")
+sprite_path_idle_top = os.path.join(sprites_reading_directory, "IdleTop.png")
+sprite_path_idle_bottom = os.path.join(sprites_reading_directory, "IdleBottom.png")
+sprite_path_idle_left_top = os.path.join(sprites_reading_directory, "IdleLeftTop.png")
+sprite_path_idle_right_top = os.path.join(sprites_reading_directory, "IdleRightTop.png")
+sprite_path_idle_left_bottom = os.path.join(
+    sprites_reading_directory, "IdleLeftBottom.png"
 )
-sprite_path_idle_glasses_2_left = os.path.join(
-    sprites_reading_directory, "IdleGlasses2Left.png"
+sprite_path_idle_right_bottom = os.path.join(
+    sprites_reading_directory, "IdleRightBottom.png"
 )
-sprite_path_idle_glasses_2_right = os.path.join(
-    sprites_reading_directory, "IdleGlasses2Right.png"
+sprite_path_idle_glasses = os.path.join(
+    sprites_reading_glasses_directory, "IdleGlasses.png"
 )
-sprite_path_idle_glasses_2_page_2 = os.path.join(
-    sprites_reading_directory, "IdleGlasses2Page2.png"
+sprite_path_idle_glasses_page = os.path.join(
+    sprites_reading_glasses_directory, "IdleGlassesPage.png"
+)
+sprite_path_idle_glasses_page_2 = os.path.join(
+    sprites_reading_glasses_directory, "IdleGlassesPage2.png"
+)
+sprite_path_idle_glasses_left = os.path.join(
+    sprites_reading_glasses_directory, "IdleGlassesLeft.png"
+)
+sprite_path_idle_glasses_right = os.path.join(
+    sprites_reading_glasses_directory, "IdleGlassesRight.png"
+)
+sprite_path_idle_glasses_top = os.path.join(
+    sprites_reading_glasses_directory, "IdleGlassesTop.png"
+)
+sprite_path_idle_glasses_bottom = os.path.join(
+    sprites_reading_glasses_directory, "IdleGlassesBottom.png"
+)
+sprite_path_idle_glasses_left_top = os.path.join(
+    sprites_reading_glasses_directory, "IdleGlassesLeftTop.png"
+)
+sprite_path_idle_glasses_right_top = os.path.join(
+    sprites_reading_glasses_directory, "IdleGlassesRightTop.png"
+)
+sprite_path_idle_glasses_left_bottom = os.path.join(
+    sprites_reading_glasses_directory, "IdleGlassesLeftBottom.png"
+)
+sprite_path_idle_glasses_right_bottom = os.path.join(
+    sprites_reading_glasses_directory, "IdleGlassesRightBottom.png"
 )
 sprite_path_magic = os.path.join(sprites_magic_directory, "Magic.png")
 sprite_path_magic_2 = os.path.join(sprites_magic_directory, "Magic2.png")
@@ -205,6 +234,31 @@ def standing_direction_from_path(path: str) -> str | None:
         if stem.startswith(prefix):
             suffix = stem[len(prefix) :]
             return _STANDING_DIRECTION_SUFFIXES.get(suffix)
+    return None
+
+
+# Reading sprite suffixes use <Side><Vertical> order (IdleLeftTop) instead of
+# the standing <Vertical><Side> order (KinitoNormalTopLeft).
+_READING_DIRECTION_SUFFIXES: dict[str, str] = {
+    "": LOOK_DIRECTION_CENTER,
+    "Left": "left",
+    "Right": "right",
+    "Top": "top",
+    "Bottom": "bottom",
+    "LeftTop": "top_left",
+    "RightTop": "top_right",
+    "LeftBottom": "bottom_left",
+    "RightBottom": "bottom_right",
+}
+
+
+def reading_direction_from_path(path: str) -> str | None:
+    """Return a look-direction id from a reading sprite filename, or None."""
+    stem = os.path.splitext(os.path.basename(path))[0]
+    # "IdleGlasses" must be checked before "Idle".
+    for prefix in ("IdleGlasses", "Idle"):
+        if stem.startswith(prefix):
+            return _READING_DIRECTION_SUFFIXES.get(stem[len(prefix) :])
     return None
 
 

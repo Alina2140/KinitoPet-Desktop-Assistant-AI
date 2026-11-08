@@ -38,6 +38,9 @@ class MovementMixin:
     READING_PAGE_TURN_SOUND_LEAD_SECONDS = 2.00
     READING_PAGE_TURN_FRAME_SECONDS = 0.2
     READING_SPRITE_SWAP_SECONDS = 2.4
+    READING_MOUSE_LOOK_CHANCE = 0.35
+    READING_MOUSE_LOOK_COOLDOWN_SECONDS = (9.0, 22.0)
+    READING_INTERRUPT_LINE_CHANCE = 0.35
     READING_LOOK_UP_FRAME_PERIOD = 4
     IDLE_WAIT_SHORT = (20, 40)
     IDLE_WAIT_NORMAL = (40, 80)
@@ -1764,6 +1767,59 @@ class MovementMixin:
         self.play_sfx(page_turn_file_path, volume=self.READING_PAGE_TURN_VOLUME)
         return True
 
+    def _maybe_reading_mouse_glance(self, dir_sprites):
+        """Sometimes glance briefly toward a nearby cursor instead of the book."""
+        if not isinstance(dir_sprites, dict) or not dir_sprites:
+            return None
+        now = time.monotonic()
+        if now < float(getattr(self, "_reading_mouse_look_ready_at", 0.0)):
+            return None
+        try:
+            cursor = self._cursor_screen_pos()
+        except (tk.TclError, AttributeError):
+            cursor = None
+        if cursor is None:
+            return None
+        center_x, center_y = self._buddy_center()
+        dx = cursor[0] - center_x
+        dy = cursor[1] - center_y
+        if math.hypot(dx, dy) > self.MOUSE_LOOK_RADIUS_PX:
+            return None
+        if random.random() >= self.READING_MOUSE_LOOK_CHANCE:
+            return None
+        direction = look_direction_from_delta(
+            dx, dy, deadzone_px=self.MOUSE_LOOK_DEADZONE_PX
+        )
+        sprite = dir_sprites.get(direction) or dir_sprites.get("center")
+        if sprite is None:
+            return None
+        low, high = self.READING_MOUSE_LOOK_COOLDOWN_SECONDS
+        self._reading_mouse_look_ready_at = now + random.uniform(low, high)
+        self._maybe_speak_reading_interrupt()
+        return sprite
+
+    def _maybe_speak_reading_interrupt(self) -> None:
+        """Sometimes comment on being disturbed while reading (mood-dependent)."""
+        if getattr(self, "_focus_mode", False):
+            return
+        if not getattr(self, "_startup_complete", True):
+            return
+        if hasattr(self, "_is_busy_with_speech") and self._is_busy_with_speech():
+            return
+        if not hasattr(self, "speak"):
+            return
+        if random.random() >= self.READING_INTERRUPT_LINE_CHANCE:
+            return
+        from content.reading_interrupt_lines import pick_reading_interrupt_line
+
+        mood = self.get_mood() if hasattr(self, "get_mood") else None
+        intensity = self.get_mood_intensity() if hasattr(self, "get_mood_intensity") else 0.0
+        self.speak(
+            pick_reading_interrupt_line(mood, intensity),
+            preserve_sprite=True,
+            skip_ai=True,
+        )
+
     def _run_reading_idle(self):
         """Animate book sprites, optionally play page-turn sounds, and trigger speech."""
         use_glasses = random.random() < self.IDLE_GLASSES_CHANCE
@@ -1808,6 +1864,15 @@ class MovementMixin:
                 else:
                     current = scan_sprites[scan_index % len(scan_sprites)]
                     scan_index += 1
+                glance = self._maybe_reading_mouse_glance(
+                    getattr(
+                        self,
+                        "_reading_glasses_dir_sprites" if use_glasses else "_reading_dir_sprites",
+                        {},
+                    )
+                )
+                if glance is not None:
+                    current = glance
                 self.change_sprite(current)
                 self._maybe_play_reading_page_turn(
                     session,

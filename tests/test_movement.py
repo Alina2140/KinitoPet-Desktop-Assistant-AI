@@ -870,6 +870,52 @@ def test_reading_idle_scans_book_with_rare_look_up(movement):
     assert all(a != b for a, b in zip(sides, sides[1:], strict=False))
 
 
+def test_reading_mouse_glance_uses_directional_sprite(movement):
+    movement._reading_dir_sprites = {"bottom_right": "glance-br", "center": "glance-c"}
+    movement._reading_mouse_look_ready_at = 0.0
+    movement.speak = MagicMock()
+    with (
+        patch("kinito.movement.random.random", return_value=0.0),
+        patch("kinito.movement.random.uniform", return_value=10.0),
+    ):
+        assert movement._maybe_reading_mouse_glance(movement._reading_dir_sprites) == (
+            "glance-br"
+        )
+    # Cooldown: no second glance right after.
+    assert movement._maybe_reading_mouse_glance(movement._reading_dir_sprites) is None
+
+
+def test_reading_mouse_glance_ignores_far_cursor(movement):
+    movement._reading_dir_sprites = {"bottom_right": "glance-br", "center": "glance-c"}
+    movement._reading_mouse_look_ready_at = 0.0
+    movement.root.winfo_pointerx.return_value = 5000
+    movement.root.winfo_pointery.return_value = 5000
+    with patch("kinito.movement.random.random", return_value=0.0):
+        assert (
+            movement._maybe_reading_mouse_glance(movement._reading_dir_sprites) is None
+        )
+
+
+def test_reading_mouse_glance_speaks_interrupt_line(movement):
+    movement._reading_dir_sprites = {"center": "glance-c"}
+    movement._reading_mouse_look_ready_at = 0.0
+    movement.speak = MagicMock()
+    movement.get_mood = lambda: "angry"
+    movement.get_mood_intensity = lambda: 0.9
+    with (
+        patch("kinito.movement.random.random", return_value=0.0),
+        patch("kinito.movement.random.uniform", return_value=10.0),
+    ):
+        movement._maybe_reading_mouse_glance(movement._reading_dir_sprites)
+    movement.speak.assert_called_once()
+    kwargs = movement.speak.call_args.kwargs
+    assert kwargs.get("preserve_sprite") is True
+    assert kwargs.get("skip_ai") is True
+    from content.reading_interrupt_lines import READING_INTERRUPT_BY_MOOD
+
+    assert movement.speak.call_args.args[0] in READING_INTERRUPT_BY_MOOD["angry"]
+
+
 def test_maybe_play_reading_page_turn_plays_when_active(movement):
     movement.play_sfx = MagicMock()
     movement.change_sprite = MagicMock()

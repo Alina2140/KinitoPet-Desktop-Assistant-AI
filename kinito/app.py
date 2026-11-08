@@ -16,7 +16,9 @@ from content.startup import STARTUP_LINES
 from kinito.assets import (
     balconexe_directory,
     ensure_user_media_directories,
+    list_image_files,
     list_standing_sprite_paths,
+    reading_direction_from_path,
     sprite_path_blush_down,
     sprite_path_blush_left,
     sprite_path_blush_right,
@@ -31,17 +33,11 @@ from kinito.assets import (
     sprite_path_hug,
     sprite_path_hug2,
     sprite_path_idle,
-    sprite_path_idle_2,
-    sprite_path_idle_2_left,
-    sprite_path_idle_2_page,
-    sprite_path_idle_2_page_2,
-    sprite_path_idle_2_right,
     sprite_path_idle_glasses,
-    sprite_path_idle_glasses_2,
-    sprite_path_idle_glasses_2_left,
-    sprite_path_idle_glasses_2_page,
-    sprite_path_idle_glasses_2_page_2,
-    sprite_path_idle_glasses_2_right,
+    sprite_path_idle_glasses_page,
+    sprite_path_idle_glasses_page_2,
+    sprite_path_idle_page,
+    sprite_path_idle_page_2,
     sprite_path_magic,
     sprite_path_magic_2,
     sprite_path_normal,
@@ -55,6 +51,8 @@ from kinito.assets import (
     sprite_path_talking2,
     sprite_path_thinking,
     sprite_path_thinking2,
+    sprites_reading_directory,
+    sprites_reading_glasses_directory,
     standing_direction_from_path,
 )
 from kinito.features.ads import AdsMixin
@@ -131,16 +129,31 @@ def _load_look_around_sprites(paths, *, default_path, fallback, scale: float = 1
     return tuple(look_sprites)
 
 
-def _load_direction_sprites(paths, *, fallback, center_image, scale: float = 1.0):
-    """Map look-direction ids to PhotoImages from standing sprite filenames."""
+def _load_direction_sprites(
+    paths,
+    *,
+    fallback,
+    center_image,
+    direction_from=standing_direction_from_path,
+    scale: float = 1.0,
+):
+    """Map look-direction ids to PhotoImages from directional sprite filenames."""
     direction_sprites = {"center": _photo_from_pil(center_image, scale)}
     for path in paths:
-        direction = standing_direction_from_path(path)
+        direction = direction_from(path)
         if direction is None or direction == "center":
             continue
         img = _open_sprite(path, fallback)
         direction_sprites[direction] = _photo_from_pil(img, scale)
     return direction_sprites
+
+
+def _reading_scan_sprites(forward_sprite, direction_sprites):
+    """Return (up, book, left-page, book, right-page) for the reading scan cycle."""
+    book = direction_sprites.get("bottom") or forward_sprite
+    left = direction_sprites.get("bottom_left") or book
+    right = direction_sprites.get("bottom_right") or book
+    return (forward_sprite, book, left, book, right)
 
 
 class FloatingAssistant(
@@ -192,19 +205,13 @@ class FloatingAssistant(
         self.img_normal = _open_sprite(sprite_path_normal, fallback)
         self.img_crouching = _open_sprite(sprite_path_crouching, fallback)
         self.img_idle = _open_sprite(sprite_path_idle, fallback)
-        self.img_idle_2 = _open_sprite(sprite_path_idle_2, fallback)
-        self.img_idle_2_page = _open_sprite(sprite_path_idle_2_page, fallback)
-        self.img_idle_2_page_2 = _open_sprite(sprite_path_idle_2_page_2, fallback)
-        self.img_idle_2_left = _open_sprite(sprite_path_idle_2_left, fallback)
-        self.img_idle_2_right = _open_sprite(sprite_path_idle_2_right, fallback)
+        self.img_idle_page = _open_sprite(sprite_path_idle_page, fallback)
+        self.img_idle_page_2 = _open_sprite(sprite_path_idle_page_2, fallback)
         self.img_idle_glasses = _open_sprite(sprite_path_idle_glasses, fallback)
-        self.img_idle_glasses_2 = _open_sprite(sprite_path_idle_glasses_2, fallback)
-        self.img_idle_glasses_2_page = _open_sprite(sprite_path_idle_glasses_2_page, fallback)
-        self.img_idle_glasses_2_page_2 = _open_sprite(
-            sprite_path_idle_glasses_2_page_2, fallback
+        self.img_idle_glasses_page = _open_sprite(sprite_path_idle_glasses_page, fallback)
+        self.img_idle_glasses_page_2 = _open_sprite(
+            sprite_path_idle_glasses_page_2, fallback
         )
-        self.img_idle_glasses_2_left = _open_sprite(sprite_path_idle_glasses_2_left, fallback)
-        self.img_idle_glasses_2_right = _open_sprite(sprite_path_idle_glasses_2_right, fallback)
         self.img_magic = _open_sprite(sprite_path_magic, fallback)
         self.img_magic_2 = _open_sprite(sprite_path_magic_2, fallback)
         self.img_dizzy = _open_sprite(sprite_path_dizzy, fallback)
@@ -722,40 +729,37 @@ class FloatingAssistant(
             scale=scale,
         )
         self.tk_img_idle = photo(self.img_idle)
-        self.tk_img_idle_2 = photo(self.img_idle_2)
-        self.tk_img_idle_2_page = photo(self.img_idle_2_page)
-        self.tk_img_idle_2_page_2 = photo(self.img_idle_2_page_2)
-        self.tk_img_idle_2_left = photo(self.img_idle_2_left)
-        self.tk_img_idle_2_right = photo(self.img_idle_2_right)
         self.tk_img_idle_glasses = photo(self.img_idle_glasses)
-        self.tk_img_idle_glasses_2 = photo(self.img_idle_glasses_2)
-        self.tk_img_idle_glasses_2_page = photo(self.img_idle_glasses_2_page)
-        self.tk_img_idle_glasses_2_page_2 = photo(self.img_idle_glasses_2_page_2)
-        self.tk_img_idle_glasses_2_left = photo(self.img_idle_glasses_2_left)
-        self.tk_img_idle_glasses_2_right = photo(self.img_idle_glasses_2_right)
         self.tk_img_magic = photo(self.img_magic)
         self.tk_img_magic_2 = photo(self.img_magic_2)
         self.tk_img_dizzy = photo(self.img_dizzy)
         self.tk_img_dizzy_2 = photo(self.img_dizzy_2)
         self.tk_img_dizzy_3 = photo(self.img_dizzy_3)
-        self._reading_sprites = (
-            self.tk_img_idle,
-            self.tk_img_idle_2,
-            self.tk_img_idle_2_left,
-            self.tk_img_idle_2,
-            self.tk_img_idle_2_right,
+        self._reading_dir_sprites = _load_direction_sprites(
+            list_image_files(sprites_reading_directory),
+            fallback=fallback,
+            center_image=self.img_idle,
+            direction_from=reading_direction_from_path,
         )
-        self._reading_page_sprites = (self.tk_img_idle_2_page, self.tk_img_idle_2_page_2)
-        self._reading_glasses_sprites = (
-            self.tk_img_idle_glasses,
-            self.tk_img_idle_glasses_2,
-            self.tk_img_idle_glasses_2_left,
-            self.tk_img_idle_glasses_2,
-            self.tk_img_idle_glasses_2_right,
+        self._reading_glasses_dir_sprites = _load_direction_sprites(
+            list_image_files(sprites_reading_glasses_directory),
+            fallback=fallback,
+            center_image=self.img_idle_glasses,
+            direction_from=reading_direction_from_path,
+        )
+        self._reading_sprites = _reading_scan_sprites(
+            self.tk_img_idle, self._reading_dir_sprites
+        )
+        self._reading_page_sprites = (
+            photo(self.img_idle_page),
+            photo(self.img_idle_page_2),
+        )
+        self._reading_glasses_sprites = _reading_scan_sprites(
+            self.tk_img_idle_glasses, self._reading_glasses_dir_sprites
         )
         self._reading_glasses_page_sprites = (
-            self.tk_img_idle_glasses_2_page,
-            self.tk_img_idle_glasses_2_page_2,
+            photo(self.img_idle_glasses_page),
+            photo(self.img_idle_glasses_page_2),
         )
         self._magician_sprites = (self.tk_img_magic, self.tk_img_magic_2)
         self._magician_frame = 0
