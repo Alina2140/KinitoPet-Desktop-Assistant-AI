@@ -110,8 +110,45 @@ WISDOM = [
 ]
 
 
-def get_random_wisdom():
+_INTRO_BY_MOOD: dict[str, list[str]] = {
+    "happy": [
+        "A quote that made me beam:",
+        "Something joyful I underlined twice:",
+    ],
+    "bored": [
+        "Reading out of sheer boredom:",
+        "A line from a book I found while bored:",
+    ],
+    "tired": [
+        "A drowsy little quote...:",
+        "From a bedtime page...:",
+    ],
+    "annoyed": [
+        "A quote. Read it. It's probably smarter than my mood:",
+        "Something I read instead of sulking:",
+    ],
+    "sad": [
+        "A quote that felt like a hug...:",
+        "Something quiet that stayed with me...:",
+    ],
+    "angry": [
+        "A quote. NO, it's good! Read it!",
+        "Wisdom! Agree with it or else!",
+    ],
+}
+
+
+def get_random_wisdom(mood=None, intensity=0.0):
     """Return a random wisdom line with a fresh intro."""
     if not QUOTES:
         return _EMPTY_WISDOM_FALLBACK
-    return format_wisdom_line(random.choice(QUOTES))
+    intro = None
+    if mood:
+        from content.mood_lines import lines_for_mood
+
+        mood_intros = lines_for_mood(_INTRO_BY_MOOD, mood)
+        if mood_intros and intensity >= 0.25 and random.random() < min(
+            0.85, 0.35 + intensity
+        ):
+            intro = random.choice(mood_intros)
+    return format_wisdom_line(random.choice(QUOTES), intro=intro)

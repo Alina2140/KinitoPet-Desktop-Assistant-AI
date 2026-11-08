@@ -242,12 +242,12 @@ class MemoryGame:
                 )
         self._expand_window_for_summary()
         if is_new_best:
-            line = dlg.pick_line(game_lines.MEMORY_NEW_BEST_LINES).format(
+            line = game_lines.pick_game_line(self.app, game_lines.MEMORY_NEW_BEST_LINES, "win").format(
                 moves=self.moves,
                 best=best,
             )
         else:
-            line = dlg.pick_line(game_lines.MEMORY_WIN_LINES).format(
+            line = game_lines.pick_game_line(self.app, game_lines.MEMORY_WIN_LINES, "win").format(
                 moves=self.moves,
                 best=best,
             )

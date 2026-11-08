@@ -535,6 +535,11 @@ class FloatingAssistant(
                         dlg_local.BIRTHDAY_CONGRATS_LINES,
                         name=name,
                         age=birthday_age(stored_birthday),
+                        pool_by_mood=dlg_local.BIRTHDAY_CONGRATS_BY_MOOD,
+                        mood=self.get_mood() if hasattr(self, "get_mood") else None,
+                        intensity=self.get_mood_intensity()
+                        if hasattr(self, "get_mood_intensity")
+                        else 0.0,
                     )
                 if not line:
                     stored_met = memory.get_fact("first_met")

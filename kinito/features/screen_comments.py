@@ -69,7 +69,9 @@ class ScreenCommentsMixin:
 
     def _screen_comment_worker(self):
         """Capture, optionally ask vision, drop pixels, then speak."""
-        line = pick_screen_comment_fallback()
+        mood = self.get_mood() if hasattr(self, "get_mood") else None
+        intensity = self.get_mood_intensity() if hasattr(self, "get_mood_intensity") else 0.0
+        line = pick_screen_comment_fallback(mood, intensity)
         image_bytes = None
         try:
             image_bytes = self._capture_screen_jpeg_bytes()

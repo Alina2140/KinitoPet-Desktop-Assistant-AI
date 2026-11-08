@@ -5,7 +5,6 @@ from __future__ import annotations
 import tkinter as tk
 from tkinter import Button, Canvas, Frame, Label
 
-from content import dialogue as dlg
 from content import game_lines
 from kinito.assets import crunch_file_path
 from kinito.colors import brightness, darken_hex, lighten_hex, normalize_hex_color
@@ -193,13 +192,13 @@ class SnakeGame:
             self.status_label.config(text=self._status_text())
 
         if is_new_high and score > 0:
-            line = dlg.pick_line(game_lines.SNAKE_NEW_HIGH_LINES).format(
+            line = game_lines.pick_game_line(self.app, game_lines.SNAKE_NEW_HIGH_LINES, "win").format(
                 score=score,
                 highscore=self.highscore,
             )
             outcome = "player_win"
         else:
-            line = dlg.pick_line(game_lines.SNAKE_GAME_OVER_LINES).format(
+            line = game_lines.pick_game_line(self.app, game_lines.SNAKE_GAME_OVER_LINES, "lose").format(
                 score=score,
                 highscore=self.highscore,
             )

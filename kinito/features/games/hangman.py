@@ -7,7 +7,6 @@ import tkinter as tk
 from tkinter import Button, Frame, Label
 from typing import Literal
 
-from content import dialogue as dlg
 from content import game_lines
 from content.hangman_words import pick_word
 from kinito.features.games.base import open_game_window
@@ -323,10 +322,10 @@ class HangmanGame:
         self._refresh()
         word = self.state["word"]
         if self.state["status"] == "won":
-            line = dlg.pick_line(game_lines.HANGMAN_WIN_LINES).format(word=word)
+            line = game_lines.pick_game_line(self.app, game_lines.HANGMAN_WIN_LINES, "win").format(word=word)
             outcome = "player_win"
         else:
-            line = dlg.pick_line(game_lines.HANGMAN_LOSE_LINES).format(word=word)
+            line = game_lines.pick_game_line(self.app, game_lines.HANGMAN_LOSE_LINES, "lose").format(word=word)
             outcome = "kinito_win"
         if hasattr(self.app, "on_game_outcome"):
             self.app.on_game_outcome(outcome)

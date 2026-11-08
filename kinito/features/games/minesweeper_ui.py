@@ -5,7 +5,6 @@ from __future__ import annotations
 import tkinter as tk
 from tkinter import Button, Frame, Label
 
-from content import dialogue as dlg
 from content import game_lines
 from kinito.assets import minesweeper_flag_icon_path
 from kinito.features.games.base import create_uniform_grid, open_game_window
@@ -184,10 +183,10 @@ class MinesweeperGame:
         self._refresh_board()
         self._lock_board()
         if self.state["won"]:
-            line = dlg.pick_line(game_lines.MINESWEEPER_WIN_LINES).format(mines=MINE_COUNT)
+            line = game_lines.pick_game_line(self.app, game_lines.MINESWEEPER_WIN_LINES, "win").format(mines=MINE_COUNT)
             outcome = "player_win"
         else:
-            line = dlg.pick_line(game_lines.MINESWEEPER_LOSE_LINES)
+            line = game_lines.pick_game_line(self.app, game_lines.MINESWEEPER_LOSE_LINES, "lose")
             outcome = "kinito_win"
         if hasattr(self.app, "on_game_outcome"):
             self.app.on_game_outcome(outcome)

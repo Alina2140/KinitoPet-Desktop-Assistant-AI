@@ -4,7 +4,6 @@ import random
 import tkinter as tk
 from tkinter import Button, Frame, Label
 
-from content import dialogue as dlg
 from content import game_lines
 from kinito.features.games.base import create_uniform_grid, open_game_window
 
@@ -203,15 +202,15 @@ class TicTacToeGame:
             button.config(state="disabled")
 
         if result == PLAYER:
-            line = dlg.pick_line(game_lines.TTT_PLAYER_WIN_LINES)
+            line = game_lines.pick_game_line(self.app, game_lines.TTT_PLAYER_WIN_LINES, "win")
             status = "You win!"
             outcome = "player_win"
         elif result == KINITO:
-            line = dlg.pick_line(game_lines.TTT_KINITO_WIN_LINES)
+            line = game_lines.pick_game_line(self.app, game_lines.TTT_KINITO_WIN_LINES, "lose")
             status = "Kinito wins!"
             outcome = "kinito_win"
         else:
-            line = dlg.pick_line(game_lines.TTT_DRAW_LINES)
+            line = game_lines.pick_game_line(self.app, game_lines.TTT_DRAW_LINES, "draw")
             status = "Draw!"
             outcome = "draw"
 

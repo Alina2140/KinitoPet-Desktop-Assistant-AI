@@ -53,7 +53,19 @@ class ContentMixin:
                 self.ask_memory_question(spec)
                 return
         pool = self._available_spontaneous_questions()
-        self.speak(random.choice(pool), 45, True)
+        from content.questions import QUESTIONS_BY_MOOD
+
+        mood = self.get_mood() if hasattr(self, "get_mood") else None
+        intensity = (
+            self.get_mood_intensity() if hasattr(self, "get_mood_intensity") else 0.0
+        )
+        if mood:
+            from content.mood_lines import pick_mood_aware_line
+
+            line = pick_mood_aware_line(pool, QUESTIONS_BY_MOOD, mood, intensity)
+        else:
+            line = random.choice(pool)
+        self.speak(line, 45, True)
 
     def _available_spontaneous_questions(self):
         """Return question pool entries that fit the current app state."""
@@ -198,6 +210,11 @@ class ContentMixin:
             dlg.BIRTHDAY_CONGRATS_LINES,
             name=name,
             age=birthday_age(stored),
+            pool_by_mood=dlg.BIRTHDAY_CONGRATS_BY_MOOD,
+            mood=self.get_mood() if hasattr(self, "get_mood") else None,
+            intensity=self.get_mood_intensity()
+            if hasattr(self, "get_mood_intensity")
+            else 0.0,
         )
         self.speak(line, skip_ai=True)
         return True
@@ -348,23 +365,51 @@ class ContentMixin:
         """Speak a random fun fact."""
         weight = self._seasonal_modifiers_if_enabled().get("kinito_fact_weight")
         kinito_weight = float(weight) if isinstance(weight, (int, float)) else None
-        self.speak(
-            get_random_fact(kinito_weight=kinito_weight),
-            ai_hint=prompts.FUN_FACT_PROMPT,
+        fact = get_random_fact(kinito_weight=kinito_weight)
+        mood = self.get_mood() if hasattr(self, "get_mood") else None
+        intensity = (
+            self.get_mood_intensity() if hasattr(self, "get_mood_intensity") else 0.0
         )
+        if mood:
+            from content.mood_lines import FACT_INTRO_BY_MOOD, lines_for_mood
+
+            intros = lines_for_mood(FACT_INTRO_BY_MOOD, mood)
+            if (
+                intros
+                and intensity >= 0.25
+                and random.random() < min(0.85, 0.35 + intensity)
+            ):
+                fact = f"{random.choice(intros)} {fact}"
+        self.speak(fact, ai_hint=prompts.FUN_FACT_PROMPT)
 
     def say_random_wisdom(self):
         """Share a random wisdom line during idle reading."""
         if not self._can_initiate_spontaneous_speech():
             return
-        self.speak(get_random_wisdom())
+        mood = self.get_mood() if hasattr(self, "get_mood") else None
+        intensity = (
+            self.get_mood_intensity() if hasattr(self, "get_mood_intensity") else 0.0
+        )
+        self.speak(get_random_wisdom(mood=mood, intensity=intensity))
 
     def offer_random_story(self):
         """Offer to tell a short story the user can accept or decline."""
         if not self._can_initiate_spontaneous_speech():
             return
         self._pending_story = random.choice(STORIES)
-        self.speak(dlg.pick_line(dlg.STORY_QUESTIONS), 45, True)
+        mood = self.get_mood() if hasattr(self, "get_mood") else None
+        intensity = (
+            self.get_mood_intensity() if hasattr(self, "get_mood_intensity") else 0.0
+        )
+        if mood:
+            from content.mood_lines import pick_mood_aware_line
+
+            line = pick_mood_aware_line(
+                dlg.STORY_QUESTIONS, dlg.STORY_QUESTIONS_BY_MOOD, mood, intensity
+            )
+        else:
+            line = dlg.pick_line(dlg.STORY_QUESTIONS)
+        self.speak(line, 45, True)
 
     def say_pending_story(self):
         """Tell the story queued by offer_random_story."""
@@ -448,7 +493,17 @@ class ContentMixin:
 
     def say_random_joke(self):
         """Tell a random corny joke."""
-        self.speak(dlg.pick_line(dlg.JOKES), ai_hint=prompts.JOKE_PROMPT)
+        mood = self.get_mood() if hasattr(self, "get_mood") else None
+        intensity = (
+            self.get_mood_intensity() if hasattr(self, "get_mood_intensity") else 0.0
+        )
+        if mood:
+            from content.mood_lines import pick_mood_aware_line
+
+            joke = pick_mood_aware_line(dlg.JOKES, dlg.JOKES_BY_MOOD, mood, intensity)
+        else:
+            joke = dlg.pick_line(dlg.JOKES)
+        self.speak(joke, ai_hint=prompts.JOKE_PROMPT)
 
     def ask_for_compliment(self):
         """Ask whether the user wants a compliment (yes/no dialog)."""

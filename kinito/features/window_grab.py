@@ -319,7 +319,9 @@ class WindowGrabMixin:
 
         if random.random() < self.WINDOW_GRAB_SPEAK_CHANCE and hasattr(self, "speak"):
             try:
-                self.speak(pick_window_grab_line(), skip_ai=True)
+                mood = self.get_mood() if hasattr(self, "get_mood") else None
+                intensity = self.get_mood_intensity() if hasattr(self, "get_mood_intensity") else 0.0
+                self.speak(pick_window_grab_line(mood, intensity), skip_ai=True)
             except Exception:
                 pass
 

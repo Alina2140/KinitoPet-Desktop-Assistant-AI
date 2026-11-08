@@ -45,3 +45,41 @@ AD_SURPRISE_LINES = [
     "I didn't click that. You didn't click that. It clicked itself. Cute.",
     "Billboard-in-a-box! Limited time offer: our attention. Taken!",
 ]
+
+AD_SURPRISE_BY_MOOD: dict[str, list[str]] = {
+    "happy": [
+        "An ad! How fun! Free decoration for the desktop!",
+        "Popup party! The internet loves us!",
+    ],
+    "bored": [
+        "An ad! Finally, something new to look at!",
+        "Popup! Entertainment is entertainment.",
+    ],
+    "tired": [
+        "Oh... an ad... wake me for real windows...",
+        "A popup... even ads are sleepy today...",
+    ],
+    "annoyed": [
+        "An ad?! On MY desktop?! Who invited commerce?!",
+        "Popup. Great. Exactly what nobody asked for.",
+    ],
+    "sad": [
+        "An ad... at least something wanted to visit...",
+        "A popup... it'll probably leave too...",
+    ],
+    "angry": [
+        "AN AD?! How DARE it exist on OUR desktop!",
+        "POPUP! I'm furious! And slightly intrigued!",
+    ],
+}
+
+
+def pick_ad_surprise_line(mood=None, intensity=0.0) -> str:
+    """Pick an ad-surprise line, biased by mood when it's strong."""
+    import random
+
+    from content.mood_lines import pick_mood_aware_line
+
+    if mood:
+        return pick_mood_aware_line(AD_SURPRISE_LINES, AD_SURPRISE_BY_MOOD, mood, intensity)
+    return random.choice(AD_SURPRISE_LINES)

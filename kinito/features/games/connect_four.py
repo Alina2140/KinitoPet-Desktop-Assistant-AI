@@ -7,7 +7,6 @@ import random
 import tkinter as tk
 from tkinter import Button, Frame, Label
 
-from content import dialogue as dlg
 from content import game_lines
 from kinito.features.games.base import create_uniform_grid, open_game_window
 
@@ -315,15 +314,15 @@ class ConnectFourGame:
         self._lock_board()
 
         if result == PLAYER:
-            line = dlg.pick_line(game_lines.CONNECT_FOUR_PLAYER_WIN_LINES)
+            line = game_lines.pick_game_line(self.app, game_lines.CONNECT_FOUR_PLAYER_WIN_LINES, "win")
             status = "You win! Four in a row."
             outcome = "player_win"
         elif result == KINITO:
-            line = dlg.pick_line(game_lines.CONNECT_FOUR_KINITO_WIN_LINES)
+            line = game_lines.pick_game_line(self.app, game_lines.CONNECT_FOUR_KINITO_WIN_LINES, "lose")
             status = "Kinito wins!"
             outcome = "kinito_win"
         else:
-            line = dlg.pick_line(game_lines.CONNECT_FOUR_DRAW_LINES)
+            line = game_lines.pick_game_line(self.app, game_lines.CONNECT_FOUR_DRAW_LINES, "draw")
             status = "Draw! Board is full."
             outcome = "draw"
 

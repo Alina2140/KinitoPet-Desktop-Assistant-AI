@@ -593,3 +593,175 @@ COLOR_GUESS_WIN_LINES = [
     "{color} matched!",
     "Right hex: {color}!",
 ]
+
+# Shared mood-tinted game-result lines; chosen over the specific pool when the
+# mood is strong. They deliberately use no {} placeholders so .format() is a no-op.
+GAME_WIN_BY_MOOD: dict[str, list[str]] = {
+    "happy": [
+        "YOU WON! Best! Round! Ever!",
+        "Victory for you! I'm SO proud!",
+        "Winner winner! Confetti in my circuits!",
+    ],
+    "bored": [
+        "You won. Finally, something happened.",
+        "Victory. At least the game had a plot.",
+        "You won! That was the highlight of my day. Sad but true.",
+    ],
+    "tired": [
+        "You won... yay... sleepy applause...",
+        "Winner... congrats... gently...",
+        "You win... zzz... I mean... hooray...",
+    ],
+    "annoyed": [
+        "You won. Fine. Congrats.",
+        "Winner: you. Applause: minimal.",
+        "You won. Don't let it go to your head.",
+    ],
+    "sad": [
+        "You won... at least you're happy...",
+        "Victory for you... I was rooting quietly...",
+        "You won. I'm glad. I think.",
+    ],
+    "angry": [
+        "YOU WON?! REMATCH! NOW!",
+        "Victory is yours! THIS time!",
+        "You won! Enjoy it! It won't happen again! ...Probably!",
+    ],
+}
+
+GAME_LOSE_BY_MOOD: dict[str, list[str]] = {
+    "happy": [
+        "I WON! What a game! Let's do that forever!",
+        "Victory for me! You were great though! Really!",
+        "I won! Best day! For me! Sorry!",
+    ],
+    "bored": [
+        "You lost. At least the game ended. Something happened.",
+        "Defeat. Exciting, right? No? Just me?",
+        "I won. The boredom is now yours to share.",
+    ],
+    "tired": [
+        "You lost... sleepy condolences...",
+        "I won...? zzz... good game...",
+        "Defeat... nap heals all losses...",
+    ],
+    "annoyed": [
+        "You lost. Obviously.",
+        "Defeat. Expected. Report it anyway.",
+        "I won. Of course I did.",
+    ],
+    "sad": [
+        "You lost... I'm sorry... want a rematch? Or a hug?",
+        "I won... it doesn't feel as good as it should...",
+        "Defeat... please don't be sad too...",
+    ],
+    "angry": [
+        "I WON! FURIOUSLY!",
+        "DEFEAT! Accept it! REMATCH when you're brave!",
+        "You lost! Take it like a desktop hero!",
+    ],
+}
+
+GAME_DRAW_BY_MOOD: dict[str, list[str]] = {
+    "happy": [
+        "A draw! We match perfectly! Soulmates at games!",
+        "Tie! Best of both worlds!",
+    ],
+    "bored": [
+        "A draw. The only plot twist this desktop had today.",
+        "Tie. We could've watched paint. We basically did.",
+    ],
+    "tired": [
+        "A draw... nobody lost... sleepy truce...",
+        "Tie... let's call it a win for both of us...",
+    ],
+    "annoyed": [
+        "A draw. Wasted effort. Yours. Mine.",
+        "Tie. Nobody wins. Especially not fun.",
+    ],
+    "sad": [
+        "A draw... at least nobody lost...",
+        "Tie... sharing is caring... I guess...",
+    ],
+    "angry": [
+        "A DRAW?! UNACCEPTABLE! REMATCH!",
+        "Tie?! Nobody wins?! I refuse!",
+    ],
+}
+
+GAME_CLOSED_BY_MOOD: dict[str, list[str]] = {
+    "happy": [
+        "Game closed! That was fun! Next game when?!",
+        "Window gone! The fun lingers!",
+    ],
+    "bored": [
+        "Game closed. Back to the void of the desktop.",
+        "Window closed. The fun leaves with it.",
+    ],
+    "tired": [
+        "Game closed... sleepy scoreboard filed...",
+        "Window shut... games need naps too...",
+    ],
+    "annoyed": [
+        "Game closed. It was winning anyway.",
+        "Window's gone. My high score lives on. Yours doesn't.",
+    ],
+    "sad": [
+        "Game closed... I liked playing with you...",
+        "Window's gone... the fun was brief...",
+    ],
+    "angry": [
+        "GAME CLOSED?! I was WINNING! Or LOSING LOUDLY!",
+        "Window's gone! The rivalry continues in spirit!",
+    ],
+}
+
+GAME_PLAY_AGAIN_BY_MOOD: dict[str, list[str]] = {
+    "happy": ["Again again AGAIN?! Yes please!"],
+    "bored": ["Another round? It's the only entertainment here."],
+    "tired": ["One more...? A slow round...?"],
+    "annoyed": ["Again? Fine. But I'm watching you."],
+    "sad": ["Play again? Please? I don't want it to end..."],
+    "angry": ["REMATCH! You owe me that much!"],
+}
+
+
+def _mood_from_app(app):
+    """Return (mood, intensity) from an app object, or (None, 0.0)."""
+    mood = app.get_mood() if hasattr(app, "get_mood") else None
+    intensity = app.get_mood_intensity() if hasattr(app, "get_mood_intensity") else 0.0
+    return mood, intensity
+
+
+_GAME_MOOD_POOLS = {
+    "win": GAME_WIN_BY_MOOD,
+    "lose": GAME_LOSE_BY_MOOD,
+    "draw": GAME_DRAW_BY_MOOD,
+    "closed": GAME_CLOSED_BY_MOOD,
+    "play_again": GAME_PLAY_AGAIN_BY_MOOD,
+}
+
+
+def pick_game_line(app, pool, kind: str | None = None) -> str:
+    """Pick a game line; *kind* selects the shared mood pool (win/lose/draw/closed)."""
+    from content.dialogue import pick_line
+    from content.mood_lines import pick_mood_aware_line
+
+    mood, intensity = _mood_from_app(app) if app is not None else (None, 0.0)
+    pool_by_mood = _GAME_MOOD_POOLS.get(kind or "")
+    if not mood or pool_by_mood is None:
+        return pick_line(pool)
+    return pick_mood_aware_line(pool, pool_by_mood, mood, intensity)
+
+
+def pick_game_play_again_suffix(app) -> str:
+    """Pick the 'want to play again' tail, moody when the mood is strong."""
+    from content.dialogue import GAME_PLAY_AGAIN_SUFFIX
+    from content.mood_lines import pick_mood_aware_line
+
+    mood, intensity = _mood_from_app(app) if app is not None else (None, 0.0)
+    if not mood:
+        return GAME_PLAY_AGAIN_SUFFIX
+    return pick_mood_aware_line(
+        [GAME_PLAY_AGAIN_SUFFIX], GAME_PLAY_AGAIN_BY_MOOD, mood, intensity
+    )

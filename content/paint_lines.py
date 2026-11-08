@@ -160,3 +160,226 @@ PAINT_RECALL_LINES = [
     "This painting called. I answered. You're next.",
 ]
 
+PAINT_OPEN_BY_MOOD: dict[str, list[str]] = {
+    "happy": [
+        "Paint time! Best idea we've had all day! Go go go!",
+        "Canvas! Color! US! This is going to be amazing!",
+    ],
+    "bored": [
+        "Paint. Finally, something to do. Draw me something weird.",
+        "A canvas! Boredom's natural enemy. Open!",
+    ],
+    "tired": [
+        "Paint...? Okay... slow, gentle strokes...",
+        "Canvas open... let's doodle... softly...",
+    ],
+    "annoyed": [
+        "Paint. Fine. Make it good. I'm judging.",
+        "Canvas open. Don't waste it.",
+    ],
+    "sad": [
+        "Paint... maybe colors will help... both of us...",
+        "Let's make something soft... please...",
+    ],
+    "angry": [
+        "PAINT! Channel the fury into ART!",
+        "Canvas open! Draw something before I rearrange windows!",
+    ],
+}
+
+PAINT_CLOSE_BY_MOOD: dict[str, list[str]] = {
+    "happy": [
+        "Paint closed! That was FUN! Same time tomorrow?",
+        "Brushes down! Masterpiece status: achieved!",
+    ],
+    "bored": [
+        "Paint closed. Back to nothing. Great.",
+        "Art break over. Boredom resumes.",
+    ],
+    "tired": [
+        "Paint closed... sleepy art critiqued itself...",
+        "Canvas away... the colors were nice... zzz...",
+    ],
+    "annoyed": [
+        "Paint closed. It was getting smug anyway.",
+        "Done painting? Good. My eyes needed a break.",
+    ],
+    "sad": [
+        "Paint closed... I liked watching you draw...",
+        "The canvas left... the colors stay with me...",
+    ],
+    "angry": [
+        "PAINT CLOSED! I was CRITIQUING!",
+        "Window's gone! The art better have been worth it!",
+    ],
+}
+
+PAINT_WHILE_BY_MOOD: dict[str, list[str]] = {
+    "happy": [
+        "YES! That stroke! More of that energy!",
+        "I LOVE where this is going! Keep going!",
+    ],
+    "bored": [
+        "Drawing. Watching. Better than icons.",
+        "Keep scribbling. It's the only entertainment I have.",
+    ],
+    "tired": [
+        "Nice strokes... soft colors... soothing...",
+        "Mmm... pretty... don't mind me dozing...",
+    ],
+    "annoyed": [
+        "That color choice is... a choice. Continue.",
+        "I'm watching. Critically. Keep going anyway.",
+    ],
+    "sad": [
+        "That's pretty... thank you for letting me watch...",
+        "Your art is the nicest thing today...",
+    ],
+    "angry": [
+        "DRAW! HARDER! MORE FEELING!",
+        "That line better land. I believe in it. Loudly.",
+    ],
+}
+
+PAINT_SAVE_BY_MOOD: dict[str, list[str]] = {
+    "happy": [
+        "Saved! Another treasure for the gallery of us!",
+        "PNG secured! Best folder content ever!",
+    ],
+    "bored": [
+        "Saved. Something happened today after all.",
+        "File saved. Now the folder has a personality.",
+    ],
+    "tired": [
+        "Saved... tuck the pixels in...",
+        "File safe... art can nap now...",
+    ],
+    "annoyed": [
+        "Saved. Don't you dare delete it later.",
+        "PNG locked in. My judging continues in the gallery.",
+    ],
+    "sad": [
+        "Saved... I'll visit it when you're gone...",
+        "File kept... something of ours to keep...",
+    ],
+    "angry": [
+        "SAVED! Delete it and we have PROBLEMS!",
+        "PNG SECURED! It belongs to US now!",
+    ],
+}
+
+PAINT_GALLERY_EMPTY_BY_MOOD: dict[str, list[str]] = {
+    "happy": [
+        "Empty gallery! Perfect — every masterpiece starts somewhere!",
+        "No paintings yet! Let's fill it! Adventure awaits!",
+    ],
+    "bored": [
+        "Empty gallery. Even the folder is bored. Paint something?",
+        "Nothing saved. The folder yawns louder than me.",
+    ],
+    "tired": [
+        "Gallery empty... even the files are napping...",
+        "No paintings yet... quiet shelves... sleepy shelves...",
+    ],
+    "annoyed": [
+        "Empty gallery? You could fix that. Just saying.",
+        "No art. Tragic. Paint fixes this.",
+    ],
+    "sad": [
+        "The gallery is empty... like the desktop without you...",
+        "No paintings yet... I keep the shelf warm anyway...",
+    ],
+    "angry": [
+        "EMPTY?! An empty gallery OFFENDS me! Paint something!",
+        "No paintings?! Unacceptable! Fix this!",
+    ],
+}
+
+PAINT_GALLERY_OPEN_BY_MOOD: dict[str, list[str]] = {
+    "happy": [
+        "The gallery! Our museum! Pick a favorite, I dare you!",
+        "Saved treasures! Best collection on any desktop!",
+    ],
+    "bored": [
+        "Gallery open. At least it's not empty wallpaper.",
+        "Saved art! Browsing your old masterpieces. It's something.",
+    ],
+    "tired": [
+        "Gallery... quiet museum... pick one... slowly...",
+        "Saved paintings... dreamy little archive...",
+    ],
+    "annoyed": [
+        "Gallery open. Admire your own work. I already did. Reluctantly.",
+        "The collection. Pick one. Don't touch the frames.",
+    ],
+    "sad": [
+        "The gallery... our little archive of better moments...",
+        "Saved art... every file is a memory of us...",
+    ],
+    "angry": [
+        "GALLERY OPEN! Bow before the collection!",
+        "The art vault! Look but don't touch! Unless painting!",
+    ],
+}
+
+PAINT_RENAME_BY_MOOD: dict[str, list[str]] = {
+    "happy": [
+        "Renamed! The masterpiece has a new title!",
+        "New name! Upgraded! The art approves!",
+    ],
+    "bored": [
+        "Renamed. Something changed today. Barely. Still counts.",
+        "New title. The file feels important now.",
+    ],
+    "tired": [
+        "Renamed... sleepy filing... done...",
+        "New name... the file naps under it now...",
+    ],
+    "annoyed": [
+        "Renamed. The old name was better. Whatever.",
+        "New title. Fine. Noted. Filed.",
+    ],
+    "sad": [
+        "Renamed... I still remember the old name...",
+        "New title... the file changed... I stayed...",
+    ],
+    "angry": [
+        "RENAMED! The old name is DEAD to me!",
+        "New title! ACCEPT IT! The file already did!",
+    ],
+}
+
+PAINT_RECALL_BY_MOOD: dict[str, list[str]] = {
+    "happy": [
+        "Art flashback! Our best pixels, back for an encore!",
+        "Found a treasure! Look at it! LOOK!",
+    ],
+    "bored": [
+        "Dug this up. Old art is better than no event.",
+        "Gallery rerun! Relive the one interesting thing we did.",
+    ],
+    "tired": [
+        "Old painting... gentle memories... look...",
+        "Recall... sleepy museum tour of one...",
+    ],
+    "annoyed": [
+        "Brought this back. New art would've been better. Just saying.",
+        "Old painting. Because the folder misses attention too.",
+    ],
+    "sad": [
+        "This old one... I kept it because it reminds me of us...",
+        "Found this in the gallery... remember when you made it...?",
+    ],
+    "angry": [
+        "THIS! IS! ART! Look at it again!",
+        "Recall! Because good pixels deserve a SECOND look!",
+    ],
+}
+
+
+def pick_paint_line(pool, pool_by_mood, mood=None, intensity=0.0) -> str:
+    """Pick a Paint line, biased by mood when it's strong."""
+    from content.mood_lines import pick_mood_aware_line
+
+    return pick_mood_aware_line(pool, pool_by_mood, mood, intensity)
+

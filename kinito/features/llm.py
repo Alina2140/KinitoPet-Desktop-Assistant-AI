@@ -416,7 +416,9 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
         if snapshot is not None and snapshot.has_apps and random.random() < 0.4:
             from content.app_lines import pick_app_aware_idle_line
 
-            fallback = pick_app_aware_idle_line(snapshot)
+            mood = self.get_mood() if hasattr(self, "get_mood") else None
+            intensity = self.get_mood_intensity() if hasattr(self, "get_mood_intensity") else 0.0
+            fallback = pick_app_aware_idle_line(snapshot, mood, intensity)
         else:
             fallback = random.choice(prompts.IDLE_ERROR_FALLBACK_LINES)
             if hasattr(self, "get_mood"):

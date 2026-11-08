@@ -41,6 +41,82 @@ MUSIC_PLAYER_LINES = [
     "DJ Kinito presents {song}!",
 ]
 
+MUSIC_PLAYER_BY_MOOD: dict[str, list[str]] = {
+    "happy": [
+        "Now playing {song}! Turn it UP! Dancing internally!",
+        "{song}! GREAT pick! Or great shuffle! Either way: yes!",
+    ],
+    "bored": [
+        "Playing {song}. Finally, a reason to exist today.",
+        "{song} incoming! Better than listening to the fan hum.",
+    ],
+    "tired": [
+        "Playing {song}... sleepy listening party...",
+        "{song}... soft volume suits me right now...",
+    ],
+    "annoyed": [
+        "Playing {song}. Don't touch the skip button.",
+        "{song}. Fine choice. I'm still annoyed. Play it anyway.",
+    ],
+    "sad": [
+        "Playing {song}... music helps the quiet...",
+        "{song}... let's listen together... please stay...",
+    ],
+    "angry": [
+        "PLAYING {song}! Volume: FURY!",
+        "{song}! LOUD! Like my feelings!",
+    ],
+}
+
+MUSIC_COMMENT_BY_MOOD: dict[str, list[str]] = {
+    "happy": [
+        "{song} is the BEST track! I can feel it in my pixels!",
+        "Vibing to {song}! This playlist is a masterpiece!",
+    ],
+    "bored": [
+        "Still {song}. It's the highlight of my afternoon.",
+        "{song} again. Better than the wallpaper's album.",
+    ],
+    "tired": [
+        "Humming along to {song}... very quietly...",
+        "{song}... lullaby material... don't skip...",
+    ],
+    "annoyed": [
+        "{song} is still playing. Good. Don't change it.",
+        "I'm judging {song}... it passes. Barely. Keep it on.",
+    ],
+    "sad": [
+        "{song}... this one makes me feel things...",
+        "Listening to {song}... it understands me...",
+    ],
+    "angry": [
+        "{song} is LOUD and I respect that!",
+        "Still playing {song}! Interrupt it and WE TALK!",
+    ],
+}
+
+
+def pick_music_player_line(mood=None, intensity=0.0) -> str:
+    """Pick a now-playing line, biased by mood when it's strong."""
+    import random
+
+    from content.mood_lines import pick_mood_aware_line
+
+    if mood:
+        return pick_mood_aware_line(MUSIC_PLAYER_LINES, MUSIC_PLAYER_BY_MOOD, mood, intensity)
+    return random.choice(MUSIC_PLAYER_LINES)
+
+
+def pick_music_comment_line(mood=None, intensity=0.0) -> str:
+    """Pick a mid-track comment, biased by mood when it's strong."""
+    import random
+
+    from content.mood_lines import pick_mood_aware_line
+
+    if mood:
+        return pick_mood_aware_line(MUSIC_COMMENT_LINES, MUSIC_COMMENT_BY_MOOD, mood, intensity)
+    return random.choice(MUSIC_COMMENT_LINES)
+
 # Mid-track chatter while the player stays open (uses {song}).
 MUSIC_COMMENT_LINES = [
     "Still vibing to {song}.",

@@ -8,7 +8,6 @@ from tkinter import Toplevel
 from PIL import Image, ImageTk
 
 from content import dialogue as dlg
-from content.camera_lines import CAMERA_LINES
 from kinito.tk_timers import cancel_after, schedule_after
 from kinito.window_icon import apply_window_icon
 
@@ -319,7 +318,11 @@ class CameraMixin:
     def say_random_camera_line(self):
         """Speak a random line from CAMERA_LINES if the camera feed is live."""
         if self._camera_active and self._camera_feed_live and not self._is_busy_with_speech():
-            self.speak(random.choice(CAMERA_LINES))
+            from content.camera_lines import pick_camera_line
+
+            mood = self.get_mood() if hasattr(self, "get_mood") else None
+            intensity = self.get_mood_intensity() if hasattr(self, "get_mood_intensity") else 0.0
+            self.speak(pick_camera_line(mood, intensity))
 
     def close_camera(self):
         """Release the camera, destroy the window, and speak a closing line."""

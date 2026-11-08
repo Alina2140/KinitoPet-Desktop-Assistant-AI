@@ -4,7 +4,6 @@ import sys
 import tkinter as tk
 from tkinter import Toplevel
 
-from content import dialogue as dlg
 from content import game_lines
 from kinito.window_icon import apply_window_icon
 
@@ -103,7 +102,7 @@ def open_game_window(
                 pass
             return
         app._game_window = None
-        line = dlg.pick_line(game_lines.GAME_CLOSED_LINES)
+        line = game_lines.pick_game_line(app, game_lines.GAME_CLOSED_LINES, "closed")
         window.destroy()
         app.root.after(
             0,

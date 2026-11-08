@@ -235,9 +235,20 @@ def pick_birthday_congrats_line(
     *,
     name: str | None = None,
     age: int | None = None,
+    pool_by_mood: dict | None = None,
+    mood: str | None = None,
+    intensity: float = 0.0,
 ) -> str:
     """Pick and format a birthday congratulations line."""
     pool = tuple(lines)
+    if pool_by_mood and mood:
+        from content.mood_lines import lines_for_mood
+
+        mood_pool = lines_for_mood(pool_by_mood, mood)
+        if mood_pool and intensity >= 0.25 and random.random() < min(
+            0.85, 0.35 + intensity
+        ):
+            pool = tuple(mood_pool)
     if age is not None:
         with_age = tuple(line for line in pool if "{age}" in line)
         if with_age:

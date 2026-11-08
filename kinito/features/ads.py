@@ -4,7 +4,7 @@ import random
 import threading
 import time
 
-from content.ads_lines import AD_SURPRISE_LINES
+from content.ads_lines import pick_ad_surprise_line
 from kinito.assets import ads_directory, list_image_files
 
 
@@ -52,7 +52,9 @@ class AdsMixin:
     def _present_ad_popup(self, image_path):
         """Show the ad; sometimes speak a surprise line first."""
         if random.random() < self.AD_COMMENT_CHANCE:
-            self.speak(random.choice(AD_SURPRISE_LINES))
+            mood = self.get_mood() if hasattr(self, "get_mood") else None
+            intensity = self.get_mood_intensity() if hasattr(self, "get_mood_intensity") else 0.0
+            self.speak(pick_ad_surprise_line(mood, intensity))
             if not self._running:
                 return
         self.root.after(

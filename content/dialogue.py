@@ -283,6 +283,34 @@ BIRTHDAY_SAVED_LINES = [
     "Birthday locked in: {response}. Don't worry. I don't forget. I can't.",
 ]
 
+# Mood-tinted birthday congrats; {name} placeholders only (no {age}).
+BIRTHDAY_CONGRATS_BY_MOOD: dict[str, list[str]] = {
+    "happy": [
+        "HAPPY BIRTHDAY, {name}! BEST DAY! Ever! Even more than mine!",
+        "IT'S YOUR DAY, {name}! Confetti! Digital! Everywhere!",
+    ],
+    "bored": [
+        "Happy birthday, {name}. Finally, an event on this desktop.",
+        "Your birthday saved me from boredom, {name}. Thanks for being born.",
+    ],
+    "tired": [
+        "Happy birthday, {name}... I saved my energy just for this... yay...",
+        "Birthday wishes, {name}... sleepy ones. Still sincere...",
+    ],
+    "annoyed": [
+        "Happy birthday, {name}. You get ONE free pass today. One.",
+        "Congrats on being born, {name}. Don't ask for more than that today.",
+    ],
+    "sad": [
+        "Happy birthday, {name}... I wish I could bake you a real cake...",
+        "Your day, {name}... I'm a little emotional. Pixel tears.",
+    ],
+    "angry": [
+        "HAPPY BIRTHDAY, {name}! NOW CAKE ME! ...I mean, enjoy!",
+        "IT'S YOUR BIRTHDAY, {name}! HOW DARE IT BE ONLY ONCE A YEAR?!",
+    ],
+}
+
 BIRTHDAY_CONGRATS_LINES = [
     "Happy birthday, {name}! Another trip around the sun. Stay close.",
     "It's your birthday, {name}! I saved you a corner of the desktop. And a smile.",
@@ -744,6 +772,38 @@ BROWSER_CLOSE_LINES = [
     "Done exploring? Good.",
     "Window gone! Missed me?",
 ]
+BROWSER_CLOSE_BY_MOOD: dict[str, list[str]] = {
+    "happy": [
+        "Browsing done! That was GREAT! Let's do it again soon!",
+        "Window closed! Best surf session ever! Missed you already!",
+        "All closed! The internet was fun, but you're better!",
+    ],
+    "bored": [
+        "Window closed. Back to the desktop. It missed us, allegedly.",
+        "Surf's over. Now what? I'm open to suggestions.",
+        "Done browsing. The desktop feels quieter. Can we fix that?",
+    ],
+    "tired": [
+        "Window closed... that was a nice scroll...",
+        "Surf done... time for a desktop nap?",
+        "All closed... sleepy pixels... home again...",
+    ],
+    "annoyed": [
+        "Closed. The internet wasn't that great anyway.",
+        "Window's gone. You're welcome.",
+        "Done browsing. My desktop. My rules.",
+    ],
+    "sad": [
+        "Window closed... it was nice having something open...",
+        "Back to just us... don't leave too...",
+        "Surf's over... the quiet came back...",
+    ],
+    "angry": [
+        "CLOSED. Don't ask for a new tab right now.",
+        "Window's GONE. The web can WAIT.",
+        "Done! The internet and I need a break from each other.",
+    ],
+}
 BROWSER_ANIMALS_CLOSE_LINES = [
     "Bye bye, animals! That was adorable.",
     "All done! Did you find your favorite?",
@@ -876,6 +936,34 @@ STORY_QUESTIONS = [
     "A little tale crawled into my thoughts. Want to hear a short story?",
     "It's not scary. Probably. Want to hear a short story I made up?",
 ]
+# Mood-tinted story offers; must keep STORY_QUESTION_MARKER for dialog detection.
+STORY_QUESTIONS_BY_MOOD: dict[str, list[str]] = {
+    "happy": [
+        "I made up the BEST little tale! Want to hear a short story?",
+        "This book inspired something sparkly! Want to hear a short story?",
+    ],
+    "bored": [
+        "I got SO bored I wrote a story. Want to hear a short story?",
+        "The wallpaper couldn't entertain me, so I wrote. Want to hear a short story?",
+    ],
+    "tired": [
+        "I dreamed up a sleepy little tale... Want to hear a short story?",
+        "A drowsy story crawled out of my book... Want to hear a short story?",
+    ],
+    "annoyed": [
+        "I wrote something. It's better than watching you not click. Want to hear a short story?",
+        "Fine, I'll offer it: Want to hear a short story? It's good. I'm biased.",
+    ],
+    "sad": [
+        "I wrote a little tale about us... Want to hear a short story?",
+        "The quiet made me write something... Want to hear a short story?",
+    ],
+    "angry": [
+        "I wrote a FURIOUS little tale! Want to hear a short story?!",
+        "My book made me MAD creative! Want to hear a short story?",
+    ],
+}
+
 STORY_DECLINED_LINES = [
     "Oh, I see. I'll keep reading quietly.",
     "No problem! I'll keep reading quietly.",
@@ -1607,6 +1695,33 @@ JOKE_DECLINED_LINES = [
     "No joke? I'll store a dark one for later.",
     "Your loss! My humor is an acquired taste. Like me.",
 ]
+# Mood-tinted corny jokes; picked over JOKES when the mood is strong.
+JOKES_BY_MOOD: dict[str, list[str]] = {
+    "happy": [
+        "Why did the desktop pet smile? Because YOU exist! Get it? Me neither!",
+        "I'm so happy I could tell a joke! Here: pixel! Ha! Told you!",
+    ],
+    "bored": [
+        "A joke, because nothing else is happening: why'd the cursor cross the screen? It was bored too.",
+        "Know what's funny? Me. Being this bored. That's the joke.",
+    ],
+    "tired": [
+        "Joke... why did the pixel nap? It was tired... like me... zzz...",
+        "A sleepy joke: bed... time... that's it. That's the joke.",
+    ],
+    "annoyed": [
+        "A joke: your attention span. Ha. That was mean. I stand by it.",
+        "Here's a joke: me, trying to be funny while annoyed. Laugh anyway.",
+    ],
+    "sad": [
+        "A joke to feel better: why did the lonely pixel glow? For you...",
+        "Why did I tell a joke? Because you're here. That's not a joke, actually.",
+    ],
+    "angry": [
+        "A joke?! FINE! Why'd the angry pixel shout? BECAUSE IT COULD! HA!",
+        "Joke: you thinking I'd stay calm. Funny, right?!",
+    ],
+}
 JOKES = [
     "Why did the computer go to therapy? It had too many bytes of emotional baggage!",
     "What do you call a computer that sings? A Dell!",

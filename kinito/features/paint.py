@@ -232,6 +232,12 @@ class PaintWindow:
     COMMENT_FIRST_MS = (45000, 70000)
     COMMENT_REPEAT_MS = (60000, 120000)
 
+    def _pick_paint_line(self, pool, pool_by_mood) -> str:
+        """Pick a Paint line, biased by the app's current mood."""
+        mood = self.app.get_mood() if hasattr(self.app, "get_mood") else None
+        intensity = self.app.get_mood_intensity() if hasattr(self.app, "get_mood_intensity") else 0.0
+        return paint_lines.pick_paint_line(pool, pool_by_mood, mood, intensity)
+
     def __init__(self, app):
         self.app = app
         self.window: Toplevel | None = None
@@ -402,7 +408,7 @@ class PaintWindow:
             self.app._paint_window = None
             if getattr(self.app, "_paint_session", None) is self:
                 self.app._paint_session = None
-            line = dlg.pick_line(paint_lines.PAINT_CLOSE_LINES)
+            line = self._pick_paint_line(paint_lines.PAINT_CLOSE_LINES, paint_lines.PAINT_CLOSE_BY_MOOD)
             window.destroy()
             self.app.root.after(0, lambda: self.app.speak_paint_line(line))
 
@@ -411,7 +417,9 @@ class PaintWindow:
 
         self.app.root.after(
             0,
-            lambda: self.app.speak_paint_line(dlg.pick_line(paint_lines.PAINT_OPEN_LINES)),
+            lambda: self.app.speak_paint_line(
+                self._pick_paint_line(paint_lines.PAINT_OPEN_LINES, paint_lines.PAINT_OPEN_BY_MOOD)
+            ),
         )
         self._schedule_line_timer(first=True)
 
@@ -442,7 +450,7 @@ class PaintWindow:
             return
         busy = getattr(self.app, "_is_busy_with_speech", lambda: False)()
         if not busy:
-            line = dlg.pick_line(paint_lines.PAINT_WHILE_LINES)
+            line = self._pick_paint_line(paint_lines.PAINT_WHILE_LINES, paint_lines.PAINT_WHILE_BY_MOOD)
             threading.Thread(
                 target=lambda: self.app.speak_paint_line(line),
                 daemon=True,
@@ -776,7 +784,7 @@ class PaintWindow:
                 self.window.title(f"{name} - Paint")
             except tk.TclError:
                 pass
-        line = dlg.pick_line(paint_lines.PAINT_SAVE_LINES)
+        line = self._pick_paint_line(paint_lines.PAINT_SAVE_LINES, paint_lines.PAINT_SAVE_BY_MOOD)
         self.app.root.after(0, lambda: self.app.speak_paint_line(line))
         return path
 
@@ -797,6 +805,12 @@ class PaintMixin:
     def speak_paint_line(self, line: str) -> None:
         """Speak a paint commentary line (allowed while Paint is open)."""
         self.speak(line, ai_hint=prompts.PAINT_PROMPT)
+
+    def _pick_paint_line(self, pool, pool_by_mood) -> str:
+        """Pick a Paint line, biased by the current mood."""
+        mood = self.get_mood() if hasattr(self, "get_mood") else None
+        intensity = self.get_mood_intensity() if hasattr(self, "get_mood_intensity") else 0.0
+        return paint_lines.pick_paint_line(pool, pool_by_mood, mood, intensity)
 
     def _is_paint_active(self) -> bool:
         window = getattr(self, "_paint_window", None)
@@ -853,9 +867,13 @@ class PaintMixin:
         ensure_user_media_directories()
         paths = [p for p in list_image_files(paintings_directory) if p.lower().endswith(".png")]
         if not paths:
-            self.speak_paint_line(dlg.pick_line(paint_lines.PAINT_GALLERY_EMPTY_LINES))
+            self.speak_paint_line(
+                self._pick_paint_line(paint_lines.PAINT_GALLERY_EMPTY_LINES, paint_lines.PAINT_GALLERY_EMPTY_BY_MOOD)
+            )
             return
-        self.speak_paint_line(dlg.pick_line(paint_lines.PAINT_GALLERY_OPEN_LINES))
+        self.speak_paint_line(
+            self._pick_paint_line(paint_lines.PAINT_GALLERY_OPEN_LINES, paint_lines.PAINT_GALLERY_OPEN_BY_MOOD)
+        )
         self.root.after(0, lambda: self._show_paint_gallery(paths))
 
     def _list_painting_paths(self) -> list[str]:
@@ -875,7 +893,9 @@ class PaintMixin:
         if paths is None:
             paths = self._list_painting_paths()
         if not paths:
-            self.speak_paint_line(dlg.pick_line(paint_lines.PAINT_GALLERY_EMPTY_LINES))
+            self.speak_paint_line(
+                self._pick_paint_line(paint_lines.PAINT_GALLERY_EMPTY_LINES, paint_lines.PAINT_GALLERY_EMPTY_BY_MOOD)
+            )
             return
 
         width, height = 420, 380
@@ -1033,7 +1053,9 @@ class PaintMixin:
                     "Download failed", "Could not save the file.", parent=window
                 )
                 return
-            self.speak_paint_line(dlg.pick_line(paint_lines.PAINT_SAVE_LINES))
+            self.speak_paint_line(
+                self._pick_paint_line(paint_lines.PAINT_SAVE_LINES, paint_lines.PAINT_SAVE_BY_MOOD)
+            )
 
         def rename():
             current = state["name"]
@@ -1076,7 +1098,9 @@ class PaintMixin:
             state["name"] = new_name
             title_label.configure(text=new_name)
             window.title(new_name)
-            self.speak_paint_line(dlg.pick_line(paint_lines.PAINT_RENAME_LINES))
+            self.speak_paint_line(
+                self._pick_paint_line(paint_lines.PAINT_RENAME_LINES, paint_lines.PAINT_RENAME_BY_MOOD)
+            )
 
         def delete():
             if not messagebox.askyesno(
@@ -1196,7 +1220,7 @@ class PaintMixin:
 
     def _paint_recall_worker(self, path: str):
         """Build a comment (vision if available), then show popup + speak."""
-        line = dlg.pick_line(paint_lines.PAINT_RECALL_LINES)
+        line = self._pick_paint_line(paint_lines.PAINT_RECALL_LINES, paint_lines.PAINT_RECALL_BY_MOOD)
         try:
             image_bytes = self._painting_jpeg_bytes(path)
             if image_bytes:

@@ -461,9 +461,46 @@ STATUS_BY_MOOD: dict[str, list[str]] = {
 }
 
 
+# Short intros optionally prefixed to a random fun fact when the mood is strong.
+FACT_INTRO_BY_MOOD: dict[str, list[str]] = {
+    "happy": [
+        "Happy fact incoming!",
+        "A fact that made me smile:",
+    ],
+    "bored": [
+        "A fact, because nothing else is happening:",
+        "Boredom fact. Enjoy it or don't:",
+    ],
+    "tired": [
+        "Sleepy fact time...:",
+        "A fact before I drift off...:",
+    ],
+    "annoyed": [
+        "Fine, a fact. A good one:",
+        "Fact. You're welcome:",
+    ],
+    "sad": [
+        "A fact to feel a little better...:",
+        "Something small and interesting...:",
+    ],
+    "angry": [
+        "FACT! DEAL WITH IT!",
+        "An angry fact! It's still accurate!",
+    ],
+}
+
+
 def lines_for_mood(pool_by_mood: dict[str, list[str]], mood: str) -> list[str] | None:
     """Return mood-specific lines if present."""
     lines = pool_by_mood.get(mood)
     if lines:
         return list(lines)
     return None
+
+
+def pick_mood_aware_line(pool, pool_by_mood, mood=None, intensity=0.0) -> str:
+    """Pick from pool, biased to the mood pool when the mood is strong."""
+    from content.dialogue import pick_line_for_mood
+
+    mood_lines = lines_for_mood(pool_by_mood, mood) if mood else None
+    return pick_line_for_mood(pool, mood=mood, intensity=intensity, mood_lines=mood_lines)

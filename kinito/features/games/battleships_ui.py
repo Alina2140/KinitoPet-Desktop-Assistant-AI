@@ -134,7 +134,7 @@ class BattleshipsGame:
             if self.status_label:
                 self.status_label.config(text=self._status_text())
             hits = len(self.state["hits"])
-            line = dlg.pick_line(game_lines.BATTLESHIPS_LOSE_LINES).format(
+            line = game_lines.pick_game_line(self.app, game_lines.BATTLESHIPS_LOSE_LINES, "lose").format(
                 hits=hits,
                 total=SHIP_COUNT,
             )

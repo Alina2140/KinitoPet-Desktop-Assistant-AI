@@ -980,7 +980,9 @@ def _handle_board_games(app, response: str) -> None:
 def _offer_play_again(app, line: str, restart_fn, *, separator: str = " ") -> None:
     """Speak *line* and show Play Again / Back buttons."""
     app._play_again_restart = restart_fn
-    app.speak(f"{line}{separator}{dlg.GAME_PLAY_AGAIN_SUFFIX}", 45, True)
+    app.speak(
+        f"{line}{separator}{game_lines.pick_game_play_again_suffix(app)}", 45, True
+    )
 
 
 def _handle_play_again(app, response: str) -> None:
@@ -1072,10 +1074,10 @@ def _handle_coin_flip(app, response: str) -> None:
     result = flip_coin()
     fmt = {"guess": guess, "result": result}
     if coin_outcome(guess, result) == "win":
-        line = dlg.pick_line(game_lines.COIN_WIN_LINES).format(**fmt)
+        line = game_lines.pick_game_line(app, game_lines.COIN_WIN_LINES, "win").format(**fmt)
         _report_game_outcome(app, GAME_PLAYER_WIN)
     else:
-        line = dlg.pick_line(game_lines.COIN_LOSE_LINES).format(**fmt)
+        line = game_lines.pick_game_line(app, game_lines.COIN_LOSE_LINES, "lose").format(**fmt)
         _report_game_outcome(app, GAME_KINITO_WIN)
     _offer_play_again(app, line, lambda a: a.start_coin_dice())
 
@@ -1090,10 +1092,10 @@ def _handle_dice_guess(app, response: str) -> None:
     roll = roll_dice()
     fmt = {"guess": guess, "roll": roll}
     if dice_outcome(guess, roll) == "win":
-        line = dlg.pick_line(game_lines.DICE_WIN_LINES).format(**fmt)
+        line = game_lines.pick_game_line(app, game_lines.DICE_WIN_LINES, "win").format(**fmt)
         _report_game_outcome(app, GAME_PLAYER_WIN)
     else:
-        line = dlg.pick_line(game_lines.DICE_LOSE_LINES).format(**fmt)
+        line = game_lines.pick_game_line(app, game_lines.DICE_LOSE_LINES, "lose").format(**fmt)
         _report_game_outcome(app, GAME_KINITO_WIN)
     _offer_play_again(app, line, lambda a: a.start_coin_dice())
 
@@ -1202,13 +1204,13 @@ def _handle_rps(app, response: str) -> None:
         "kinito_move": kinito_move.lower(),
     }
     if outcome == "player":
-        line = dlg.pick_line(game_lines.RPS_WIN_LINES).format(**fmt)
+        line = game_lines.pick_game_line(app, game_lines.RPS_WIN_LINES, "win").format(**fmt)
         _report_game_outcome(app, GAME_PLAYER_WIN)
     elif outcome == "kinito":
-        line = dlg.pick_line(game_lines.RPS_LOSE_LINES).format(**fmt)
+        line = game_lines.pick_game_line(app, game_lines.RPS_LOSE_LINES, "lose").format(**fmt)
         _report_game_outcome(app, GAME_KINITO_WIN)
     else:
-        line = dlg.pick_line(game_lines.RPS_DRAW_LINES).format(**fmt)
+        line = game_lines.pick_game_line(app, game_lines.RPS_DRAW_LINES, "draw").format(**fmt)
         _report_game_outcome(app, GAME_DRAW)
     app.speak(line)
 
@@ -1259,7 +1261,7 @@ def _handle_number_guess(app, response: str) -> None:
 
     if app._number_guess_attempts >= MAX_ATTEMPTS:
         app._number_guess_target = None
-        line = dlg.pick_line(game_lines.NUMBER_GUESS_GIVE_UP_LINES).format(answer=target)
+        line = game_lines.pick_game_line(app, game_lines.NUMBER_GUESS_GIVE_UP_LINES, "lose").format(answer=target)
         _report_game_outcome(app, GAME_KINITO_WIN)
         app.speak(line)
         return

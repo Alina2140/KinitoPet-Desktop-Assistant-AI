@@ -109,14 +109,16 @@ class NudgesMixin:
             and self.get_mood_intensity() >= self.BORED_PLAY_INVITE_INTENSITY
             and random.random() < self.BORED_PLAY_INVITE_CHANCE
         ):
-            return pick_play_invite_nudge_line()
+            return pick_play_invite_nudge_line(self.get_mood(), self.get_mood_intensity())
 
+        mood = self.get_mood() if hasattr(self, "get_mood") else None
+        intensity = self.get_mood_intensity() if hasattr(self, "get_mood_intensity") else 0.0
         snapshot = None
         get_snapshot = getattr(self, "get_app_snapshot", None)
         if callable(get_snapshot):
             snapshot = get_snapshot()
         app_line = maybe_pick_app_aware_nudge_line(
-            snapshot, chance=self.APP_AWARE_NUDGE_CHANCE
+            snapshot, chance=self.APP_AWARE_NUDGE_CHANCE, mood=mood, intensity=intensity
         )
         if app_line:
             return app_line
@@ -127,7 +129,7 @@ class NudgesMixin:
             raw = seasonal_modifiers().get("creepy_nudge_chance")
             if isinstance(raw, (int, float)):
                 creepy_chance = float(raw)
-        return pick_nudge_line(creepy_chance=creepy_chance)
+        return pick_nudge_line(creepy_chance=creepy_chance, mood=mood, intensity=intensity)
 
     def _present_ambient_nudge(self):
         """Show one nudge line as a Windows-style system dialog."""

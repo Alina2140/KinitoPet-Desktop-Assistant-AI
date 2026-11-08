@@ -44,7 +44,11 @@ class BrowserMixin:
         pool = self._browser_line_pool(
             category, self.CATEGORY_CLOSE_LINES, dlg.BROWSER_CLOSE_LINES
         )
-        return dlg.pick_line(pool)
+        mood = self.get_mood() if hasattr(self, "get_mood") else None
+        intensity = self.get_mood_intensity() if hasattr(self, "get_mood_intensity") else 0.0
+        from content.mood_lines import pick_mood_aware_line
+
+        return pick_mood_aware_line(pool, dlg.BROWSER_CLOSE_BY_MOOD, mood, intensity)
 
     def _has_pywebview(self):
         """Return True if the pywebview package is installed."""

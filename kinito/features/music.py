@@ -13,9 +13,9 @@ from PIL import Image, ImageTk
 
 from content import dialogue as dlg
 from content.music_player_lines import (
-    MUSIC_COMMENT_LINES,
     MUSIC_PAUSE_NUDGE_LINES,
-    MUSIC_PLAYER_LINES,
+    pick_music_comment_line,
+    pick_music_player_line,
 )
 from kinito.assets import (
     favicon_path,
@@ -258,7 +258,9 @@ class MusicMixin:
         if random.random() >= self._MUSIC_COMMENT_CHANCE:
             return False
         self._last_music_comment_at = time.monotonic()
-        line = random.choice(MUSIC_COMMENT_LINES).format(song=song)
+        mood = self.get_mood() if hasattr(self, "get_mood") else None
+        intensity = self.get_mood_intensity() if hasattr(self, "get_mood_intensity") else 0.0
+        line = pick_music_comment_line(mood, intensity).format(song=song)
         # Bypass Player Focus so intentional DJ chatter still has a voice.
         self.speak(line, skip_ai=True, allow_in_focus=True)
         return True
@@ -1142,7 +1144,9 @@ class MusicMixin:
         if not announce:
             return
         song_name = os.path.splitext(os.path.basename(file_path))[0]
-        line = random.choice(MUSIC_PLAYER_LINES).format(song=song_name)
+        mood = self.get_mood() if hasattr(self, "get_mood") else None
+        intensity = self.get_mood_intensity() if hasattr(self, "get_mood_intensity") else 0.0
+        line = pick_music_player_line(mood, intensity).format(song=song_name)
         # Speak on the UI thread — speak() already runs TTS in the background.
         # A nested Thread + optional AI sprite update can deadlock Tk on Windows.
         # allow_in_focus: track intros should still play while Player Focus is on.

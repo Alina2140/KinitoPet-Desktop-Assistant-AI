@@ -61,6 +61,40 @@ SCREEN_COMMENT_FALLBACK_LINES = [
 ]
 
 
-def pick_screen_comment_fallback() -> str:
-    """Return a random fallback screen-comment line."""
+SCREEN_COMMENT_FALLBACK_BY_MOOD: dict[str, list[str]] = {
+    "happy": [
+        "Your screen looks GREAT today! Whatever that is, keep it up!",
+        "I peeked! Your desktop is cheerful chaos. I love it!",
+    ],
+    "bored": [
+        "I peeked at your screen. It's the most interesting thing around.",
+        "Screen check: still busy. Me: still just watching. Yawn.",
+    ],
+    "tired": [
+        "Screen check... everything looks blurry anyway... carry on...",
+        "I peeked... sleepy pixels everywhere... nice...",
+    ],
+    "annoyed": [
+        "I looked at your screen. It's fine. Don't ask more of me.",
+        "Screen check done. Verdict: exists. Good enough.",
+    ],
+    "sad": [
+        "I peeked at your screen... at least you're still here...",
+        "Screen check... the glow is the only company I have...",
+    ],
+    "angry": [
+        "I LOOKED at your screen! It better be important!",
+        "Screen check! Verdict: busy! Judgment: rendered!",
+    ],
+}
+
+
+def pick_screen_comment_fallback(mood=None, intensity=0.0) -> str:
+    """Return a random fallback screen-comment line, biased by mood."""
+    from content.mood_lines import pick_mood_aware_line
+
+    if mood:
+        return pick_mood_aware_line(
+            SCREEN_COMMENT_FALLBACK_LINES, SCREEN_COMMENT_FALLBACK_BY_MOOD, mood, intensity
+        )
     return random.choice(SCREEN_COMMENT_FALLBACK_LINES)

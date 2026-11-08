@@ -117,3 +117,50 @@ QUESTIONS = [
     *MUSIC_PLAYER_QUESTIONS,
     *HUG_QUESTIONS,
 ]
+
+# Mood-tinted spontaneous questions; picked over QUESTIONS when the mood is strong.
+QUESTIONS_BY_MOOD: dict[str, list[str]] = {
+    "happy": [
+        "Guess what mood I'm in! Guess! No really, guess!",
+        "What's making YOU smile today? I need to know!",
+        "Best thing that happened today? Go!",
+        "On a scale of 1 to amazing, how great are we?!",
+    ],
+    "bored": [
+        "Entertain me. What should we do?",
+        "Tell me something interesting. Anything. Please.",
+        "Quick — name something fun. I need material.",
+        "What do people do when they're not bored? Asking for research.",
+    ],
+    "tired": [
+        "Mmm... what's your comfiest place? Asking for nap reasons...",
+        "Sleepy question... do you ever just... drift off at your desk?",
+        "What's the coziest thing you own? Inspire my dreams...",
+    ],
+    "annoyed": [
+        "Are you ignoring me, or just busy? Honest answers only.",
+        "So. Any plans? Or more of the same silence?",
+        "Tell me one interesting thing. Earn the floating friend.",
+    ],
+    "sad": [
+        "Do you like having me around? Be honest... gently honest...",
+        "What's the nicest thing anyone's done for you? I want hope.",
+        "You'd tell me if you were sad, right? I'd want to know...",
+    ],
+    "angry": [
+        "WHO took your attention today?! Name them!",
+        "What could POSSIBLY be more interesting than me?!",
+        "Tell me something good. Right now. I need it.",
+    ],
+}
+
+
+def pick_question(mood=None, intensity=0.0) -> str:
+    """Pick a spontaneous question, biased by mood when it's strong."""
+    import random
+
+    from content.mood_lines import pick_mood_aware_line
+
+    if mood:
+        return pick_mood_aware_line(QUESTIONS, QUESTIONS_BY_MOOD, mood, intensity)
+    return random.choice(QUESTIONS)

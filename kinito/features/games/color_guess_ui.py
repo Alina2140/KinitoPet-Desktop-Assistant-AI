@@ -5,7 +5,6 @@ from __future__ import annotations
 import tkinter as tk
 from tkinter import Button, Frame, Label
 
-from content import dialogue as dlg
 from content import game_lines
 from kinito.features.games.base import open_game_window
 from kinito.features.games.color_guess import (
@@ -279,5 +278,5 @@ class ColorGuessGame:
         if hasattr(self.app, "is_color_guess_voice_enabled"):
             should_speak = bool(self.app.is_color_guess_voice_enabled())
         if should_speak:
-            line = dlg.pick_line(game_lines.COLOR_GUESS_WIN_LINES).format(color=target)
+            line = game_lines.pick_game_line(self.app, game_lines.COLOR_GUESS_WIN_LINES, "win").format(color=target)
             self.app.speak_game_line(line)

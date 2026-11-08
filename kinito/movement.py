@@ -689,7 +689,7 @@ class MovementMixin:
         from content.head_stroke_lines import pick_head_stroke_line
 
         # Keep blush sprites instead of the default talk cycle.
-        self.speak(pick_head_stroke_line(), preserve_sprite=True, skip_ai=True)
+        self.speak(pick_head_stroke_line(*self._mood_pick()), preserve_sprite=True, skip_ai=True)
 
     def _update_drag_sprite_from_dx(self, dx: float) -> None:
         """Pick left/right drag sprites from horizontal motion; idle → standing."""
@@ -701,6 +701,12 @@ class MovementMixin:
         self._stop_drag_wiggle()
         self._set_drag_sprite("left" if dx < 0 else "right")
         self._schedule_drag_idle_sprite()
+
+    def _mood_pick(self):
+        """Return (mood, intensity) for mood-aware line pickers."""
+        mood = self.get_mood() if hasattr(self, "get_mood") else None
+        intensity = self.get_mood_intensity() if hasattr(self, "get_mood_intensity") else 0.0
+        return mood, intensity
 
     def _maybe_speak_hold_reaction(self) -> None:
         """Sometimes ask the user to let go while wiggling in place."""
@@ -720,7 +726,7 @@ class MovementMixin:
         from content.hold_lines import pick_hold_line
 
         self._drag_hold_reacted = True
-        self.speak(pick_hold_line())
+        self.speak(pick_hold_line(*self._mood_pick()))
 
     def _maybe_speak_throw_reaction(self) -> None:
         """Sometimes comment on being thrown (happy through annoyed)."""
@@ -736,7 +742,7 @@ class MovementMixin:
             return
         from content.throw_lines import pick_throw_line
 
-        self.speak(pick_throw_line())
+        self.speak(pick_throw_line(*self._mood_pick()))
 
     def _maybe_speak_dizzy_reaction(self) -> None:
         """Sometimes complain about getting dizzy from cursor orbits."""
@@ -794,7 +800,7 @@ class MovementMixin:
         speech_started = False
         if dizzy_sprites:
             self.change_sprite(dizzy_sprites[0])
-        self.speak(pick_dizzy_line(), skip_ai=True)
+        self.speak(pick_dizzy_line(*self._mood_pick()), skip_ai=True)
 
         try:
             while self._running and not self.paused and getattr(self, "_dizzy_mode", False):

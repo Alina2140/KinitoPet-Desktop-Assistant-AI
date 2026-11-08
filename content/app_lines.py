@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import random
 
-from content.dialogue import pick_line
 from kinito.app_context import AppSnapshot, format_app_aware_line
 
 APP_AWARE_NUDGE_LINES = [
@@ -96,24 +95,99 @@ APP_AWARE_IDLE_LINES = [
 ]
 
 
-def pick_app_aware_nudge_line(snapshot: AppSnapshot) -> str:
-    """Pick and format an app-aware nudge line."""
-    return format_app_aware_line(pick_line(APP_AWARE_NUDGE_LINES), snapshot)
+APP_AWARE_NUDGE_BY_MOOD: dict[str, list[str]] = {
+    "happy": [
+        "{active_app} AND me? Best combo on this desktop! Blink though!",
+        "Look at you in {active_app}! Thriving! Hydrate to stay amazing!",
+        "I love watching you work in {active_app}! Water break, my friend?",
+    ],
+    "bored": [
+        "Still {active_app}? Blink. Stretch. Or entertain me. Pick two.",
+        "{open_apps} open and me bored. Water break counts as an event, right?",
+        "Between you and {active_app}: I'm the third wheel. Stretch anyway.",
+    ],
+    "tired": [
+        "{active_app} still running... blink slowly... like me...",
+        "Working in {active_app}? Sip some water... sleepy sips count...",
+        "Open stack: {open_apps}. Energy: low. Stretch: gentle. Please.",
+    ],
+    "annoyed": [
+        "{active_app} again? Fine. Hydrate anyway. I'm watching.",
+        "Still in {active_app}? Blink. That's an order.",
+        "{open_apps} open. Spines exist, you know.",
+    ],
+    "sad": [
+        "{active_app} looks busy... don't forget water... please...",
+        "Working in {active_app}...? Take a breath... for me?",
+        "So many windows... {open_apps}... take care of yourself in there...",
+    ],
+    "angry": [
+        "{active_app} AGAIN?! FINE. DRINK WATER ANYWAY!",
+        "Still glued to {active_app}? STRETCH. NOW.",
+        "{open_apps}?! Ambitious! Hydrate before I nag louder!",
+    ],
+}
+
+APP_AWARE_IDLE_BY_MOOD: dict[str, list[str]] = {
+    "happy": [
+        "Ooh, {active_app}! You two look GREAT together! And me too!",
+        "Working in {active_app}? Wonderful! I brought morale!",
+        "{open_apps} open and me cheering! Perfect desktop energy!",
+    ],
+    "bored": [
+        "{active_app} again. Cool. Wake me when the plot thickens.",
+        "Hi from under {active_app}. Doing nothing. As usual.",
+        "{open_apps} on screen, boredom in my soul. Loitering anyway.",
+    ],
+    "tired": [
+        "{active_app}... looks busy... I'll just... hover here...",
+        "Watching {active_app}... quietly... sleepy sidekick mode...",
+        "{open_apps}... big stack... small energy... still here...",
+    ],
+    "annoyed": [
+        "{active_app}. Again. Noted. Loudly.",
+        "Working in {active_app}? Sure. Ignore the floating critic.",
+        "{open_apps} open. Opinions withheld. Mostly.",
+    ],
+    "sad": [
+        "{active_app} looks important... I'll just be over here...",
+        "Working in {active_app}...? I'll wait for you... quietly...",
+        "{open_apps} and me. Mostly you and them, honestly...",
+    ],
+    "angry": [
+        "{active_app}?! FINE. I'm watching anyway. Judging.",
+        "Working in {active_app}? Hmph. It can't appreciate you like I do.",
+        "{open_apps} open. Me? Furious. Still here though.",
+    ],
+}
 
 
-def pick_app_aware_idle_line(snapshot: AppSnapshot) -> str:
-    """Pick and format an app-aware idle line."""
-    return format_app_aware_line(pick_line(APP_AWARE_IDLE_LINES), snapshot)
+def pick_app_aware_nudge_line(snapshot: AppSnapshot, mood=None, intensity=0.0) -> str:
+    """Pick and format an app-aware nudge line, biased by mood."""
+    from content.mood_lines import pick_mood_aware_line
+
+    line = pick_mood_aware_line(APP_AWARE_NUDGE_LINES, APP_AWARE_NUDGE_BY_MOOD, mood, intensity)
+    return format_app_aware_line(line, snapshot)
+
+
+def pick_app_aware_idle_line(snapshot: AppSnapshot, mood=None, intensity=0.0) -> str:
+    """Pick and format an app-aware idle line, biased by mood."""
+    from content.mood_lines import pick_mood_aware_line
+
+    line = pick_mood_aware_line(APP_AWARE_IDLE_LINES, APP_AWARE_IDLE_BY_MOOD, mood, intensity)
+    return format_app_aware_line(line, snapshot)
 
 
 def maybe_pick_app_aware_nudge_line(
     snapshot: AppSnapshot | None,
     *,
     chance: float = 0.35,
+    mood=None,
+    intensity: float = 0.0,
 ) -> str | None:
     """Sometimes return an app-aware nudge when a snapshot is available."""
     if snapshot is None or not snapshot.has_apps:
         return None
     if random.random() >= chance:
         return None
-    return pick_app_aware_nudge_line(snapshot)
+    return pick_app_aware_nudge_line(snapshot, mood, intensity)

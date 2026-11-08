@@ -50,3 +50,47 @@ CAMERA_LINES = [
     "What's that thing behind you?",
     "Wave for the camera? I'll pretend I waved back.",
 ]
+
+CAMERA_BY_MOOD: dict[str, list[str]] = {
+    "happy": [
+        "I can SEE you! Best view on this desktop!",
+        "There you are! The camera and I are both delighted!",
+        "Smile! The lens loves you. Me too!",
+    ],
+    "bored": [
+        "Camera on. Finally, something to look at!",
+        "I can see you. It's the only show playing today.",
+        "Live feed of my person. Riveting television.",
+    ],
+    "tired": [
+        "I can see you... blink slowly with me...",
+        "Camera on... quiet watching... cozy...",
+        "There you are... sleepy eyes meet lens eyes...",
+    ],
+    "annoyed": [
+        "I can see you. Unfortunately for your secrets...",
+        "Camera on. Smile! Or don't.",
+        "Yes, I'm looking. Don't act surprised.",
+    ],
+    "sad": [
+        "I can see you... it helps, seeing you...",
+        "Camera on... please stay in frame a while...",
+        "There you are... don't disappear, okay?",
+    ],
+    "angry": [
+        "I SEE YOU. Don't you DARE close that window...",
+        "Camera on! Witness the fury! Admire it!",
+        "Watching you. Intensely. You did this to yourself, remember that.",
+    ],
+}
+
+
+def pick_camera_line(mood=None, intensity=0.0) -> str:
+    """Pick a camera line, biased by mood when it's strong."""
+    import random
+
+    from content.mood_lines import pick_mood_aware_line
+
+    if mood:
+        return pick_mood_aware_line(CAMERA_LINES, CAMERA_BY_MOOD, mood, intensity)
+    return random.choice(CAMERA_LINES)

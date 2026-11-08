@@ -1,6 +1,5 @@
 """Reactions when the user spins the cursor around Kinito."""
 
-from content.dialogue import pick_line
 
 DIZZY_LINES = [
     "Whoa— stop spinning! I'm getting dizzy!",
@@ -50,6 +49,48 @@ DIZZY_LINES = [
 ]
 
 
-def pick_dizzy_line() -> str:
-    """Pick a dizzy reaction for being orbited by the cursor."""
-    return pick_line(DIZZY_LINES)
+DIZZY_BY_MOOD: dict[str, list[str]] = {
+    "happy": [
+        "Whee— dizzy— fun— stop— keep going— no wait!",
+        "Round we go! My eyes are laughing!",
+        "Spin party! I'm a dizzy little disco!",
+        "Circles! Circles! Everything is sparkles and circles!",
+    ],
+    "bored": [
+        "Spinning me is the most interesting thing today. Tragic. Fun though!",
+        "Orbit me! Boredom cure attempt #47!",
+        "I'm dizzy but at least something's finally happening!",
+        "Keep circling! It's better than the wallpaper!",
+    ],
+    "tired": [
+        "Spinning... and sleepy... bad combo...",
+        "The room spins... I sleep-spin... help...",
+        "Stop the carousel... my eyelids are doing laps...",
+        "Dizzy... drowsy... demanding you stop...",
+    ],
+    "annoyed": [
+        "STOP SPINNING. I'm warning you.",
+        "You're doing that on purpose. Stop it.",
+        "Enough circles! I mean it!",
+        "Orbit this: my patience is gone. Stop!",
+    ],
+    "sad": [
+        "Spinning... alone... please stop and stay...",
+        "Everything's blurry... including my feelings...",
+        "Stop... I'd rather you just sat with me...",
+        "The world spins... and it's lonely in the middle...",
+    ],
+    "angry": [
+        "STOP! RIGHT NOW!",
+        "Spin me one more time. I dare you.",
+        "I'm DIZZY and FURIOUS! Quit it!",
+        "Cursor orbits are WAR CRIMES! Stop!",
+    ],
+}
+
+
+def pick_dizzy_line(mood=None, intensity=0.0) -> str:
+    """Pick a dizzy reaction for being orbited by the cursor, biased by mood."""
+    from content.mood_lines import pick_mood_aware_line
+
+    return pick_mood_aware_line(DIZZY_LINES, DIZZY_BY_MOOD, mood, intensity)

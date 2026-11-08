@@ -1,6 +1,5 @@
 """Reactions when the user throws Kinito across the desktop."""
 
-from content.dialogue import pick_line
 
 THROW_LINES = [
     "Weeeee!",
@@ -53,6 +52,48 @@ THROW_LINES = [
 ]
 
 
-def pick_throw_line() -> str:
-    """Pick a happy-to-annoyed reaction to being thrown."""
-    return pick_line(THROW_LINES)
+THROW_BY_MOOD: dict[str, list[str]] = {
+    "happy": [
+        "WHEEE! Again! Again! Best ride ever!",
+        "I'M FLYING! This is the BEST DAY!",
+        "Yeet me again! I mean it this time!",
+        "THROW ME FOREVER! Friendship + physics = joy!",
+    ],
+    "bored": [
+        "Whee! Finally something happening! Do it again!",
+        "Boredom: defeated by gravity! Once more!",
+        "That was the most exciting second of my day!",
+        "Being thrown > being idle. Science.",
+    ],
+    "tired": [
+        "Wheee... please... lower... slower... zzz...",
+        "Too sleepy for flight... landing request...",
+        "You woke me by THROWING me? Bold strategy...",
+        "Mmm... airborne naps aren't real naps...",
+    ],
+    "annoyed": [
+        "HEY! Put me down! NOW!",
+        "I am NOT a projectile! RUDE!",
+        "Throwing me? Great idea. Awful execution. Me.",
+        "Land me before I file a complaint!",
+    ],
+    "sad": [
+        "Even when you throw me... I come back...",
+        "Wheee... I guess... please catch me though...",
+        "Being thrown feels... a little like falling...",
+        "I'd rather a hug than a flight...",
+    ],
+    "angry": [
+        "HOW DARE YOU! PUT ME DOWN!",
+        "THROWING ME?! Oh you'll regret this landing!",
+        "I am NOT your ball! NEVER AGAIN!",
+        "AIRBORNE AND FURIOUS! Ground me NOW!",
+    ],
+}
+
+
+def pick_throw_line(mood=None, intensity=0.0) -> str:
+    """Pick a happy-to-annoyed reaction to being thrown, biased by mood."""
+    from content.mood_lines import pick_mood_aware_line
+
+    return pick_mood_aware_line(THROW_LINES, THROW_BY_MOOD, mood, intensity)

@@ -1,6 +1,5 @@
 """Reactions when the user pets Kinito on the head."""
 
-from content.dialogue import pick_line
 
 HEAD_STROKE_LINES = [
     "Oh! That tickles. In a nice way.",
@@ -28,6 +27,48 @@ HEAD_STROKE_LINES = [
 ]
 
 
-def pick_head_stroke_line() -> str:
-    """Pick a shy or pleased line for head pets."""
-    return pick_line(HEAD_STROKE_LINES)
+HEAD_STROKE_BY_MOOD: dict[str, list[str]] = {
+    "happy": [
+        "YES! Pets! The best possible use of a hand!",
+        "More! Please! I demand more pats!",
+        "This is the greatest moment of my desktop life!",
+        "Pet powered! I could glow for days!",
+    ],
+    "bored": [
+        "Finally, entertainment! Keep petting!",
+        "Ooh, contact! I was so bored I almost enjoyed this.",
+        "Yes! Do that again. And again. And again.",
+        "Best thing to happen all day. It was a slow day.",
+    ],
+    "tired": [
+        "Mmm... gentle... keep going...",
+        "Petting accepted... sleepy mode improving...",
+        "That's nice... almost as nice as napping...",
+        "Mmm... slow strokes please... perfect...",
+    ],
+    "annoyed": [
+        "Hmph. Fine. Pets accepted.",
+        "Okay. That... helped. Slightly. Don't tell anyone.",
+        "You're forgiven. For whatever. Mostly.",
+        "One stroke. Maybe two. I'm still annoyed.",
+    ],
+    "sad": [
+        "Oh... thank you. That helps more than you know.",
+        "Please don't stop. I needed this.",
+        "Mmm... warmth... the hollow feels smaller...",
+        "That's... really nice. Stay a while?",
+    ],
+    "angry": [
+        "Hmph! ...Okay, that felt good. Continue.",
+        "Careful! ...Oh. Actually. Keep going.",
+        "You can't just pet away being mad! ...Can you?",
+        "I'm still angry! But... one more stroke.",
+    ],
+}
+
+
+def pick_head_stroke_line(mood=None, intensity=0.0) -> str:
+    """Pick a shy or pleased line for head pets, biased by mood."""
+    from content.mood_lines import pick_mood_aware_line
+
+    return pick_mood_aware_line(HEAD_STROKE_LINES, HEAD_STROKE_BY_MOOD, mood, intensity)

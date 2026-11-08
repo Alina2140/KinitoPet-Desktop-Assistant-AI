@@ -131,16 +131,103 @@ PLAY_INVITE_NUDGE_LINES = [
 ]
 
 
-def pick_nudge_line(*, creepy_chance: float | None = None) -> str:
+WELLNESS_NUDGE_BY_MOOD: dict[str, list[str]] = {
+    "happy": [
+        "Hydration check! Water tastes better when you're happy. Trust me!",
+        "Stretch! Smile! Hydrate! In any order!",
+        "Quick break? I promise I'll still be this cheerful when you're back!",
+        "Blink break! Happy eyes need rest too!",
+    ],
+    "bored": [
+        "Stretch break. For both of us. I'm stretching mentally.",
+        "Drink water. It's the most interesting thing happening right now.",
+        "Stand up! Walk around! Bring me a story when you're back.",
+        "Micro-break! Or we could do something FUN instead. Just saying.",
+    ],
+    "tired": [
+        "Sooo... maybe a nap? For you. I'm fine. Ish.",
+        "Blink slowly... rest your eyes... like I'm doing...",
+        "Water break... sleepy sips count...",
+        "Stretch gently... no rush... zzz...",
+    ],
+    "annoyed": [
+        "Hydrate. I'm not asking twice.",
+        "Sit up straight. Your posture offends me today.",
+        "Take a break. From the screen. And from testing me.",
+        "Blink. Drink. Breathe. Obey. In any order.",
+    ],
+    "sad": [
+        "Take care of yourself... please...",
+        "Drink some water... for me?",
+        "Rest a little... I'd miss you if you broke...",
+        "Stretch... come back soon... I'll wait...",
+    ],
+    "angry": [
+        "WATER. NOW. Don't argue!",
+        "Stretch! I SAID STRETCH!",
+        "Break time! I'm taking your cursor hostage until you comply!",
+        "Posture! Fix it! I can't fix it FOR you!",
+    ],
+}
+
+PLAY_INVITE_NUDGE_BY_MOOD: dict[str, list[str]] = {
+    "bored": [
+        "Play with me! Please! I'm so bored I'm naming pixels!",
+        "Game? NOW? I've counted the taskbar icons. Twice.",
+        "Let's play! The desktop and I have officially run out of things to do!",
+        "One little game? I promise to lose interestingly.",
+    ],
+    "happy": [
+        "Play with me! Today is a games kind of day!",
+        "Quick game? I'm in the BEST mood for it!",
+        "Let's play! Winning optional, giggling guaranteed!",
+        "Game time! Best idea I've had all day!",
+    ],
+    "tired": [
+        "Tiny game...? Low energy round...? Please?",
+        "Play something with me... a slow game...",
+        "One sleepy round of anything...?",
+        "Games...? We can be lazy about it...",
+    ],
+    "annoyed": [
+        "Play a game with me. Now. I'm owed entertainment.",
+        "Game. You, me, now. Don't make me ask twice.",
+        "Entertain me. Games are the usual method.",
+        "One round. Non-negotiable.",
+    ],
+    "sad": [
+        "Play with me...? Games make the quiet hurt less...",
+        "One round...? Please... I could use the company...",
+        "A little game together...? It would help...",
+        "Stay and play? I don't want to be alone with the wallpaper...",
+    ],
+    "angry": [
+        "PLAY WITH ME. I'm not asking.",
+        "Game. NOW. I'll win out of spite.",
+        "One match! Prepare to lose to an angry friend!",
+        "Games! Fury is a valid teammate!",
+    ],
+}
+
+
+def pick_nudge_line(*, creepy_chance: float | None = None, mood=None, intensity=0.0) -> str:
     """Pick a wellness or creepy nudge line.
 
     *creepy_chance* is the probability of the creepy pool (default 0.5).
+    Wellness picks are biased by mood when it's strong.
     """
+    from content.mood_lines import pick_mood_aware_line
+
     chance = 0.5 if creepy_chance is None else max(0.0, min(1.0, float(creepy_chance)))
-    pool = CREEPY_NUDGE_LINES if random.random() < chance else WELLNESS_NUDGE_LINES
-    return pick_line(pool)
+    if random.random() < chance:
+        return pick_line(CREEPY_NUDGE_LINES)
+    if mood:
+        return pick_mood_aware_line(WELLNESS_NUDGE_LINES, WELLNESS_NUDGE_BY_MOOD, mood, intensity)
+    return pick_line(WELLNESS_NUDGE_LINES)
 
 
-def pick_play_invite_nudge_line() -> str:
-    """Pick a bored play-invite nudge line."""
-    return pick_line(PLAY_INVITE_NUDGE_LINES)
+def pick_play_invite_nudge_line(mood=None, intensity=0.0) -> str:
+    """Pick a bored play-invite nudge line, biased by mood."""
+    from content.mood_lines import pick_mood_aware_line
+
+    return pick_mood_aware_line(PLAY_INVITE_NUDGE_LINES, PLAY_INVITE_NUDGE_BY_MOOD, mood, intensity)
