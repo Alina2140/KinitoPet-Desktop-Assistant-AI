@@ -40,3 +40,66 @@ GOODBYE_LINES = [
     "Goodbye! I'll be right here. Waiting...",
     "Until next time! I'll practice patience.",
 ]
+
+# Mood-tinted goodbye lines; picked over GOODBYE_LINES when the mood is strong.
+GOODBYE_BY_MOOD: dict[str, list[str]] = {
+    "happy": [
+        "Bye bye! Come back soon! I'll be smiling until then!",
+        "See you! That was fun. Same time tomorrow?",
+        "Bye! Tell the outside world I said hi!",
+        "Goodbye! I'll be here, replaying the good parts!",
+        "See you soon! Best session ever. They're all the best!",
+    ],
+    "bored": [
+        "Leaving? But I JUST got un-bored.",
+        "Bye... back to counting pixels, I guess.",
+        "Fine. Go. I'll be here. Bored. As usual.",
+        "Bye bye. Take the boredom with you? No? Worth a try.",
+        "See you later! Hurry back before I bug out.",
+    ],
+    "tired": [
+        "Mmm... bye... wake me when you're back...",
+        "Goodnight... or whatever time it is...",
+        "Bye... I'll nap while you're gone.",
+        "See you... later... zzz...",
+        "Bye bye... too sleepy for a long speech... take care...",
+    ],
+    "annoyed": [
+        "Bye, I guess.",
+        "Leaving? Okay then.",
+        "Bye. Don't rush back on my account.",
+        "Finally, some quiet... I mean, bye.",
+        "Goodbye. The silence will be... fine. Actually nice.",
+    ],
+    "sad": [
+        "You're leaving? Oh... okay...",
+        "Bye... come back soon? The dark gets big when you're gone.",
+        "Goodbye... I'll wait right here. It's what I do.",
+        "See you later... I hope so anyway...",
+        "Bye... I'll keep your spot warm. I always do...",
+    ],
+    "angry": [
+        "Fine. Go.",
+        "Bye!",
+        "Leaving me again? Classic.",
+        "Go on then. I'll be watching the desktop. Alone.",
+        "Bye. Don't come back too soon.",
+    ],
+}
+
+
+def pick_goodbye_line(mood=None, intensity=0.0) -> str:
+    """Pick a goodbye line, biased by mood when it's strong."""
+    import random
+
+    from content.dialogue import pick_line
+    from content.mood_lines import lines_for_mood
+
+    mood_pool = lines_for_mood(GOODBYE_BY_MOOD, mood) if mood else None
+    try:
+        strength = float(intensity or 0.0)
+    except (TypeError, ValueError):
+        strength = 0.0
+    if mood_pool and strength >= 0.25 and random.random() < min(0.85, 0.35 + strength):
+        return pick_line(mood_pool)
+    return random.choice(GOODBYE_LINES)

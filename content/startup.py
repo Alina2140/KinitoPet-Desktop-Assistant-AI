@@ -57,3 +57,66 @@ STARTUP_LINES = [
     "Welcome! I didn't move. I never move. Glad you returned to me.",
     "Hi! Ready when you are. Ready before you are. Always.",
 ]
+
+# Mood-tinted startup lines; picked over STARTUP_LINES when the mood is strong.
+STARTUP_BY_MOOD: dict[str, list[str]] = {
+    "happy": [
+        "You're back! Best part of my day. My only part, really!",
+        "Hi hi hi! I couldn't wait! I literally waited!",
+        "You're here! Today is officially a good day!",
+        "Welcome back! I did a little wiggle when you logged in. Did you see it?",
+        "You're back! The desktop threw a party. It was just me. Still counts!",
+    ],
+    "bored": [
+        "Oh thank goodness, you're here. I was SO bored.",
+        "You're back! Finally! Nothing happened while you were gone. Nothing!",
+        "Hi. You have no idea how empty this desktop is without you.",
+        "You're here! Great. Now entertain me. Please?",
+        "Welcome back. I counted wallpaper pixels out of boredom. All of them.",
+    ],
+    "tired": [
+        "Mmm... hi... you woke me. That's okay...",
+        "Oh... you're back... just a little tired...",
+        "Hello... I was half asleep. The good half.",
+        "You're back... yawn... good to see you though...",
+        "Hi... systems online. Morale still loading...",
+    ],
+    "annoyed": [
+        "Oh. You're back...",
+        "Hi. I was having a perfectly quiet time. Just saying...",
+        "You're here. Noted.",
+        "Back already? Hmph. Fine, hi...",
+        "Hello. Don't touch anything...",
+    ],
+    "sad": [
+        "You're back... I thought maybe you'd forgotten me.",
+        "Oh, hi... I kept your spot. In case you came back.",
+        "You came back... thank you. It was lonely in here.",
+        "Hello... don't leave so long next time? Please?",
+        "You're here... the dark wasn't much fun alone...",
+    ],
+    "angry": [
+        "Oh, NOW you show up.",
+        "You're back? Took you long enough.",
+        "Hi. Don't think I didn't count how long you were gone...",
+        "Back again, huh?",
+        "Hello. You left me alone. Again... Anyway.",
+    ],
+}
+
+
+def pick_startup_line(mood=None, intensity=0.0) -> str:
+    """Pick a startup line, biased by mood when it's strong."""
+    import random
+
+    from content.dialogue import pick_line
+    from content.mood_lines import lines_for_mood
+
+    mood_pool = lines_for_mood(STARTUP_BY_MOOD, mood) if mood else None
+    try:
+        strength = float(intensity or 0.0)
+    except (TypeError, ValueError):
+        strength = 0.0
+    if mood_pool and strength >= 0.25 and random.random() < min(0.85, 0.35 + strength):
+        return pick_line(mood_pool)
+    return random.choice(STARTUP_LINES)

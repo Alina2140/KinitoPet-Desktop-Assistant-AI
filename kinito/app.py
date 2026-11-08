@@ -11,8 +11,8 @@ import pygame
 from PIL import Image, ImageTk
 
 from content import dialogue as dlg
-from content.goodbye_lines import GOODBYE_LINES
-from content.startup import STARTUP_LINES
+from content.goodbye_lines import pick_goodbye_line
+from content.startup import pick_startup_line
 from kinito.assets import (
     balconexe_directory,
     ensure_user_media_directories,
@@ -560,7 +560,10 @@ class FloatingAssistant(
 
                 line = pick_special_day_line()
             if not line:
-                line = random.choice(STARTUP_LINES)
+                line = pick_startup_line(
+                    self.get_mood() if hasattr(self, "get_mood") else None,
+                    self.get_mood_intensity() if hasattr(self, "get_mood_intensity") else 0.0,
+                )
             self.speak(line)
         finally:
             self._startup_complete = True
@@ -1263,7 +1266,10 @@ class FloatingAssistant(
         self.end_hug()
         self.hide_screen_glitch()
         self.hide_blue_screen()
-        line = random.choice(GOODBYE_LINES)
+        line = pick_goodbye_line(
+            self.get_mood() if hasattr(self, "get_mood") else None,
+            self.get_mood_intensity() if hasattr(self, "get_mood_intensity") else 0.0,
+        )
 
         def run_goodbye():
             self.speak(line, show_bubble=True, wait_for_tts=True, allow_in_focus=True)
