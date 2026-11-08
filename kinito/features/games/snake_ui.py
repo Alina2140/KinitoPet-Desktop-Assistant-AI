@@ -7,7 +7,7 @@ from tkinter import Button, Canvas, Frame, Label
 
 from content import dialogue as dlg
 from content import game_lines
-from kinito.colors import lighten_hex, normalize_hex_color
+from kinito.colors import brightness, darken_hex, lighten_hex, normalize_hex_color
 from kinito.features.games.base import open_game_window
 from kinito.features.games.snake import (
     DOWN,
@@ -26,14 +26,18 @@ PAD = 2
 BG_COLOR = "#1a1a2e"
 GRID_COLOR = "#16213e"
 SNAKE_BODY = "#22c55e"
-SNAKE_HEAD_LIGHTEN = 0.2
+SNAKE_HEAD_DARKEN = 0.45
+SNAKE_HEAD_LIGHTEN = 0.45
+SNAKE_DARK_BODY_BRIGHTNESS = 0.25
 FOOD_COLOR = "#f87171"
 DEAD_COLOR = "#94a3b8"
 
 
 def snake_palette(body: str) -> tuple[str, str]:
-    """Return (head, body) colors for a snake whose body is *body*."""
-    return lighten_hex(body, SNAKE_HEAD_LIGHTEN), body
+    """Return (head, body) colors; the head is darker, or lighter if the body is already dark."""
+    if brightness(body) < SNAKE_DARK_BODY_BRIGHTNESS:
+        return lighten_hex(body, SNAKE_HEAD_LIGHTEN), body
+    return darken_hex(body, SNAKE_HEAD_DARKEN), body
 
 
 class SnakeGame:

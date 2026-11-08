@@ -31,3 +31,15 @@ def lighten_hex(color: str, amount: float) -> str:
     amount = max(0.0, min(1.0, amount))
     mixed = [round(channel + (255 - channel) * amount) for channel in hex_to_rgb(color)]
     return rgb_to_hex(*mixed)
+
+
+def darken_hex(color: str, amount: float) -> str:
+    """Blend *color* toward black by *amount* (0 keeps it, 1 is black)."""
+    amount = max(0.0, min(1.0, amount))
+    return rgb_to_hex(*(round(channel * (1 - amount)) for channel in hex_to_rgb(color)))
+
+
+def brightness(color: str) -> float:
+    """Return the perceived brightness of *color* from 0 (black) to 1 (white)."""
+    red, green, blue = hex_to_rgb(color)
+    return (0.299 * red + 0.587 * green + 0.114 * blue) / 255

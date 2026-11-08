@@ -2,7 +2,14 @@
 
 from unittest.mock import MagicMock
 
-from kinito.colors import hex_to_rgb, lighten_hex, normalize_hex_color, rgb_to_hex
+from kinito.colors import (
+    brightness,
+    darken_hex,
+    hex_to_rgb,
+    lighten_hex,
+    normalize_hex_color,
+    rgb_to_hex,
+)
 from kinito.features.color_settings import ColorSettingsMixin
 from kinito.features.games.snake_ui import SNAKE_BODY, snake_palette
 from kinito.settings_store import DEFAULT_COLOR_SETTINGS
@@ -33,10 +40,25 @@ def test_lighten_hex():
     assert lighten_hex("#000000", 0.5) == "#808080"
 
 
-def test_snake_palette_head_is_lighter_than_body():
+def test_darken_hex_and_brightness():
+    assert darken_hex("#ffffff", 0) == "#ffffff"
+    assert darken_hex("#ffffff", 1) == "#000000"
+    assert darken_hex("#ffffff", 0.5) == "#808080"
+    assert brightness("#000000") == 0
+    assert brightness("#ffffff") == 1
+
+
+def test_snake_palette_head_is_darker_than_body():
     head, body = snake_palette("#3b82f6")
     assert body == "#3b82f6"
-    assert head == lighten_hex("#3b82f6", 0.2)
+    assert head == darken_hex("#3b82f6", 0.45)
+    assert brightness(head) < brightness(body)
+
+
+def test_snake_palette_lightens_head_of_very_dark_body():
+    head, body = snake_palette("#111111")
+    assert body == "#111111"
+    assert brightness(head) > brightness(body)
 
 
 def test_default_snake_color_matches_game_default():
