@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import random
 import re
 from typing import Any
 
@@ -169,10 +170,14 @@ class MemoryQuestionPlanner:
         # Keep the prompt short; oldest topics are still blocked via reminting.
         asked_for_prompt = asked[-_ASKED_TOPICS_PROMPT_LIMIT:]
         known = self._store.as_prompt_block() or "(none yet — invent a completely open question)"
+        themes = random.sample(
+            prompts.QUESTION_THEMES, k=min(3, len(prompts.QUESTION_THEMES))
+        )
         prompt = prompts.MEMORY_QUESTION_PLAN_PROMPT.format(
             time_context=prompts.local_time_context(include_special_day=True),
             known_facts=known,
             asked_topics=", ".join(asked_for_prompt) if asked_for_prompt else "(none yet)",
+            theme_choices="\n".join(f"- {theme}" for theme in themes),
         )
         try:
             raw = self._client.generate(

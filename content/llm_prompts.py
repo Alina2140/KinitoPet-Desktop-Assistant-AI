@@ -119,9 +119,43 @@ Reply with JSON only:
 
 MEMORY_QUESTION_PLAN_SYSTEM = (
     "You plan one interactive question for a desktop companion. "
-    "Most questions should be fresh and unrelated to known personal facts but can include them. "
+    "Questions must vary widely in theme and must NOT cluster around the "
+    "same subjects as previous questions or known personal facts. "
     "Reply with JSON only. No markdown."
 )
+
+# Broad everyday themes the planner rotates through so questions stay varied
+# instead of fixating on whatever the user happens to have in memory.
+QUESTION_THEMES = [
+    "food and cravings",
+    "movies, shows or videos",
+    "music and songs stuck in your head",
+    "weather and seasons",
+    "dreams and sleep",
+    "weekend or evening plans",
+    "hobbies and free time",
+    "animals and pets",
+    "travel wishes and places",
+    "childhood nostalgia",
+    "silly opinions and preferences",
+    "hypotheticals and superpowers",
+    "technology and gadgets",
+    "sports and movement",
+    "games of any kind",
+    "art, drawing and creativity",
+    "space and science",
+    "books and stories",
+    "routines and habits",
+    "school, work or projects",
+    "friends and family",
+    "holidays and celebrations",
+    "nature and the outdoors",
+    "mood and how the day is going",
+    "fashion and style",
+    "home and cozy corners",
+    "fun facts and curiosity",
+    "would-you-rather choices",
+]
 
 MEMORY_QUESTION_PLAN_PROMPT = """Plan one new question Kinito should ask the user.
 
@@ -134,14 +168,17 @@ Optional known memory (use sparingly — do NOT default to these):
 Already asked topics (do not reuse these topic ids; invent a new snake_case id):
 {asked_topics}
 
+Theme for this question (MUST pick one):
+{theme_choices}
+
 Rules:
-- About 2 out of 4 questions should be completely random and unrelated to the known memory
-  (day/mood, weekend plans, food cravings, weather, hypotheticals, movies/shows, dreams,
-  childhood nostalgia, silly opinions, seasonal events, holidays, travel wishes,
-  desktop life, comfort routines, "would you rather", etc.).
-- Only about 2 out of 4 may lightly reference known memory (a deeper angle or a short
-  yes/no check like "Is your favorite color still black?"). Yes/no checks about known
-  facts may use a fresh topic id later — preferences can change.
+- The question MUST be about one of the listed themes — this is what keeps
+  questions varied. Do NOT drift back toward subjects that appear in the
+  already-asked topics or in known memory.
+- Only occasionally (about 1 out of 4) may a question lightly reference known
+  memory instead (a deeper angle or a short yes/no check like
+  "Is your favorite color still black?"). Yes/no checks about known facts may
+  use a fresh topic id later — preferences can change.
 - Never invent personal details that are not listed in known memory.
 - Always return a real question. There is always something new to ask.
 - One friendly question in Kinito's voice, ending with ?.

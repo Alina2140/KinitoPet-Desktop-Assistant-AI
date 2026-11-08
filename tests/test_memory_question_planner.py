@@ -127,6 +127,29 @@ def test_planner_uses_ollama_and_skips_known_topics(store):
     client.generate.assert_called_once()
 
 
+def test_planner_prompt_forces_varied_themes(store):
+    from content.llm_prompts import QUESTION_THEMES
+
+    client = MagicMock()
+    client.generate.return_value = json.dumps(
+        {
+            "question": "What snack is calling your name right now?",
+            "ui": "textbox",
+            "topic": "snack_craving",
+            "save_as": "note",
+        }
+    )
+    planner = MemoryQuestionPlanner(client, store)
+    spec = planner.plan()
+    assert spec is not None
+    prompt = client.generate.call_args[0][0]
+    assert "Theme for this question" in prompt
+    listed = [theme for theme in QUESTION_THEMES if f"- {theme}" in prompt]
+    assert len(listed) == 3
+    system = client.generate.call_args.kwargs["system"]
+    assert "vary" in system
+
+
 def test_planner_works_without_known_memory(memory_dir):
     store = MemoryStore(directory=memory_dir)
     client = MagicMock()
@@ -143,7 +166,7 @@ def test_planner_works_without_known_memory(memory_dir):
     assert spec is not None
     assert spec.topic == "teleport_lunch"
     prompt = client.generate.call_args.kwargs.get("prompt") or client.generate.call_args[0][0]
-    assert "unrelated" in prompt
+    assert "Theme for this question" in prompt
     assert "Current local time" in prompt
 
 
