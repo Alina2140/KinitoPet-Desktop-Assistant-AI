@@ -47,6 +47,7 @@ DEFAULT_INT_SETTINGS: dict[str, int] = {
 DEFAULT_COLOR_SETTINGS: dict[str, str] = {
     "snake_color": "#22c55e",
     "chat_name_color": "#6a25eb",
+    "connect_four_color": "#7c3aed",
 }
 
 TTS_VOLUME_MIN = 0

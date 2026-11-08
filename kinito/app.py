@@ -339,6 +339,7 @@ class FloatingAssistant(
         self._trivia_recap_enabled = self._settings.get("trivia_recap_enabled", True)
         self._snake_color = self._settings.get_str("snake_color")
         self._chat_name_color = self._settings.get_str("chat_name_color")
+        self._connect_four_color = self._settings.get_str("connect_four_color")
         self._color_settings_window = None
         self._hidden_menu_buttons = self._settings.get_hidden_menu_buttons()
         self._menu_settings_window = None
@@ -495,6 +496,7 @@ class FloatingAssistant(
             trivia_recap_enabled=bool(getattr(self, "_trivia_recap_enabled", True)),
             snake_color=self.snake_color(),
             chat_name_color=self.chat_name_color(),
+            connect_four_color=self.connect_four_color(),
         )
         store.set_sfx_channel_volumes(
             getattr(self, "_sfx_channel_volumes", {}) or {}

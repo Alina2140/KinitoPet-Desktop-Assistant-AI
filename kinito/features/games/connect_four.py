@@ -18,7 +18,6 @@ EMPTY = " "
 
 PLAYER_COLOR = "#7c3aed"
 KINITO_COLOR = "#fa96ff"
-PLAYER_BG = "#ddd6fe"
 KINITO_BG = "#fbcfe8"
 EMPTY_BG = "SystemButtonFace"
 EMPTY_MARK = "○"
@@ -184,7 +183,7 @@ class ConnectFourGame:
 
         self.status_label = Label(
             main,
-            text="You are purple. Click a column — your turn!",
+            text="Click a column — your turn!",
         )
         self.status_label.pack(pady=8)
 
@@ -210,6 +209,21 @@ class ConnectFourGame:
             self.buttons.append(row_buttons)
 
         Button(main, text="New Game", command=self._reset).pack(pady=(0, 10))
+        self.app._connect_four_game = self
+        self.window.bind("<Destroy>", self._on_destroy)
+
+    def _on_destroy(self, event):
+        if event.widget is self.window and getattr(
+            self.app, "_connect_four_game", None
+        ) is self:
+            self.app._connect_four_game = None
+
+    def refresh_player_colors(self) -> None:
+        """Recolor every placed player disc (called when the color setting changes)."""
+        for row in range(ROWS):
+            for col in range(COLS):
+                if self.board[row][col] == PLAYER:
+                    self._refresh_cell(row, col)
 
     def _reset(self):
         """Start a fresh board."""
@@ -226,7 +240,18 @@ class ConnectFourGame:
                     state="normal",
                 )
         if self.status_label:
-            self.status_label.config(text="You are purple. Click a column — your turn!")
+            self.status_label.config(text="Click a column — your turn!")
+
+    def _player_color(self) -> str:
+        # Live update path: the Adjust Colors window calls refresh_player_colors().
+        getter = getattr(self.app, "connect_four_color", None)
+        color = getter() if callable(getter) else PLAYER_COLOR
+        return color or PLAYER_COLOR
+
+    def _player_bg(self) -> str:
+        from kinito.colors import lighten_hex
+
+        return lighten_hex(self._player_color(), 0.85)
 
     def _refresh_cell(self, row: int, col: int):
         """Update one button to match the board cell."""
@@ -234,11 +259,12 @@ class ConnectFourGame:
         button = self.buttons[row][col]
         if piece == PLAYER:
             # disabledforeground is required on Windows — fg alone becomes gray.
+            color = self._player_color()
             button.config(
                 text=DISC_MARK,
-                fg=PLAYER_COLOR,
-                disabledforeground=PLAYER_COLOR,
-                bg=PLAYER_BG,
+                fg=color,
+                disabledforeground=color,
+                bg=self._player_bg(),
                 state="disabled",
             )
         elif piece == KINITO:

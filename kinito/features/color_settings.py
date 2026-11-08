@@ -31,6 +31,16 @@ CHAT_NAME_COLOR_PRESETS = (
     "#db2777",
     "#111827",
 )
+CONNECT_FOUR_COLOR_PRESETS = (
+    "#7c3aed",
+    "#2563eb",
+    "#0891b2",
+    "#16a34a",
+    "#d97706",
+    "#dc2626",
+    "#db2777",
+    "#111827",
+)
 
 SNAKE_PREVIEW_SEGMENTS = 5
 SNAKE_PREVIEW_CELL = 18
@@ -41,7 +51,7 @@ class ColorSettingsMixin:
     """Let the user pick the snake color and their chat name color."""
 
     COLOR_SETTINGS_WIDTH = 420
-    COLOR_SETTINGS_HEIGHT = 390
+    COLOR_SETTINGS_HEIGHT = 500
 
     def snake_color(self) -> str:
         """Return the chosen snake body color."""
@@ -67,6 +77,26 @@ class ColorSettingsMixin:
         apply = getattr(self, "apply_chat_name_color", None)
         if callable(apply):
             apply()
+        if hasattr(self, "_persist_settings"):
+            self._persist_settings()
+
+    def connect_four_color(self) -> str:
+        """Return the chosen color for the player's Connect Four discs."""
+        return normalize_hex_color(
+            getattr(self, "_connect_four_color", None),
+            DEFAULT_COLOR_SETTINGS["connect_four_color"],
+        )
+
+    def set_connect_four_color(self, color: str) -> None:
+        """Store a new Connect Four disc color and recolor an open game's discs."""
+        self._connect_four_color = normalize_hex_color(color, self.connect_four_color())
+        game = getattr(self, "_connect_four_game", None)
+        refresh = getattr(game, "refresh_player_colors", None)
+        if callable(refresh):
+            try:
+                refresh()
+            except Exception:
+                pass
         if hasattr(self, "_persist_settings"):
             self._persist_settings()
 
@@ -107,8 +137,33 @@ class ColorSettingsMixin:
             y = self.root.winfo_vrooty() + (self.root.winfo_vrootheight() - height) // 2
         window.geometry(f"{width}x{height}+{int(x)}+{int(y)}")
 
+        window.resizable(True, True)
+        window.minsize(300, 240)
+
+        # Scrollable container: the content can exceed the window when shrunk.
+        scroller = Canvas(window, bg=UI_BG, highlightthickness=0)
+        scrollbar = tk.Scrollbar(window, orient="vertical", command=scroller.yview)
+        scroller.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side="right", fill="y")
+        scroller.pack(side="left", fill="both", expand=True)
+        body = Frame(scroller, bg=UI_BG)
+        body_window = scroller.create_window((0, 0), window=body, anchor="nw")
+
+        def _sync_scroll_region(_event=None):
+            scroller.configure(scrollregion=scroller.bbox("all"))
+            scroller.itemconfigure(body_window, width=scroller.winfo_width())
+
+        body.bind("<Configure>", _sync_scroll_region)
+        scroller.bind("<Configure>", _sync_scroll_region)
+
+        def _on_mousewheel(event):
+            scroller.yview_scroll(int(-1 * (event.delta / 120)) or 1, "units")
+
+        for widget in (window, scroller, body):
+            widget.bind_all("<MouseWheel>", _on_mousewheel, add="+")
+
         Label(
-            window,
+            body,
             text="Pick your colors. Changes save automatically.",
             anchor="w",
             padx=12,
@@ -117,7 +172,7 @@ class ColorSettingsMixin:
         ).pack(fill="x")
 
         self._build_color_section(
-            window,
+            body,
             "Snake",
             self._make_snake_preview,
             SNAKE_COLOR_PRESETS,
@@ -126,7 +181,7 @@ class ColorSettingsMixin:
             DEFAULT_COLOR_SETTINGS["snake_color"],
         )
         self._build_color_section(
-            window,
+            body,
             "Chat name",
             self._make_chat_name_preview,
             CHAT_NAME_COLOR_PRESETS,
@@ -134,15 +189,25 @@ class ColorSettingsMixin:
             self.set_chat_name_color,
             DEFAULT_COLOR_SETTINGS["chat_name_color"],
         )
+        self._build_color_section(
+            body,
+            "Connect 4 disc",
+            self._make_connect_four_preview,
+            CONNECT_FOUR_COLOR_PRESETS,
+            self.connect_four_color,
+            self.set_connect_four_color,
+            DEFAULT_COLOR_SETTINGS["connect_four_color"],
+        )
 
         def _on_close():
             self._color_settings_window = None
             try:
+                window.unbind_all("<MouseWheel>")
                 window.destroy()
             except tk.TclError:
                 pass
 
-        footer = Frame(window, bg=UI_BG)
+        footer = Frame(body, bg=UI_BG)
         footer.pack(fill="x", side="bottom", padx=12, pady=8)
         tk.Button(footer, text="Close", bg=UI_BG, command=_on_close).pack(side="right")
         window.protocol("WM_DELETE_WINDOW", _on_close)
@@ -188,6 +253,41 @@ class ColorSettingsMixin:
 
         def refresh():
             name_label.config(fg=self.chat_name_color())
+
+        return refresh
+
+    def _make_connect_four_preview(self, parent):
+        cell = SNAKE_PREVIEW_CELL
+        canvas = Canvas(
+            parent,
+            width=cell * 3,
+            height=cell * 2,
+            bg=UI_BG,
+            highlightthickness=0,
+        )
+        canvas.pack(anchor="w")
+
+        def refresh():
+            from kinito.colors import lighten_hex
+
+            canvas.delete("all")
+            color = self.connect_four_color()
+            canvas.create_oval(
+                2,
+                2,
+                cell * 2 - 2,
+                cell * 2 - 2,
+                fill=lighten_hex(color, 0.85),
+                outline="",
+            )
+            canvas.create_oval(
+                cell // 2,
+                cell // 2,
+                cell * 2 - cell // 2,
+                cell * 2 - cell // 2,
+                fill=color,
+                outline="",
+            )
 
         return refresh
 
