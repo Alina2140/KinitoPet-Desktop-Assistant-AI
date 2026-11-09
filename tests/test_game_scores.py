@@ -131,6 +131,34 @@ def test_record_trivia_score_best_and_streak(store, scores_dir):
     assert reloaded.trivia_streak() == 0
 
 
+def test_minesweeper_best_time_and_streak(store, scores_dir):
+    summary = store.record_minesweeper_result(won=True, seconds=90)
+    assert summary["new_best_time"] is True
+    assert summary["best_seconds"] == 90
+    assert summary["streak"] == 1
+    assert summary["best_streak"] == 1
+
+    summary = store.record_minesweeper_result(won=True, seconds=120)
+    assert summary["new_best_time"] is False
+    assert summary["streak"] == 2
+    assert summary["best_streak"] == 2
+
+    summary = store.record_minesweeper_result(won=True, seconds=60)
+    assert summary["new_best_time"] is True
+    assert summary["best_seconds"] == 60
+    assert summary["streak"] == 3
+
+    summary = store.record_minesweeper_result(won=False, seconds=10)
+    assert summary["new_best_time"] is False
+    assert summary["streak"] == 0
+    assert summary["best_streak"] == 3
+
+    reloaded = GameScoresStore(directory=scores_dir)
+    assert reloaded.minesweeper_best_seconds() == 60
+    assert reloaded.minesweeper_streak() == 0
+    assert reloaded.minesweeper_best_streak() == 3
+
+
 def test_invalid_file_falls_back(scores_dir):
     os.makedirs(scores_dir, exist_ok=True)
     path = os.path.join(scores_dir, "game_scores.json")

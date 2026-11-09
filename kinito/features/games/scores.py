@@ -28,6 +28,9 @@ DEFAULT_SCORES: dict[str, int] = {
     "trivia_streak": 0,
     "number_guess_best_attempts": 0,
     "battleships_best_shots": 0,
+    "minesweeper_best_seconds": 0,
+    "minesweeper_streak": 0,
+    "minesweeper_best_streak": 0,
 }
 
 TRIVIA_STREAK_THRESHOLD = 3
@@ -38,6 +41,7 @@ _LOW_IS_BETTER_KEYS = frozenset(
         *(f"memory_best_moves_{n}" for n in _MEMORY_PAIR_OPTIONS),
         "number_guess_best_attempts",
         "battleships_best_shots",
+        "minesweeper_best_seconds",
     }
 )
 
@@ -185,6 +189,42 @@ class GameScoresStore:
     def record_battleships_shots(self, shots: int) -> bool:
         """Update Battleships best if *shots* is a new low. Return True on new best."""
         return self._record_low_best("battleships_best_shots", shots)
+
+    def minesweeper_best_seconds(self) -> int | None:
+        """Return the fastest Minesweeper win in seconds, or None if unset."""
+        return self._get_low_best("minesweeper_best_seconds")
+
+    def minesweeper_streak(self) -> int:
+        """Return the current consecutive Minesweeper win streak."""
+        return self.get("minesweeper_streak")
+
+    def minesweeper_best_streak(self) -> int:
+        """Return the longest Minesweeper win streak."""
+        return self.get("minesweeper_best_streak")
+
+    def record_minesweeper_result(
+        self, *, won: bool, seconds: int
+    ) -> dict[str, int | bool | None]:
+        """Update best time/streak after a finished game. Return summary flags."""
+        with self._lock:
+            new_best_time = False
+            if won:
+                new_best_time = self._record_low_best(
+                    "minesweeper_best_seconds", seconds
+                )
+                streak = self.minesweeper_streak() + 1
+                self._data["minesweeper_streak"] = streak
+                if streak > self.minesweeper_best_streak():
+                    self._data["minesweeper_best_streak"] = streak
+            else:
+                self._data["minesweeper_streak"] = 0
+            self.save()
+            return {
+                "best_seconds": self.minesweeper_best_seconds(),
+                "streak": self.minesweeper_streak(),
+                "best_streak": self.minesweeper_best_streak(),
+                "new_best_time": new_best_time,
+            }
 
     def _get_low_best(self, key: str) -> int | None:
         """Return a lower-is-better score, or None if unset."""

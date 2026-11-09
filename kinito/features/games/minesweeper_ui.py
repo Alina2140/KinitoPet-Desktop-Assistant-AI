@@ -243,15 +243,35 @@ class MinesweeperGame:
 
         self.status_label = Label(
             outer,
-            text="Left-click open, right-click flag — click the face to restart.",
+            text="",
             bg=BG,
             fg="#404040",
             font=("Segoe UI", 8),
         )
         self.status_label.pack(side=tk.BOTTOM, pady=(0, 2))
+        self._update_status_text()
 
         self._refresh_counters()
         self._tick_timer()
+
+    def _update_status_text(self, extra: str = ""):
+        """Show the hint plus persisted best time / streak records."""
+        parts = ["Left-click open, right-click flag — click the face to restart."]
+        scores = (
+            self.app.game_scores() if hasattr(self.app, "game_scores") else None
+        )
+        if scores is not None:
+            best = scores.minesweeper_best_seconds()
+            best_streak = scores.minesweeper_best_streak()
+            if best is not None:
+                parts.append(f"best {best}s")
+            if best_streak:
+                streak = scores.minesweeper_streak()
+                parts.append(f"streak {streak} (best {best_streak})")
+        if extra:
+            parts.append(extra)
+        if self.status_label is not None:
+            self.status_label.config(text=" · ".join(parts))
 
     def _tick_timer(self):
         if self.window is None:
@@ -298,6 +318,7 @@ class MinesweeperGame:
                 bd=3,
             )
         self._set_smiley(SMILEY_PLAYING)
+        self._update_status_text()
         self._refresh_counters()
 
     def _refresh_cell(self, index: int):
@@ -400,6 +421,12 @@ class MinesweeperGame:
                 self.app, game_lines.MINESWEEPER_LOSE_LINES, "lose"
             )
             outcome = "kinito_win"
+        if hasattr(self.app, "game_scores"):
+            summary = self.app.game_scores().record_minesweeper_result(
+                won=self.state["won"], seconds=self._seconds
+            )
+            extra = "NEW BEST TIME!" if summary.get("new_best_time") else ""
+            self._update_status_text(extra=extra)
         if hasattr(self.app, "on_game_outcome"):
             self.app.on_game_outcome(outcome)
         self.app.speak_game_line(line)
