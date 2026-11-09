@@ -365,6 +365,28 @@ INTERRUPT_BY_MOOD: dict[str, list[str]] = {
     ],
 }
 
+# Lines when an annoyed/angry Kinito surfs away from a too-close cursor.
+KEEP_AWAY_LINES = [
+    "Personal space, please!",
+    "Nope — I'm moving over here.",
+    "Too close. I need room.",
+    "I'm surfing somewhere quieter.",
+    "Give me a little space, okay?",
+]
+
+KEEP_AWAY_BY_MOOD: dict[str, list[str]] = {
+    "annoyed": [
+        "Back up a little — I'm not in the mood for company right now.",
+        "Nope. Your cursor is TOO close today.",
+        "I'm relocating. You brought this on yourself.",
+    ],
+    "angry": [
+        "BACK OFF! I need space!",
+        "Do NOT follow me. I mean it.",
+        "I'm out of here. Away from THAT cursor.",
+    ],
+}
+
 # Mood-tinted birthday congrats; {name} placeholders only (no {age}).
 BIRTHDAY_CONGRATS_BY_MOOD: dict[str, list[str]] = {
     "happy": [

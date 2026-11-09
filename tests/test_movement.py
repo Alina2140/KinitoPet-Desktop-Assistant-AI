@@ -937,6 +937,32 @@ def test_reading_relocate_ignores_far_cursor(movement):
         assert movement._maybe_reading_relocate() is None
 
 
+def test_keep_away_only_when_grumpy_close_and_idle(movement):
+    movement._keep_away_ready_at = 0.0
+    movement.get_mood = lambda: "neutral"
+    movement.get_mood_intensity = lambda: 1.0
+    movement._is_game_active = MagicMock(return_value=False)
+    movement._chat_mode = False
+    movement.random_position_on_screen = MagicMock(return_value=(900.0, 900.0))
+    movement._start_keep_away_surf = MagicMock()
+    cursor = (150, 250)
+    with patch("kinito.movement.random.random", return_value=0.0):
+        # Neutral mood never flees.
+        assert movement._maybe_keep_away(cursor, 50.0) is False
+        movement.get_mood = lambda: "annoyed"
+        # Too weakly annoyed to flee.
+        movement.get_mood_intensity = lambda: 0.2
+        assert movement._maybe_keep_away(cursor, 50.0) is False
+        # Strong enough, but the cursor is too far away.
+        movement.get_mood_intensity = lambda: 0.8
+        assert movement._maybe_keep_away(cursor, 200.0) is False
+        # Grumpy + close: surf away to the farthest candidate spot.
+        assert movement._maybe_keep_away(cursor, 50.0) is True
+        movement._start_keep_away_surf.assert_called_once_with((900.0, 900.0))
+        # Cooldown blocks an immediate second flee.
+        assert movement._maybe_keep_away(cursor, 50.0) is False
+
+
 def test_reading_idle_surfs_away_when_relocate_hits(movement):
     movement.change_sprite = MagicMock()
     movement._reading_sprites = ("up", "book")

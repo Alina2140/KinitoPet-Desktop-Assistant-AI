@@ -46,6 +46,12 @@ class MovementMixin:
     READING_RELOCATE_MOODS = ("annoyed", "angry")
     READING_RELOCATE_MIN_DISTANCE_PX = 380.0
     READING_LOOK_UP_FRAME_PERIOD = 4
+    KEEP_AWAY_RADIUS_PX = 140
+    KEEP_AWAY_CHANCE = 0.25
+    KEEP_AWAY_COOLDOWN_SECONDS = 20.0
+    KEEP_AWAY_LINE_CHANCE = 0.5
+    KEEP_AWAY_MOODS = ("annoyed", "angry")
+    KEEP_AWAY_MIN_INTENSITY = 0.5
     IDLE_WAIT_SHORT = (20, 40)
     IDLE_WAIT_NORMAL = (40, 80)
     IDLE_WAIT_LONG = (85, 140)
@@ -1369,6 +1375,10 @@ class MovementMixin:
                 self._schedule_mouse_attention_poll()
                 return
 
+            if self._maybe_keep_away(cursor, distance):
+                self._schedule_mouse_attention_poll()
+                return
+
             direction = look_direction_from_delta(
                 dx,
                 dy,
@@ -1842,6 +1852,100 @@ class MovementMixin:
         return max(
             candidates,
             key=lambda pos: math.hypot(pos[0] - cursor[0], pos[1] - cursor[1]),
+        )
+
+    def _maybe_keep_away(self, cursor, distance: float) -> bool:
+        """Strongly annoyed/angry Kinito may surf away from a too-close cursor."""
+        if distance > self.KEEP_AWAY_RADIUS_PX:
+            return False
+        mood = self.get_mood() if hasattr(self, "get_mood") else None
+        if mood not in self.KEEP_AWAY_MOODS:
+            return False
+        intensity = (
+            self.get_mood_intensity()
+            if hasattr(self, "get_mood_intensity")
+            else 0.0
+        )
+        if intensity < self.KEEP_AWAY_MIN_INTENSITY:
+            return False
+        if time.monotonic() < float(getattr(self, "_keep_away_ready_at", 0.0)):
+            return False
+        if (
+            getattr(self, "moving", False)
+            or getattr(self, "is_dragging", False)
+            or getattr(self, "_throwing", False)
+        ):
+            return False
+        busy = getattr(self, "_is_busy_with_speech", None)
+        if callable(busy) and busy():
+            return False
+        if getattr(self, "_focus_mode", False) or getattr(self, "_chat_mode", False):
+            return False
+        if getattr(self, "_is_game_active", lambda: False)():
+            return False
+        if getattr(self, "paused", False) or not getattr(
+            self, "_startup_complete", True
+        ):
+            return False
+        if random.random() >= self.KEEP_AWAY_CHANCE:
+            return False
+        target = self._reading_relocate_target(cursor)
+        if target is None:
+            return False
+        self._keep_away_ready_at = (
+            time.monotonic() + self.KEEP_AWAY_COOLDOWN_SECONDS
+        )
+        self._start_keep_away_surf(target)
+        return True
+
+    def _start_keep_away_surf(self, target) -> None:
+        """Surf away from the cursor because Kinito wants space."""
+        self.moving = True
+        target_x, target_y = target
+
+        def worker():
+            try:
+                current_x = self.root.winfo_rootx()
+                self._render_surf_sprite(target_x - current_x, 0.0)
+                self.play_sfx(surf_file_path)
+                self.move_towards(target_x, target_y)
+            finally:
+                self.moving = False
+                self._finish_surf_movement()
+            self._maybe_speak_keep_away()
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _maybe_speak_keep_away(self) -> None:
+        """Sometimes comment on needing space after surfing away from the cursor."""
+        if getattr(self, "_focus_mode", False):
+            return
+        if not getattr(self, "_startup_complete", True):
+            return
+        if hasattr(self, "_is_busy_with_speech") and self._is_busy_with_speech():
+            return
+        if not hasattr(self, "speak"):
+            return
+        if random.random() >= self.KEEP_AWAY_LINE_CHANCE:
+            return
+        from content import dialogue as dlg
+        from content.mood_lines import pick_mood_aware_line
+
+        mood = self.get_mood() if hasattr(self, "get_mood") else None
+        intensity = (
+            self.get_mood_intensity()
+            if hasattr(self, "get_mood_intensity")
+            else 0.0
+        )
+        self.speak(
+            pick_mood_aware_line(
+                dlg.KEEP_AWAY_LINES,
+                dlg.KEEP_AWAY_BY_MOOD,
+                mood=mood,
+                intensity=intensity,
+            ),
+            preserve_sprite=True,
+            skip_ai=True,
         )
 
     def _surf_to_reading_spot(self, target) -> None:
