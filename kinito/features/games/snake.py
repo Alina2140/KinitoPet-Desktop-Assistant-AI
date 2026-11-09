@@ -7,9 +7,9 @@ from typing import Literal
 
 GRID_SIZE = 16
 START_LENGTH = 3
-BASE_DELAY_MS = 160
-MIN_DELAY_MS = 95
-DELAY_STEP_MS = 8
+BASE_DELAY_MS = 170
+MIN_DELAY_MS = 90
+DELAY_STEP_MS = 2
 
 Direction = tuple[int, int]
 Point = tuple[int, int]
