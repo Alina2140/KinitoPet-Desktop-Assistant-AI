@@ -311,9 +311,18 @@ class MoodMixin:
             self._maybe_notice_interruption()
 
     def _is_busy_mid_activity(self) -> bool:
-        """True only while Kinito is actually speaking or generating a reply."""
+        """True while Kinito is speaking, generating, or mid-surf/roam.
+
+        Ballistic throws are excluded — grabbing him mid-throw is not an
+        interruption (he was tossed, not busy).
+        """
+        if getattr(self, "talking", False) or getattr(self, "_ai_generating", False):
+            return True
+        if getattr(self, "_throwing", False):
+            return False
         return bool(
-            getattr(self, "talking", False) or getattr(self, "_ai_generating", False)
+            getattr(self, "moving", False)
+            or getattr(self, "_move_target", None) is not None
         )
 
     def _maybe_notice_interruption(self) -> None:

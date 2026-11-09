@@ -60,6 +60,9 @@ class _InterruptHost(_MoodHost):
     def __init__(self):
         super().__init__()
         self.talking = False
+        self.moving = False
+        self._throwing = False
+        self._move_target = None
         self.root = _FakeRoot()
         self.grumbled = []
 
@@ -97,6 +100,24 @@ def test_interrupt_escalates_annoyed_to_angry(monkeypatch):
     host.set_mood(MOOD_ANNOYED, 0.5)
     host.note_user_attention(interrupt=True)
     assert host.get_mood() == MOOD_ANGRY
+
+
+def test_interrupt_while_surfing_counts(monkeypatch):
+    monkeypatch.setattr(random, "random", lambda: 0.0)
+    host = _InterruptHost()
+    host.moving = True
+    host._move_target = (100.0, 100.0)
+    host.note_user_attention(interrupt=True)
+    assert host.get_mood() == MOOD_ANNOYED
+
+
+def test_interrupt_while_throwing_does_not_count(monkeypatch):
+    monkeypatch.setattr(random, "random", lambda: 0.0)
+    host = _InterruptHost()
+    host.moving = True
+    host._throwing = True
+    host.note_user_attention(interrupt=True)
+    assert host.get_mood() == MOOD_NEUTRAL
 
 
 def test_kinito_mood_fact_is_allowed_and_protected():

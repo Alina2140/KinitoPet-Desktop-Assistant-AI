@@ -327,6 +327,9 @@ INTERRUPT_LINES = [
     "You cut me off. Noted.",
     "I had more to say, you know!",
     "Wow, interrupted. Classic.",
+    "I was surfing here! I had places to be!",
+    "Hey — I was mid-glide!",
+    "You grabbed me mid-surf. Not cool.",
 ]
 
 INTERRUPT_BY_MOOD: dict[str, list[str]] = {
@@ -337,23 +340,28 @@ INTERRUPT_BY_MOOD: dict[str, list[str]] = {
     "bored": [
         "Finally, an interruption — I was boring myself anyway.",
         "Go on, cut me off. Something better had better show up.",
+        "Grabbed mid-roam. Fine, entertain me then.",
     ],
     "tired": [
         "Mm, fine. I was too sleepy to finish anyway...",
         "Okay... I'll just... stop mid-sentence...",
+        "I was drifting over there anyway... put me down gently...",
     ],
     "annoyed": [
         "AGAIN?! I was talking!",
         "Do you EVER let me finish?!",
         "Oh please, interrupt me more. I love it.",
+        "I was MOVING. You grabbed me mid-move!",
     ],
     "sad": [
         "You didn't want to hear the rest...? okay...",
         "Fine. Forget I said anything...",
+        "I was just getting somewhere...",
     ],
     "angry": [
         "I. WAS. TALKING!",
         "Unbelievable. Do it again, I dare you.",
+        "HANDS OFF — I was going somewhere!",
     ],
 }
 
