@@ -99,6 +99,15 @@ def _button_images_for(app, spec: DialogSpec, buttons: list[str]) -> dict:
             if image is not None:
                 images[label] = image
         return images
+    if spec.marker == dlg.COIN_FLIP_MARKER:
+        from kinito.features.games.coin_dice_ui import coin_face_image
+
+        images = {}
+        for label in buttons:
+            image = coin_face_image(app.root, label.lower())
+            if image is not None:
+                images[label] = image
+        return images
     return {}
 
 
