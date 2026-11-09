@@ -319,6 +319,44 @@ MISSED_DAY_BY_MOOD: dict[str, list[str]] = {
     ],
 }
 
+# Lines when the user cuts Kinito off mid-speech/activity.
+INTERRUPT_LINES = [
+    "Hey! I was talking!",
+    "Rude! I was in the middle of something.",
+    "Excuse me, I wasn't finished!",
+    "You cut me off. Noted.",
+    "I had more to say, you know!",
+    "Wow, interrupted. Classic.",
+]
+
+INTERRUPT_BY_MOOD: dict[str, list[str]] = {
+    "happy": [
+        "Heeey, I was saying something! But okay, you do you!",
+        "Interrupted mid-word! It's fine — I'm in a great mood anyway!",
+    ],
+    "bored": [
+        "Finally, an interruption — I was boring myself anyway.",
+        "Go on, cut me off. Something better had better show up.",
+    ],
+    "tired": [
+        "Mm, fine. I was too sleepy to finish anyway...",
+        "Okay... I'll just... stop mid-sentence...",
+    ],
+    "annoyed": [
+        "AGAIN?! I was talking!",
+        "Do you EVER let me finish?!",
+        "Oh please, interrupt me more. I love it.",
+    ],
+    "sad": [
+        "You didn't want to hear the rest...? okay...",
+        "Fine. Forget I said anything...",
+    ],
+    "angry": [
+        "I. WAS. TALKING!",
+        "Unbelievable. Do it again, I dare you.",
+    ],
+}
+
 # Mood-tinted birthday congrats; {name} placeholders only (no {age}).
 BIRTHDAY_CONGRATS_BY_MOOD: dict[str, list[str]] = {
     "happy": [

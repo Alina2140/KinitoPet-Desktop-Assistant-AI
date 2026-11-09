@@ -156,7 +156,7 @@ class SpeechChatMixin(EmojiPickerMixin):
         close_button = self._create_bubble_button(
             row,
             "×",
-            self.close_speech_bubble,
+            self.user_close_speech_bubble,
             width=2,
             padx=3,
             pady=1,

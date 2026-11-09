@@ -655,6 +655,8 @@ class FloatingAssistant(
             self.speak(dlg.pick_line(dlg.FOCUS_OFF_LINES), skip_ai=True)
             return
 
+        if hasattr(self, "note_user_attention"):
+            self.note_user_attention(interrupt=True)
         self.interrupt_speech()
         self.close_speech_bubble()
         self.end_hug()

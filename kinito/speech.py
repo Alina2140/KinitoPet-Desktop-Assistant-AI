@@ -1343,7 +1343,7 @@ class SpeechMixin:
                 close_button = self._create_bubble_button(
                     row_frame,
                     "×",
-                    self.close_speech_bubble,
+                    self.user_close_speech_bubble,
                     width=2,
                     padx=4,
                 )
@@ -1380,7 +1380,7 @@ class SpeechMixin:
         close_button = self._create_bubble_button(
             input_frame,
             "×",
-            self.close_speech_bubble,
+            self.user_close_speech_bubble,
             width=2,
             padx=4,
         )
@@ -1433,6 +1433,12 @@ class SpeechMixin:
         spec = find_dialog_spec(current_question)
         if spec:
             handle_dialog_response(self, spec, response)
+
+    def user_close_speech_bubble(self):
+        """User clicked the bubble's × button: counts as interrupting Kinito."""
+        if hasattr(self, "note_user_attention"):
+            self.note_user_attention(interrupt=True)
+        self.close_speech_bubble()
 
     def close_speech_bubble(self):
         """Destroy the speech bubble and reset speech/hug state."""
@@ -1688,7 +1694,7 @@ class SpeechMixin:
     def ask_what_todo(self, event):
         """Right-click handler: open or close the action menu speech bubble."""
         if hasattr(self, "note_user_attention"):
-            self.note_user_attention()
+            self.note_user_attention(interrupt=True)
         if hasattr(self, "speech_bubble") and self.speech_bubble.winfo_exists():
             title = self.speech_bubble.wm_title() or ""
             menu_titles = (

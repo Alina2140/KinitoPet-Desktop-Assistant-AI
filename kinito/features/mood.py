@@ -299,9 +299,62 @@ class MoodMixin:
         if callable(speak):
             speak(dlg.pick_line(lines), skip_ai=True)
 
-    def note_user_attention(self) -> None:
+    _INTERRUPT_MOOD_CHANCE = 0.3
+    _INTERRUPT_LINE_CHANCE = 0.25
+    _INTERRUPT_GRUMBLE_POLL_MS = 300
+    _INTERRUPT_GRUMBLE_MAX_POLLS = 200
+
+    def note_user_attention(self, *, interrupt: bool = False) -> None:
         """Record that the user interacted with Kinito."""
         self._last_user_attention_at = time.monotonic()
+        if interrupt:
+            self._maybe_notice_interruption()
+
+    def _is_busy_mid_activity(self) -> bool:
+        """True only while Kinito is actually speaking or generating a reply."""
+        return bool(
+            getattr(self, "talking", False) or getattr(self, "_ai_generating", False)
+        )
+
+    def _maybe_notice_interruption(self) -> None:
+        """Chance to get annoyed/angry and grumble when the user cuts Kinito off."""
+        if not self.is_mood_system_enabled() or not self._is_busy_mid_activity():
+            return
+        if random.random() < self._INTERRUPT_MOOD_CHANCE:
+            mood = self.get_mood()
+            target = (
+                MOOD_ANGRY if mood in (MOOD_ANNOYED, MOOD_ANGRY) else MOOD_ANNOYED
+            )
+            self.shift_mood(target, 0.25)
+        if random.random() < self._INTERRUPT_LINE_CHANCE:
+            self._schedule_interrupt_grumble()
+
+    def _schedule_interrupt_grumble(self, poll_count: int = 0) -> None:
+        """Speak a grumble once Kinito is idle again after being interrupted."""
+        busy = getattr(self, "_is_busy_with_speech", None)
+        if callable(busy) and not busy():
+            from content import dialogue as dlg
+            from content.mood_lines import pick_mood_aware_line
+
+            line = pick_mood_aware_line(
+                dlg.INTERRUPT_LINES,
+                dlg.INTERRUPT_BY_MOOD,
+                mood=self.get_mood(),
+                intensity=self.get_mood_intensity(),
+            )
+            speak = getattr(self, "speak", None)
+            if callable(speak):
+                speak(line, skip_ai=True)
+            return
+        if poll_count >= self._INTERRUPT_GRUMBLE_MAX_POLLS:
+            return
+        root = getattr(self, "root", None)
+        if root is None:
+            return
+        root.after(
+            self._INTERRUPT_GRUMBLE_POLL_MS,
+            lambda: self._schedule_interrupt_grumble(poll_count + 1),
+        )
 
     def shift_mood(
         self,

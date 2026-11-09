@@ -251,7 +251,7 @@ class MovementMixin:
     def on_mouse_down(self, event):
         """Begin dragging, stop roam sounds, and play the bomp click sound."""
         if hasattr(self, "note_user_attention"):
-            self.note_user_attention()
+            self.note_user_attention(interrupt=True)
         if getattr(self, "_throwing", False):
             self._cancel_throw()
         self._drag_moved = False

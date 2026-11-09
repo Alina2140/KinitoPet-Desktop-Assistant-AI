@@ -42,6 +42,63 @@ class _MoodHost(MoodMixin):
         self._init_mood()
 
 
+class _FakeRoot:
+    def __init__(self):
+        self.callbacks = []
+
+    def after(self, _ms, callback):
+        self.callbacks.append(callback)
+
+    def flush(self):
+        count = 0
+        while self.callbacks and count < 500:
+            count += 1
+            self.callbacks.pop(0)()
+
+
+class _InterruptHost(_MoodHost):
+    def __init__(self):
+        super().__init__()
+        self.talking = False
+        self.root = _FakeRoot()
+        self.grumbled = []
+
+    def _is_busy_with_speech(self):
+        return self.talking
+
+    def speak(self, line, **_kw):
+        self.grumbled.append(line)
+
+
+def test_interrupt_while_talking_shifts_mood_and_grumbles(monkeypatch):
+    monkeypatch.setattr(random, "random", lambda: 0.0)
+    host = _InterruptHost()
+    host.talking = True
+    host.note_user_attention(interrupt=True)
+    assert host.get_mood() == MOOD_ANNOYED
+    host.talking = False
+    host.root.flush()
+    assert host.grumbled
+
+
+def test_interrupt_when_idle_does_nothing(monkeypatch):
+    monkeypatch.setattr(random, "random", lambda: 0.0)
+    host = _InterruptHost()
+    host.note_user_attention(interrupt=True)
+    assert host.get_mood() == MOOD_NEUTRAL
+    host.root.flush()
+    assert not host.grumbled
+
+
+def test_interrupt_escalates_annoyed_to_angry(monkeypatch):
+    monkeypatch.setattr(random, "random", lambda: 0.0)
+    host = _InterruptHost()
+    host.talking = True
+    host.set_mood(MOOD_ANNOYED, 0.5)
+    host.note_user_attention(interrupt=True)
+    assert host.get_mood() == MOOD_ANGRY
+
+
 def test_kinito_mood_fact_is_allowed_and_protected():
     assert KINITO_MOOD_FACT_KEY in EXTRA_FACT_KEYS
     assert KINITO_MOOD_FACT_KEY in ALLOWED_FACT_KEYS
