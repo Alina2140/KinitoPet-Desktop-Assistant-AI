@@ -452,8 +452,11 @@ class SpeechMixin:
         temp.destroy()
         return measured
 
-    def _measure_button_width(self, parent, text, *, width=None):
-        """Return the pixel width a button with *text* needs."""
+    def _measure_button_width(self, parent, text, *, width=None, image=None):
+        """Return the pixel width a button with *text* or *image* needs."""
+        image_size = None
+        if image is not None:
+            image_size = (int(image.width()), int(image.height()))
         button_w, _button_h = measure_chamfered_button(
             parent,
             text=text,
@@ -463,6 +466,7 @@ class SpeechMixin:
             chamfer=self.BUBBLE_BTN_CHAMFER,
             border_width=self.BUBBLE_BORDER_WIDTH,
             width=width,
+            image_size=image_size,
         )
         return button_w
 
@@ -1289,7 +1293,7 @@ class SpeechMixin:
         except tk.TclError:
             pass
 
-    def show_response_buttons(self, options):
+    def show_response_buttons(self, options, images=None):
         """Add wrapped rows of response buttons below the bubble text."""
         bubble_body = getattr(self, "_speech_bubble_body", None)
         if bubble_body is None or not bubble_body.winfo_exists():
@@ -1312,7 +1316,10 @@ class SpeechMixin:
             widest_row_width = 0
 
             for option in options:
-                btn_width = self._measure_button_width(row_frame, option) + 8
+                option_image = images.get(option) if images else None
+                btn_width = (
+                    self._measure_button_width(row_frame, option, image=option_image) + 8
+                )
                 needs_new_row = (
                     row_width > 0 and row_width + btn_width + close_width > max_row_width
                 )
@@ -1327,6 +1334,7 @@ class SpeechMixin:
                     row_frame,
                     option,
                     lambda response=option: self.handle_response(response),
+                    image=option_image,
                 )
                 option_button.pack(side=tk.LEFT, padx=3)
                 row_width += btn_width

@@ -82,9 +82,24 @@ def apply_dialog_ui(app, spec: DialogSpec) -> None:
             buttons = actions_options_for(app)
         else:
             buttons = list(spec.ui.buttons)
-        app.show_response_buttons(buttons)
+        images = _button_images_for(app, spec, buttons)
+        app.show_response_buttons(buttons, images=images)
     elif spec.ui.kind == "textbox":
         app.show_response_textbox(spec.ui.textbox_prompt or spec.marker)
+
+
+def _button_images_for(app, spec: DialogSpec, buttons: list[str]) -> dict:
+    """Return label -> image for dialogs with drawn button icons (else empty)."""
+    if spec.marker == dlg.DICE_GUESS_MARKER:
+        from kinito.features.games.coin_dice_ui import dice_face_image
+
+        images = {}
+        for index, label in enumerate(buttons, start=1):
+            image = dice_face_image(app.root, index)
+            if image is not None:
+                images[label] = image
+        return images
+    return {}
 
 
 def _visible_menu_buttons(app, buttons: list[str]) -> list[str]:
