@@ -153,9 +153,9 @@ class MinesweeperGame:
         self.window = open_game_window(
             self.app,
             "Minesweeper with Kinito",
-            560,
+            600,
             640,
-            min_width=480,
+            min_width=520,
             min_height=560,
         )
         self.window.configure(bg=BG)
@@ -233,6 +233,7 @@ class MinesweeperGame:
                 bg=BG,
                 activebackground=BG,
                 disabledforeground="black",
+                highlightthickness=0,
                 command=lambda i=index: self._on_left_click(i),
             )
             button.grid(row=row, column=col)
