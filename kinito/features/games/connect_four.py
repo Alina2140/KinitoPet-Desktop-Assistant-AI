@@ -8,6 +8,7 @@ import tkinter as tk
 from tkinter import Button, Frame, Label
 
 from content import game_lines
+from kinito.colors import RAINBOW_COLOR, rainbow_at
 from kinito.features.games.base import create_uniform_grid, open_game_window
 
 ROWS = 6
@@ -300,16 +301,19 @@ class ConnectFourGame:
         if self.status_label:
             self.status_label.config(text="Click a column — your turn!")
 
-    def _player_color(self) -> str:
+    def _player_color(self, col: int | None = None) -> str:
         # Live update path: the Adjust Colors window calls refresh_player_colors().
         getter = getattr(self.app, "connect_four_color", None)
         color = getter() if callable(getter) else PLAYER_COLOR
+        if color == RAINBOW_COLOR:
+            # Rainbow mode: the disc color is a gradient across the columns.
+            return rainbow_at(self.cols - 1 - col if col is not None else 0)
         return color or PLAYER_COLOR
 
-    def _player_bg(self) -> str:
+    def _player_bg(self, col: int | None = None) -> str:
         from kinito.colors import lighten_hex
 
-        return lighten_hex(self._player_color(), 0.85)
+        return lighten_hex(self._player_color(col), 0.85)
 
     def _refresh_cell(self, row: int, col: int):
         """Update one button to match the board cell."""
@@ -317,12 +321,12 @@ class ConnectFourGame:
         button = self.buttons[row][col]
         if piece == PLAYER:
             # disabledforeground is required on Windows — fg alone becomes gray.
-            color = self._player_color()
+            color = self._player_color(col)
             button.config(
                 text=DISC_MARK,
                 fg=color,
                 disabledforeground=color,
-                bg=self._player_bg(),
+                bg=self._player_bg(col),
                 state="disabled",
             )
         elif piece == KINITO:

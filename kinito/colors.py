@@ -6,13 +6,31 @@ import re
 
 _HEX_COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
 
+RAINBOW_COLOR = "rainbow"
+RAINBOW_COLORS = (
+    "#ef4444",
+    "#f97316",
+    "#facc15",
+    "#22c55e",
+    "#14b8a6",
+    "#3b82f6",
+    "#a855f7",
+)
+
+
+def rainbow_at(index: int) -> str:
+    """Return the rainbow stripe color for *index* (cycles through RAINBOW_COLORS)."""
+    return RAINBOW_COLORS[index % len(RAINBOW_COLORS)]
+
 
 def normalize_hex_color(value: object, default: str) -> str:
-    """Return *value* as lowercase #rrggbb, or *default* when it is not a valid color."""
+    """Return *value* as lowercase #rrggbb (or "rainbow"), else *default*."""
     if isinstance(value, str):
         candidate = value.strip()
         if _HEX_COLOR.match(candidate):
             return candidate.lower()
+        if candidate.lower() == RAINBOW_COLOR:
+            return RAINBOW_COLOR
     return default
 
 

@@ -504,16 +504,25 @@ class SpeechChatMixin(EmojiPickerMixin):
 
     def _configure_chat_log_tags(self, log: tk.Text) -> None:
         """Style speaker labels in the chat log."""
+        from kinito.colors import RAINBOW_COLOR, RAINBOW_COLORS
+
         log.tag_configure(
             "chat_kinito",
             foreground=self.CHAT_KINITO_COLOR,
             underline=True,
         )
+        user_color = self._chat_user_color()
         log.tag_configure(
             "chat_user",
-            foreground=self._chat_user_color(),
+            foreground=RAINBOW_COLORS[0] if user_color == RAINBOW_COLOR else user_color,
             underline=True,
         )
+        for index, color in enumerate(RAINBOW_COLORS):
+            log.tag_configure(
+                f"chat_user_{index}",
+                foreground=color,
+                underline=True,
+            )
 
     def _chat_user_color(self) -> str:
         """Return the user's chosen chat name color (Settings -> Adjust colors)."""
@@ -522,13 +531,27 @@ class SpeechChatMixin(EmojiPickerMixin):
             return color_fn()
         return self.CHAT_USER_COLOR
 
+    def _chat_user_is_rainbow(self) -> bool:
+        """Return whether the chat name should be drawn letter by letter in rainbow."""
+        from kinito.colors import RAINBOW_COLOR
+
+        return self._chat_user_color() == RAINBOW_COLOR
+
     def apply_chat_name_color(self) -> None:
         """Restyle the user's name in an open chat log after a color change."""
         log = getattr(self, "_chat_log_widget", None)
         if log is None:
             return
         try:
-            log.tag_configure("chat_user", foreground=self._chat_user_color())
+            from kinito.colors import RAINBOW_COLOR, RAINBOW_COLORS
+
+            user_color = self._chat_user_color()
+            log.tag_configure(
+                "chat_user",
+                foreground=(
+                    RAINBOW_COLORS[0] if user_color == RAINBOW_COLOR else user_color
+                ),
+            )
         except tk.TclError:
             pass
 
@@ -567,7 +590,11 @@ class SpeechChatMixin(EmojiPickerMixin):
         message = text.strip()
         tag = self._chat_role_tag(role)
         log.configure(state=tk.NORMAL)
-        if tag is not None:
+        if tag == "chat_user" and self._chat_user_is_rainbow():
+            for index, char in enumerate(f"{role}:"):
+                log.insert(tk.END, char, f"chat_user_{index}")
+            log.insert(tk.END, f" {message}\n")
+        elif tag is not None:
             log.insert(tk.END, f"{role}:", tag)
             log.insert(tk.END, f" {message}\n")
         else:

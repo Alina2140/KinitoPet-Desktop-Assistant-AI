@@ -5,7 +5,12 @@ from __future__ import annotations
 import tkinter as tk
 from tkinter import Canvas, Frame, Label, LabelFrame, Toplevel, colorchooser
 
-from kinito.colors import normalize_hex_color
+from kinito.colors import (
+    RAINBOW_COLOR,
+    RAINBOW_COLORS,
+    normalize_hex_color,
+    rainbow_at,
+)
 from kinito.features.games.snake_ui import BG_COLOR as SNAKE_BG_COLOR
 from kinito.features.games.snake_ui import snake_palette
 from kinito.settings_store import DEFAULT_COLOR_SETTINGS
@@ -45,6 +50,31 @@ CONNECT_FOUR_COLOR_PRESETS = (
 SNAKE_PREVIEW_SEGMENTS = 5
 SNAKE_PREVIEW_CELL = 18
 UI_BG = "#e6ded5"
+
+
+def _rainbow_swatch_image(parent, width: int = 22, height: int = 22):
+    """Return a small horizontal rainbow-gradient image for the Rainbow swatch."""
+    try:
+        from PIL import Image, ImageDraw, ImageTk
+
+        from kinito.colors import hex_to_rgb
+
+        stops = [hex_to_rgb(c) for c in RAINBOW_COLORS]
+        img = Image.new("RGBA", (width, height))
+        draw = ImageDraw.Draw(img)
+        span = len(stops) - 1
+        for x in range(width):
+            pos = (x / max(1, width - 1)) * span
+            low = min(int(pos), span - 1)
+            frac = pos - low
+            rgb = tuple(
+                round(stops[low][ch] + (stops[low + 1][ch] - stops[low][ch]) * frac)
+                for ch in range(3)
+            )
+            draw.line((x, 0, x, height - 1), fill=rgb)
+        return ImageTk.PhotoImage(img, master=parent)
+    except Exception:
+        return None
 
 
 class ColorSettingsMixin:
@@ -225,16 +255,21 @@ class ColorSettingsMixin:
 
         def refresh():
             canvas.delete("all")
-            head, body = snake_palette(self.snake_color())
+            selected = self.snake_color()
+            head, body = ("", "") if selected == RAINBOW_COLOR else snake_palette(selected)
             top = cell // 2
             for index in range(SNAKE_PREVIEW_SEGMENTS):
                 left = cell * (SNAKE_PREVIEW_SEGMENTS - index)
+                if selected == RAINBOW_COLOR:
+                    fill = rainbow_at(index)
+                else:
+                    fill = head if index == 0 else body
                 canvas.create_rectangle(
                     left + 1,
                     top + 1,
                     left + cell - 1,
                     top + cell - 1,
-                    fill=head if index == 0 else body,
+                    fill=fill,
                     outline="",
                 )
 
@@ -245,14 +280,23 @@ class ColorSettingsMixin:
         row.pack(anchor="w")
         resolve = getattr(self, "_resolve_chat_user_label", None)
         name = resolve() if callable(resolve) else "You"
-        name_label = Label(
-            row, text=f"{name}:", font=("Segoe UI", 11, "underline"), bg=UI_BG
-        )
-        name_label.pack(side="left")
+        name_frame = Frame(row, bg=UI_BG)
+        name_frame.pack(side="left")
         Label(row, text="Hi Kinito!", font=("Segoe UI", 11), bg=UI_BG).pack(side="left", padx=(4, 0))
 
         def refresh():
-            name_label.config(fg=self.chat_name_color())
+            for widget in name_frame.winfo_children():
+                widget.destroy()
+            selected = self.chat_name_color()
+            for index, char in enumerate(f"{name}:"):
+                fg = rainbow_at(index) if selected == RAINBOW_COLOR else selected
+                Label(
+                    name_frame,
+                    text=char,
+                    font=("Segoe UI", 11, "underline"),
+                    bg=UI_BG,
+                    fg=fg,
+                ).pack(side="left")
 
         return refresh
 
@@ -272,6 +316,20 @@ class ColorSettingsMixin:
 
             canvas.delete("all")
             color = self.connect_four_color()
+            if color == RAINBOW_COLOR:
+                # Show the column gradient as a row of mini discs.
+                mini = cell * 2 // 3
+                for index in range(5):
+                    offset = index * (mini + 1)
+                    canvas.create_oval(
+                        offset,
+                        cell // 2,
+                        offset + mini,
+                        cell // 2 + mini,
+                        fill=rainbow_at(4 - index),
+                        outline="",
+                    )
+                return
             canvas.create_oval(
                 2,
                 2,
@@ -329,6 +387,20 @@ class ColorSettingsMixin:
             )
             button.pack(side="left", padx=2)
             swatch_buttons[color] = button
+
+        rainbow_image = _rainbow_swatch_image(swatches)
+        rainbow_button = tk.Button(
+            swatches,
+            image=rainbow_image,
+            text="R" if rainbow_image is None else "",
+            fg="#a855f7",
+            bd=3,
+            relief=tk.RAISED,
+            command=lambda: choose(RAINBOW_COLOR),
+        )
+        rainbow_button.image = rainbow_image
+        rainbow_button.pack(side="left", padx=2)
+        swatch_buttons[RAINBOW_COLOR] = rainbow_button
 
         def pick_custom():
             _rgb, hex_color = colorchooser.askcolor(
