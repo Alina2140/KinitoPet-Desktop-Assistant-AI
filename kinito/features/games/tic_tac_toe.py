@@ -5,6 +5,7 @@ import tkinter as tk
 from tkinter import Button, Frame, Label
 
 from content import game_lines
+from kinito.colors import RAINBOW_COLOR, rainbow_at
 from kinito.features.games.base import create_uniform_grid, open_game_window
 
 WIN_LINES = (
@@ -21,6 +22,8 @@ WIN_LINES = (
 PLAYER = "X"
 KINITO = "O"
 EMPTY = " "
+PLAYER_COLOR = "#7c3aed"
+KINITO_COLOR = "#fa96ff"
 
 
 def check_winner(board: list[str]) -> str | None:
@@ -30,6 +33,15 @@ def check_winner(board: list[str]) -> str | None:
             return board[a]
     if all(cell != EMPTY for cell in board):
         return "draw"
+    return None
+
+
+def winning_line(board: list[str]) -> tuple[int, int, int] | None:
+    """Return the three cell indices of the winning line, if any."""
+    for line in WIN_LINES:
+        a, b, c = line
+        if board[a] != EMPTY and board[a] == board[b] == board[c]:
+            return line
     return None
 
 
@@ -126,16 +138,19 @@ class TicTacToeGame:
         self.status_label: Label | None = None
         self.finished = False
         self.window = None
+        self._strike_overlay = None
+        self._strike_cells: tuple[int, int, int] | None = None
+        self.app._tic_tac_toe_game = self
 
     def open(self):
         """Open the game window."""
         self.window = open_game_window(
             self.app,
             "Tic-Tac-Toe with Kinito",
-            360,
-            540,
+            340,
+            420,
             min_width=300,
-            min_height=460,
+            min_height=380,
         )
 
         main = Frame(self.window)
@@ -145,7 +160,7 @@ class TicTacToeGame:
         self.status_label.pack(pady=8)
 
         grid = create_uniform_grid(main, 3, 3, uniform="ttt")
-        mark_font = ("Arial", 24, "bold")
+        mark_font = ("Arial", 34, "bold")
 
         for row in range(3):
             for col in range(3):
@@ -154,8 +169,8 @@ class TicTacToeGame:
                     grid,
                     text="",
                     font=mark_font,
-                    width=3,
-                    height=2,
+                    width=2,
+                    height=1,
                     anchor="center",
                     justify="center",
                     command=lambda i=index: self._player_move(i),
@@ -164,9 +179,12 @@ class TicTacToeGame:
                 self.buttons.append(button)
 
         Button(main, text="New Game", command=self._reset).pack(pady=(0, 10))
+        self.window.bind("<Destroy>", self._on_destroy)
+        self.window.bind("<Configure>", self._reposition_strike)
 
     def _reset(self):
         """Start a fresh board."""
+        self._hide_strike()
         self.board = [EMPTY] * 9
         self.finished = False
         for button in self.buttons:
@@ -174,13 +192,43 @@ class TicTacToeGame:
         if self.status_label:
             self.status_label.config(text="You are X. Your turn!")
 
+    def _on_destroy(self, event):
+        if event.widget is self.window:
+            self._hide_strike()
+        if event.widget is self.window and getattr(
+            self.app, "_tic_tac_toe_game", None
+        ) is self:
+            self.app._tic_tac_toe_game = None
+
+    def _player_color(self, index: int | None = None) -> str:
+        # Live update path: the Adjust Colors window calls refresh_player_marks().
+        getter = getattr(self.app, "tic_tac_toe_color", None)
+        color = getter() if callable(getter) else PLAYER_COLOR
+        if color == RAINBOW_COLOR:
+            # Rainbow mode: mark colors are a gradient across the board cells.
+            return rainbow_at(8 - index if index is not None else 8)
+        return color or PLAYER_COLOR
+
+    def refresh_player_marks(self) -> None:
+        """Recolor every placed player mark (called when the color setting changes)."""
+        for index, cell in enumerate(self.board):
+            if cell == PLAYER:
+                color = self._player_color(index)
+                self.buttons[index].config(fg=color, disabledforeground=color)
+
     def _player_move(self, index: int):
         """Handle a click on cell *index*."""
         if self.finished or self.board[index] != EMPTY:
             return
 
         self.board[index] = PLAYER
-        self.buttons[index].config(text=PLAYER, state="disabled")
+        color = self._player_color(index)
+        self.buttons[index].config(
+            text=PLAYER,
+            fg=color,
+            disabledforeground=color,
+            state="disabled",
+        )
         result = check_winner(self.board)
         if result:
             self._end_game(result)
@@ -188,12 +236,87 @@ class TicTacToeGame:
 
         ai_index = choose_ai_move(self.board)
         self.board[ai_index] = KINITO
-        self.buttons[ai_index].config(text=KINITO, state="disabled")
+        self.buttons[ai_index].config(
+            text=KINITO,
+            fg=KINITO_COLOR,
+            disabledforeground=KINITO_COLOR,
+            state="disabled",
+        )
         result = check_winner(self.board)
         if result:
             self._end_game(result)
         elif self.status_label:
             self.status_label.config(text="Your turn!")
+
+    def _hide_strike(self) -> None:
+        """Remove the winning-line overlay if present."""
+        self._strike_cells = None
+        overlay = self._strike_overlay
+        self._strike_overlay = None
+        if overlay is not None:
+            try:
+                overlay.destroy()
+            except tk.TclError:
+                pass
+
+    def _cell_center(self, index: int, origin_x: int, origin_y: int) -> tuple[int, int]:
+        """Return the screen center of cell *index* relative to the grid origin."""
+        button = self.buttons[index]
+        return (
+            button.winfo_rootx() - origin_x + button.winfo_width() // 2,
+            button.winfo_rooty() - origin_y + button.winfo_height() // 2,
+        )
+
+    def _show_strike(self, cells: tuple[int, int, int]) -> None:
+        """Draw a strike line through the winning *cells* via a transparent overlay."""
+        self._hide_strike()
+        grid = self.buttons[cells[0]].master
+        grid.update_idletasks()
+        overlay_bg = "#ff00ff"
+        try:
+            top = tk.Toplevel(self.window)
+            top.overrideredirect(True)
+            top.wm_attributes("-topmost", True)
+            top.wm_attributes("-transparentcolor", overlay_bg)
+            canvas = tk.Canvas(top, bg=overlay_bg, highlightthickness=0)
+            canvas.pack(fill="both", expand=True)
+            self._strike_overlay = top
+            self._strike_cells = cells
+            self._strike_canvas = canvas
+            self._reposition_strike()
+        except tk.TclError:
+            self._strike_overlay = None
+            self._strike_cells = None
+            # Fallback without transparency: highlight the winning cells.
+            for index in cells:
+                self.buttons[index].config(bg="#fde68a")
+
+    def _reposition_strike(self, _event=None) -> None:
+        """Keep the strike overlay aligned with the grid when the window moves."""
+        overlay = self._strike_overlay
+        cells = self._strike_cells
+        if overlay is None or cells is None:
+            return
+        try:
+            grid = self.buttons[cells[0]].master
+            x0, y0 = grid.winfo_rootx(), grid.winfo_rooty()
+            w, h = grid.winfo_width(), grid.winfo_height()
+            overlay.geometry(f"{w}x{h}+{x0}+{y0}")
+            canvas = getattr(self, "_strike_canvas", None)
+            if canvas is not None:
+                canvas.delete("all")
+                start = self._cell_center(cells[0], x0, y0)
+                end = self._cell_center(cells[-1], x0, y0)
+                canvas.create_line(
+                    *start,
+                    *end,
+                    fill="#111111",
+                    width=7,
+                    capstyle=tk.ROUND,
+                )
+        except tk.TclError:
+            self._strike_overlay = None
+            self._strike_cells = None
 
     def _end_game(self, result: str):
         """Announce the outcome and lock the board."""
@@ -214,6 +337,10 @@ class TicTacToeGame:
             status = "Draw!"
             outcome = "draw"
 
+        if result in (PLAYER, KINITO):
+            win_cells = winning_line(self.board)
+            if win_cells:
+                self._show_strike(win_cells)
         if self.status_label:
             self.status_label.config(text=status)
         if hasattr(self.app, "on_game_outcome"):

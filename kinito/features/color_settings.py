@@ -46,6 +46,7 @@ CONNECT_FOUR_COLOR_PRESETS = (
     "#db2777",
     "#111827",
 )
+TIC_TAC_TOE_COLOR_PRESETS = CONNECT_FOUR_COLOR_PRESETS
 
 SNAKE_PREVIEW_SEGMENTS = 5
 SNAKE_PREVIEW_CELL = 18
@@ -122,6 +123,26 @@ class ColorSettingsMixin:
         self._connect_four_color = normalize_hex_color(color, self.connect_four_color())
         game = getattr(self, "_connect_four_game", None)
         refresh = getattr(game, "refresh_player_colors", None)
+        if callable(refresh):
+            try:
+                refresh()
+            except Exception:
+                pass
+        if hasattr(self, "_persist_settings"):
+            self._persist_settings()
+
+    def tic_tac_toe_color(self) -> str:
+        """Return the chosen color for the player's Tic-Tac-Toe marks."""
+        return normalize_hex_color(
+            getattr(self, "_tic_tac_toe_color", None),
+            DEFAULT_COLOR_SETTINGS["tic_tac_toe_color"],
+        )
+
+    def set_tic_tac_toe_color(self, color: str) -> None:
+        """Store a new Tic-Tac-Toe mark color and recolor an open game's marks."""
+        self._tic_tac_toe_color = normalize_hex_color(color, self.tic_tac_toe_color())
+        game = getattr(self, "_tic_tac_toe_game", None)
+        refresh = getattr(game, "refresh_player_marks", None)
         if callable(refresh):
             try:
                 refresh()
@@ -227,6 +248,15 @@ class ColorSettingsMixin:
             self.connect_four_color,
             self.set_connect_four_color,
             DEFAULT_COLOR_SETTINGS["connect_four_color"],
+        )
+        self._build_color_section(
+            body,
+            "Tic-Tac-Toe mark",
+            self._make_tic_tac_toe_preview,
+            TIC_TAC_TOE_COLOR_PRESETS,
+            self.tic_tac_toe_color,
+            self.set_tic_tac_toe_color,
+            DEFAULT_COLOR_SETTINGS["tic_tac_toe_color"],
         )
 
         def _on_close():
@@ -346,6 +376,39 @@ class ColorSettingsMixin:
                 fill=color,
                 outline="",
             )
+
+        return refresh
+
+    def _make_tic_tac_toe_preview(self, parent):
+        row = Frame(parent, bg=UI_BG)
+        row.pack(anchor="w")
+        x_frame = Frame(row, bg=UI_BG)
+        x_frame.pack(side="left")
+        Label(
+            row,
+            text=" O",
+            font=("Segoe UI", 14, "bold"),
+            bg=UI_BG,
+            fg="#fa96ff",
+        ).pack(side="left", padx=(6, 0))
+
+        def refresh():
+            for widget in x_frame.winfo_children():
+                widget.destroy()
+            selected = self.tic_tac_toe_color()
+            marks = (
+                [rainbow_at(4 - i) for i in range(3)]
+                if selected == RAINBOW_COLOR
+                else [selected]
+            )
+            for mark_color in marks:
+                Label(
+                    x_frame,
+                    text="X",
+                    font=("Segoe UI", 14, "bold"),
+                    bg=UI_BG,
+                    fg=mark_color,
+                ).pack(side="left")
 
         return refresh
 

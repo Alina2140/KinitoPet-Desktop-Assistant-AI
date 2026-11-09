@@ -94,6 +94,7 @@ from kinito.features.games.tic_tac_toe import (
     PLAYER,
     check_winner,
     choose_ai_move,
+    winning_line,
     winning_move,
 )
 
@@ -166,6 +167,16 @@ def test_ttt_winning_move_finds_block():
 def test_ttt_ai_blocks_player_win():
     board = [PLAYER, PLAYER, EMPTY, EMPTY, KINITO, EMPTY, EMPTY, EMPTY, EMPTY]
     assert choose_ai_move(board) == 2
+
+
+def test_ttt_winning_line_indices():
+    board = [EMPTY] * 3 + [KINITO] * 3 + [EMPTY] * 3
+    assert winning_line(board) == (3, 4, 5)
+    board = list(board)
+    board[4] = PLAYER
+    assert winning_line(board) is None
+    board = [PLAYER, EMPTY, EMPTY, EMPTY, PLAYER, EMPTY, EMPTY, EMPTY, PLAYER]
+    assert winning_line(board) == (0, 4, 8)
 
 
 def test_memory_deck_has_pairs():
