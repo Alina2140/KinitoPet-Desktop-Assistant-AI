@@ -360,6 +360,7 @@ class FloatingAssistant(
         self._chat_name_color = self._settings.get_str("chat_name_color")
         self._connect_four_color = self._settings.get_str("connect_four_color")
         self._tic_tac_toe_color = self._settings.get_str("tic_tac_toe_color")
+        self._battleships_color = self._settings.get_str("battleships_color")
         self._color_settings_window = None
         self._hidden_menu_buttons = self._settings.get_hidden_menu_buttons()
         self._menu_settings_window = None
@@ -524,6 +525,7 @@ class FloatingAssistant(
             chat_name_color=self.chat_name_color(),
             connect_four_color=self.connect_four_color(),
             tic_tac_toe_color=self.tic_tac_toe_color(),
+            battleships_color=self.battleships_color(),
         )
         store.set_sfx_channel_volumes(
             getattr(self, "_sfx_channel_volumes", {}) or {}

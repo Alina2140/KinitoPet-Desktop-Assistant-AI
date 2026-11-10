@@ -14,23 +14,13 @@ from content.trivia_questions import (
     check_answer,
     pick_random_question,
 )
+from kinito.features.games import battleships as bs
 from kinito.features.games import color_guess as cg
 from kinito.features.games import connect_four as c4
 from kinito.features.games import hangman as hangman_game
 from kinito.features.games import minesweeper as ms
 from kinito.features.games import snake as snake_game
 from kinito.features.games import tetris as tetris_game
-from kinito.features.games.battleships import (
-    GRID_SIZE,
-    MAX_SHOTS,
-    SHIP_COUNT,
-    all_sunk,
-    new_game,
-    place_ships_random,
-    ships_remaining,
-    shoot,
-    shots_remaining,
-)
 from kinito.features.games.coin_dice import (
     HEADS,
     TAILS,
@@ -275,50 +265,156 @@ def test_trivia_round_size_is_five():
     assert len(TRIVIA_QUESTIONS) >= ROUND_SIZE
 
 
-def test_battleships_place_ships_no_duplicates():
-    rng = random.Random(0)
-    ships = place_ships_random(rng)
-    assert len(ships) == SHIP_COUNT
-    assert all(0 <= index < GRID_SIZE * GRID_SIZE for index in ships)
+def test_battleships_random_fleet():
+    for seed in range(30):
+        fleet = bs.place_ships_random(random.Random(seed))
+        assert [len(ship) for ship in fleet.values()] == list(bs.SHIP_LENGTHS)
+        cells = set().union(*fleet.values())
+        assert len(cells) == 17
+        assert all(0 <= cell < 100 for cell in cells)
 
 
-def test_battleships_shoot_miss_then_hit():
-    state = new_game(rng=random.Random(0))
-    ship_index = next(iter(state["ships"]))
-    miss_index = next(i for i in range(GRID_SIZE * GRID_SIZE) if i not in state["ships"])
-    assert shoot(state, miss_index) == "miss"
-    assert shoot(state, miss_index) == "already"
-    assert shoot(state, ship_index) == "hit"
-    assert ships_remaining(state) == SHIP_COUNT - 1
+def test_battleships_placement():
+    state = bs.new_game(random.Random(0))
+    assert not bs.start_game(state)
+    assert bs.place_ship(state, 0, 0, False)
+    assert not bs.place_ship(state, 1, 3, False)
+    assert not bs.place_ship(state, 1, 98, True)
+    assert not bs.place_ship(state, 1, 9, False)
+    assert state["player"]["fleet"][0] == set(range(5))
+    assert bs.place_ship(state, 1, 10, False)
+    assert bs.place_ship(state, 0, 5, True)
+    assert state["player"]["fleet"][0] == {5, 15, 25, 35, 45}
+    assert not bs.place_ship(state, 0, -1, False)
 
 
-def test_battleships_win_when_all_ships_hit():
-    state = new_game(rng=random.Random(1))
-    results = []
-    for index in sorted(state["ships"]):
-        results.append(shoot(state, index))
+def _battleships_duel():
+    state = bs.new_game(random.Random(0))
+    for ship in range(5):
+        assert bs.place_ship(state, ship, ship * 10, False)
+    assert bs.start_game(state)
+    return state
+
+
+def test_battleships_turns():
+    state = _battleships_duel()
+    fleet = state["kinito"]["fleet"]
+    hit = next(iter(fleet[0]))
+    assert bs.shoot(state, "player", hit) == "hit"
+    assert state["turn"] == "player"
+    assert bs.shoot(state, "player", hit) == "already"
+    miss = next(i for i in range(100) if not any(i in s for s in fleet.values()))
+    assert bs.shoot(state, "player", miss) == "miss"
+    assert state["turn"] == "kinito"
+    assert bs.shoot(state, "player", hit) == "already"
+    assert not bs.place_ship(state, 0, 60, False)
+
+
+@pytest.mark.parametrize("attacker", ["player", "kinito"])
+def test_battleships_victory(attacker):
+    state = _battleships_duel()
+    state["turn"] = attacker
+    defender = "kinito" if attacker == "player" else "player"
+    results = [bs.shoot(state, attacker, i)
+               for ship in state[defender]["fleet"].values() for i in sorted(ship)]
+    assert results.count("sunk") == 4
     assert results[-1] == "win"
-    assert all_sunk(state)
-    assert state["finished"] is True
+    assert state["winner"] == attacker
+    assert state["phase"] == "finished"
+    assert bs.ships_remaining(state[defender]) == 0
+    assert bs.shoot(state, attacker, 99) == "already"
 
 
-def test_battleships_shots_remaining():
-    state = new_game(rng=random.Random(0))
-    assert shots_remaining(state) == MAX_SHOTS
-    miss_index = next(i for i in range(GRID_SIZE * GRID_SIZE) if i not in state["ships"])
-    shoot(state, miss_index)
-    assert shots_remaining(state) == MAX_SHOTS - 1
+def test_battleships_ai_targets_and_edges():
+    knowledge = {"shots": {0}, "hits": {0}, "sunk": set()}
+    assert bs.choose_ai_shot(knowledge, random.Random(1)) in {1, 10}
+    knowledge = {"shots": {44, 45}, "hits": {44, 45}, "sunk": set()}
+    assert bs.choose_ai_shot(knowledge, random.Random(1)) in {43, 46}
+    knowledge = {"shots": {0, 1}, "hits": {0, 1}, "sunk": {0}}
+    assert bs.choose_ai_shot(knowledge, random.Random(1)) in {2, 11}
+    knowledge = {"shots": set(range(99)), "hits": set(), "sunk": set()}
+    assert bs.choose_ai_shot(knowledge) == 99
 
 
-def test_battleships_lose_when_out_of_shots():
-    state = new_game(rng=random.Random(0))
-    miss_indices = [i for i in range(GRID_SIZE * GRID_SIZE) if i not in state["ships"]]
-    results = []
-    for index in miss_indices[:MAX_SHOTS]:
-        results.append(shoot(state, index))
-    assert results[-1] == "lose"
-    assert state["finished"] is True
-    assert not all_sunk(state)
+def test_battleships_ui_timer_and_reset():
+    from unittest.mock import Mock
+
+    from kinito.features.games.battleships_ui import BattleshipsGame
+
+    app = Mock(spec=["speak_game_line", "on_game_outcome"])
+    game = BattleshipsGame(app)
+    game.window = Mock()
+    game._refresh = Mock()
+    game._start()
+    assert game.state["phase"] == "placement"
+    game.state = _battleships_duel()
+    board = game.state["kinito"]
+    miss = next(i for i in range(100) if not any(i in s for s in board["fleet"].values()))
+    game._fire("player", miss)
+    game.window.after.assert_called_once()
+    scheduled = game._after_id
+    game._fire("player", miss + 1)
+    assert game.window.after.call_count == 1
+    game.dragging = True
+    game.preview = (10, 10)
+    game._reset()
+    game.window.after_cancel.assert_called_once_with(scheduled)
+    assert game.state["phase"] == "placement"
+    assert not game.dragging
+    assert game.preview is None
+
+
+def test_battleships_kinito_sinking_line():
+    from unittest.mock import Mock
+
+    from content import game_lines
+    from kinito.features.games.battleships_ui import BattleshipsGame
+
+    app = Mock(spec=["speak_game_line", "on_game_outcome"])
+    game = BattleshipsGame(app)
+    game.window = Mock()
+    game._refresh = Mock()
+    game.state = _battleships_duel()
+    game.state["turn"] = "kinito"
+    cells = sorted(game.state["player"]["fleet"][4])
+    game._fire("kinito", cells[0])
+    app.speak_game_line.assert_not_called()
+    game._fire("kinito", cells[1])
+    assert app.speak_game_line.call_args.args[0] in game_lines.BATTLESHIPS_KINITO_SUNK_LINES
+    app.on_game_outcome.assert_not_called()
+
+
+def test_battleships_player_color_and_rainbow():
+    from unittest.mock import Mock
+
+    from kinito.colors import rainbow_at
+    from kinito.features.games.battleships_ui import BattleshipsGame
+
+    app = Mock(spec=["battleships_color"])
+    app.battleships_color.return_value = "#16a34a"
+    game = BattleshipsGame(app)
+    assert game._player_color(0) == "#16a34a"
+    app.battleships_color.return_value = "rainbow"
+    assert game._player_color(2) == rainbow_at(2)
+
+
+def test_battleships_ui_rotation_and_invalid_drop():
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+
+    from kinito.features.games.battleships_ui import BattleshipsGame
+
+    game = BattleshipsGame(Mock(spec=[]))
+    game._draw = Mock()
+    game._refresh = Mock()
+    game.origins = {"player": (0, 0)}
+    game.cell = 20
+    bs.place_ship(game.state, 0, 0, False)
+    game._rotate()
+    assert game.state["player"]["fleet"][0] == {0, 10, 20, 30, 40}
+    game.dragging = True
+    game._release(SimpleNamespace(x=-10, y=-10))
+    assert game.state["player"]["fleet"][0] == {0, 10, 20, 30, 40}
 
 
 def test_snake_starts_at_left_edge_heading_right():

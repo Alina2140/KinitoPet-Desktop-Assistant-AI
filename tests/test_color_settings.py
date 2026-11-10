@@ -82,6 +82,29 @@ def test_snake_and_chat_colors_are_independent():
     assert stub._persist_settings.call_count == 2
 
 
+def test_battleships_color_refreshes_and_persists():
+    stub = ColorStub()
+    assert stub.battleships_color() == "#7c3aed"
+    stub._battleships_game = MagicMock()
+    stub.set_battleships_color("#16A34A")
+    assert stub.battleships_color() == "#16a34a"
+    stub._battleships_game.refresh_player_colors.assert_called_once()
+    stub._persist_settings.assert_called_once()
+    stub.set_battleships_color("invalid")
+    assert stub.battleships_color() == "#16a34a"
+    stub.set_battleships_color("rainbow")
+    assert stub.battleships_color() == "rainbow"
+    assert stub.connect_four_color() == "#7c3aed"
+
+
+def test_battleships_color_survives_reload(tmp_path):
+    from kinito.settings_store import SettingsStore
+
+    store = SettingsStore(directory=str(tmp_path))
+    store.update(battleships_color="#0891b2")
+    assert SettingsStore(directory=str(tmp_path)).get_str("battleships_color") == "#0891b2"
+
+
 def test_invalid_color_keeps_previous_choice():
     stub = ColorStub()
     stub.set_snake_color("#ef4444")

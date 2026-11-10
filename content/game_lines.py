@@ -397,6 +397,17 @@ BATTLESHIPS_HIT_LINES = [
     "Hit again! My navy sulks.",
 ]
 
+BATTLESHIPS_KINITO_SUNK_LINES = [
+    "One of your ships is sunk! Captain Kinito strikes again.",
+    "Down goes your ship! I'm getting the hang of this.",
+    "That's one less ship in your fleet. My turn again!",
+    "Ship sunk! I knew there was something in those waters.",
+    "Your ship is going down! Don't worry, I'll rescue the tiny sailors.",
+    "Another ship for my collection of victories!",
+    "Sunk it! My navy is cheering.",
+    "That ship won't be sailing again. Good hiding spot, though!",
+]
+
 BATTLESHIPS_WIN_LINES = [
     "All ships sunk in {shots} shots! Best: {best}. I'll rebuild...",
     "You got them all in {shots} tries! Fleet destroyed. Best so far: {best}.",
@@ -422,16 +433,16 @@ BATTLESHIPS_NEW_BEST_LINES = [
 ]
 
 BATTLESHIPS_LOSE_LINES = [
-    "Out of shots! {hits} of {total} ships sunk. My fleet survives. See where they were hiding?",
-    "Ten shots, no victory. You got {hits} of {total}. The rest are revealed. Study the board.",
-    "No more ammo! Only {hits} of {total} ships hit. I win. The map tells the rest.",
-    'Out of shots! {hits}/{total} sunk. Victory!',
-    "Ammo gone. You hit {hits} of {total}. Map reveals the rest.",
-    "Shots spent. {hits} of {total} hit. Fleet lives. Rematch? Please.",
-    "No ammo left! {hits}/{total} sunk. I survive!",
-    "Out of firepower. {hits} of {total}.",
-    "Missed the sweep — {hits}/{total}.",
-    "Ammo empty. Hits: {hits} of {total}. Reveal time...",
+    "Your fleet is sunk! My navy wins this round. Rematch?",
+    "All your ships are down. Captain Kinito wins!",
+    "My last shot found your last ship. Victory!",
+    "Your fleet fought bravely. Mine survives!",
+    "Fleet destroyed! Let's place our ships again.",
+    "I found every ship! Rematch? Please.",
+    "Your last ship sank. My fleet survives!",
+    "Captain Kinito takes the seas this time.",
+    "All your ships sunk. Good game!",
+    "Your fleet is gone. Reveal time...",
 ]
 
 SNAKE_GAME_OVER_LINES = [

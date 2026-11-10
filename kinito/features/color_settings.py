@@ -151,6 +151,20 @@ class ColorSettingsMixin:
         if hasattr(self, "_persist_settings"):
             self._persist_settings()
 
+    def battleships_color(self) -> str:
+        return normalize_hex_color(
+            getattr(self, "_battleships_color", None),
+            DEFAULT_COLOR_SETTINGS["battleships_color"],
+        )
+
+    def set_battleships_color(self, color: str) -> None:
+        self._battleships_color = normalize_hex_color(color, self.battleships_color())
+        game = getattr(self, "_battleships_game", None)
+        if game is not None:
+            game.refresh_player_colors()
+        if hasattr(self, "_persist_settings"):
+            self._persist_settings()
+
     def open_color_settings(self) -> None:
         """Show the Adjust Colors window with separate Snake and Chat name sections."""
         from content import dialogue as dlg
@@ -257,6 +271,16 @@ class ColorSettingsMixin:
             self.tic_tac_toe_color,
             self.set_tic_tac_toe_color,
             DEFAULT_COLOR_SETTINGS["tic_tac_toe_color"],
+        )
+
+        self._build_color_section(
+            body,
+            "Battleships fleet",
+            self._make_battleships_preview,
+            CONNECT_FOUR_COLOR_PRESETS,
+            self.battleships_color,
+            self.set_battleships_color,
+            DEFAULT_COLOR_SETTINGS["battleships_color"],
         )
 
         def _on_close():
@@ -376,6 +400,22 @@ class ColorSettingsMixin:
                 fill=color,
                 outline="",
             )
+
+        return refresh
+
+    def _make_battleships_preview(self, parent):
+        canvas = Canvas(parent, width=110, height=28, bg=UI_BG, highlightthickness=0)
+        canvas.pack(anchor="w")
+
+        def refresh():
+            canvas.delete("all")
+            selected = self.battleships_color()
+            for index in range(5):
+                canvas.create_rectangle(
+                    index * 20 + 2, 4, index * 20 + 21, 24,
+                    fill=rainbow_at(index) if selected == RAINBOW_COLOR else selected,
+                    outline="white",
+                )
 
         return refresh
 

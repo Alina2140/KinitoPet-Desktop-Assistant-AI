@@ -110,6 +110,17 @@ def test_record_battleships_shots_keeps_lowest(store, scores_dir):
     assert reloaded.battleships_best_shots() == 5
 
 
+def test_battleships_duel_score_is_separate(store, scores_dir):
+    store.record_battleships_shots(3)
+    assert store.battleships_duel_best_shots() is None
+    assert store.record_battleships_duel_shots(40)
+    assert not store.record_battleships_duel_shots(45)
+    assert store.record_battleships_duel_shots(35)
+    reloaded = GameScoresStore(directory=scores_dir)
+    assert reloaded.battleships_duel_best_shots() == 35
+    assert reloaded.battleships_best_shots() == 3
+
+
 def test_record_trivia_score_best_and_streak(store, scores_dir):
     summary = store.record_trivia_score(4, total=5)
     assert summary["new_best"] is True

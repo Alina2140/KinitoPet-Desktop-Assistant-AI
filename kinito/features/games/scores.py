@@ -28,6 +28,7 @@ DEFAULT_SCORES: dict[str, int] = {
     "trivia_streak": 0,
     "number_guess_best_attempts": 0,
     "battleships_best_shots": 0,
+    "battleships_duel_best_shots": 0,
     "minesweeper_best_seconds": 0,
     "minesweeper_streak": 0,
     "minesweeper_best_streak": 0,
@@ -41,6 +42,7 @@ _LOW_IS_BETTER_KEYS = frozenset(
         *(f"memory_best_moves_{n}" for n in _MEMORY_PAIR_OPTIONS),
         "number_guess_best_attempts",
         "battleships_best_shots",
+        "battleships_duel_best_shots",
         "minesweeper_best_seconds",
     }
 )
@@ -181,6 +183,12 @@ class GameScoresStore:
     def record_number_guess_attempts(self, attempts: int) -> bool:
         """Update Number Guess best if *attempts* is a new low. Return True on new best."""
         return self._record_low_best("number_guess_best_attempts", attempts)
+
+    def battleships_duel_best_shots(self) -> int | None:
+        return self._get_low_best("battleships_duel_best_shots")
+
+    def record_battleships_duel_shots(self, shots: int) -> bool:
+        return self._record_low_best("battleships_duel_best_shots", shots)
 
     def battleships_best_shots(self) -> int | None:
         """Return fewest Battleships shots on a win, or None if unset."""
