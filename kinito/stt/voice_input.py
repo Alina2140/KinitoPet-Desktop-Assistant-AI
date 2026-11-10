@@ -11,10 +11,10 @@ SAMPLE_RATE = 16_000
 CHANNELS = 1
 CHUNK_MS = 100
 CHUNK_SAMPLES = SAMPLE_RATE * CHUNK_MS // 1000
-DEFAULT_SILENCE_MS = 1000
+DEFAULT_SILENCE_MS = 1500
 DEFAULT_MIN_SPEECH_MS = 200
 DEFAULT_SPEECH_RMS = 0.004
-DEFAULT_MAX_UTTERANCE_MS = 15_000
+DEFAULT_MAX_UTTERANCE_MS = None
 DEFAULT_NOISE_CALIBRATION_CHUNKS = 8
 WHISPER_MODEL_SIZE = "tiny"
 WHISPER_REPO_ID = "Systran/faster-whisper-tiny"
@@ -44,14 +44,14 @@ class SilenceDetector:
         min_speech_ms: int = DEFAULT_MIN_SPEECH_MS,
         speech_rms: float = DEFAULT_SPEECH_RMS,
         chunk_ms: int = CHUNK_MS,
-        max_utterance_ms: int = DEFAULT_MAX_UTTERANCE_MS,
+        max_utterance_ms: int | None = DEFAULT_MAX_UTTERANCE_MS,
         calibration_chunks: int = DEFAULT_NOISE_CALIBRATION_CHUNKS,
     ) -> None:
         self._silence_chunks = max(1, silence_ms // chunk_ms)
         self._min_speech_chunks = max(1, min_speech_ms // chunk_ms)
         self._base_speech_rms = speech_rms
         self._speech_rms = speech_rms
-        self._max_chunks = max(1, max_utterance_ms // chunk_ms)
+        self._max_chunks = max(1, max_utterance_ms // chunk_ms) if max_utterance_ms is not None else None
         self._calibration_chunks = max(1, calibration_chunks)
         self.reset()
 
@@ -63,6 +63,10 @@ class SilenceDetector:
         self._started = False
         self._noise_levels: list[float] = []
         self._speech_rms = self._base_speech_rms
+
+    @property
+    def speech_started(self) -> bool:
+        return self._speech_chunks >= self._min_speech_chunks
 
     @staticmethod
     def rms(chunk) -> float:
@@ -96,7 +100,7 @@ class SilenceDetector:
             self._silence_after_speech += 1
 
         # Always stop after the absolute max, even with no speech detected.
-        if self._total_chunks >= self._max_chunks:
+        if self._max_chunks is not None and self._total_chunks >= self._max_chunks:
             return "finalize"
 
         if (
@@ -376,6 +380,8 @@ class VoiceInputController:
                 frames.append(mono.copy())
                 if detector.feed(mono) == "finalize":
                     break
+                if not detector.speech_started:
+                    frames = frames[-10:]
         except Exception as exc:  # noqa: BLE001 — surface any mic/runtime failure to UI
             message = str(exc) or exc.__class__.__name__
             print(f"Kinito voice STT error: {message}", flush=True)

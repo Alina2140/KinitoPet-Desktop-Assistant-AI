@@ -53,6 +53,91 @@ def test_silence_detector_ignores_leading_silence(detector):
         assert detector.feed(_quiet()) is None
 
 
+def test_default_detector_does_not_cut_off_long_speech():
+    detector = SilenceDetector()
+    for _ in range(600):
+        assert detector.feed(_loud()) is None
+    for _ in range(14):
+        assert detector.feed(_quiet()) is None
+    assert detector.feed(_quiet()) == "finalize"
+
+
+def test_default_detector_waits_without_speech():
+    detector = SilenceDetector()
+    for _ in range(600):
+        assert detector.feed(_quiet()) is None
+    assert detector.feed(_loud()) is None
+    assert detector.feed(_loud()) is None
+    for _ in range(14):
+        assert detector.feed(_quiet()) is None
+    assert detector.feed(_quiet()) == "finalize"
+
+
+def test_speech_resets_silence_countdown():
+    detector = SilenceDetector()
+    for _ in range(30):
+        assert detector.feed(_loud()) is None
+        assert detector.feed(_loud()) is None
+        for _ in range(14):
+            assert detector.feed(_quiet()) is None
+    assert detector.feed(_quiet()) == "finalize"
+
+
+def test_voice_capture_waits_for_pause_and_bounds_leading_silence():
+    from kinito.stt.voice_input import CHUNK_SAMPLES, VoiceInputController
+
+    chunks = [_quiet() for _ in range(300)] + [_loud() for _ in range(200)]
+    chunks += [_quiet() for _ in range(15)]
+    stream = MagicMock()
+    stream.read.side_effect = [(chunk, False) for chunk in chunks]
+    sounddevice = MagicMock()
+    sounddevice.InputStream.return_value = stream
+    received = MagicMock()
+    errors = MagicMock()
+    controller = VoiceInputController(schedule=lambda fn: fn(), on_final_text=received, on_error=errors)
+    with (
+        patch.dict("sys.modules", {"sounddevice": sounddevice}),
+        patch("kinito.stt.voice_input._get_whisper_model"),
+        patch("kinito.stt.voice_input.transcribe_audio", return_value="A long message") as transcribe,
+    ):
+        controller._run()
+    errors.assert_not_called()
+    assert stream.read.call_count == len(chunks)
+    audio = transcribe.call_args.args[0]
+    assert np.count_nonzero(audio) == 200 * CHUNK_SAMPLES
+    assert audio.size <= 225 * CHUNK_SAMPLES
+    received.assert_called_once_with("A long message")
+    stream.stop.assert_called_once()
+    stream.close.assert_called_once()
+
+
+def test_voice_capture_manual_stop_does_not_send():
+    from kinito.stt.voice_input import VoiceInputController
+
+    received = MagicMock()
+    errors = MagicMock()
+    controller = VoiceInputController(schedule=lambda fn: fn(), on_final_text=received, on_error=errors)
+    stream = MagicMock()
+
+    def stop_during_read(_samples):
+        controller._stop_event.set()
+        return _quiet(), False
+
+    stream.read.side_effect = stop_during_read
+    sounddevice = MagicMock()
+    sounddevice.InputStream.return_value = stream
+    with (
+        patch.dict("sys.modules", {"sounddevice": sounddevice}),
+        patch("kinito.stt.voice_input._get_whisper_model"),
+        patch("kinito.stt.voice_input.transcribe_audio") as transcribe,
+    ):
+        controller._run()
+    transcribe.assert_not_called()
+    received.assert_not_called()
+    errors.assert_not_called()
+    stream.close.assert_called_once()
+
+
 def test_silence_detector_max_utterance_without_speech():
     long = SilenceDetector(
         silence_ms=10_000,
