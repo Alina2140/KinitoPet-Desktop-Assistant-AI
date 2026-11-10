@@ -24,10 +24,10 @@ READING_INTERRUPT_LINES = [
 # Mood-tinted pools; picked over the general lines when the mood is strong.
 READING_INTERRUPT_BY_MOOD: dict[str, list[str]] = {
     "happy": [
-        "Hi hi hi! Come read with me!",
+        "Hey! Come read with me!",
         "You can look! It's a really good book.",
-        "Best part coming up — pull up a cloud!",
-        "Reading buddy! Sit, sit!",
+        "Best part coming up!",
+        "Reading buddy! Sit!",
         "Oh good, you're here. This chapter is great!",
     ],
     "bored": [

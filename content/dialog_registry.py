@@ -303,6 +303,11 @@ def settings_toggles_options_for(app) -> list[str]:
         if getattr(app, "_trivia_recap_enabled", True)
         else dlg.BUTTON_TRIVIA_RECAP_OFF
     )
+    terminal_label = (
+        dlg.BUTTON_TERMINAL_ON
+        if getattr(app, "_terminal_enabled", True)
+        else dlg.BUTTON_TERMINAL_OFF
+    )
     return _visible_menu_buttons(
         app,
         [
@@ -324,6 +329,7 @@ def settings_toggles_options_for(app) -> list[str]:
             mood_system_label,
             color_guess_voice_label,
             trivia_recap_label,
+            terminal_label,
             dlg.BUTTON_BACK,
         ],
     )
@@ -759,6 +765,9 @@ def _menu_action_handlers() -> dict[str, Handler]:
         dlg.BUTTON_TRIVIA_RECAP: lambda a: a.toggle_trivia_recap(),
         dlg.BUTTON_TRIVIA_RECAP_ON: lambda a: a.toggle_trivia_recap(),
         dlg.BUTTON_TRIVIA_RECAP_OFF: lambda a: a.toggle_trivia_recap(),
+        dlg.BUTTON_TERMINAL: lambda a: a.toggle_terminal(),
+        dlg.BUTTON_TERMINAL_ON: lambda a: a.toggle_terminal(),
+        dlg.BUTTON_TERMINAL_OFF: lambda a: a.toggle_terminal(),
         dlg.BUTTON_RESET_MOOD: lambda a: a.reset_mood(),
         dlg.BUTTON_MENU_BUTTONS: lambda a: a.open_menu_button_settings(),
         dlg.BUTTON_ADJUST_COLORS: lambda a: a.open_color_settings(),

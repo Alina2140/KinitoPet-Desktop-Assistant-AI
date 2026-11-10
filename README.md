@@ -39,6 +39,7 @@ A free, open-source desktop companion inspired by **KinitoPET**. Kinito lives on
 | **Reminders** | Timer with sound after X minutes |
 | **Ambient nudges** | Occasional Windows-style reminder popups (hydrate, stretch, …); toggle in Settings |
 | **Screen comments** | Rare comments on what’s on screen (Ollama vision optional); toggle in Settings |
+| **Terminal** | Rare `cmd.exe` window that types spooky commands; toggle in Settings |
 | **Persistent memory** | Remembers facts about you; edit or clear them in Settings |
 | **Mini-games** | Tic-tac-toe, memory, battleships, snake, tetris, connect four, hangman, minesweeper, RPS, trivia, and more (right-click → **Actions** → **Play Game**) |
 | **Paint** | Retro drawing window; save PNGs and browse them (right-click → **Actions** → **Paint**) |
@@ -149,6 +150,17 @@ Some choices trigger **KinitoPET-style surprises** — not bugs:
 
 - **Declining a poem** (**No**) or **declining a secret image** (**Not now**) can cause certain intended things to happen. It needs `pyautogui` installed.
 - **Window Play** (Settings, on by default): Kinito may rarely reach out with a hand sprite, grab a window edge, and slide it (or sometimes minimize it). Windows stay on the virtual desktop so they remain reachable. While he is dragging, you can take over the window yourself — he lets go and does not keep pulling. Turn **Window Play** off in Settings if you prefer a quieter desktop.
+
+<details>
+<summary><strong>Terminal</strong> (spoiler warning — click to expand)</summary>
+
+Very rarely, a small window that looks like `C:\Windows\system32\cmd.exe` pops up and starts typing creepy-looking commands by itself — things like copying your "soul", watching your screen, or refusing to let you go.
+
+**Nothing bad can happen.** The window is pure theater: it displays scripted text only. No commands are executed, no files are read or deleted, nothing is sent anywhere. It closes on its own after a few seconds, and you can close it at any time via its X button.
+
+Toggle it under **Settings → Turn On/Off → Terminal** (on by default). If you want a peek at the possible fake commands before they surprise you, they all live in [`content/terminal_scripts.py`](content/terminal_scripts.py).
+
+</details>
 
 ### Browser safety
 

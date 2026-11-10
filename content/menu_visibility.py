@@ -292,6 +292,17 @@ MENU_VISIBILITY_SECTIONS: tuple[tuple[str, tuple[MenuEntry, ...]], ...] = (
                 ),
             ),
             (
+                "settings.terminal",
+                "Terminal",
+                frozenset(
+                    {
+                        dlg.BUTTON_TERMINAL,
+                        dlg.BUTTON_TERMINAL_ON,
+                        dlg.BUTTON_TERMINAL_OFF,
+                    }
+                ),
+            ),
+            (
                 "settings.reset_mood",
                 "Reset Mood",
                 frozenset({dlg.BUTTON_RESET_MOOD}),

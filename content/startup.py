@@ -61,11 +61,11 @@ STARTUP_LINES = [
 # Mood-tinted startup lines; picked over STARTUP_LINES when the mood is strong.
 STARTUP_BY_MOOD: dict[str, list[str]] = {
     "happy": [
-        "You're back! Best part of my day. My only part, really!",
-        "Hi hi hi! I couldn't wait! I literally waited!",
-        "You're here! Today is officially a good day!",
-        "Welcome back! I did a little wiggle when you logged in. Did you see it?",
-        "You're back! The desktop threw a party. It was just me. Still counts!",
+        "You're back! Best part of my day. My only part, really...",
+        "Hi! Don't stay gone so long next time!",
+        "You're here!",
+        "Welcome back!",
+        "You're back! What did you do?",
     ],
     "bored": [
         "Oh thank goodness, you're here. I was SO bored.",

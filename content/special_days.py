@@ -393,6 +393,7 @@ _SEASONAL_ABSOLUTE_KEYS = frozenset(
 _DEFAULT_SEASONAL_MODIFIERS: dict[str, float | tuple[str, ...] | None] = {
     "glitch_mult": 1.0,
     "blue_screen_mult": 1.0,
+    "terminal_mult": 1.0,
     "nudge_mult": 1.0,
     "creepy_nudge_chance": 0.5,
     "kinito_fact_weight": None,
@@ -413,6 +414,7 @@ _OCCASION_MODIFIERS: dict[str, dict[str, float | tuple[str, ...]]] = {
     "Halloween": {
         "glitch_mult": 2.2,
         "blue_screen_mult": 1.6,
+        "terminal_mult": 2.0,
         "nudge_mult": 1.35,
         "creepy_nudge_chance": 0.78,
         "kinito_fact_weight": 0.58,
@@ -424,6 +426,7 @@ _OCCASION_MODIFIERS: dict[str, dict[str, float | tuple[str, ...]]] = {
     "Friday the 13th": {
         "glitch_mult": 1.7,
         "blue_screen_mult": 1.35,
+        "terminal_mult": 1.6,
         "nudge_mult": 1.2,
         "creepy_nudge_chance": 0.68,
         "kinito_fact_weight": 0.48,
@@ -524,6 +527,7 @@ _OCCASION_MODIFIERS: dict[str, dict[str, float | tuple[str, ...]]] = {
     "April Fools' Day": {
         "glitch_mult": 1.8,
         "blue_screen_mult": 1.4,
+        "terminal_mult": 1.5,
         "nudge_mult": 1.2,
         "creepy_nudge_chance": 0.55,
         "special_day": 2.4,
@@ -538,6 +542,7 @@ def _soft_season_modifiers(moment: date) -> dict[str, float | tuple[str, ...]]:
         return {
             "glitch_mult": 1.45,
             "blue_screen_mult": 1.2,
+            "terminal_mult": 1.3,
             "nudge_mult": 1.15,
             "creepy_nudge_chance": 0.62,
             "kinito_fact_weight": 0.42,

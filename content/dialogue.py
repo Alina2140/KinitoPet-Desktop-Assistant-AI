@@ -1163,6 +1163,18 @@ SCREEN_EFFECTS_OFF_LINES = [
     "Visual effects disabled. Your desktop is safe. For now.",
 ]
 
+TERMINAL_ON_LINES = [
+    "Terminal tricks on. If a console window types at you, relax. It's only me.",
+    "Spooky terminal enabled.",
+    "Console on. It types scary words. It does nothing else. Promise!",
+]
+
+TERMINAL_OFF_LINES = [
+    "Terminal tricks off. The little black window stays in its box.",
+    "No more console. Your command line is yours again. Boring, isn't it?",
+    "Terminal disabled. The spooky typing retires. For now.",
+]
+
 REMINDERS_ON_LINES = [
     "Reminders on! I'll nudge you now and then. Hydrate. Rest. Exist. Stay.",
     "Ambient reminders enabled. Expect the occasional... check-in. Friendly ones. Ish.",
@@ -2289,6 +2301,9 @@ BUTTON_COLOR_GUESS_VOICE_OFF = "Color Guess Voice off"
 BUTTON_TRIVIA_RECAP = "Trivia Answers"
 BUTTON_TRIVIA_RECAP_ON = "Trivia Answers on"
 BUTTON_TRIVIA_RECAP_OFF = "Trivia Answers off"
+BUTTON_TERMINAL = "Terminal"
+BUTTON_TERMINAL_ON = "Terminal on"
+BUTTON_TERMINAL_OFF = "Terminal off"
 BUTTON_RESET_MOOD = "Reset Mood"
 BUTTON_MENU_BUTTONS = "Menu Buttons"
 BUTTON_ADJUST_COLORS = "Adjust colors"

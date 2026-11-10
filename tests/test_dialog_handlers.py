@@ -461,6 +461,12 @@ def test_handle_menu_toggle_screen_effects(mock_app):
     mock_app.toggle_screen_effects.assert_called_once()
 
 
+def test_handle_menu_toggle_terminal(mock_app):
+    spec = find_dialog_spec(dlg.SETTINGS_MENU_QUESTION)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_TERMINAL_ON)
+    mock_app.toggle_terminal.assert_called_once()
+
+
 def test_handle_menu_toggle_ambient_reminders(mock_app):
     spec = find_dialog_spec(dlg.SETTINGS_MENU_QUESTION)
     handle_dialog_response(mock_app, spec, dlg.BUTTON_REMINDERS_ON)

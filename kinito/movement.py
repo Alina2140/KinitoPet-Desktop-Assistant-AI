@@ -1734,6 +1734,10 @@ class MovementMixin:
         """No-op unless WindowGrabMixin is mixed in."""
         return False
 
+    def maybe_trigger_terminal(self) -> bool:
+        """No-op unless FakeTerminalMixin is mixed in."""
+        return False
+
     def _is_reading_idle_active(self) -> bool:
         """Return True while Kinito is uninterrupted in the book-idle animation."""
         return (
@@ -2092,6 +2096,7 @@ class MovementMixin:
             return
         self.maybe_trigger_screen_glitch()
         self.maybe_trigger_blue_screen()
+        self.maybe_trigger_terminal()
         self.maybe_trigger_random_ad()
         self.maybe_trigger_ambient_reminder()
         if self.maybe_trigger_screen_comment():

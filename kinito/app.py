@@ -61,6 +61,7 @@ from kinito.features.browser import BrowserMixin
 from kinito.features.camera import CameraMixin
 from kinito.features.color_settings import ColorSettingsMixin
 from kinito.features.content import ContentMixin
+from kinito.features.fake_terminal import FakeTerminalMixin
 from kinito.features.games import GamesMixin
 from kinito.features.glitch import GlitchMixin
 from kinito.features.hug import HugMixin
@@ -161,6 +162,7 @@ class FloatingAssistant(
     LLMMixin,
     SpeechMixin,
     GlitchMixin,
+    FakeTerminalMixin,
     AdsMixin,
     NudgesMixin,
     WindowGrabMixin,
@@ -310,6 +312,14 @@ class FloatingAssistant(
         self._last_ad_popup_at = 0.0
         self._last_glitch_at = 0.0
         self._last_blue_screen_at = 0.0
+        self._terminal_enabled = self._settings.get("terminal_enabled", True)
+        self._last_terminal_at = 0.0
+        self._terminal_window = None
+        self._terminal_text = None
+        self._terminal_timers = []
+        self._terminal_lines = []
+        self._terminal_line_index = 0
+        self._terminal_char_index = 0
         self._paint_recall_enabled = self._settings.get("paint_recall_enabled", True)
         self._last_paint_recall_at = 0.0
         self._paint_recall_popup = None
@@ -506,6 +516,7 @@ class FloatingAssistant(
                 getattr(self, "_color_guess_voice_enabled", True)
             ),
             trivia_recap_enabled=bool(getattr(self, "_trivia_recap_enabled", True)),
+            terminal_enabled=bool(getattr(self, "_terminal_enabled", True)),
             snake_color=self.snake_color(),
             chat_name_color=self.chat_name_color(),
             connect_four_color=self.connect_four_color(),
