@@ -197,6 +197,25 @@ def _thumbnail_photo(path: str, size: tuple[int, int] = _THUMB_SIZE) -> ImageTk.
     return ImageTk.PhotoImage(thumb)
 
 
+def _painting_preview(parent, image: Image.Image) -> tk.Canvas:
+    source = image.copy()
+    canvas = tk.Canvas(parent, width=1, height=1, bg=_UI_BG, bd=0, highlightthickness=0)
+    item = canvas.create_image(0, 0, anchor=tk.CENTER)
+
+    def resize(event):
+        if event.width < 1 or event.height < 1:
+            return
+        scale = min(event.width / source.width, event.height / source.height)
+        size = max(1, int(source.width * scale)), max(1, int(source.height * scale))
+        preview = source.resize(size, Image.Resampling.LANCZOS)
+        canvas.image = ImageTk.PhotoImage(preview, master=canvas)
+        canvas.itemconfigure(item, image=canvas.image)
+        canvas.coords(item, event.width / 2, event.height / 2)
+
+    canvas.bind("<Configure>", resize)
+    return canvas
+
+
 def sanitize_painting_filename(raw: str) -> str | None:
     """Return a safe ``*.png`` filename, or None if empty/invalid."""
     if not isinstance(raw, str):
@@ -1005,15 +1024,13 @@ class PaintMixin:
                 pass
 
         try:
-            img = Image.open(path).convert("RGB")
+            with Image.open(path) as source:
+                img = source.convert("RGB")
         except OSError:
             return
 
         name = os.path.basename(path)
         max_w, max_h = 520, 390
-        preview = img.copy()
-        preview.thumbnail((max_w, max_h), Image.Resampling.LANCZOS)
-        photo = ImageTk.PhotoImage(preview)
 
         window = Toplevel(self.root)
         self._paint_detail_window = window
@@ -1021,18 +1038,15 @@ class PaintMixin:
         apply_window_icon(window)
         window.configure(bg=_UI_BG)
         window.wm_attributes("-topmost", True)
-        center_toplevel(self, window, max_w + 40, max_h + 120)
 
         title_label = Label(
             window, text=name, bg=_UI_BG, font=("TkDefaultFont", 10, "bold")
         )
         title_label.pack(pady=(10, 4))
-        label = Label(window, image=photo, bg="black", bd=2, relief=tk.SUNKEN)
-        label.image = photo
-        label.pack(padx=12, pady=4)
-
         buttons = Frame(window, bg=_UI_BG)
-        buttons.pack(pady=10)
+        buttons.pack(side=tk.BOTTOM, pady=10)
+        preview = _painting_preview(window, img)
+        preview.pack(fill=tk.BOTH, expand=True, padx=12, pady=4)
 
         state = {"path": path, "name": name}
 
@@ -1145,6 +1159,13 @@ class PaintMixin:
             side=tk.LEFT, padx=4
         )
 
+        window.update_idletasks()
+        scale = min(1.0, max_w / img.width, max_h / img.height)
+        width = max(int(img.width * scale) + 24, buttons.winfo_reqwidth() + 24)
+        title_label.configure(wraplength=width - 24)
+        window.update_idletasks()
+        height = int(img.height * scale) + title_label.winfo_reqheight() + buttons.winfo_reqheight() + 42
+        center_toplevel(self, window, width, height)
         window.protocol("WM_DELETE_WINDOW", close_detail)
 
     def maybe_trigger_paint_recall(self) -> bool:
@@ -1265,7 +1286,8 @@ class PaintMixin:
     def _open_paint_recall_popup(self, path: str, *, title: str, on_close) -> None:
         """Show the painting in a topmost non-modal popup."""
         try:
-            img = Image.open(path)
+            with Image.open(path) as source:
+                img = source.convert("RGB")
         except OSError:
             on_close()
             return
@@ -1286,21 +1308,16 @@ class PaintMixin:
         scale = min(1.0, max_w / max(img_w, 1), max_h / max(img_h, 1))
         width = max(1, int(img_w * scale))
         height = max(1, int(img_h * scale))
-        if scale < 1.0:
-            img = img.resize((width, height), Image.Resampling.LANCZOS)
-
         pin = getattr(self, "_pin_assistant_screen_position", None)
         pinned = pin() if callable(pin) else None
         popup = create_staged_toplevel(self.root)
         self._paint_recall_popup = popup
         popup.title(title)
         apply_window_icon(popup)
-        popup.configure(bg="black")
+        popup.configure(bg=_UI_BG)
 
-        tk_img = ImageTk.PhotoImage(img)
-        label = Label(popup, image=tk_img, bd=0, highlightthickness=0, bg="black")
-        label.image = tk_img
-        label.pack(fill="both", expand=True)
+        preview = _painting_preview(popup, img)
+        preview.pack(fill=tk.BOTH, expand=True)
 
         center = getattr(self, "_centered_origin_on_primary", None)
         if callable(center):

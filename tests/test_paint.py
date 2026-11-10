@@ -15,6 +15,66 @@ from kinito.assets import ensure_user_media_directories
 from kinito.features.paint import PaintMixin, PaintWindow, _hex_to_rgb
 
 
+def test_painting_preview_scales_without_cropping_or_degrading():
+    from types import SimpleNamespace
+
+    from kinito.features.paint import _painting_preview
+
+    original = Image.new("RGB", (800, 400), "red")
+    with (
+        patch("kinito.features.paint.tk.Canvas") as canvas_cls,
+        patch("kinito.features.paint.ImageTk.PhotoImage") as photo,
+    ):
+        canvas = _painting_preview(MagicMock(), original)
+        resize = canvas.bind.call_args.args[1]
+        for width, height, expected in (
+            (200, 200, (200, 100)),
+            (100, 30, (60, 30)),
+            (600, 400, (600, 300)),
+            (1600, 1000, (1600, 800)),
+        ):
+            resize(SimpleNamespace(width=width, height=height))
+            assert photo.call_args.args[0].size == expected
+            canvas.coords.assert_called_with(canvas.create_image.return_value, width / 2, height / 2)
+        assert canvas is canvas_cls.return_value
+    assert original.size == (800, 400)
+
+
+def test_gallery_and_recall_images_fit_resized_windows(tmp_path):
+    import tkinter as tk
+
+    import pytest
+
+    try:
+        root = tk.Tk()
+    except tk.TclError:
+        pytest.skip("No display for Tk")
+    try:
+        root.withdraw()
+        path = tmp_path / "landscape.png"
+        Image.new("RGB", (800, 400), "red").save(path)
+        app = PaintMixin()
+        app.root = root
+        app._open_painting_detail(str(path))
+        app._open_paint_recall_popup(str(path), title="Painting", on_close=lambda: None)
+        for window in (app._paint_detail_window, app._paint_recall_popup):
+            window.deiconify()
+            root.update()
+            preview = next(w for w in window.winfo_children() if isinstance(w, tk.Canvas))
+            assert abs(preview.image.width() - preview.winfo_width()) <= 1
+            assert abs(preview.image.height() - preview.winfo_height()) <= 1
+            assert preview.cget("bg") == window.cget("bg")
+            for geometry in ("260x180", "180x300", "560x500"):
+                window.geometry(geometry)
+                root.update()
+                preview = next(w for w in window.winfo_children() if isinstance(w, tk.Canvas))
+                assert preview.image.width() <= preview.winfo_width()
+                assert preview.image.height() <= preview.winfo_height()
+                assert abs(preview.image.width() - 2 * preview.image.height()) <= 1
+    finally:
+        root.destroy()
+
+
 def test_paint_picker_dialog_registered():
     spec = find_dialog_spec(dlg.PAINT_PICKER_QUESTION)
     assert spec is not None
