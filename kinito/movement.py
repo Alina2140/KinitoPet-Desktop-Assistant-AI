@@ -89,6 +89,8 @@ class MovementMixin:
     SLEEP_TALK_COOLDOWN_SECONDS = 45.0
     NIGHTMARE_CHANCE = 0.3
     SLEEP_TALK_VOLUME_SCALE = 0.35
+    SLEEP_PEAK_CHANCE = 0.12
+    SLEEP_PEAK_SECONDS = 0.7
     THROW_SAMPLE_WINDOW_MS = 80
     THROW_MIN_SPEED_PX_S = 900
     THROW_MAX_SPEED_PX_S = 4500
@@ -2286,16 +2288,23 @@ class MovementMixin:
         elif self.paused:
             if not self._maybe_sleep_talk():
                 self._maybe_play_snoring()
-            for sprite in (
-                self.tk_img_sleep,
-                self.tk_img_sleep1,
-                self.tk_img_sleep2,
-                self.tk_img_sleep3,
-            ):
+            frames = [
+                (self.tk_img_sleep, 1.0),
+                (self.tk_img_sleep1, 1.0),
+                (self.tk_img_sleep2, 1.0),
+                (self.tk_img_sleep3, 1.0),
+            ]
+            peak = getattr(self, "tk_img_sleep_peaking", None)
+            if peak is not None and random.random() < self.SLEEP_PEAK_CHANCE:
+                frames.insert(
+                    random.randrange(1, len(frames)),
+                    (peak, self.SLEEP_PEAK_SECONDS),
+                )
+            for sprite, hold in frames:
                 if not self._running:
                     return
                 self.change_sprite(sprite)
-                time.sleep(1)
+                time.sleep(hold)
         elif self.talking:
             if getattr(self, "_preserve_sprite", False):
                 time.sleep(0.1)

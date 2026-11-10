@@ -45,6 +45,7 @@ from kinito.assets import (
     sprite_path_sleep1,
     sprite_path_sleep2,
     sprite_path_sleep3,
+    sprite_path_sleep_peaking,
     sprite_path_surf_left,
     sprite_path_surf_right,
     sprite_path_talking,
@@ -227,6 +228,7 @@ class FloatingAssistant(
         self.img_sleep1 = _open_sprite(sprite_path_sleep1, fallback)
         self.img_sleep2 = _open_sprite(sprite_path_sleep2, fallback)
         self.img_sleep3 = _open_sprite(sprite_path_sleep3, fallback)
+        self.img_sleep_peaking = _open_sprite(sprite_path_sleep_peaking, fallback)
         self.img_talking = _open_sprite(sprite_path_talking, fallback)
         self.img_talking2 = _open_sprite(sprite_path_talking2, fallback)
         self.img_thinking = _open_sprite(sprite_path_thinking, fallback)
@@ -900,6 +902,7 @@ class FloatingAssistant(
         self.tk_img_sleep3 = photo(self.img_sleep3)
         self.tk_img_sleep2 = photo(self.img_sleep2)
         self.tk_img_sleep1 = photo(self.img_sleep1)
+        self.tk_img_sleep_peaking = photo(self.img_sleep_peaking)
         self.tk_img_talking = photo(self.img_talking)
         self.tk_img_talking2 = photo(self.img_talking2)
         self.tk_img_thinking = photo(self.img_thinking)
