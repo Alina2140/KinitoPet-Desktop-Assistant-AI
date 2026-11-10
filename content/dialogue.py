@@ -697,6 +697,13 @@ BEST_FRIEND_QUESTIONS = [
     "Who's someone important in your life? Soft people-map. Optional detail.",
 ]
 
+WHO_BEST_FRIEND_QUESTION = "Who is your best friend?"
+WHO_BEST_FRIEND_QUESTIONS = [
+    WHO_BEST_FRIEND_QUESTION,
+    "Who is your best friend? Be honest.",
+    "Who is your best friend? A name is all I need.",
+]
+
 PRONOUNS_QUESTION = "What pronouns should I use for you?"
 PRONOUNS_QUESTIONS = [
     PRONOUNS_QUESTION,
@@ -1231,6 +1238,16 @@ PAINT_RECALL_ON_LINES = [
     "Painting popups on. I may surprise you with your own art. Softly.",
     "Gallery recalls enabled. Expect the occasional masterpiece popup.",
     "I'll randomly show saved paintings now. Comment included. Friendship!",
+]
+
+PAINT_REQUESTS_ON_LINES = [
+    "Paint requests on! I can't wait to see what you draw for me.",
+    "Drawing assignments enabled!",
+]
+
+PAINT_REQUESTS_OFF_LINES = [
+    "No more paint requests. Fine, keep your talent to yourself...",
+    "Paint requests off. I'll admire the old ones.",
 ]
 
 PAINT_RECALL_OFF_LINES = [
@@ -2261,6 +2278,9 @@ BUTTON_SCREEN_COMMENTS_OFF = "Screen Comments off"
 BUTTON_PAINT_RECALL = "Painting Popups"
 BUTTON_PAINT_RECALL_ON = "Painting Popups on"
 BUTTON_PAINT_RECALL_OFF = "Painting Popups off"
+BUTTON_PAINT_REQUESTS = "Paint Requests"
+BUTTON_PAINT_REQUESTS_ON = "Paint Requests on"
+BUTTON_PAINT_REQUESTS_OFF = "Paint Requests off"
 BUTTON_STICKY_NOTES_RECALL = "Note Popups"
 BUTTON_STICKY_NOTES_RECALL_ON = "Note Popups on"
 BUTTON_STICKY_NOTES_RECALL_OFF = "Note Popups off"

@@ -307,6 +307,18 @@ PAINT_RECALL_VISION_PROMPT = (
     "Do not mention being an AI or analyzing pixels. No markdown."
 )
 
+PAINT_REQUEST_VISION_SYSTEM = (
+    "You are KinitoPET, a pink axolotl-like desktop companion. "
+    "The user painted a picture you requested. "
+    "Answer the classification question with only YES or NO."
+)
+
+PAINT_REQUEST_LOOKS_LIKE_KINITO_PROMPT = (
+    "Does this drawing look like Kinito — a pink axolotl-like character "
+    "(pink body and head, external gills, simple friendly face)? "
+    "Answer only YES or NO."
+)
+
 JOKE_PROMPT = "Tell one short, corny/ funny joke. Two sentences max. No markdown."
 
 GAME_REACTION_PROMPT = (

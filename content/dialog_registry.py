@@ -8,7 +8,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Literal
 
-from content import credits, game_lines
+from content import credits, game_lines, paint_request_lines
 from content import dialogue as dlg
 from content.menu_visibility import filter_visible_menu_buttons
 from content.music_player_lines import (
@@ -238,6 +238,11 @@ def settings_toggles_options_for(app) -> list[str]:
         if getattr(app, "_paint_recall_enabled", True)
         else dlg.BUTTON_PAINT_RECALL_OFF
     )
+    paint_requests_label = (
+        dlg.BUTTON_PAINT_REQUESTS_ON
+        if getattr(app, "_paint_requests_enabled", True)
+        else dlg.BUTTON_PAINT_REQUESTS_OFF
+    )
     sticky_notes_recall_label = (
         dlg.BUTTON_STICKY_NOTES_RECALL_ON
         if getattr(app, "_sticky_notes_recall_enabled", True)
@@ -316,6 +321,7 @@ def settings_toggles_options_for(app) -> list[str]:
             app_awareness_label,
             screen_comments_label,
             paint_recall_label,
+            paint_requests_label,
             sticky_notes_recall_label,
             snoring_label,
             sleep_talk_label,
@@ -566,6 +572,22 @@ def _sure_decline(yes_fn: Handler, declined_lines) -> Handler:
     return handler
 
 
+def _handle_who_best_friend(app, response: str) -> None:
+    """React to 'Who is your best friend?' — happy if Kinito, dark if not."""
+    trimmed = response.strip()
+    memory = getattr(app, "_memory", None)
+    if memory is not None and trimmed:
+        memory.set_fact("best_friend", trimmed)
+        memory.mark_answered(dlg.WHO_BEST_FRIEND_QUESTION)
+    is_me = "kinito" in trimmed.lower()
+    pool = (
+        paint_request_lines.BEST_FRIEND_IS_ME_LINES
+        if is_me
+        else paint_request_lines.BEST_FRIEND_NOT_ME_LINES
+    )
+    app.speak(dlg.pick_line(pool).format(response=trimmed or "..."))
+
+
 def _text_format(response_lines) -> Handler:
     """Build a handler that speaks a formatted line with the user's text answer."""
 
@@ -723,6 +745,9 @@ def _menu_action_handlers() -> dict[str, Handler]:
         dlg.BUTTON_PAINT_RECALL: lambda a: a.toggle_paint_recall(),
         dlg.BUTTON_PAINT_RECALL_ON: lambda a: a.toggle_paint_recall(),
         dlg.BUTTON_PAINT_RECALL_OFF: lambda a: a.toggle_paint_recall(),
+        dlg.BUTTON_PAINT_REQUESTS: lambda a: a.toggle_paint_requests(),
+        dlg.BUTTON_PAINT_REQUESTS_ON: lambda a: a.toggle_paint_requests(),
+        dlg.BUTTON_PAINT_REQUESTS_OFF: lambda a: a.toggle_paint_requests(),
         dlg.BUTTON_STICKY_NOTES_RECALL: lambda a: a.toggle_sticky_notes_recall(),
         dlg.BUTTON_STICKY_NOTES_RECALL_ON: lambda a: a.toggle_sticky_notes_recall(),
         dlg.BUTTON_STICKY_NOTES_RECALL_OFF: lambda a: a.toggle_sticky_notes_recall(),
@@ -1966,6 +1991,11 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
         _text_format_with_memory(
             dlg.BEST_FRIEND_QUESTION, "important_person", dlg.BEST_FRIEND_RESPONSES
         ),
+    ),
+    DialogSpec(
+        dlg.WHO_BEST_FRIEND_QUESTION,
+        DialogUI("textbox", textbox_prompt=dlg.WHO_BEST_FRIEND_QUESTION),
+        _handle_who_best_friend,
     ),
     DialogSpec(
         dlg.PRONOUNS_QUESTION,

@@ -21,6 +21,7 @@ DEFAULT_BOOL_SETTINGS: dict[str, bool] = {
     "app_awareness_enabled": True,
     "screen_comments_enabled": True,
     "paint_recall_enabled": True,
+    "paint_requests_enabled": True,
     "sticky_notes_recall_enabled": True,
     "snoring_enabled": True,
     "sleep_talk_enabled": True,

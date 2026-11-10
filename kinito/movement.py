@@ -1728,6 +1728,10 @@ class MovementMixin:
         """No-op unless PaintMixin is mixed in."""
         return False
 
+    def maybe_trigger_paint_request(self) -> bool:
+        """No-op unless PaintMixin is mixed in."""
+        return False
+
     def maybe_trigger_sticky_notes_recall(self) -> bool:
         """No-op unless StickyNotesMixin is mixed in."""
         return False
@@ -2111,6 +2115,9 @@ class MovementMixin:
             time.sleep(self._idle_wait_before_next_action())
             return
         if self.maybe_trigger_paint_recall():
+            time.sleep(self._idle_wait_before_next_action())
+            return
+        if self.maybe_trigger_paint_request():
             time.sleep(self._idle_wait_before_next_action())
             return
         if self.maybe_trigger_sticky_notes_recall():

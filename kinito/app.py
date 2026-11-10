@@ -326,7 +326,11 @@ class FloatingAssistant(
         self._terminal_line_index = 0
         self._terminal_char_index = 0
         self._paint_recall_enabled = self._settings.get("paint_recall_enabled", True)
+        self._paint_requests_enabled = self._settings.get(
+            "paint_requests_enabled", True
+        )
         self._last_paint_recall_at = 0.0
+        self._last_paint_request_at = 0.0
         self._paint_recall_popup = None
         self._sticky_notes_recall_enabled = self._settings.get(
             "sticky_notes_recall_enabled", True
@@ -496,6 +500,9 @@ class FloatingAssistant(
                 getattr(self, "_screen_comments_enabled", True)
             ),
             paint_recall_enabled=bool(getattr(self, "_paint_recall_enabled", True)),
+            paint_requests_enabled=bool(
+                getattr(self, "_paint_requests_enabled", True)
+            ),
             sticky_notes_recall_enabled=bool(
                 getattr(self, "_sticky_notes_recall_enabled", True)
             ),

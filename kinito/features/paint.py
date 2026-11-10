@@ -17,7 +17,7 @@ from PIL import Image, ImageDraw, ImageTk
 
 from content import dialogue as dlg
 from content import llm_prompts as prompts
-from content import paint_lines
+from content import paint_lines, paint_request_lines
 from kinito.assets import ensure_user_media_directories, list_image_files, paintings_directory
 from kinito.features.games.base import center_toplevel
 from kinito.llm.ollama_client import OllamaUnavailableError
@@ -257,8 +257,9 @@ class PaintWindow:
         intensity = self.app.get_mood_intensity() if hasattr(self.app, "get_mood_intensity") else 0.0
         return paint_lines.pick_paint_line(pool, pool_by_mood, mood, intensity)
 
-    def __init__(self, app):
+    def __init__(self, app, subject: dict | None = None):
         self.app = app
+        self._subject = subject
         self.window: Toplevel | None = None
         self.canvas: tk.Canvas | None = None
         self._image = Image.new("RGB", (self.CANVAS_W, self.CANVAS_H), _CANVAS_BG)
@@ -283,6 +284,21 @@ class PaintWindow:
         self._line_timer = None
         self._last_spray_xy: tuple[int, int] | None = None
 
+    def _window_title(self) -> str:
+        if self._subject is not None:
+            return f"draw: {self._subject['title']} - Paint"
+        return "untitled - Paint"
+
+    def _subject_close_line(self) -> str | None:
+        """Return a subject-specific close line, or None for the default pool."""
+        if self._subject is None:
+            return None
+        if self._saved_name is not None:
+            return None
+        if self._dirty:
+            return random.choice(paint_request_lines.PAINT_REQUEST_UNSAVED_LINES)
+        return random.choice(paint_request_lines.PAINT_REQUEST_ABANDONED_LINES)
+
     def open(self) -> None:
         """Create or focus the paint window."""
         self.app._ensure_single_paint_window()
@@ -290,7 +306,7 @@ class PaintWindow:
         self.window = window
         self.app._paint_window = window
         self.app._paint_session = self
-        window.title("untitled - Paint")
+        window.title(self._window_title())
         apply_window_icon(window)
         window.resizable(False, False)
         window.configure(bg=_UI_BG)
@@ -427,19 +443,22 @@ class PaintWindow:
             self.app._paint_window = None
             if getattr(self.app, "_paint_session", None) is self:
                 self.app._paint_session = None
-            line = self._pick_paint_line(paint_lines.PAINT_CLOSE_LINES, paint_lines.PAINT_CLOSE_BY_MOOD)
+            line = self._subject_close_line()
+            if line is None:
+                line = self._pick_paint_line(paint_lines.PAINT_CLOSE_LINES, paint_lines.PAINT_CLOSE_BY_MOOD)
             window.destroy()
             self.app.root.after(0, lambda: self.app.speak_paint_line(line))
 
         window.protocol("WM_DELETE_WINDOW", on_close)
         window._kinito_close = on_close
 
-        self.app.root.after(
-            0,
-            lambda: self.app.speak_paint_line(
-                self._pick_paint_line(paint_lines.PAINT_OPEN_LINES, paint_lines.PAINT_OPEN_BY_MOOD)
-            ),
-        )
+        if self._subject is None:
+            self.app.root.after(
+                0,
+                lambda: self.app.speak_paint_line(
+                    self._pick_paint_line(paint_lines.PAINT_OPEN_LINES, paint_lines.PAINT_OPEN_BY_MOOD)
+                ),
+            )
         self._schedule_line_timer(first=True)
 
     def _cancel_line_timer(self) -> None:
@@ -782,7 +801,7 @@ class PaintWindow:
         self._redraw_brush_cursor()
         if self.window is not None:
             try:
-                self.window.title("untitled - Paint")
+                self.window.title(self._window_title())
             except tk.TclError:
                 pass
 
@@ -803,9 +822,73 @@ class PaintWindow:
                 self.window.title(f"{name} - Paint")
             except tk.TclError:
                 pass
-        line = self._pick_paint_line(paint_lines.PAINT_SAVE_LINES, paint_lines.PAINT_SAVE_BY_MOOD)
-        self.app.root.after(0, lambda: self.app.speak_paint_line(line))
+        if self._subject is not None:
+            self._speak_subject_reaction(path)
+        else:
+            line = self._pick_paint_line(paint_lines.PAINT_SAVE_LINES, paint_lines.PAINT_SAVE_BY_MOOD)
+            self.app.root.after(0, lambda: self.app.speak_paint_line(line))
         return path
+
+    def _speak_subject_reaction(self, path: str) -> None:
+        """Comment on a saved requested painting (vision when it matters)."""
+        subject_id = self._subject["id"]
+        if subject_id not in ("me", "best_friend"):
+            pool = paint_request_lines.PAINT_REQUEST_REACT_LINES[subject_id]
+            line = random.choice(pool)
+            self.app.root.after(0, lambda: self.app.speak_paint_line(line))
+            return
+        threading.Thread(
+            target=self._subject_reaction_worker,
+            args=(path, subject_id),
+            daemon=True,
+        ).start()
+
+    def _subject_reaction_worker(self, path: str, subject_id: str) -> None:
+        """Classify the saved painting off the UI thread, then speak a verdict."""
+        looks_like_me = None
+        try:
+            checker = getattr(self.app, "_vision_looks_like_kinito", None)
+            image_bytes = self.app._painting_jpeg_bytes(path)
+            if callable(checker) and image_bytes:
+                looks_like_me = checker(image_bytes)
+        except Exception:
+            looks_like_me = None
+
+        lines = paint_request_lines
+        if subject_id == "me":
+            if looks_like_me is True:
+                pool = lines.PAINT_REQUEST_LOOKS_LIKE_ME_LINES
+            elif looks_like_me is False:
+                pool = lines.PAINT_REQUEST_NOT_ME_LINES
+            else:
+                pool = lines.PAINT_REQUEST_ME_FALLBACK_LINES
+        else:
+            if looks_like_me is True:
+                pool = lines.PAINT_REQUEST_BEST_FRIEND_IS_ME_LINES
+            elif looks_like_me is False:
+                pool = lines.PAINT_REQUEST_BEST_FRIEND_NOT_ME_LINES
+            else:
+                pool = lines.PAINT_REQUEST_BEST_FRIEND_FALLBACK_LINES
+        line = random.choice(pool)
+        self.app.root.after(0, lambda: self.app.speak_paint_line(line))
+        if subject_id == "best_friend":
+            self.app.root.after(0, self._defer_best_friend_question)
+
+    _BEST_FRIEND_QUESTION_POLL_MS = 100
+    _BEST_FRIEND_QUESTION_MAX_POLLS = 600
+
+    def _defer_best_friend_question(self, poll_count: int = 0) -> None:
+        """Ask who the user's best friend is once the reaction line finished."""
+        busy = getattr(self.app, "_is_busy_with_speech", lambda: False)
+        if not busy():
+            self.app.speak(dlg.WHO_BEST_FRIEND_QUESTION, 45, True)
+            return
+        if poll_count >= self._BEST_FRIEND_QUESTION_MAX_POLLS:
+            return
+        self.app.root.after(
+            self._BEST_FRIEND_QUESTION_POLL_MS,
+            lambda: self._defer_best_friend_question(poll_count + 1),
+        )
 
 
 class PaintMixin:
@@ -816,6 +899,18 @@ class PaintMixin:
     PAINT_RECALL_COOLDOWN_SECONDS = 900
     PAINT_RECALL_MAX_EDGE = 896
     PAINT_RECALL_JPEG_QUALITY = 70
+    PAINT_REQUEST_CHANCE = 1 / 400
+    PAINT_REQUEST_COOLDOWN_SECONDS = 1800
+
+    # (subject id, window title, weight) for Kinito's drawing assignments.
+    PAINT_REQUEST_SUBJECTS = (
+        ("me", "me (Kinito!)", 3),
+        ("best_friend", "your best friend", 3),
+        ("happiness", "happiness", 2),
+        ("sadness", "sadness", 1),
+        ("us", "the two of us", 2),
+        ("fear", "your biggest fear", 1),
+    )
 
     def offer_paint_picker(self):
         """Speak the Paint submenu (Draw / My Paintings)."""
@@ -1198,6 +1293,85 @@ class PaintMixin:
         self._last_paint_recall_at = time.monotonic()
         self.root.after(0, self._start_paint_recall)
         return True
+
+    def maybe_trigger_paint_request(self) -> bool:
+        """Roll for Kinito asking the user to draw a specific subject."""
+        if not getattr(self, "_paint_requests_enabled", True):
+            return False
+        if getattr(self, "_focus_mode", False):
+            return False
+        if getattr(self, "_is_game_active", lambda: False)():
+            return False
+        if (
+            self.paused
+            or getattr(self, "_is_position_locked_by_user", lambda: self.is_dragging)()
+            or getattr(self, "_camera_active", False)
+            or getattr(self, "_browser_active", False)
+        ):
+            return False
+        if getattr(self, "_is_busy_with_speech", lambda: False)():
+            return False
+        if self._is_paint_active():
+            return False
+        last_at = getattr(self, "_last_paint_request_at", 0.0)
+        if (
+            last_at > 0
+            and time.monotonic() - last_at < self.PAINT_REQUEST_COOLDOWN_SECONDS
+        ):
+            return False
+        if random.random() >= self.PAINT_REQUEST_CHANCE:
+            return False
+        self._last_paint_request_at = time.monotonic()
+        self.root.after(0, self._start_paint_request)
+        return True
+
+    def _start_paint_request(self) -> None:
+        """Pick a subject, speak the request, and open Paint for it."""
+        if not getattr(self, "_running", True):
+            return
+        if not getattr(self, "_paint_requests_enabled", True):
+            return
+        subjects = self.PAINT_REQUEST_SUBJECTS
+        subject_id, title, _weight = random.choices(
+            subjects, weights=[entry[2] for entry in subjects], k=1
+        )[0]
+        line = random.choice(paint_request_lines.PAINT_REQUEST_LINES[subject_id])
+        self.speak_paint_line(line)
+        subject = {"id": subject_id, "title": title}
+        self.root.after(0, lambda: PaintWindow(self, subject).open())
+
+    def toggle_paint_requests(self):
+        """Enable or disable Kinito asking for drawings."""
+        self._paint_requests_enabled = not getattr(self, "_paint_requests_enabled", True)
+        if hasattr(self, "_persist_settings"):
+            self._persist_settings()
+        lines = (
+            dlg.PAINT_REQUESTS_ON_LINES
+            if self._paint_requests_enabled
+            else dlg.PAINT_REQUESTS_OFF_LINES
+        )
+        self.speak(dlg.pick_line(lines), skip_ai=True)
+
+    def _vision_looks_like_kinito(self, image_bytes: bytes) -> bool | None:
+        """Ask local vision whether the painting looks like Kinito."""
+        client = getattr(self, "_ollama_client", None)
+        if client is None or not client.is_available():
+            return None
+        try:
+            reply = client.chat_with_image(
+                prompts.PAINT_REQUEST_LOOKS_LIKE_KINITO_PROMPT,
+                image_bytes,
+                system=prompts.PAINT_REQUEST_VISION_SYSTEM,
+                max_tokens=-1,
+            )
+        except OllamaUnavailableError:
+            return None
+        cleaned = (reply or "").strip().lower()
+        if cleaned.startswith("yes"):
+            return True
+        if cleaned.startswith("no"):
+            return False
+        return None
 
     def toggle_paint_recall(self):
         """Enable or disable spontaneous painting popups."""

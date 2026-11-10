@@ -123,6 +123,17 @@ MENU_VISIBILITY_SECTIONS: tuple[tuple[str, tuple[MenuEntry, ...]], ...] = (
                 ),
             ),
             (
+                "settings.paint_requests",
+                "Paint Requests",
+                frozenset(
+                    {
+                        dlg.BUTTON_PAINT_REQUESTS,
+                        dlg.BUTTON_PAINT_REQUESTS_ON,
+                        dlg.BUTTON_PAINT_REQUESTS_OFF,
+                    }
+                ),
+            ),
+            (
                 "settings.sticky_notes_recall",
                 "Sticky Note Popups",
                 frozenset(
