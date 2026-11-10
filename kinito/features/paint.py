@@ -1357,13 +1357,11 @@ class PaintMixin:
                 prompts.PAINT_RECALL_VISION_PROMPT,
                 image_bytes,
                 system=prompts.PAINT_RECALL_VISION_SYSTEM,
-                max_tokens=80,
+                max_tokens=-1,
             )
         except OllamaUnavailableError:
             return None
         cleaned = (reply or "").strip()
         if not cleaned:
             return None
-        if len(cleaned) > 280:
-            cleaned = cleaned[:277].rstrip() + "…"
         return cleaned

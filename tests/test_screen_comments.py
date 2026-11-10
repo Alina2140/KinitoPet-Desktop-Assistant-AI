@@ -6,6 +6,7 @@ import pytest
 
 from content import dialogue as dlg
 from kinito.features.screen_comments import ScreenCommentsMixin
+from kinito.llm.config import LLMConfig
 
 
 class ScreenCommentStub(ScreenCommentsMixin):
@@ -29,6 +30,7 @@ def screen_comments():
     stub._is_busy_with_speech = MagicMock(return_value=False)
     stub._is_game_active = MagicMock(return_value=False)
     stub._ollama_client = MagicMock()
+    stub._ollama_client.config = LLMConfig()
     stub._ollama_client.is_available.return_value = False
     stub._persist_settings = MagicMock()
     return stub
@@ -110,6 +112,28 @@ def test_vision_comment_uses_client_without_storing_image(screen_comments):
     assert line == "Nice busy desktop!"
     screen_comments._ollama_client.chat_with_image.assert_called_once()
     assert not hasattr(screen_comments, "_last_screenshot")
+
+
+def test_screen_comment_preserves_long_reply_through_speech(screen_comments):
+    reply = "Your desktop looks like a tiny world full of adventures. " * 12
+    reply += "I am happy to keep you company here."
+    screen_comments._ollama_client.is_available.return_value = True
+    screen_comments._ollama_client.chat_with_image.return_value = f"  {reply}\n"
+    screen_comments._capture_screen_jpeg_bytes = MagicMock(return_value=b"img")
+
+    screen_comments._screen_comment_worker()
+    screen_comments.root.after.call_args.args[1]()
+
+    screen_comments.speak.assert_called_once_with(reply, skip_ai=True)
+    assert screen_comments._ollama_client.chat_with_image.call_args.kwargs["max_tokens"] == 256
+
+
+def test_screen_comment_respects_configured_short_budget(screen_comments):
+    screen_comments._ollama_client.is_available.return_value = True
+    screen_comments._ollama_client.config = LLMConfig(max_tokens_short=400)
+    screen_comments._ollama_client.chat_with_image.return_value = "Nice screen!"
+    assert screen_comments._vision_screen_comment(b"img") == "Nice screen!"
+    assert screen_comments._ollama_client.chat_with_image.call_args.kwargs["max_tokens"] == 400
 
 
 def test_worker_falls_back_when_vision_unavailable(screen_comments):

@@ -131,19 +131,17 @@ class ScreenCommentsMixin:
         client = getattr(self, "_ollama_client", None)
         if client is None or not client.is_available():
             return None
+        # Keep spoken lines short.
         try:
             reply = client.chat_with_image(
                 llm_prompts.SCREEN_COMMENT_VISION_PROMPT,
                 image_bytes,
                 system=llm_prompts.SCREEN_COMMENT_VISION_SYSTEM,
-                max_tokens=80,
+                max_tokens=client.config.max_tokens_short,
             )
         except OllamaUnavailableError:
             return None
         cleaned = (reply or "").strip()
         if not cleaned:
             return None
-        # Keep spoken lines short.
-        if len(cleaned) > 280:
-            cleaned = cleaned[:277].rstrip() + "…"
         return cleaned

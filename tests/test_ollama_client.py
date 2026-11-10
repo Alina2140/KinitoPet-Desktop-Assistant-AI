@@ -31,6 +31,31 @@ def client():
     return OllamaClient(config)
 
 
+def test_generation_budget_defaults(monkeypatch):
+    monkeypatch.delenv("OLLAMA_MAX_TOKENS_SHORT", raising=False)
+    monkeypatch.delenv("OLLAMA_MAX_TOKENS_LONG", raising=False)
+    for config in (LLMConfig(), LLMConfig.from_env()):
+        assert config.max_tokens_short == 256
+        assert config.max_tokens_long == 1024
+
+
+def test_generation_budgets_can_be_overridden(monkeypatch):
+    monkeypatch.setenv("OLLAMA_MAX_TOKENS_SHORT", "400")
+    monkeypatch.setenv("OLLAMA_MAX_TOKENS_LONG", "2048")
+    config = LLMConfig.from_env()
+    assert config.max_tokens_short == 400
+    assert config.max_tokens_long == 2048
+
+
+def test_chat_uses_long_budget_and_keeps_full_reply(client):
+    reply = "This is a longer answer with a complete explanation. " * 20
+    payload = {"message": {"content": reply}}
+    with patch("urllib.request.urlopen", return_value=_mock_urlopen(payload)) as urlopen:
+        assert client.chat([{"role": "user", "content": "Explain it."}]) == reply.strip()
+    body = json.loads(urlopen.call_args.args[0].data.decode("utf-8"))
+    assert body["options"]["num_predict"] == 1024
+
+
 def test_chat_returns_assistant_message(client):
     payload = {"message": {"role": "assistant", "content": "Hello there!"}}
     with patch("urllib.request.urlopen", return_value=_mock_urlopen(payload)):

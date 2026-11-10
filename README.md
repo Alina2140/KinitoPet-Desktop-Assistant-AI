@@ -234,8 +234,8 @@ Optional environment variables:
 | `OLLAMA_IDLE_LINES` | `true` | AI-generated spontaneous lines |
 | `OLLAMA_REPLACE_CHANCE` | `0.30` | Chance that any non-interactive spoken line is AI-generated |
 | `OLLAMA_IDLE_CHANCE` | `0.30` | Legacy alias for `OLLAMA_REPLACE_CHANCE` |
-| `OLLAMA_MAX_TOKENS_SHORT` | `140` | Max tokens for short lines |
-| `OLLAMA_MAX_TOKENS_LONG` | `320` | Max tokens for poems and long bubbles |
+| `OLLAMA_MAX_TOKENS_SHORT` | `256` | Max tokens for short lines and screen comments |
+| `OLLAMA_MAX_TOKENS_LONG` | `1024` | Max tokens for chat replies, poems and long bubbles |
 | `OLLAMA_KEEP_ALIVE` | `10m` | Keeps the model loaded in Ollama between requests |
 | `OLLAMA_WARMUP` | `true` | Pre-load model on startup |
 

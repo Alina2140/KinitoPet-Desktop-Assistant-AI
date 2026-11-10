@@ -216,16 +216,20 @@ def test_speak_skips_ai_for_interactive_dialog(mock_speak, llm_app):
     assert "skip_ai" not in mock_speak.call_args.kwargs
 
 
+@pytest.mark.parametrize("long_bubble,budget", [(False, 256), (True, 1024)])
 @patch.object(SpeechMixin, "speak")
-def test_speak_uses_ai_for_plain_lines(mock_speak, llm_app):
+def test_speak_uses_ai_for_plain_lines(mock_speak, llm_app, long_bubble, budget):
+    reply = "Just checking in on you and your wonderful little world. " * 12
+    llm_app._ollama_client.generate.return_value = reply
     with patch("kinito.features.llm.find_dialog_spec", return_value=None):
         with patch("kinito.features.llm.threading.Thread") as thread_cls:
             thread_cls.return_value = MagicMock()
-            llm_app.speak("Hello there!")
+            llm_app.speak("Hello there!", long_bubble=long_bubble)
             thread_cls.call_args.kwargs["target"]()
 
     mock_speak.assert_called_once()
-    assert mock_speak.call_args.args[0] == "Just checking in on you."
+    assert mock_speak.call_args.args[0] == reply.strip()
+    assert llm_app._ollama_client.generate.call_args.kwargs["max_tokens"] == budget
 
 
 @patch.object(SpeechMixin, "speak")

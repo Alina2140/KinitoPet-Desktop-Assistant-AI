@@ -102,6 +102,36 @@ def test_worker_falls_back_without_vision(paint_recall):
     assert isinstance(called_line, str) and called_line.strip()
 
 
+def test_vision_paint_recall_preserves_complete_long_reply(paint_recall):
+    reply = "The little boat looks ready for an adventure. " * 15
+    reply += "I would love to sail there with you."
+    paint_recall._ollama_client.is_available.return_value = True
+    paint_recall._ollama_client.chat_with_image.return_value = f"  {reply}\n"
+
+    assert paint_recall._vision_paint_recall(b"painting") == reply
+    assert paint_recall._ollama_client.chat_with_image.call_args.kwargs["max_tokens"] == -1
+
+
+def test_worker_delivers_complete_vision_reply(paint_recall):
+    reply = "I remember this painting and its lovely colors. " * 15
+    path = paint_recall._list_painting_paths()[0]
+    paint_recall._ollama_client.is_available.return_value = True
+    paint_recall._ollama_client.chat_with_image.return_value = reply
+    paint_recall._open_paint_recall_popup = MagicMock()
+
+    paint_recall._paint_recall_worker(path)
+    paint_recall.root.after.call_args.args[1]()
+
+    paint_recall.speak.assert_called_once_with(reply.strip(), skip_ai=True)
+    paint_recall._open_paint_recall_popup.assert_called_once()
+
+
+def test_vision_paint_recall_empty_reply_still_falls_back(paint_recall):
+    paint_recall._ollama_client.is_available.return_value = True
+    paint_recall._ollama_client.chat_with_image.return_value = "  \n"
+    assert paint_recall._vision_paint_recall(b"painting") is None
+
+
 def test_toggle_paint_recall_disables(paint_recall):
     paint_recall.toggle_paint_recall()
     assert paint_recall._paint_recall_enabled is False
