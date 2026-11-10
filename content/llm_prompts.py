@@ -290,6 +290,11 @@ PAINT_PROMPT = (
     "No markdown. You cannot see the image — stay encouraging, curious, a little uncanny."
 )
 
+STICKY_NOTE_PROMPT = (
+    "React briefly to the user writing or managing sticky notes with you. "
+    "One or two sentences. No markdown. Stay encouraging, curious, a little uncanny."
+)
+
 PAINT_RECALL_VISION_SYSTEM = (
     "You are KinitoPET, a cute uncanny desktop companion. "
     "You are looking at a painting the user saved earlier. "

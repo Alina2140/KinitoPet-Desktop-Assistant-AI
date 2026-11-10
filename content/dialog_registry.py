@@ -238,6 +238,11 @@ def settings_toggles_options_for(app) -> list[str]:
         if getattr(app, "_paint_recall_enabled", True)
         else dlg.BUTTON_PAINT_RECALL_OFF
     )
+    sticky_notes_recall_label = (
+        dlg.BUTTON_STICKY_NOTES_RECALL_ON
+        if getattr(app, "_sticky_notes_recall_enabled", True)
+        else dlg.BUTTON_STICKY_NOTES_RECALL_OFF
+    )
     snoring_label = (
         dlg.BUTTON_SNORING_ON
         if getattr(app, "_snoring_enabled", True)
@@ -306,6 +311,7 @@ def settings_toggles_options_for(app) -> list[str]:
             app_awareness_label,
             screen_comments_label,
             paint_recall_label,
+            sticky_notes_recall_label,
             snoring_label,
             sleep_talk_label,
             sound_effects_label,
@@ -341,6 +347,7 @@ def actions_options_for(app) -> list[str]:
             music_label,
             dlg.BUTTON_PLAY_GAME,
             dlg.BUTTON_PAINT,
+            dlg.BUTTON_STICKY_NOTES,
             dlg.BUTTON_GIVE_HUG,
             dlg.BUTTON_BACK,
         ],
@@ -710,6 +717,9 @@ def _menu_action_handlers() -> dict[str, Handler]:
         dlg.BUTTON_PAINT_RECALL: lambda a: a.toggle_paint_recall(),
         dlg.BUTTON_PAINT_RECALL_ON: lambda a: a.toggle_paint_recall(),
         dlg.BUTTON_PAINT_RECALL_OFF: lambda a: a.toggle_paint_recall(),
+        dlg.BUTTON_STICKY_NOTES_RECALL: lambda a: a.toggle_sticky_notes_recall(),
+        dlg.BUTTON_STICKY_NOTES_RECALL_ON: lambda a: a.toggle_sticky_notes_recall(),
+        dlg.BUTTON_STICKY_NOTES_RECALL_OFF: lambda a: a.toggle_sticky_notes_recall(),
         dlg.BUTTON_SNORING: lambda a: a.toggle_snoring(),
         dlg.BUTTON_SNORING_ON: lambda a: a.toggle_snoring(),
         dlg.BUTTON_SNORING_OFF: lambda a: a.toggle_snoring(),
@@ -762,6 +772,7 @@ def _menu_action_handlers() -> dict[str, Handler]:
         dlg.BUTTON_SHOW_PLAYER: lambda a: a.open_music_player(),
         dlg.BUTTON_PLAY_GAME: lambda a: a.offer_game_picker(),
         dlg.BUTTON_PAINT: lambda a: a.offer_paint_picker(),
+        dlg.BUTTON_STICKY_NOTES: lambda a: a.offer_sticky_notes_picker(),
         dlg.BUTTON_GIVE_HUG: lambda a: a.give_hug(),
         dlg.BUTTON_TELL_TIME: lambda a: a.print_current_datetime(),
         dlg.BUTTON_KNOWN_SINCE: lambda a: a.say_known_since(),
@@ -917,6 +928,16 @@ def _handle_paint_picker(app, response: str) -> None:
         app.open_paint()
     elif response == dlg.BUTTON_PAINT_GALLERY:
         app.open_paint_gallery()
+    elif response == dlg.BUTTON_BACK:
+        _open_actions_menu(app)
+
+
+def _handle_sticky_notes_picker(app, response: str) -> None:
+    """Create a note or open the notes list, or return to Actions."""
+    if response == dlg.BUTTON_STICKY_NOTE_NEW:
+        app.open_sticky_note()
+    elif response == dlg.BUTTON_STICKY_NOTE_LIST:
+        app.open_sticky_notes_list()
     elif response == dlg.BUTTON_BACK:
         _open_actions_menu(app)
 
@@ -1499,6 +1520,18 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
             ),
         ),
         _handle_paint_picker,
+    ),
+    DialogSpec(
+        dlg.STICKY_NOTES_PICKER_MARKER,
+        DialogUI(
+            "buttons",
+            buttons=(
+                dlg.BUTTON_STICKY_NOTE_NEW,
+                dlg.BUTTON_STICKY_NOTE_LIST,
+                dlg.BUTTON_BACK,
+            ),
+        ),
+        _handle_sticky_notes_picker,
     ),
     DialogSpec(
         dlg.RPS_MARKER,

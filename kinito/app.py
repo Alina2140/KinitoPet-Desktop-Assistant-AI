@@ -72,6 +72,7 @@ from kinito.features.nudges import NudgesMixin
 from kinito.features.paint import PaintMixin
 from kinito.features.programs import ProgramsMixin
 from kinito.features.screen_comments import ScreenCommentsMixin
+from kinito.features.sticky_notes import StickyNotesMixin
 from kinito.features.window_grab import WindowGrabMixin
 from kinito.movement import MovementMixin
 from kinito.settings_store import SettingsStore
@@ -165,6 +166,7 @@ class FloatingAssistant(
     WindowGrabMixin,
     ScreenCommentsMixin,
     PaintMixin,
+    StickyNotesMixin,
     MenuSettingsMixin,
     ColorSettingsMixin,
     MovementMixin,
@@ -311,6 +313,10 @@ class FloatingAssistant(
         self._paint_recall_enabled = self._settings.get("paint_recall_enabled", True)
         self._last_paint_recall_at = 0.0
         self._paint_recall_popup = None
+        self._sticky_notes_recall_enabled = self._settings.get(
+            "sticky_notes_recall_enabled", True
+        )
+        self._last_sticky_notes_recall_at = 0.0
         self._window_grab_enabled = self._settings.get("window_grab_enabled", True)
         self._last_window_grab_at = 0.0
         self._window_grab_active = False
@@ -366,6 +372,8 @@ class FloatingAssistant(
         self._paint_session = None
         self._paint_gallery_window = None
         self._paint_detail_window = None
+        self._sticky_note_windows = {}
+        self._sticky_notes_list_window = None
         self._auto_wake_timer = None
         self._bubble_position_timer = None
         self._screen_bounds_timer = None
@@ -472,6 +480,9 @@ class FloatingAssistant(
                 getattr(self, "_screen_comments_enabled", True)
             ),
             paint_recall_enabled=bool(getattr(self, "_paint_recall_enabled", True)),
+            sticky_notes_recall_enabled=bool(
+                getattr(self, "_sticky_notes_recall_enabled", True)
+            ),
             snoring_enabled=bool(getattr(self, "_snoring_enabled", True)),
             sleep_talk_enabled=bool(getattr(self, "_sleep_talk_enabled", True)),
             sound_effects_enabled=bool(
@@ -1375,6 +1386,8 @@ class FloatingAssistant(
         self._ensure_single_game_window()
         if hasattr(self, "_ensure_single_paint_window"):
             self._ensure_single_paint_window()
+        if hasattr(self, "_close_all_sticky_notes"):
+            self._close_all_sticky_notes()
         self.end_hug()
         self.hide_screen_glitch()
         self.hide_blue_screen()

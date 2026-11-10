@@ -36,6 +36,7 @@ ads_directory = os.path.join(assets_directory, "ads")
 websites_directory = os.path.join(assets_directory, "websites")
 user_media_directory = os.path.join(assets_directory, "userMedia")
 paintings_directory = os.path.join(user_media_directory, "paintings")
+sticky_notes_directory = os.path.join(user_media_directory, "sticky_notes")
 emojis_directory = os.path.join(assets_directory, "emojis")
 emoji_sheet_path = os.path.join(emojis_directory, "emojis.png")
 emoji_catalog_path = os.path.join(emojis_directory, "catalog.json")
@@ -187,9 +188,10 @@ _IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp")
 
 
 def ensure_user_media_directories():
-    """Create gameAssets/userMedia (and paintings/) if they do not exist yet."""
+    """Create gameAssets/userMedia (and paintings/, sticky_notes/) if needed."""
     os.makedirs(user_media_directory, exist_ok=True)
     os.makedirs(paintings_directory, exist_ok=True)
+    os.makedirs(sticky_notes_directory, exist_ok=True)
 
 
 def list_image_files(directory):

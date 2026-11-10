@@ -123,6 +123,17 @@ MENU_VISIBILITY_SECTIONS: tuple[tuple[str, tuple[MenuEntry, ...]], ...] = (
                 ),
             ),
             (
+                "settings.sticky_notes_recall",
+                "Sticky Note Popups",
+                frozenset(
+                    {
+                        dlg.BUTTON_STICKY_NOTES_RECALL,
+                        dlg.BUTTON_STICKY_NOTES_RECALL_ON,
+                        dlg.BUTTON_STICKY_NOTES_RECALL_OFF,
+                    }
+                ),
+            ),
+            (
                 "settings.snoring",
                 "Snoring",
                 frozenset(
@@ -320,6 +331,11 @@ MENU_VISIBILITY_SECTIONS: tuple[tuple[str, tuple[MenuEntry, ...]], ...] = (
             ),
             ("actions.game", "Play Game", frozenset({dlg.BUTTON_PLAY_GAME})),
             ("actions.paint", "Paint", frozenset({dlg.BUTTON_PAINT})),
+            (
+                "actions.sticky_notes",
+                "Sticky Notes",
+                frozenset({dlg.BUTTON_STICKY_NOTES}),
+            ),
             ("actions.hug", "Hug", frozenset({dlg.BUTTON_GIVE_HUG})),
             ("actions.back", "Back", frozenset({dlg.BUTTON_BACK})),
         ),

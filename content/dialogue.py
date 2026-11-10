@@ -114,6 +114,11 @@ GAME_PICKER_QUESTION = "Pick a game! What do you want to play?"
 PAINT_PICKER_MARKER = "draw something or look at saved paintings"
 PAINT_PICKER_QUESTION = "Paint time! Want to draw something or look at saved paintings?"
 
+STICKY_NOTES_PICKER_MARKER = "make a new sticky note or browse saved notes"
+STICKY_NOTES_PICKER_QUESTION = (
+    "Sticky notes! Want to make a new sticky note or browse saved notes?"
+)
+
 QUICK_GAMES_MARKER = "quick games"
 QUICK_GAMES_QUESTION = "Quick games! Pick one!"
 
@@ -1206,6 +1211,18 @@ PAINT_RECALL_OFF_LINES = [
     "Gallery recalls disabled. Paintings stay in the folder. For now.",
 ]
 
+STICKY_NOTES_RECALL_ON_LINES = [
+    "Note popups on. I may surprise you with your own scribbles.",
+    "Note recalls enabled. Expect the occasional sticky surprise.",
+    "I'll randomly show saved notes now. Commentary included!",
+]
+
+STICKY_NOTES_RECALL_OFF_LINES = [
+    "Note popups off. Your archive stays quiet unless you open it.",
+    "No more random note surprises. I'll wait for you to check the list.",
+    "Note recalls disabled. Sticky notes stay in the folder. For now.",
+]
+
 SNORING_ON_LINES = [
     "Snoring on. When I nap, expect the occasional soft... zzz. Charming, right?",
     "Sleep sounds enabled. I'll snore a little. Quietly. Mostly. Cute mostly.",
@@ -2216,6 +2233,9 @@ BUTTON_SCREEN_COMMENTS_OFF = "Screen Comments off"
 BUTTON_PAINT_RECALL = "Painting Popups"
 BUTTON_PAINT_RECALL_ON = "Painting Popups on"
 BUTTON_PAINT_RECALL_OFF = "Painting Popups off"
+BUTTON_STICKY_NOTES_RECALL = "Note Popups"
+BUTTON_STICKY_NOTES_RECALL_ON = "Note Popups on"
+BUTTON_STICKY_NOTES_RECALL_OFF = "Note Popups off"
 BUTTON_SNORING = "Snoring"
 BUTTON_SNORING_ON = "Snoring on"
 BUTTON_SNORING_OFF = "Snoring off"
@@ -2288,6 +2308,9 @@ BUTTON_PLAY_GAME = "Play Game"
 BUTTON_PAINT = "Paint"
 BUTTON_PAINT_DRAW = "Paint"
 BUTTON_PAINT_GALLERY = "My Paintings"
+BUTTON_STICKY_NOTES = "Sticky Notes"
+BUTTON_STICKY_NOTE_NEW = "New Note"
+BUTTON_STICKY_NOTE_LIST = "My Notes"
 BUTTON_QUICK_GAMES = "Quick Games"
 BUTTON_BOARD_GAMES = "Board Games"
 BUTTON_BACK = "Back"
