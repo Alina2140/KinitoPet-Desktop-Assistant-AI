@@ -447,6 +447,81 @@ def test_snake_step_without_food_keeps_length():
     assert state["alive"] is True
 
 
+def test_tetris_optional_background_grid():
+    from unittest.mock import Mock
+
+    from kinito.features.games.tetris_ui import CELL_PX, COLS, PAD, ROWS, TetrisGame
+
+    game = TetrisGame(Mock(spec=[]))
+    game.canvas = Mock()
+    game._draw_board()
+    game.canvas.create_line.assert_not_called()
+    game.show_grid = True
+    game.canvas.reset_mock()
+    game._draw_board()
+    assert game.canvas.create_line.call_count == COLS + ROWS + 2
+    assert game.canvas.create_line.call_args_list[0].args == (
+        PAD, PAD, PAD, PAD + ROWS * CELL_PX,
+    )
+    calls = game.canvas.mock_calls
+    last_line = max(i for i, call in enumerate(calls) if call[0] == "create_line")
+    first_block = next(i for i, call in enumerate(calls)
+                       if call[0] == "create_rectangle" and call.kwargs.get("outline") == "")
+    assert last_line < first_block
+    game.show_grid = False
+    game.canvas.reset_mock()
+    game._draw_board()
+    game.canvas.create_line.assert_not_called()
+
+
+def test_tetris_grid_toggle_does_not_restart_game():
+    from unittest.mock import Mock
+
+    from kinito.features.games.tetris_ui import TetrisGame
+
+    game = TetrisGame(Mock(spec=[]))
+    game.window = Mock()
+    game._grid_var = Mock()
+    game._grid_var.get.return_value = True
+    game._draw_board = Mock()
+    state = game.state
+    game._toggle_grid()
+    assert game.show_grid
+    assert game.state is state
+    game._draw_board.assert_called_once()
+    game.window.focus_set.assert_called_once()
+    game._start_loop = Mock()
+    game._reset()
+    assert game.show_grid
+
+
+def test_tetris_grid_setting_survives_reopening_and_restart(tmp_path):
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+
+    from kinito.features.games.tetris_ui import TetrisGame
+    from kinito.settings_store import SettingsStore
+
+    app = SimpleNamespace(_settings=SettingsStore(directory=str(tmp_path)))
+    game = TetrisGame(app)
+    assert not game.show_grid
+    game.window = Mock()
+    game._grid_var = Mock()
+    game._grid_var.get.return_value = True
+    game._toggle_grid()
+    assert TetrisGame(app).show_grid
+    restarted = SimpleNamespace(_settings=SettingsStore(directory=str(tmp_path)))
+    restored = TetrisGame(restarted)
+    assert restored.show_grid
+    restored.window = Mock()
+    restored._grid_var = Mock()
+    restored._grid_var.get.return_value = False
+    restored._toggle_grid()
+    assert not TetrisGame(SimpleNamespace(
+        _settings=SettingsStore(directory=str(tmp_path)),
+    )).show_grid
+
+
 def test_tetris_next_preview_centers_every_piece():
     from unittest.mock import MagicMock
 

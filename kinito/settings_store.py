@@ -36,6 +36,7 @@ DEFAULT_BOOL_SETTINGS: dict[str, bool] = {
     "color_guess_voice_enabled": True,
     "trivia_recap_enabled": True,
     "terminal_enabled": True,
+    "tetris_grid_enabled": False,
 }
 
 # Integer settings (clamped on load/save).

@@ -27,6 +27,7 @@ NEXT_CELL = 18
 BG_COLOR = "#1a1a2e"
 GRID_COLOR = "#16213e"
 DEAD_COLOR = "#94a3b8"
+GUIDE_COLOR = "#36364f"
 
 
 class TetrisGame:
@@ -44,6 +45,9 @@ class TetrisGame:
         self._running = False
         self._after_id = None
         self._announced_game_over = False
+        settings = getattr(app, "_settings", None)
+        self.show_grid = settings.get("tetris_grid_enabled", False) if settings is not None else False
+        self._grid_var = None
 
     def open(self):
         """Open the tetris game window and start gravity."""
@@ -91,6 +95,11 @@ class TetrisGame:
             highlightthickness=0,
         )
         self.next_canvas.pack(anchor=tk.W)
+        self._grid_var = tk.BooleanVar(master=self.window, value=self.show_grid)
+        tk.Checkbutton(
+            side, text="Grid lines", variable=self._grid_var,
+            command=self._toggle_grid, takefocus=False,
+        ).pack(anchor=tk.W, pady=(12, 0))
 
         Button(main, text="New Game", command=self._reset).pack(side=tk.BOTTOM, pady=(0, 10))
 
@@ -111,6 +120,14 @@ class TetrisGame:
 
         self._draw()
         self._start_loop()
+
+    def _toggle_grid(self):
+        self.show_grid = self._grid_var.get()
+        settings = getattr(self.app, "_settings", None)
+        if settings is not None:
+            settings.update(tetris_grid_enabled=self.show_grid)
+        self._draw_board()
+        self.window.focus_set()
 
     def _status_text(self) -> str:
         score = self.state["score"]
@@ -261,6 +278,13 @@ class TetrisGame:
         width = COLS * CELL_PX + PAD * 2
         height = ROWS * CELL_PX + PAD * 2
         self.canvas.create_rectangle(0, 0, width, height, fill=BG_COLOR, outline=GRID_COLOR)
+        if self.show_grid:
+            for x in range(COLS + 1):
+                left = PAD + x * CELL_PX
+                self.canvas.create_line(left, PAD, left, PAD + ROWS * CELL_PX, fill=GUIDE_COLOR)
+            for y in range(ROWS + 1):
+                top = PAD + y * CELL_PX
+                self.canvas.create_line(PAD, top, PAD + COLS * CELL_PX, top, fill=GUIDE_COLOR)
 
         alive = self.state["alive"]
         for y, row in enumerate(self.state["board"]):
