@@ -780,7 +780,7 @@ class StickyNotesMixin:
 
         for index, note in enumerate(notes):
             row, col = divmod(index, _LIST_COLS)
-            paper, dark = NOTE_COLORS[note["color"]]
+            paper, _dark = NOTE_COLORS[note["color"]]
             cell = Frame(
                 grid,
                 bg=paper,
@@ -839,8 +839,8 @@ class StickyNotesMixin:
                 footer,
                 text=meta + suffix,
                 bg=paper,
-                fg=dark,
-                font=("TkDefaultFont", 6),
+                fg="#1a1a1a",
+                font=("TkDefaultFont", 7),
             )
             meta_label.pack(side=tk.LEFT, padx=(4, 0))
             meta_label.bind("<Button-1>", _open_on_click)

@@ -299,7 +299,6 @@ class MoodMixin:
         if callable(speak):
             speak(dlg.pick_line(lines), skip_ai=True)
 
-    _INTERRUPT_MOOD_CHANCE = 0.3
     _INTERRUPT_LINE_CHANCE = 0.25
     _INTERRUPT_GRUMBLE_POLL_MS = 300
     _INTERRUPT_GRUMBLE_MAX_POLLS = 200
@@ -326,15 +325,9 @@ class MoodMixin:
         )
 
     def _maybe_notice_interruption(self) -> None:
-        """Chance to get annoyed/angry and grumble when the user cuts Kinito off."""
+        """Chance to grumble a line when the user cuts Kinito off."""
         if not self.is_mood_system_enabled() or not self._is_busy_mid_activity():
             return
-        if random.random() < self._INTERRUPT_MOOD_CHANCE:
-            mood = self.get_mood()
-            target = (
-                MOOD_ANGRY if mood in (MOOD_ANNOYED, MOOD_ANGRY) else MOOD_ANNOYED
-            )
-            self.shift_mood(target, 0.25)
         if random.random() < self._INTERRUPT_LINE_CHANCE:
             self._schedule_interrupt_grumble()
 

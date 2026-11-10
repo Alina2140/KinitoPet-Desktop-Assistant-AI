@@ -73,12 +73,12 @@ class _InterruptHost(_MoodHost):
         self.grumbled.append(line)
 
 
-def test_interrupt_while_talking_shifts_mood_and_grumbles(monkeypatch):
+def test_interrupt_while_talking_grumbles_without_mood_shift(monkeypatch):
     monkeypatch.setattr(random, "random", lambda: 0.0)
     host = _InterruptHost()
     host.talking = True
     host.note_user_attention(interrupt=True)
-    assert host.get_mood() == MOOD_ANNOYED
+    assert host.get_mood() == MOOD_NEUTRAL
     host.talking = False
     host.root.flush()
     assert host.grumbled
@@ -93,13 +93,13 @@ def test_interrupt_when_idle_does_nothing(monkeypatch):
     assert not host.grumbled
 
 
-def test_interrupt_escalates_annoyed_to_angry(monkeypatch):
+def test_interrupt_never_shifts_mood(monkeypatch):
     monkeypatch.setattr(random, "random", lambda: 0.0)
     host = _InterruptHost()
     host.talking = True
     host.set_mood(MOOD_ANNOYED, 0.5)
     host.note_user_attention(interrupt=True)
-    assert host.get_mood() == MOOD_ANGRY
+    assert host.get_mood() == MOOD_ANNOYED
 
 
 def test_interrupt_while_surfing_counts(monkeypatch):
@@ -108,7 +108,11 @@ def test_interrupt_while_surfing_counts(monkeypatch):
     host.moving = True
     host._move_target = (100.0, 100.0)
     host.note_user_attention(interrupt=True)
-    assert host.get_mood() == MOOD_ANNOYED
+    assert host.get_mood() == MOOD_NEUTRAL
+    host.moving = False
+    host._move_target = None
+    host.root.flush()
+    assert host.grumbled
 
 
 def test_interrupt_while_throwing_does_not_count(monkeypatch):
