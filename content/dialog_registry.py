@@ -1025,6 +1025,7 @@ def _handle_board_games(app, response: str) -> None:
         dlg.BUTTON_GAME_HANGMAN: lambda a: a.start_hangman(),
         dlg.BUTTON_GAME_MINESWEEPER: lambda a: a.start_minesweeper(),
         dlg.BUTTON_GAME_COLOR_GUESS: lambda a: a.start_color_guess(),
+        dlg.BUTTON_GAME_SUDOKU: lambda a: a.start_sudoku(),
     }
     action = actions.get(response)
     if action:
@@ -1427,6 +1428,7 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
                 dlg.BUTTON_GAME_HANGMAN,
                 dlg.BUTTON_GAME_MINESWEEPER,
                 dlg.BUTTON_GAME_COLOR_GUESS,
+                dlg.BUTTON_GAME_SUDOKU,
                 dlg.BUTTON_BACK,
             ),
         ),

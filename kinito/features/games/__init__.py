@@ -11,6 +11,7 @@ from kinito.features.games.minesweeper_ui import MinesweeperGame
 from kinito.features.games.number_guess import new_secret_number
 from kinito.features.games.scores import GameScoresStore
 from kinito.features.games.snake_ui import SnakeGame
+from kinito.features.games.sudoku_ui import SudokuGame
 from kinito.features.games.tetris_ui import TetrisGame
 from kinito.features.games.tic_tac_toe import TicTacToeGame
 
@@ -275,3 +276,9 @@ class GamesMixin:
         if hasattr(self, "note_user_attention"):
             self.note_user_attention()
         self.root.after(0, lambda: ColorGuessGame(self).open())
+
+    def start_sudoku(self):
+        """Open a sudoku game window."""
+        if hasattr(self, "note_user_attention"):
+            self.note_user_attention()
+        self.root.after(0, lambda: SudokuGame(self).open())

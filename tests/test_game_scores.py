@@ -170,6 +170,31 @@ def test_minesweeper_best_time_and_streak(store, scores_dir):
     assert reloaded.minesweeper_best_streak() == 3
 
 
+def test_sudoku_best_mistakes_per_difficulty(store, scores_dir):
+    assert store.sudoku_best_mistakes("easy") is None
+    assert store.sudoku_best_mistakes("medium") is None
+    assert store.sudoku_best_mistakes("hard") is None
+
+    assert store.record_sudoku_mistakes("easy", 4) is True
+    assert store.sudoku_best_mistakes("easy") == 4
+    assert store.sudoku_best_mistakes("medium") is None
+
+    assert store.record_sudoku_mistakes("easy", 7) is False
+    assert store.sudoku_best_mistakes("easy") == 4
+
+    assert store.record_sudoku_mistakes("hard", 0) is True
+    assert store.sudoku_best_mistakes("hard") == 0
+
+    reloaded = GameScoresStore(directory=scores_dir)
+    assert reloaded.sudoku_best_mistakes("easy") == 4
+    assert reloaded.sudoku_best_mistakes("hard") == 0
+
+
+def test_sudoku_unknown_difficulty_ignored(store):
+    assert store.record_sudoku_mistakes("impossible", 3) is False
+    assert store.sudoku_best_mistakes("impossible") is None
+
+
 def test_invalid_file_falls_back(scores_dir):
     os.makedirs(scores_dir, exist_ok=True)
     path = os.path.join(scores_dir, "game_scores.json")

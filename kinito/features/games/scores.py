@@ -32,6 +32,11 @@ DEFAULT_SCORES: dict[str, int] = {
     "minesweeper_best_seconds": 0,
     "minesweeper_streak": 0,
     "minesweeper_best_streak": 0,
+    # Sudoku stores mistakes + 1 per difficulty so a perfect 0-mistake run
+    # is distinguishable from "no record yet" (0 = unset).
+    "sudoku_best_mistakes_easy": 0,
+    "sudoku_best_mistakes_medium": 0,
+    "sudoku_best_mistakes_hard": 0,
 }
 
 TRIVIA_STREAK_THRESHOLD = 3
@@ -44,6 +49,9 @@ _LOW_IS_BETTER_KEYS = frozenset(
         "battleships_best_shots",
         "battleships_duel_best_shots",
         "minesweeper_best_seconds",
+        "sudoku_best_mistakes_easy",
+        "sudoku_best_mistakes_medium",
+        "sudoku_best_mistakes_hard",
     }
 )
 
@@ -233,6 +241,18 @@ class GameScoresStore:
                 "best_streak": self.minesweeper_best_streak(),
                 "new_best_time": new_best_time,
             }
+
+    def sudoku_best_mistakes(self, difficulty: str) -> int | None:
+        """Return fewest mistakes on a Sudoku win at *difficulty*, or None."""
+        best = self._get_low_best(f"sudoku_best_mistakes_{difficulty}")
+        return best - 1 if best is not None else None
+
+    def record_sudoku_mistakes(self, difficulty: str, mistakes: int) -> bool:
+        """Update the Sudoku fewest-mistakes best for *difficulty*."""
+        key = f"sudoku_best_mistakes_{difficulty}"
+        if key not in _LOW_IS_BETTER_KEYS:
+            return False
+        return self._record_low_best(key, max(0, int(mistakes)) + 1)
 
     def _get_low_best(self, key: str) -> int | None:
         """Return a lower-is-better score, or None if unset."""

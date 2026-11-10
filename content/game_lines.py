@@ -590,6 +590,15 @@ MINESWEEPER_LOSE_LINES = [
     "Mine found the hard way!",
 ]
 
+SUDOKU_WIN_LINES = [
+    "Solved! Every digit in its place.",
+    "Puzzle complete! That grid never stood a chance.",
+    "All eighty-one cells correct. I'm impressed!",
+    "Sudoku solved! You make it look easy.",
+    "Grid conquered! Every row, column and box — perfect.",
+    "Done! Flawless logic. Rematch anytime.",
+]
+
 COLOR_GUESS_WIN_LINES = [
     "Correct! {color} — you've got an eye for hex.",
     "{color}! Nailed it!",
