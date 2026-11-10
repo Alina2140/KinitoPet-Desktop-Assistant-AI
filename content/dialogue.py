@@ -829,6 +829,22 @@ CAMERA_SIGNAL_RESTORED_LINES = [
     "Camera's on again — there you are! I missed that view.",
     "Signal restored! Hi! You look great, as always.",
 ]
+CAMERA_TOO_DARK_LINES = [
+    "It's awfully dark in here. Is something covering the lens?",
+    "The feed is on, but I see only darkness. Lens covered? Lights off?",
+    "Hmm — picture's coming through, but it's pitch black. Are you okay in there?",
+    "I can hear the camera working, but everything's dark. Uncover the lens? Please?",
+    "Dark. Very dark. Either your room lost power or my eye has a hat.",
+    "All I see is black. Is something sitting on the camera? A finger? A cat?",
+    "The lens is open and still it's night in here. Turn a light on, or free my view.",
+]
+CAMERA_BRIGHT_AGAIN_LINES = [
+    "Light! I can see again — hi!",
+    "There you are! The darkness lifted. What a view.",
+    "Oh, much better. The lens is uncovered and you're back in frame.",
+    "Picture's bright again. Hello! Don't do that blackout thing again, okay?",
+    "I can see you once more. The dark was getting lonely in here.",
+]
 CAMERA_CLOSE_LINES = [
     "Camera's off! Thanks for letting me see you.",
     "Closing the camera. That was lovely!",

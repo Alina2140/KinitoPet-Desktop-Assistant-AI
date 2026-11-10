@@ -22,6 +22,17 @@ class CameraMixin:
     CAMERA_COMMENT_RETRY_MS = 400
     CAMERA_MIN_WIDTH = 320
     CAMERA_MIN_HEIGHT = 280
+    # Covered-lens / dark-room detection. A covered sensor still streams
+    # colored noise, so we downscale the frame (averaging the noise out) and
+    # look at the fraction of lit pixels, not just the mean brightness.
+    CAMERA_STATS_SIZE = (24, 18)
+    CAMERA_LIT_PIXEL_LUM = 45.0
+    CAMERA_DARK_MEAN = 12.0
+    CAMERA_DARK_LIT_FRACTION = 0.04
+    CAMERA_BRIGHT_MEAN = 30.0
+    CAMERA_BRIGHT_LIT_FRACTION = 0.12
+    CAMERA_DARK_STREAK_FRAMES = 60   # ~2 s at 33 ms
+    CAMERA_BRIGHT_STREAK_FRAMES = 15  # ~0.5 s hysteresis before "bright again"
 
     def open_camera(self):
         """Open the default webcam and start the live preview loop."""
@@ -51,6 +62,9 @@ class CameraMixin:
             self._camera_success_streak = 0
             self._camera_failed_reads = 0
             self._camera_open_line_spoken = False
+            self._camera_dark = False
+            self._camera_dark_streak = 0
+            self._camera_bright_streak = 0
             self._camera_last_frame = None
             self._camera_window_size = None
             cap = None
@@ -233,6 +247,43 @@ class CameraMixin:
                     self._schedule_camera_line,
                 )
 
+    def _camera_frame_stats(self, frame, cv2) -> tuple[float, float]:
+        """Return (mean luminance, lit-pixel fraction) of a downscaled frame.
+
+        Downscaling with INTER_AREA averages out sensor noise, so a covered
+        lens reads as dark even though the raw frame is colorful static.
+        """
+        small = cv2.resize(
+            frame, self.CAMERA_STATS_SIZE, interpolation=cv2.INTER_AREA
+        )
+        lum = small.mean(axis=2)
+        lit_fraction = float((lum > self.CAMERA_LIT_PIXEL_LUM).mean())
+        return float(lum.mean()), lit_fraction
+
+    def _track_camera_brightness(self, mean: float, lit_fraction: float) -> None:
+        """Detect a covered lens / dark room and comment on state changes."""
+        if mean < self.CAMERA_DARK_MEAN or lit_fraction < self.CAMERA_DARK_LIT_FRACTION:
+            self._camera_dark_streak += 1
+            self._camera_bright_streak = 0
+            if (
+                self._camera_dark_streak >= self.CAMERA_DARK_STREAK_FRAMES
+                and not getattr(self, "_camera_dark", False)
+            ):
+                self._camera_dark = True
+                self._speak_camera_comment(dlg.CAMERA_TOO_DARK_LINES)
+        elif (
+            mean > self.CAMERA_BRIGHT_MEAN
+            and lit_fraction > self.CAMERA_BRIGHT_LIT_FRACTION
+        ):
+            self._camera_bright_streak += 1
+            self._camera_dark_streak = 0
+            if (
+                getattr(self, "_camera_dark", False)
+                and self._camera_bright_streak >= self.CAMERA_BRIGHT_STREAK_FRAMES
+            ):
+                self._camera_dark = False
+                self._speak_camera_comment(dlg.CAMERA_BRIGHT_AGAIN_LINES)
+
     def _on_camera_feed_lost(self):
         """Announce when the live picture disappears while the window stays open."""
         self._show_camera_no_signal_placeholder()
@@ -267,6 +318,7 @@ class CameraMixin:
         if ret and frame is not None and self._camera_label is not None:
             self._camera_failed_reads = 0
             self._camera_success_streak += 1
+            self._track_camera_brightness(*self._camera_frame_stats(frame, cv2))
             was_live = self._camera_feed_live
             if self._camera_success_streak >= self.CAMERA_SUCCESS_FRAMES_TO_RESTORE:
                 self._camera_feed_live = True
@@ -305,7 +357,12 @@ class CameraMixin:
         if not self._camera_active:
             return
         if self._camera_feed_live and not self._is_busy_with_speech():
-            threading.Thread(target=self.say_random_camera_line, daemon=True).start()
+            if getattr(self, "_camera_dark", False):
+                self._speak_camera_comment(dlg.CAMERA_TOO_DARK_LINES)
+            else:
+                threading.Thread(
+                    target=self.say_random_camera_line, daemon=True
+                ).start()
         delay_ms = random.randint(18000, 35000)
         schedule_after(
             self.root,
@@ -338,6 +395,9 @@ class CameraMixin:
         self._camera_success_streak = 0
         self._camera_failed_reads = 0
         self._camera_open_line_spoken = False
+        self._camera_dark = False
+        self._camera_dark_streak = 0
+        self._camera_bright_streak = 0
 
         if self._camera_cap is not None:
             try:

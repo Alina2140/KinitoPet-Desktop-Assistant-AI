@@ -285,6 +285,9 @@ class FloatingAssistant(
         self._camera_success_streak = 0
         self._camera_failed_reads = 0
         self._camera_open_line_spoken = False
+        self._camera_dark = False
+        self._camera_dark_streak = 0
+        self._camera_bright_streak = 0
         self._pending_camera_lines = None
         self._camera_comment_timer = None
         self._browser_active = False

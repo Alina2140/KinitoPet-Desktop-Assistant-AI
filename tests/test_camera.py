@@ -23,6 +23,9 @@ def camera():
     stub._camera_success_streak = 0
     stub._camera_failed_reads = 0
     stub._camera_open_line_spoken = False
+    stub._camera_dark = False
+    stub._camera_dark_streak = 0
+    stub._camera_bright_streak = 0
     stub.root = MagicMock()
     stub.root.after = MagicMock()
     stub.root.after_cancel = MagicMock()
@@ -154,3 +157,72 @@ def test_update_camera_frame_detects_signal_loss(camera):
 
     camera._on_camera_feed_lost.assert_called_once()
     assert camera._camera_feed_live is False
+
+
+def test_track_camera_brightness_flags_dark_after_streak(camera):
+    camera._speak_camera_comment = MagicMock()
+    for _ in range(CameraMixin.CAMERA_DARK_STREAK_FRAMES - 1):
+        camera._track_camera_brightness(2.0, 0.0)
+    assert camera._camera_dark is False
+    camera._track_camera_brightness(2.0, 0.0)
+    assert camera._camera_dark is True
+    camera._speak_camera_comment.assert_called_once_with(dlg.CAMERA_TOO_DARK_LINES)
+
+
+def test_track_camera_brightness_noise_frame_counts_as_dark(camera):
+    """Covered sensors stream colorful noise: mean is high but almost no
+    pixel is lit — must still register as dark."""
+    camera._camera_dark_streak = CameraMixin.CAMERA_DARK_STREAK_FRAMES - 1
+    camera._speak_camera_comment = MagicMock()
+    camera._track_camera_brightness(60.0, 0.01)
+    assert camera._camera_dark is True
+    camera._speak_camera_comment.assert_called_once_with(dlg.CAMERA_TOO_DARK_LINES)
+
+
+def test_track_camera_brightness_speaks_dark_only_once(camera):
+    camera._camera_dark = True
+    camera._camera_dark_streak = CameraMixin.CAMERA_DARK_STREAK_FRAMES
+    camera._speak_camera_comment = MagicMock()
+    camera._track_camera_brightness(1.0, 0.0)
+    camera._speak_camera_comment.assert_not_called()
+
+
+def test_track_camera_brightness_recovers_with_hysteresis(camera):
+    camera._camera_dark = True
+    camera._camera_dark_streak = CameraMixin.CAMERA_DARK_STREAK_FRAMES
+    camera._speak_camera_comment = MagicMock()
+    for _ in range(CameraMixin.CAMERA_BRIGHT_STREAK_FRAMES - 1):
+        camera._track_camera_brightness(200.0, 0.9)
+    assert camera._camera_dark is True
+    camera._track_camera_brightness(200.0, 0.9)
+    assert camera._camera_dark is False
+    camera._speak_camera_comment.assert_called_once_with(
+        dlg.CAMERA_BRIGHT_AGAIN_LINES
+    )
+
+
+def test_track_camera_brightness_gray_zone_keeps_state(camera):
+    camera._camera_dark = True
+    mid = (CameraMixin.CAMERA_DARK_MEAN + CameraMixin.CAMERA_BRIGHT_MEAN) / 2
+    mid_frac = (
+        CameraMixin.CAMERA_DARK_LIT_FRACTION
+        + CameraMixin.CAMERA_BRIGHT_LIT_FRACTION
+    ) / 2
+    camera._track_camera_brightness(mid, mid_frac)
+    assert camera._camera_dark is True
+    camera._camera_dark = False
+    camera._track_camera_brightness(mid, mid_frac)
+    assert camera._camera_dark is False
+
+
+def test_schedule_camera_line_speaks_dark_lines_when_dark(camera):
+    camera._camera_active = True
+    camera._camera_feed_live = True
+    camera._camera_dark = True
+    camera._speak_camera_comment = MagicMock()
+    camera.say_random_camera_line = MagicMock()
+
+    camera._schedule_camera_line()
+
+    camera._speak_camera_comment.assert_called_once_with(dlg.CAMERA_TOO_DARK_LINES)
+    camera.say_random_camera_line.assert_not_called()
