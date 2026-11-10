@@ -2001,16 +2001,28 @@ class MovementMixin:
     def _run_reading_idle(self):
         """Animate book sprites, optionally play page-turn sounds, and trigger speech."""
         use_glasses = random.random() < self.IDLE_GLASSES_CHANCE
-        if use_glasses:
+        variants = getattr(
+            self,
+            "_reading_glasses_variants" if use_glasses else "_reading_variants",
+            {},
+        )
+        variant = random.choice(list(variants.values())) if variants else None
+        if variant is not None:
+            reading_sprites = variant["scan"]
+            page_sprites = variant["pages"]
+            dir_sprites = variant["dir"]
+        elif use_glasses:
             reading_sprites = getattr(
                 self,
                 "_reading_glasses_sprites",
                 getattr(self, "_reading_sprites", (self.tk_img_idle,)),
             )
             page_sprites = getattr(self, "_reading_glasses_page_sprites", ())
+            dir_sprites = getattr(self, "_reading_glasses_dir_sprites", {})
         else:
             reading_sprites = getattr(self, "_reading_sprites", (self.tk_img_idle,))
             page_sprites = getattr(self, "_reading_page_sprites", ())
+            dir_sprites = getattr(self, "_reading_dir_sprites", {})
         session = getattr(self, "_reading_idle_session", 0) + 1
         self._reading_idle_session = session
         self._reading_idle_active = True
@@ -2046,13 +2058,7 @@ class MovementMixin:
                 if cursor_pos is not None:
                     self._reading_relocate_pending = cursor_pos
                     break
-                glance = self._maybe_reading_mouse_glance(
-                    getattr(
-                        self,
-                        "_reading_glasses_dir_sprites" if use_glasses else "_reading_dir_sprites",
-                        {},
-                    )
-                )
+                glance = self._maybe_reading_mouse_glance(dir_sprites)
                 if glance is not None:
                     current = glance
                 self.change_sprite(current)

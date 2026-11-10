@@ -273,7 +273,8 @@ gameAssets/
 ├── sprites/
 │   ├── Standing/      # KinitoNormal.png + look-around variants
 │   ├── Crouching/     # crouch pose + look-around variants
-│   ├── Reading/       # Idle / IdleGlasses
+│   ├── Reading/       # Idle<Color>/ subfolders — one book color each
+│   ├── ReadingGlasses/# IdleGlasses (+ optional color subfolders)
 │   ├── Magic/         # Magic.png / Magic2.png magician pose
 │   ├── Surfing/       # movement sprites
 │   ├── Sleeping/

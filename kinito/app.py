@@ -16,9 +16,9 @@ from content.startup import pick_startup_line
 from kinito.assets import (
     balconexe_directory,
     ensure_user_media_directories,
-    list_image_files,
+    list_reading_color_variants,
     list_standing_sprite_paths,
-    reading_direction_from_path,
+    reading_direction_from_stem,
     sprite_path_blush_down,
     sprite_path_blush_left,
     sprite_path_blush_right,
@@ -828,31 +828,54 @@ class FloatingAssistant(
         self.tk_img_dizzy = photo(self.img_dizzy)
         self.tk_img_dizzy_2 = photo(self.img_dizzy_2)
         self.tk_img_dizzy_3 = photo(self.img_dizzy_3)
-        self._reading_dir_sprites = _load_direction_sprites(
-            list_image_files(sprites_reading_directory),
+        self._reading_variants = self._build_reading_variants(
+            sprites_reading_directory,
+            prefix="Idle",
+            default_center=self.img_idle,
             fallback=fallback,
-            center_image=self.img_idle,
-            direction_from=reading_direction_from_path,
+            scale=scale,
         )
-        self._reading_glasses_dir_sprites = _load_direction_sprites(
-            list_image_files(sprites_reading_glasses_directory),
+        self._reading_glasses_variants = self._build_reading_variants(
+            sprites_reading_glasses_directory,
+            prefix="IdleGlasses",
+            default_center=self.img_idle_glasses,
             fallback=fallback,
-            center_image=self.img_idle_glasses,
-            direction_from=reading_direction_from_path,
+            scale=scale,
         )
-        self._reading_sprites = _reading_scan_sprites(
-            self.tk_img_idle, self._reading_dir_sprites
+        default_reading = self._pick_reading_variant(self._reading_variants)
+        default_glasses = self._pick_reading_variant(self._reading_glasses_variants)
+        self._reading_dir_sprites = (
+            default_reading["dir"] if default_reading else {"center": self.tk_img_idle}
+        )
+        self._reading_glasses_dir_sprites = (
+            default_glasses["dir"]
+            if default_glasses
+            else {"center": self.tk_img_idle_glasses}
+        )
+        self._reading_sprites = (
+            default_reading["scan"]
+            if default_reading
+            else _reading_scan_sprites(self.tk_img_idle, self._reading_dir_sprites)
         )
         self._reading_page_sprites = (
-            photo(self.img_idle_page),
-            photo(self.img_idle_page_2),
+            default_reading["pages"]
+            if default_reading
+            else (photo(self.img_idle_page), photo(self.img_idle_page_2))
         )
-        self._reading_glasses_sprites = _reading_scan_sprites(
-            self.tk_img_idle_glasses, self._reading_glasses_dir_sprites
+        self._reading_glasses_sprites = (
+            default_glasses["scan"]
+            if default_glasses
+            else _reading_scan_sprites(
+                self.tk_img_idle_glasses, self._reading_glasses_dir_sprites
+            )
         )
         self._reading_glasses_page_sprites = (
-            photo(self.img_idle_glasses_page),
-            photo(self.img_idle_glasses_page_2),
+            default_glasses["pages"]
+            if default_glasses
+            else (
+                photo(self.img_idle_glasses_page),
+                photo(self.img_idle_glasses_page_2),
+            )
         )
         self._magician_sprites = (self.tk_img_magic, self.tk_img_magic_2)
         self._magician_frame = 0
@@ -889,6 +912,57 @@ class FloatingAssistant(
         if isinstance(cache, dict):
             cache.clear()
         self._surf_tk_image = None
+
+    def _build_reading_variants(
+        self, directory, *, prefix, default_center, fallback, scale
+    ):
+        """Build {color: {"dir", "scan", "pages"}} from color-variant folders.
+
+        Each subfolder of *directory* (e.g. ``IdleBlue``) is one book color;
+        top-level files form the unnamed default variant. Missing sprites
+        inherit *default_center* / the shared fallback like before.
+        """
+
+        def photo(img):
+            return _photo_from_pil(img, scale)
+
+        variants = {}
+        for color, stems in list_reading_color_variants(directory).items():
+            center_stem = prefix
+            center_path = stems.get(center_stem)
+            center_img = (
+                _open_sprite(center_path, fallback) if center_path else default_center
+            )
+            dir_sprites = {"center": photo(center_img)}
+            for stem, path in stems.items():
+                direction = reading_direction_from_stem(stem)
+                if direction is None or direction == "center":
+                    continue
+                dir_sprites[direction] = photo(_open_sprite(path, fallback))
+            scan = _reading_scan_sprites(photo(center_img), dir_sprites)
+            page_paths = [
+                stems[s]
+                for s in sorted(stems)
+                if s.startswith(prefix) and s[len(prefix) :] in ("Page", "Page2")
+            ]
+            pages = tuple(photo(_open_sprite(p, fallback)) for p in page_paths[:2])
+            variants[color or "default"] = {
+                "dir": dir_sprites,
+                "scan": scan,
+                "pages": pages,
+            }
+        return variants
+
+    @staticmethod
+    def _pick_reading_variant(variants):
+        """Prefer the Green variant (book's original color), then default."""
+        if not variants:
+            return None
+        return (
+            variants.get("Green")
+            or variants.get("default")
+            or variants[next(iter(sorted(variants)))]
+        )
 
     def _sprite_pixel_size(self) -> tuple[int, int]:
         """Return the on-screen sprite size in pixels (DPI-scaled)."""

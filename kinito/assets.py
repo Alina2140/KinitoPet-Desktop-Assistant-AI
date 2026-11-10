@@ -16,7 +16,13 @@ sprites_directory = os.path.join(assets_directory, "sprites")
 sprites_standing_directory = os.path.join(sprites_directory, "Standing")
 sprites_crouching_directory = os.path.join(sprites_directory, "Crouching")
 sprites_reading_directory = os.path.join(sprites_directory, "Reading")
+sprites_reading_default_directory = os.path.join(
+    sprites_reading_directory, "IdleGreen"
+)
 sprites_reading_glasses_directory = os.path.join(sprites_directory, "ReadingGlasses")
+sprites_reading_glasses_default_directory = os.path.join(
+    sprites_reading_glasses_directory, "IdleGlassesGreen"
+)
 sprites_magic_directory = os.path.join(sprites_directory, "Magic")
 sprites_dizzy_directory = os.path.join(sprites_directory, "Dizzy")
 sprites_surfing_directory = os.path.join(sprites_directory, "Surfing")
@@ -74,53 +80,69 @@ _STANDING_DIRECTION_SUFFIXES: dict[str, str] = {
 
 sprite_path_normal = os.path.join(sprites_standing_directory, SPRITE_NORMAL_DEFAULT)
 sprite_path_crouching = os.path.join(sprites_crouching_directory, SPRITE_CROUCHING_DEFAULT)
-sprite_path_idle = os.path.join(sprites_reading_directory, "Idle.png")
-sprite_path_idle_page = os.path.join(sprites_reading_directory, "IdlePage.png")
-sprite_path_idle_page_2 = os.path.join(sprites_reading_directory, "IdlePage2.png")
-sprite_path_idle_left = os.path.join(sprites_reading_directory, "IdleLeft.png")
-sprite_path_idle_right = os.path.join(sprites_reading_directory, "IdleRight.png")
-sprite_path_idle_top = os.path.join(sprites_reading_directory, "IdleTop.png")
-sprite_path_idle_bottom = os.path.join(sprites_reading_directory, "IdleBottom.png")
-sprite_path_idle_left_top = os.path.join(sprites_reading_directory, "IdleLeftTop.png")
-sprite_path_idle_right_top = os.path.join(sprites_reading_directory, "IdleRightTop.png")
+sprite_path_idle = os.path.join(sprites_reading_default_directory, "IdleGreen.png")
+sprite_path_idle_page = os.path.join(
+    sprites_reading_default_directory, "IdlePageGreen.png"
+)
+sprite_path_idle_page_2 = os.path.join(
+    sprites_reading_default_directory, "IdlePage2Green.png"
+)
+sprite_path_idle_left = os.path.join(
+    sprites_reading_default_directory, "IdleLeftGreen.png"
+)
+sprite_path_idle_right = os.path.join(
+    sprites_reading_default_directory, "IdleRightGreen.png"
+)
+sprite_path_idle_top = os.path.join(
+    sprites_reading_default_directory, "IdleTopGreen.png"
+)
+sprite_path_idle_bottom = os.path.join(
+    sprites_reading_default_directory, "IdleBottomGreen.png"
+)
+sprite_path_idle_left_top = os.path.join(
+    sprites_reading_default_directory, "IdleLeftTopGreen.png"
+)
+sprite_path_idle_right_top = os.path.join(
+    sprites_reading_default_directory, "IdleRightTopGreen.png"
+)
 sprite_path_idle_left_bottom = os.path.join(
-    sprites_reading_directory, "IdleLeftBottom.png"
+    sprites_reading_default_directory, "IdleLeftBottomGreen.png"
 )
 sprite_path_idle_right_bottom = os.path.join(
-    sprites_reading_directory, "IdleRightBottom.png"
+    sprites_reading_default_directory, "IdleRightBottomGreen.png"
 )
 sprite_path_idle_glasses = os.path.join(
-    sprites_reading_glasses_directory, "IdleGlasses.png"
+    sprites_reading_glasses_default_directory, "IdleGlassesGreen.png"
 )
 sprite_path_idle_glasses_page = os.path.join(
-    sprites_reading_glasses_directory, "IdleGlassesPage.png"
+    sprites_reading_glasses_default_directory, "IdleGlassesPageGreen.png"
 )
 sprite_path_idle_glasses_page_2 = os.path.join(
-    sprites_reading_glasses_directory, "IdleGlassesPage2.png"
+    sprites_reading_glasses_default_directory, "IdleGlassesPage2Green.png"
 )
 sprite_path_idle_glasses_left = os.path.join(
-    sprites_reading_glasses_directory, "IdleGlassesLeft.png"
+    sprites_reading_glasses_default_directory, "IdleGlassesLeftGreen.png"
 )
 sprite_path_idle_glasses_right = os.path.join(
-    sprites_reading_glasses_directory, "IdleGlassesRight.png"
+    sprites_reading_glasses_default_directory, "IdleGlassesRightGreen.png"
 )
 sprite_path_idle_glasses_top = os.path.join(
-    sprites_reading_glasses_directory, "IdleGlassesTop.png"
+    sprites_reading_glasses_default_directory, "IdleGlassesTopGreen.png"
 )
 sprite_path_idle_glasses_bottom = os.path.join(
-    sprites_reading_glasses_directory, "IdleGlassesBottom.png"
+    sprites_reading_glasses_default_directory, "IdleGlassesBottomGreen.png"
 )
 sprite_path_idle_glasses_left_top = os.path.join(
-    sprites_reading_glasses_directory, "IdleGlassesLeftTop.png"
+    sprites_reading_glasses_default_directory, "IdleGlassesLeftTopGreen.png"
 )
 sprite_path_idle_glasses_right_top = os.path.join(
-    sprites_reading_glasses_directory, "IdleGlassesRightTop.png"
+    sprites_reading_glasses_default_directory, "IdleGlassesRightTopGreen.png"
 )
 sprite_path_idle_glasses_left_bottom = os.path.join(
-    sprites_reading_glasses_directory, "IdleGlassesLeftBottom.png"
+    sprites_reading_glasses_default_directory, "IdleGlassesLeftBottomGreen.png"
 )
 sprite_path_idle_glasses_right_bottom = os.path.join(
-    sprites_reading_glasses_directory, "IdleGlassesRightBottom.png"
+    sprites_reading_glasses_default_directory, "IdleGlassesRightBottomGreen.png"
 )
 sprite_path_magic = os.path.join(sprites_magic_directory, "Magic.png")
 sprite_path_magic_2 = os.path.join(sprites_magic_directory, "Magic2.png")
@@ -254,14 +276,65 @@ _READING_DIRECTION_SUFFIXES: dict[str, str] = {
 }
 
 
-def reading_direction_from_path(path: str) -> str | None:
-    """Return a look-direction id from a reading sprite filename, or None."""
-    stem = os.path.splitext(os.path.basename(path))[0]
+def reading_direction_from_stem(stem: str, color: str = "") -> str | None:
+    """Return a look-direction id from a reading sprite stem, or None.
+
+    *color* is stripped from the end first (e.g. "IdleLeftGreen" + "Green"
+    -> "IdleLeft"), so color-variant filenames map like the originals.
+    """
+    if color and stem.endswith(color):
+        stem = stem[: -len(color)]
     # "IdleGlasses" must be checked before "Idle".
     for prefix in ("IdleGlasses", "Idle"):
         if stem.startswith(prefix):
             return _READING_DIRECTION_SUFFIXES.get(stem[len(prefix) :])
     return None
+
+
+def reading_direction_from_path(path: str) -> str | None:
+    """Return a look-direction id from a reading sprite filename, or None."""
+    stem = os.path.splitext(os.path.basename(path))[0]
+    return reading_direction_from_stem(stem)
+
+
+def list_reading_color_variants(directory: str) -> dict[str, dict[str, str]]:
+    """Map color name -> {canonical_stem: image path} for reading sprites.
+
+    Subfolders named ``Idle<Color>`` (or ``IdleGlasses<Color>``) each define a
+    book-color variant; the color suffix is stripped from file stems so
+    ``IdleLeftBlue.png`` lands under canonical stem ``IdleLeft``. Top-level
+    image files land under the ``""`` (default) variant.
+    """
+    variants: dict[str, dict[str, str]] = {}
+    if not os.path.isdir(directory):
+        return variants
+    default: dict[str, str] = {}
+    for name in sorted(os.listdir(directory)):
+        path = os.path.join(directory, name)
+        if os.path.isfile(path):
+            if name.lower().endswith(_IMAGE_EXTENSIONS):
+                default[os.path.splitext(name)[0]] = path
+            continue
+        if not os.path.isdir(path):
+            continue
+        if name.startswith("IdleGlasses"):
+            color = name[len("IdleGlasses") :]
+        elif name.startswith("Idle"):
+            color = name[len("Idle") :]
+        else:
+            color = name
+        stems = variants.setdefault(color, {})
+        for file_name in sorted(os.listdir(path)):
+            file_path = os.path.join(path, file_name)
+            if not file_name.lower().endswith(_IMAGE_EXTENSIONS):
+                continue
+            stem = os.path.splitext(file_name)[0]
+            if color and stem.endswith(color):
+                stem = stem[: -len(color)]
+            stems[stem] = file_path
+    if default:
+        variants.setdefault("", default)
+    return variants
 
 
 def look_direction_from_delta(dx: float, dy: float, *, deadzone_px: float) -> str:
