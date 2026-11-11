@@ -720,8 +720,36 @@ class SpeechMixin:
         except tk.TclError:
             return ""
 
+    def _call_on_ui(self, callback) -> None:
+        """Run *callback* on the Tk main thread (safe from worker threads)."""
+        if threading.current_thread() is threading.main_thread():
+            try:
+                callback()
+            except tk.TclError:
+                pass
+            return
+
+        def _invoke():
+            try:
+                callback()
+            except tk.TclError:
+                pass
+
+        try:
+            self.root.after(0, _invoke)
+        except tk.TclError:
+            pass
+
     def interrupt_speech(self):
         """Stop current TTS and invalidate pending bubble callbacks."""
+        # Bubble destroy / timer cancel must happen on the Tk main thread.
+        if threading.current_thread() is not threading.main_thread():
+            # Stop audio immediately; full bubble teardown runs on the UI thread.
+            self._stop_active_tts()
+            self.talking = False
+            self._ai_generating = False
+            self._call_on_ui(self.interrupt_speech)
+            return
         was_active = (
             getattr(self, "talking", False)
             or self._has_active_speech_bubble()
@@ -1080,6 +1108,26 @@ class SpeechMixin:
         *volume_scale* (0-1) makes this line quieter than the TTS volume setting.
         """
         del ai_hint, skip_ai  # handled by LLMMixin when present in the MRO
+        # Tk bubble teardown/setup is not thread-safe — marshal whole speak() to UI.
+        if threading.current_thread() is not threading.main_thread():
+            self._call_on_ui(
+                lambda: self.speak(
+                    text,
+                    pitch,
+                    slow,
+                    show_bubble,
+                    voice_candidates,
+                    long_bubble,
+                    wait_for_tts,
+                    allow_in_focus,
+                    preserve_sprite,
+                    question,
+                    speech_accompaniment_path=speech_accompaniment_path,
+                    speech_accompaniment_volume=speech_accompaniment_volume,
+                    volume_scale=volume_scale,
+                )
+            )
+            return
         if not allow_in_focus:
             if getattr(self, "_focus_mode", False):
                 return
@@ -1530,7 +1578,9 @@ class SpeechMixin:
             # transparentcolor windows do not flash black mid-throw.
             bubble.geometry(f"{width}x{height}{self.BUBBLE_OFF_SCREEN_GEOMETRY}")
             bubble.deiconify()
-            bubble.update()
+            # Avoid bubble.update() — it re-enters the event loop and can freeze
+            # the UI while nested menu clicks are still being processed.
+            bubble.update_idletasks()
             # Re-measure after the first paint; realized sizes can settle then.
             self._fit_speech_bubble_to_content()
             width, height = self._bubble_screen_size()

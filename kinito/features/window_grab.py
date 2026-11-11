@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import random
 import sys
+import threading
 import time
 import tkinter as tk
 from tkinter import Label
@@ -132,14 +133,27 @@ class WindowGrabMixin:
         return collect_own_hwnds(*windows)
 
     def _pick_window_grab_target(
-        self, *, for_minimize: bool = False
+        self,
+        *,
+        for_minimize: bool = False,
+        exclude_hwnds: set[int] | None = None,
+        kinito_center_x: float | None = None,
     ) -> tuple[WindowRect, str] | None:
-        """Choose a visible window; probe movability only when planning to drag."""
-        windows = list_movable_windows(exclude_hwnds=self._window_grab_exclude_hwnds())
+        """Choose a visible window; probe movability only when planning to drag.
+
+        Pass *exclude_hwnds* / *kinito_center_x* when calling from a worker so this
+        never touches Tk widgets off the main thread.
+        """
+        if exclude_hwnds is None:
+            exclude_hwnds = self._window_grab_exclude_hwnds()
+        windows = list_movable_windows(exclude_hwnds=exclude_hwnds)
         if not windows:
             return None
-        self.root.update_idletasks()
-        kx = self.root.winfo_rootx() + self.root.winfo_width() / 2
+        if kinito_center_x is None:
+            self.root.update_idletasks()
+            kx = self.root.winfo_rootx() + self.root.winfo_width() / 2
+        else:
+            kx = float(kinito_center_x)
 
         # Prefer nearer windows, but shuffle so we can skip immovable ones.
         def edge_distance(win: WindowRect) -> float:
@@ -265,7 +279,7 @@ class WindowGrabMixin:
         self._window_grab_timer = self.root.after(delay_ms, callback)
 
     def _run_window_grab(self) -> None:
-        """Start one grab sequence on the Tk main thread."""
+        """Capture UI-only state, then probe windows off the Tk main thread."""
         if not self._running or not getattr(self, "_window_grab_enabled", True):
             self._window_grab_active = False
             return
@@ -274,7 +288,43 @@ class WindowGrabMixin:
             return
 
         do_minimize = random.random() < self.WINDOW_GRAB_MINIMIZE_CHANCE
-        picked = self._pick_window_grab_target(for_minimize=do_minimize)
+        try:
+            exclude_hwnds = self._window_grab_exclude_hwnds()
+            self.root.update_idletasks()
+            kinito_center_x = self.root.winfo_rootx() + self.root.winfo_width() / 2
+        except tk.TclError:
+            self._window_grab_active = False
+            return
+
+        def worker():
+            picked = None
+            try:
+                picked = self._pick_window_grab_target(
+                    for_minimize=do_minimize,
+                    exclude_hwnds=exclude_hwnds,
+                    kinito_center_x=kinito_center_x,
+                )
+            except Exception as exc:  # noqa: BLE001
+                print(f"Warning: window grab target pick failed: {exc!r}", flush=True)
+                picked = None
+
+            def continue_on_ui():
+                self._start_window_grab_with_target(picked, do_minimize=do_minimize)
+
+            try:
+                self.root.after(0, continue_on_ui)
+            except tk.TclError:
+                self._window_grab_active = False
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _start_window_grab_with_target(
+        self, picked: tuple[WindowRect, str] | None, *, do_minimize: bool
+    ) -> None:
+        """Begin the hand animation once a target was chosen (Tk main thread)."""
+        if not self._running or not getattr(self, "_window_grab_enabled", True):
+            self._window_grab_active = False
+            return
         if picked is None:
             self._window_grab_active = False
             return

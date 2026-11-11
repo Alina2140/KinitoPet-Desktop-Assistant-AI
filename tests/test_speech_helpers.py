@@ -879,7 +879,8 @@ def test_reveal_speech_bubble_prepaints_off_screen(speech):
     assert bubble.geometry.call_count >= 1
     bubble.geometry.assert_any_call(f"220x140{speech.BUBBLE_OFF_SCREEN_GEOMETRY}")
     bubble.deiconify.assert_called_once()
-    assert bubble.update.call_count >= 1
+    # Prefer update_idletasks over update() to avoid nested event-loop freezes.
+    assert bubble.update_idletasks.call_count >= 1
     assert speech._speech_bubble_ready is True
     assert speech._fit_speech_bubble_to_content.call_count >= 2
     speech.position_speech_bubble.assert_called_once_with(force=True)

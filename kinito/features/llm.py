@@ -84,6 +84,34 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
         volume_scale=1.0,
     ):
         """Speak *text*, optionally replacing scripted lines with Ollama output."""
+        # Thinking sprite / bubble teardown must run on the Tk main thread.
+        if threading.current_thread() is not threading.main_thread():
+            schedule = getattr(self, "_call_on_ui", None)
+            kwargs = dict(
+                text=text,
+                pitch=pitch,
+                slow=slow,
+                show_bubble=show_bubble,
+                voice_candidates=voice_candidates,
+                long_bubble=long_bubble,
+                wait_for_tts=wait_for_tts,
+                allow_in_focus=allow_in_focus,
+                preserve_sprite=preserve_sprite,
+                question=question,
+                ai_hint=ai_hint,
+                skip_ai=skip_ai,
+                speech_accompaniment_path=speech_accompaniment_path,
+                speech_accompaniment_volume=speech_accompaniment_volume,
+                volume_scale=volume_scale,
+            )
+            if callable(schedule):
+                schedule(lambda: self.speak(**kwargs))
+            else:
+                try:
+                    self.root.after(0, lambda: self.speak(**kwargs))
+                except Exception:
+                    pass
+            return
         if show_bubble and not self._may_start_speech(str(text)):
             return
         if (
@@ -437,27 +465,74 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
         )
 
     def speak_ai_memory_question(self) -> None:
-        """Plan and ask an interactive AI memory question."""
+        """Plan and ask an interactive AI memory question (Ollama off the UI thread)."""
         if not self._can_initiate_spontaneous_speech():
             return
+        if getattr(self, "_planning_memory_question", False):
+            return
         self._planning_memory_question = True
-        try:
-            spec = self._memory_question_planner.plan()
-            if spec is not None:
-                self.ask_memory_question(spec)
-        finally:
-            self._planning_memory_question = False
+        if hasattr(self, "_show_ai_thinking_sprite"):
+            schedule = getattr(self, "_call_on_ui", None)
+            if callable(schedule):
+                schedule(self._show_ai_thinking_sprite)
+            else:
+                self._show_ai_thinking_sprite()
+
+        def worker():
+            spec = None
+            try:
+                spec = self._memory_question_planner.plan()
+            except Exception as exc:  # noqa: BLE001 — keep idle loop alive
+                print(f"Warning: memory question plan failed: {exc!r}", flush=True)
+                spec = None
+
+            def deliver():
+                self._planning_memory_question = False
+                if hasattr(self, "_clear_ai_generating"):
+                    self._clear_ai_generating()
+                if not self._can_initiate_spontaneous_speech():
+                    self.talking = False
+                    return
+                if spec is not None:
+                    self.ask_memory_question(spec)
+                    return
+                # Fall back to template / random on the UI thread.
+                template = self._memory_question_planner.plan_template()
+                if template is not None:
+                    self.ask_memory_question(template)
+                    return
+                if hasattr(self, "speak_random_question"):
+                    self.speak_random_question()
+                else:
+                    self.talking = False
+
+            try:
+                self.root.after(0, deliver)
+            except Exception:
+                self._planning_memory_question = False
+                self.talking = False
+
+        threading.Thread(target=worker, daemon=True).start()
 
     def speak_memory_question_idle(self) -> None:
         """Ask a memory-aware question via Ollama or scripted templates."""
         if not self._can_initiate_spontaneous_speech():
             return
         if self._llm_config.enabled and self._ollama_client.is_available():
+            # Async — falls back to template/random itself when planning fails.
             self.speak_ai_memory_question()
-            if self._pending_memory_question is not None:
-                return
+            return
         spec = self._memory_question_planner.plan_template()
         if spec is not None:
-            self.ask_memory_question(spec)
+            schedule = getattr(self, "_call_on_ui", None)
+            if callable(schedule):
+                schedule(lambda: self.ask_memory_question(spec))
+            else:
+                self.ask_memory_question(spec)
             return
-        self.speak_random_question()
+        if hasattr(self, "speak_random_question"):
+            schedule = getattr(self, "_call_on_ui", None)
+            if callable(schedule):
+                schedule(self.speak_random_question)
+            else:
+                self.speak_random_question()

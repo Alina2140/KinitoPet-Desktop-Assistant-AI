@@ -155,6 +155,22 @@ def test_schedule_raise_screen_effect_overlays_debounces(glitch):
     assert glitch._raise_overlay_pending is False
 
 
+def _run_thread_inline(target=None, daemon=None):
+    """threading.Thread stand-in that runs *target* immediately on start()."""
+    del daemon
+    thread = MagicMock()
+    thread.start = lambda: target() if target else None
+    return thread
+
+
+def _flush_after_zero(root):
+    """Run the first after(0, callback) scheduled on a MagicMock root."""
+    for args, _kwargs in root.after.call_args_list:
+        if args and args[0] == 0 and callable(args[1]):
+            args[1]()
+            return
+
+
 def test_flash_blue_screen_primary_only_with_virtual_blackout(glitch):
     crash_img = Image.new("RGB", (100, 50), color=(0, 0, 255))
     blackout = MagicMock()
@@ -169,9 +185,11 @@ def test_flash_blue_screen_primary_only_with_virtual_blackout(glitch):
         patch("kinito.features.glitch.Image.open", return_value=crash_img),
         patch("kinito.features.glitch.ImageTk.PhotoImage", return_value=MagicMock()),
         patch("kinito.features.glitch.tk.Label", return_value=MagicMock()),
+        patch("kinito.features.glitch.threading.Thread", side_effect=_run_thread_inline),
         patch.object(glitch, "_make_overlay_window", side_effect=lambda **kwargs: next(overlays)) as make,
     ):
         glitch._flash_blue_screen()
+        _flush_after_zero(glitch.root)
 
     assert make.call_args_list[0].kwargs == {
         "x": -1920,
@@ -187,7 +205,7 @@ def test_flash_blue_screen_primary_only_with_virtual_blackout(glitch):
     }
     assert glitch._crash_blackout_window is blackout
     assert glitch._crash_window is primary
-    glitch.root.after.assert_called_once_with(
+    glitch.root.after.assert_any_call(
         glitch.BLUE_SCREEN_DURATION_MS,
         glitch.hide_blue_screen,
     )
@@ -200,10 +218,12 @@ def test_flash_screen_glitch_sets_cooldown_on_success(glitch):
     with (
         patch("kinito.features.glitch.Image.effect_noise", return_value=Image.new("L", (2, 2))),
         patch("kinito.features.glitch.ImageTk.PhotoImage", return_value=MagicMock()),
-        patch("kinito.features.glitch.tk.Label", return_value=MagicMock()),
+        patch("kinito.features.glitch.tk.Canvas", return_value=MagicMock()),
+        patch("kinito.features.glitch.threading.Thread", side_effect=_run_thread_inline),
         patch("kinito.features.glitch.time.monotonic", return_value=1234.0),
     ):
         glitch._flash_screen_glitch()
+        _flush_after_zero(glitch.root)
     assert glitch._last_glitch_at == 1234.0
 
 
@@ -216,6 +236,7 @@ def test_flash_blue_screen_cleans_up_partial_failure(glitch):
 
     with (
         patch("kinito.features.glitch.Image.open", return_value=crash_img),
+        patch("kinito.features.glitch.threading.Thread", side_effect=_run_thread_inline),
         patch.object(
             glitch,
             "_make_overlay_window",
@@ -223,6 +244,7 @@ def test_flash_blue_screen_cleans_up_partial_failure(glitch):
         ),
     ):
         glitch._flash_blue_screen()
+        _flush_after_zero(glitch.root)
 
     glitch.hide_blue_screen.assert_called()
     assert getattr(glitch, "_last_blue_screen_at", 0.0) == 0.0

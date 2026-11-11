@@ -319,10 +319,29 @@ def test_pick_skips_immovable_windows(grabber):
     assert picked[0].hwnd == 2
 
 
+def _run_thread_inline(target=None, daemon=None):
+    """threading.Thread stand-in that runs *target* immediately on start()."""
+    del daemon
+    thread = MagicMock()
+    thread.start = lambda: target() if target else None
+    return thread
+
+
+def _flush_after_zero(root):
+    """Run the first after(0, callback) scheduled on a MagicMock root."""
+    for args, _kwargs in root.after.call_args_list:
+        if args and args[0] == 0 and callable(args[1]):
+            args[1]()
+            return
+
+
 def test_run_window_grab_skips_without_target(grabber):
+    grabber._window_grab_active = True
     with (
         patch("kinito.features.window_grab.sys.platform", "win32"),
+        patch("kinito.features.window_grab.threading.Thread", side_effect=_run_thread_inline),
         patch.object(grabber, "_pick_window_grab_target", return_value=None),
     ):
         grabber._run_window_grab()
+        _flush_after_zero(grabber.root)
     assert grabber._window_grab_active is False

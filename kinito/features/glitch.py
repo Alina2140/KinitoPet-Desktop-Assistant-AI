@@ -3,6 +3,7 @@
 import os
 import random
 import sys
+import threading
 import time
 import tkinter as tk
 
@@ -22,6 +23,8 @@ class GlitchMixin:
     GLITCH_CHANCE = 1 / 1000
     GLITCH_DURATION_MS = 2000
     GLITCH_NOISE_SCALE = 6
+    # Cap decoded overlay pixels so multi-monitor 4K desks don't freeze Tk.
+    GLITCH_MAX_PIXELS = 1920 * 1080
     GLITCH_COOLDOWN_SECONDS = 180
     BLUE_SCREEN_CHANCE = 1 / 1000
     BLUE_SCREEN_DURATION_MS = 2000
@@ -231,26 +234,64 @@ class GlitchMixin:
             setattr(self, attr, None)
         self._crash_tk_image = None
 
+    @staticmethod
+    def _capped_image_size(width: int, height: int, max_pixels: int) -> tuple[int, int]:
+        """Return (*width*, *height*) scaled down when above *max_pixels*."""
+        pixels = max(1, int(width)) * max(1, int(height))
+        if pixels <= max_pixels:
+            return max(1, int(width)), max(1, int(height))
+        scale = (max_pixels / float(pixels)) ** 0.5
+        return max(1, int(width * scale)), max(1, int(height * scale))
+
     def _flash_screen_glitch(self):
         """Show a short-lived static overlay across the virtual screen."""
         if not self._running or not getattr(self, "_screen_effects_enabled", True):
             return
-        if self._has_glitch_overlay():
+        if self._has_glitch_overlay() or getattr(self, "_glitch_prepare_pending", False):
             return
 
         x, y, width, height = self._overlay_virtual_screen_rect()
         if width < 1 or height < 1:
             return
 
+        img_w, img_h = self._capped_image_size(width, height, self.GLITCH_MAX_PIXELS)
+        noise_w = max(img_w // self.GLITCH_NOISE_SCALE, 1)
+        noise_h = max(img_h // self.GLITCH_NOISE_SCALE, 1)
+        strength = random.randint(40, 70)
+        self._glitch_prepare_pending = True
+
+        def worker():
+            noise = None
+            try:
+                noise = Image.effect_noise((noise_w, noise_h), strength).convert("RGB")
+                noise = noise.resize((img_w, img_h), Image.NEAREST)
+            except Exception as exc:  # noqa: BLE001
+                print(f"Warning: screen glitch failed: {exc!r}", flush=True)
+                noise = None
+
+            def apply():
+                self._glitch_prepare_pending = False
+                if noise is None:
+                    self.hide_screen_glitch()
+                    return
+                self._apply_screen_glitch(noise, x=x, y=y, width=width, height=height)
+
+            try:
+                self.root.after(0, apply)
+            except tk.TclError:
+                self._glitch_prepare_pending = False
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _apply_screen_glitch(self, noise, *, x: int, y: int, width: int, height: int) -> None:
+        """Install a prepared noise image as a fullscreen overlay (Tk main thread)."""
+        if not self._running or not getattr(self, "_screen_effects_enabled", True):
+            return
+        if self._has_glitch_overlay():
+            return
+
         shown = False
         try:
-            noise_w = max(width // self.GLITCH_NOISE_SCALE, 1)
-            noise_h = max(height // self.GLITCH_NOISE_SCALE, 1)
-            noise = Image.effect_noise((noise_w, noise_h), random.randint(40, 70)).convert(
-                "RGB"
-            )
-            noise = noise.resize((width, height), Image.NEAREST)
-
             self._glitch_window = self._make_overlay_window(
                 x=x, y=y, width=width, height=height
             )
@@ -260,10 +301,22 @@ class GlitchMixin:
                 pass
 
             self._glitch_tk_image = ImageTk.PhotoImage(noise)
-            label = tk.Label(
-                self._glitch_window, image=self._glitch_tk_image, bd=0, highlightthickness=0
+            canvas = tk.Canvas(
+                self._glitch_window,
+                width=width,
+                height=height,
+                bd=0,
+                highlightthickness=0,
+                bg="black",
             )
-            label.pack(fill="both", expand=True)
+            canvas.pack(fill="both", expand=True)
+            tile_w = max(1, int(noise.size[0]))
+            tile_h = max(1, int(noise.size[1]))
+            for tile_y in range(0, height, tile_h):
+                for tile_x in range(0, width, tile_w):
+                    canvas.create_image(
+                        tile_x, tile_y, image=self._glitch_tk_image, anchor="nw"
+                    )
 
             self._raise_screen_effect_overlays()
             self._glitch_hide_timer = self.root.after(
@@ -282,7 +335,7 @@ class GlitchMixin:
         """Show the BSOD on the primary monitor; black out other screens briefly."""
         if not self._running or not getattr(self, "_screen_effects_enabled", True):
             return
-        if self._has_blue_screen_overlay():
+        if self._has_blue_screen_overlay() or getattr(self, "_blue_screen_prepare_pending", False):
             return
 
         try:
@@ -295,15 +348,67 @@ class GlitchMixin:
         if vw < 1 or vh < 1 or pw < 1 or ph < 1:
             return
 
+        self._blue_screen_prepare_pending = True
+
+        def worker():
+            resized = crash_img
+            try:
+                if crash_img.size != (pw, ph):
+                    # BILINEAR is much cheaper than LANCZOS on 4K primaries.
+                    resized = crash_img.resize((pw, ph), Image.Resampling.BILINEAR)
+            except Exception as exc:  # noqa: BLE001
+                print(f"Warning: blue screen flash failed: {exc!r}", flush=True)
+                resized = None
+
+            def apply():
+                self._blue_screen_prepare_pending = False
+                if resized is None:
+                    self.hide_blue_screen()
+                    return
+                self._apply_blue_screen(
+                    resized,
+                    vx=vx,
+                    vy=vy,
+                    vw=vw,
+                    vh=vh,
+                    px=px,
+                    py=py,
+                    pw=pw,
+                    ph=ph,
+                )
+
+            try:
+                self.root.after(0, apply)
+            except tk.TclError:
+                self._blue_screen_prepare_pending = False
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _apply_blue_screen(
+        self,
+        crash_img,
+        *,
+        vx: int,
+        vy: int,
+        vw: int,
+        vh: int,
+        px: int,
+        py: int,
+        pw: int,
+        ph: int,
+    ) -> None:
+        """Install prepared BSOD imagery (Tk main thread)."""
+        if not self._running or not getattr(self, "_screen_effects_enabled", True):
+            return
+        if self._has_blue_screen_overlay():
+            return
+
         shown = False
         try:
             # Full virtual desktop goes black; BSOD sits on top of the primary only.
             self._crash_blackout_window = self._make_overlay_window(
                 x=vx, y=vy, width=vw, height=vh
             )
-
-            if crash_img.size != (pw, ph):
-                crash_img = crash_img.resize((pw, ph), Image.Resampling.LANCZOS)
 
             self._crash_window = self._make_overlay_window(x=px, y=py, width=pw, height=ph)
             self._crash_tk_image = ImageTk.PhotoImage(crash_img)

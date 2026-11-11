@@ -271,7 +271,7 @@ class MovementMixin:
         if not self._should_skip_drag_sounds():
             self.play_sfx(bomp_file_path)
         # Sync position BEFORE locking drag — _sync skips while is_dragging.
-        self.root.update_idletasks()
+        # Skip update_idletasks(): on a busy UI thread it can freeze the grab.
         try:
             self.x = int(self.root.winfo_rootx())
             self.y = int(self.root.winfo_rooty())
@@ -300,30 +300,38 @@ class MovementMixin:
         """Move the window while dragging and keep speech/love bubbles aligned."""
         if not self.is_dragging:
             return
-        self._drag_moved = True
-        # Prefer live pointer coords — B1-Motion can lag behind a fast cursor.
         try:
-            cursor_x = int(self.root.winfo_pointerx())
-            cursor_y = int(self.root.winfo_pointery())
-        except (tk.TclError, TypeError, ValueError):
-            cursor_x = int(event.x_root)
-            cursor_y = int(event.y_root)
-        prev_x = int(getattr(self, "x", 0) or 0)
-        offset_x = int(getattr(self, "mouse_click_offset_x", 0) or 0)
-        offset_y = int(getattr(self, "mouse_click_offset_y", 0) or 0)
-        # Absolute sticky grab — follow the cursor even across large jumps.
-        # (A distance-based "teleport re-anchor" caused drift on fast drags.)
-        new_x = cursor_x + offset_x
-        new_y = cursor_y + offset_y
-        self._drag_last_cursor = (cursor_x, cursor_y)
-        self.x, self.y = new_x, new_y
-        try:
-            self.root.geometry(f"+{new_x}+{new_y}")
-        except tk.TclError:
-            return
-        self._record_drag_sample(new_x, new_y)
-        self._update_drag_sprite_from_dx(new_x - prev_x)
-        self._follow_speech_bubble_to_kinito(new_x, new_y)
+            self._drag_moved = True
+            # Prefer live pointer coords — B1-Motion can lag behind a fast cursor.
+            try:
+                cursor_x = int(self.root.winfo_pointerx())
+                cursor_y = int(self.root.winfo_pointery())
+            except (tk.TclError, TypeError, ValueError):
+                cursor_x = int(event.x_root)
+                cursor_y = int(event.y_root)
+            prev_x = int(getattr(self, "x", 0) or 0)
+            offset_x = int(getattr(self, "mouse_click_offset_x", 0) or 0)
+            offset_y = int(getattr(self, "mouse_click_offset_y", 0) or 0)
+            # Absolute sticky grab — follow the cursor even across large jumps.
+            # (A distance-based "teleport re-anchor" caused drift on fast drags.)
+            new_x = cursor_x + offset_x
+            new_y = cursor_y + offset_y
+            self._drag_last_cursor = (cursor_x, cursor_y)
+            self.x, self.y = new_x, new_y
+            try:
+                self.root.geometry(f"+{new_x}+{new_y}")
+            except tk.TclError:
+                return
+            self._record_drag_sample(new_x, new_y)
+            self._update_drag_sprite_from_dx(new_x - prev_x)
+            self._follow_speech_bubble_to_kinito(new_x, new_y)
+        except Exception:
+            # Never leave global B1 bindings stuck if a drag tick blows up.
+            self.is_dragging = False
+            self._drag_moved = False
+            self._stop_drag_tracking()
+            self._clear_drag_sprite_state()
+            raise
 
     def on_panel_motion(self, event):
         """Track hover strokes over Kinito's head (no click required)."""
@@ -349,11 +357,16 @@ class MovementMixin:
         if not self.is_dragging:
             return
         drag_moved = self._drag_moved
-        vx, vy, speed = self._compute_throw_velocity()
-        self.is_dragging = False
-        self._drag_moved = False
-        self._stop_drag_tracking()
-        self._clear_drag_sprite_state()
+        vx = vy = speed = 0.0
+        try:
+            vx, vy, speed = self._compute_throw_velocity()
+        finally:
+            # Always drop global bindings — a half-finished up must not leave
+            # B1-Motion/Release hooked forever (feels like a dead drag).
+            self.is_dragging = False
+            self._drag_moved = False
+            self._stop_drag_tracking()
+            self._clear_drag_sprite_state()
         if not getattr(self, "paused", False) and hasattr(self, "tk_img_normal"):
             self.change_sprite(self.tk_img_normal)
 
@@ -2153,18 +2166,19 @@ class MovementMixin:
             and not getattr(self, "_is_game_active", lambda: False)()
         ):
             if random.random() < menu_chance:
-                self.perform_random_menu_action()
+                self._run_on_ui(self.perform_random_menu_action)
             elif random.random() < memory_chance:
+                # May call Ollama — stays off the UI thread; Tk is marshalled inside.
                 self.speak_memory_question_idle()
             elif self._should_use_ai_idle_line():
-                self.speak_ai_idle_line()
+                self._run_on_ui(self.speak_ai_idle_line)
             else:
-                self.speak_random_question()
+                self._run_on_ui(self.speak_random_question)
         else:
-            self.ensure_on_screen()
+            self._run_on_ui(self.ensure_on_screen)
             target_x, target_y = self.random_position_on_screen()
             self.moving = True
-            current_x = self.root.winfo_rootx()
+            current_x = int(getattr(self, "x", 0) or 0)
             self._render_surf_sprite(target_x - current_x, 0.0)
             self.play_sfx(surf_file_path)
             self.move_towards(target_x, target_y)
@@ -2188,12 +2202,15 @@ class MovementMixin:
         target = (float(target_x), float(target_y))
         self._move_target = target
         try:
-            current_x, current_y = self.root.winfo_rootx(), self.root.winfo_rooty()
+            # Prefer tracked coords — winfo_* from a worker thread is unsafe.
+            current_x = int(getattr(self, "x", 0) or 0)
+            current_y = int(getattr(self, "y", 0) or 0)
             current_x, current_y = self.clamp_position(
                 current_x, current_y, target=target
             )
+            prev_x, prev_y = int(getattr(self, "x", 0) or 0), int(getattr(self, "y", 0) or 0)
             self.x, self.y = current_x, current_y
-            if (current_x, current_y) != (self.root.winfo_rootx(), self.root.winfo_rooty()):
+            if (current_x, current_y) != (prev_x, prev_y):
                 clamped_x, clamped_y = current_x, current_y
 
                 def _snap():
