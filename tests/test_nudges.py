@@ -21,6 +21,23 @@ def _require_tk_root() -> tk.Tk:
         pytest.skip(f"No usable Tcl/Tk display: {exc}")
 
 
+def _collect_labels(widget) -> list[tk.Label]:
+    labels: list[tk.Label] = []
+
+    def _walk(node):
+        if isinstance(node, tk.Label):
+            labels.append(node)
+        for child in node.winfo_children():
+            _walk(child)
+
+    _walk(widget)
+    return labels
+
+
+def _label_with_text(widget, text: str) -> tk.Label:
+    return next(label for label in _collect_labels(widget) if label.cget("text") == text)
+
+
 @pytest.fixture
 def nudges():
     stub = NudgeStub()
@@ -115,28 +132,20 @@ def test_show_popup_text_builds_windows_style_dialog(nudges):
     nudges.root = root
     try:
         nudges.show_popup_text = NudgesMixin.show_popup_text.__get__(nudges, NudgeStub)
-        nudges.show_popup_text("Drink some water.", title="KinitoPET", auto_close_ms=0)
+        text = "Drink some water."
+        nudges.show_popup_text(text, title="KinitoPET", auto_close_ms=0)
         popups = [child for child in root.winfo_children() if isinstance(child, tk.Toplevel)]
         assert len(popups) == 1
         popup = popups[0]
         assert popup.title() == "KinitoPET"
         assert popup.wm_attributes("-topmost") == 1
-        labels = []
-
-        def _collect(widget):
-            if isinstance(widget, tk.Label):
-                labels.append(widget)
-            for child in widget.winfo_children():
-                _collect(child)
-
-        _collect(popup)
-        message = next(label for label in labels if label.cget("text") == "Drink some water.")
+        labels = _collect_labels(popup)
+        message = _label_with_text(popup, text)
         assert "Segoe UI" in str(message.cget("font"))
         assert any(getattr(widget, "_nudge_ok_text", None) == "OK" for widget in labels)
-        popup.update_idletasks()
-        # Compact: shorter than the old fixed 420x180 popup.
-        assert popup.winfo_width() <= 400
-        assert popup.winfo_height() <= 170
+        # Assert wrap policy, not outer pixel size — Windows chrome/DPI can floor
+        # winfo_width far above the content width on some displays.
+        assert int(message.cget("wraplength")) == NudgesMixin.NUDGE_POPUP_MIN_WRAP
         popup.destroy()
     finally:
         root.destroy()
@@ -156,20 +165,21 @@ def test_show_popup_text_grows_for_long_messages(nudges):
         short_popup = next(
             child for child in root.winfo_children() if isinstance(child, tk.Toplevel)
         )
-        short_popup.update_idletasks()
-        short_w = short_popup.winfo_width()
+        short_wrap = int(_label_with_text(short_popup, short).cget("wraplength"))
         short_popup.destroy()
 
         nudges.show_popup_text(long, title="KinitoPET", auto_close_ms=0)
         long_popup = next(
             child for child in root.winfo_children() if isinstance(child, tk.Toplevel)
         )
-        long_popup.update_idletasks()
-        long_w = long_popup.winfo_width()
-        long_h = long_popup.winfo_height()
+        long_wrap = int(_label_with_text(long_popup, long).cget("wraplength"))
         long_popup.destroy()
 
-        assert short_w < long_w or long_h > 120
+        # Outer window size can be identical under DPI/title-bar minsize; wraplength
+        # is the portable signal that long copy is allowed more horizontal room.
+        assert short_wrap < long_wrap
+        assert short_wrap == NudgesMixin.NUDGE_POPUP_MIN_WRAP
+        assert long_wrap == NudgesMixin.NUDGE_POPUP_MAX_WRAP
     finally:
         root.destroy()
 
