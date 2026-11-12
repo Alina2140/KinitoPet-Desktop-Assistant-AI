@@ -104,6 +104,29 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
                 speech_accompaniment_volume=speech_accompaniment_volume,
                 volume_scale=volume_scale,
             )
+            if wait_for_tts:
+                # Join the speech thread on *this* worker — joining on the UI
+                # thread deadlocks run_speech's root.after() calls.
+                ui_done = threading.Event()
+
+                def _invoke_speak():
+                    try:
+                        self.speak(**kwargs)
+                    finally:
+                        ui_done.set()
+
+                if callable(schedule):
+                    schedule(_invoke_speak)
+                else:
+                    try:
+                        self.root.after(0, _invoke_speak)
+                    except Exception:
+                        ui_done.set()
+                ui_done.wait()
+                speech_thread = getattr(self, "_speech_thread", None)
+                if speech_thread is not None:
+                    speech_thread.join()
+                return
             if callable(schedule):
                 schedule(lambda: self.speak(**kwargs))
             else:

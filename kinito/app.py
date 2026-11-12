@@ -1,6 +1,7 @@
 """Main floating-assistant window: sprites, lifecycle, pause, and audio playback."""
 
 import os
+import queue
 import random
 import sys
 import threading
@@ -1514,6 +1515,27 @@ class FloatingAssistant(
             self._watch_screen_geometry,
         )
 
+    def _submit_audio_task(self, fn) -> None:
+        """Run *fn* on the dedicated audio worker — mixer calls can block."""
+        worker = getattr(self, "_audio_worker", None)
+        if worker is None or not worker.is_alive():
+            self._audio_queue = queue.Queue()
+            worker = threading.Thread(target=self._audio_worker_loop, daemon=True)
+            self._audio_worker = worker
+            worker.start()
+        self._audio_queue.put(fn)
+
+    def _audio_worker_loop(self) -> None:
+        """Execute queued audio tasks; a wedged device must not stall the UI."""
+        while True:
+            fn = self._audio_queue.get()
+            if fn is None:
+                return
+            try:
+                fn()
+            except Exception:
+                pass
+
     def _ensure_mixer(self):
         """Initialize pygame mixer once with enough channels for music + SFX."""
         if not pygame.mixer.get_init():
@@ -1522,11 +1544,15 @@ class FloatingAssistant(
 
     def stop_background_music(self):
         """Stop any MP3 currently playing on the pygame music channel."""
-        try:
-            if pygame.mixer.get_init():
-                pygame.mixer.music.stop()
-        except pygame.error:
-            pass
+
+        def _stop():
+            try:
+                if pygame.mixer.get_init():
+                    pygame.mixer.music.stop()
+            except pygame.error:
+                pass
+
+        self._submit_audio_task(_stop)
         if hasattr(self, "_on_background_music_stopped"):
             self._on_background_music_stopped()
 
@@ -1535,11 +1561,15 @@ class FloatingAssistant(
         if not getattr(self, "_speech_accompaniment_active", False):
             return
         self._speech_accompaniment_active = False
-        try:
-            if pygame.mixer.get_init():
-                pygame.mixer.music.stop()
-        except pygame.error:
-            pass
+
+        def _stop():
+            try:
+                if pygame.mixer.get_init():
+                    pygame.mixer.music.stop()
+            except pygame.error:
+                pass
+
+        self._submit_audio_task(_stop)
 
     def _player_sounds_muted(self) -> bool:
         """True when Player Focus is on and the music player window is open."""
@@ -1659,25 +1689,29 @@ class FloatingAssistant(
             return
         if not os.path.isfile(file_path):
             return
-        try:
-            from kinito.sfx_channels import channel_id_for_path
 
-            self._ensure_mixer()
-            if not hasattr(self, "_sfx_cache"):
-                self._sfx_cache = {}
-            if file_path not in self._sfx_cache:
-                self._sfx_cache[file_path] = pygame.mixer.Sound(file_path)
-            sound = self._sfx_cache[file_path]
-            effective = float(volume)
-            if respect_sfx_volume:
-                effective *= self.get_sfx_volume() / 100.0
-                channel_id = channel_id_for_path(file_path)
-                if channel_id:
-                    effective *= self.get_sfx_channel_volume(channel_id) / 100.0
-            sound.set_volume(max(0.0, min(1.0, effective)))
-            sound.play()
-        except (OSError, pygame.error):
-            pass
+        def _play():
+            try:
+                from kinito.sfx_channels import channel_id_for_path
+
+                self._ensure_mixer()
+                if not hasattr(self, "_sfx_cache"):
+                    self._sfx_cache = {}
+                if file_path not in self._sfx_cache:
+                    self._sfx_cache[file_path] = pygame.mixer.Sound(file_path)
+                sound = self._sfx_cache[file_path]
+                effective = float(volume)
+                if respect_sfx_volume:
+                    effective *= self.get_sfx_volume() / 100.0
+                    channel_id = channel_id_for_path(file_path)
+                    if channel_id:
+                        effective *= self.get_sfx_channel_volume(channel_id) / 100.0
+                sound.set_volume(max(0.0, min(1.0, effective)))
+                sound.play()
+            except (OSError, pygame.error):
+                pass
+
+        self._submit_audio_task(_play)
 
     def play_mp3(self, file_path, volume=1.0, *, speech_accompaniment=False):
         """Play an MP3 file via pygame mixer; silently skip missing or broken files."""
@@ -1687,20 +1721,24 @@ class FloatingAssistant(
             return
         if not os.path.isfile(file_path):
             return
-        try:
-            from kinito.sfx_channels import channel_id_for_path
+        self._speech_accompaniment_active = bool(speech_accompaniment)
 
-            self._ensure_mixer()
-            play_volume = float(volume)
-            if speech_accompaniment:
-                # Poem / fancy tunes share the SFX master + per-channel dials.
-                play_volume *= self.get_sfx_volume() / 100.0
-                channel_id = channel_id_for_path(file_path)
-                if channel_id:
-                    play_volume *= self.get_sfx_channel_volume(channel_id) / 100.0
-            pygame.mixer.music.load(file_path)
-            pygame.mixer.music.set_volume(max(0.0, min(1.0, play_volume)))
-            pygame.mixer.music.play()
-            self._speech_accompaniment_active = bool(speech_accompaniment)
-        except (OSError, pygame.error):
-            pass
+        def _play():
+            try:
+                from kinito.sfx_channels import channel_id_for_path
+
+                self._ensure_mixer()
+                play_volume = float(volume)
+                if speech_accompaniment:
+                    # Poem / fancy tunes share the SFX master + per-channel dials.
+                    play_volume *= self.get_sfx_volume() / 100.0
+                    channel_id = channel_id_for_path(file_path)
+                    if channel_id:
+                        play_volume *= self.get_sfx_channel_volume(channel_id) / 100.0
+                pygame.mixer.music.load(file_path)
+                pygame.mixer.music.set_volume(max(0.0, min(1.0, play_volume)))
+                pygame.mixer.music.play()
+            except (OSError, pygame.error):
+                pass
+
+        self._submit_audio_task(_play)

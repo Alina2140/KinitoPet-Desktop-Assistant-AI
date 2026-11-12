@@ -38,9 +38,18 @@ class OllamaClient:
         self._availability.set(available)
         return available
 
+    _PING_TIMEOUT_S = 5.0
+
     def _ping(self) -> bool:
         try:
-            self._request("GET", "/api/tags", body=None)
+            # Health checks may run on the UI thread — never wait the full
+            # generation timeout (60s) on an unresponsive Ollama.
+            self._request(
+                "GET",
+                "/api/tags",
+                body=None,
+                timeout_s=min(self._PING_TIMEOUT_S, self.config.timeout_s),
+            )
             return True
         except OllamaError:
             return False
@@ -126,6 +135,7 @@ class OllamaClient:
         path: str,
         *,
         body: dict[str, Any] | None,
+        timeout_s: float | None = None,
     ) -> dict[str, Any]:
         url = f"{self.config.base_url}{path}"
         headers = {"Content-Type": "application/json"}
@@ -135,7 +145,7 @@ class OllamaClient:
 
         request = urllib.request.Request(url, data=payload, headers=headers, method=method)
         try:
-            with urllib.request.urlopen(request, timeout=self.config.timeout_s) as response:
+            with urllib.request.urlopen(request, timeout=timeout_s or self.config.timeout_s) as response:
                 raw = response.read().decode("utf-8")
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="replace")

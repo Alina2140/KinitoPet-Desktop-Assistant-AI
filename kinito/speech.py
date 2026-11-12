@@ -683,33 +683,41 @@ class SpeechMixin:
         return speech_epoch is not None and self._speech_epoch != speech_epoch
 
     def _stop_active_tts(self):
-        """Terminate an in-progress balcon or pyttsx3 utterance."""
+        """Terminate an in-progress balcon or pyttsx3 utterance.
+
+        Only the cancel flag is flipped synchronously — terminate()/wait(),
+        sd.stop() and engine.stop() can all block (wedged audio device, SAPI
+        COM call while runAndWait() pumps in another thread), so they run on a
+        daemon thread and can never freeze the Tk mainloop.
+        """
         self._tts_cancelled = True
         process = getattr(self, "_tts_process", None)
-        if process is not None and process.poll() is None:
-            try:
-                process.terminate()
-                process.wait(timeout=1)
-            except (OSError, subprocess.SubprocessError, ValueError):
-                try:
-                    process.kill()
-                except (OSError, subprocess.SubprocessError, ValueError):
-                    pass
         self._tts_process = None
+        sd_active = getattr(self, "_tts_sd_active", False)
+        self._tts_sd_active = False
 
-        if getattr(self, "_tts_sd_active", False):
-            if sd is not None:
+        def _teardown():
+            if process is not None and process.poll() is None:
+                try:
+                    process.terminate()
+                    process.wait(timeout=1)
+                except (OSError, subprocess.SubprocessError, ValueError):
+                    try:
+                        process.kill()
+                    except (OSError, subprocess.SubprocessError, ValueError):
+                        pass
+            if sd_active and sd is not None:
                 try:
                     sd.stop()
                 except Exception:
                     pass
-            self._tts_sd_active = False
+            if engine is not None:
+                try:
+                    engine.stop()
+                except Exception:
+                    pass
 
-        if engine is not None:
-            try:
-                engine.stop()
-            except Exception:
-                pass
+        threading.Thread(target=_teardown, daemon=True).start()
 
     def _speech_bubble_title(self) -> str:
         """Return the active bubble title, or empty string if none exists."""
@@ -1110,23 +1118,36 @@ class SpeechMixin:
         del ai_hint, skip_ai  # handled by LLMMixin when present in the MRO
         # Tk bubble teardown/setup is not thread-safe — marshal whole speak() to UI.
         if threading.current_thread() is not threading.main_thread():
-            self._call_on_ui(
-                lambda: self.speak(
-                    text,
-                    pitch,
-                    slow,
-                    show_bubble,
-                    voice_candidates,
-                    long_bubble,
-                    wait_for_tts,
-                    allow_in_focus,
-                    preserve_sprite,
-                    question,
-                    speech_accompaniment_path=speech_accompaniment_path,
-                    speech_accompaniment_volume=speech_accompaniment_volume,
-                    volume_scale=volume_scale,
-                )
-            )
+            ui_done = threading.Event()
+
+            def _invoke_speak():
+                try:
+                    self.speak(
+                        text,
+                        pitch,
+                        slow,
+                        show_bubble,
+                        voice_candidates,
+                        long_bubble,
+                        False,
+                        allow_in_focus,
+                        preserve_sprite,
+                        question,
+                        speech_accompaniment_path=speech_accompaniment_path,
+                        speech_accompaniment_volume=speech_accompaniment_volume,
+                        volume_scale=volume_scale,
+                    )
+                finally:
+                    ui_done.set()
+
+            # Joining the speech thread must happen on *this* worker thread —
+            # joining on the UI thread deadlocks run_speech's root.after calls.
+            self._call_on_ui(_invoke_speak)
+            ui_done.wait()
+            if wait_for_tts:
+                speech_thread = getattr(self, "_speech_thread", None)
+                if speech_thread is not None:
+                    speech_thread.join()
             return
         if not allow_in_focus:
             if getattr(self, "_focus_mode", False):
@@ -1197,8 +1218,12 @@ class SpeechMixin:
                     self.talking = False
 
         thread = threading.Thread(target=run_speech, daemon=True)
+        self._speech_thread = thread
         thread.start()
-        if wait_for_tts:
+        # Never join on the Tk main thread: run_speech calls root.after(), which
+        # waits for the mainloop — joining here deadlocks both sides. Callers on
+        # worker threads join self._speech_thread after their marshal returns.
+        if wait_for_tts and threading.current_thread() is not threading.main_thread():
             thread.join()
 
     def speak_brief(self, text, display_ms=None, *, allow_in_focus=False):

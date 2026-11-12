@@ -51,6 +51,8 @@ def goodbye_app(app_stub):
     app.close_browser = MagicMock()
     app.end_hug = MagicMock()
     app._quit_app = MagicMock()
+    # Audio tasks run on a worker in production; tests execute them inline.
+    app._submit_audio_task = lambda fn: fn()
     return app
 
 

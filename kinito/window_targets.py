@@ -153,7 +153,19 @@ def minimize_button_center(window: WindowRect) -> tuple[int, int]:
             info = TITLEBARINFOEX()
             info.cbSize = ctypes.sizeof(TITLEBARINFOEX)
             # rgrect[2] = minimize button (screen coords). DefWindowProc fills the struct.
-            user32.SendMessageW(hwnd, wm_gettitlebarinfoex, 0, ctypes.byref(info))
+            # SendMessageTimeoutW: a hung target window must not block us forever.
+            result = wintypes.DWORD_PTR(0)
+            sent = user32.SendMessageTimeoutW(
+                hwnd,
+                wm_gettitlebarinfoex,
+                0,
+                ctypes.byref(info),
+                0x0002,  # SMTO_ABORTIFHUNG
+                250,
+                ctypes.byref(result),
+            )
+            if not sent:
+                raise OSError("SendMessageTimeoutW failed or timed out")
             rect = info.rgrect[2]
             left, top, right, bottom = (
                 int(rect.left),
@@ -716,12 +728,33 @@ def _window_class_name(hwnd: int) -> str:
 def _window_title(hwnd: int) -> str:
     try:
         import ctypes
+        from ctypes import wintypes
 
-        length = int(ctypes.windll.user32.GetWindowTextLengthW(int(hwnd)))
-        if length <= 0:
+        user32 = ctypes.windll.user32
+        # GetWindowText*/GetWindowTextLengthW SendMessage the owning thread and
+        # block forever on hung windows — probe with SendMessageTimeoutW instead.
+        if user32.IsHungAppWindow(int(hwnd)):
             return ""
-        buf = ctypes.create_unicode_buffer(length + 1)
-        ctypes.windll.user32.GetWindowTextW(int(hwnd), buf, length + 1)
+        smto_abortifhung = 0x0002
+        title_len = wintypes.DWORD_PTR(0)
+        sent = user32.SendMessageTimeoutW(
+            int(hwnd), 0x000E, 0, 0, smto_abortifhung, 150, ctypes.byref(title_len)
+        )
+        if not sent or int(title_len.value) <= 0:
+            return ""
+        buf = ctypes.create_unicode_buffer(int(title_len.value) + 1)
+        chars = wintypes.DWORD_PTR(0)
+        sent = user32.SendMessageTimeoutW(
+            int(hwnd),
+            0x000D,
+            int(title_len.value) + 1,
+            ctypes.addressof(buf),
+            smto_abortifhung,
+            150,
+            ctypes.byref(chars),
+        )
+        if not sent:
+            return ""
         return buf.value.strip()
     except (OSError, AttributeError, ValueError, TypeError):
         return ""

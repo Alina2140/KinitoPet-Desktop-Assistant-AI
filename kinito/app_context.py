@@ -302,9 +302,23 @@ def _capture_open_apps_win32() -> AppSnapshot:
     GetWindowLongW.argtypes = [wintypes.HWND, ctypes.c_int]
     GetWindowLongW.restype = wintypes.LONG
 
-    GetWindowTextLengthW = user32.GetWindowTextLengthW
-    GetWindowTextLengthW.argtypes = [wintypes.HWND]
-    GetWindowTextLengthW.restype = ctypes.c_int
+    IsHungAppWindow = user32.IsHungAppWindow
+    IsHungAppWindow.argtypes = [wintypes.HWND]
+    IsHungAppWindow.restype = wintypes.BOOL
+
+    SendMessageTimeoutW = user32.SendMessageTimeoutW
+    SendMessageTimeoutW.argtypes = [
+        wintypes.HWND,
+        wintypes.UINT,
+        wintypes.WPARAM,
+        wintypes.LPARAM,
+        wintypes.UINT,
+        wintypes.UINT,
+        ctypes.POINTER(wintypes.DWORD_PTR),
+    ]
+    SendMessageTimeoutW.restype = wintypes.LPARAM
+    wm_gettextlength = 0x000E
+    smto_abortifhung = 0x0002
 
     OpenProcess = kernel32.OpenProcess
     OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
@@ -350,7 +364,21 @@ def _capture_open_apps_win32() -> AppSnapshot:
         if GetWindow(hwnd, GW_OWNER):
             return False
         # Untitled windows are usually shell/background hosts.
-        if GetWindowTextLengthW(hwnd) <= 0:
+        # GetWindowTextLengthW SendMessages the owning thread and blocks forever
+        # on hung windows — probe with a bounded SendMessageTimeoutW instead.
+        if IsHungAppWindow(hwnd):
+            return False
+        title_len = wintypes.DWORD_PTR(0)
+        sent = SendMessageTimeoutW(
+            hwnd,
+            wm_gettextlength,
+            0,
+            0,
+            smto_abortifhung,
+            150,
+            ctypes.byref(title_len),
+        )
+        if not sent or int(title_len.value) <= 0:
             return False
         try:
             ex_style = GetWindowLongW(hwnd, GWL_EXSTYLE)

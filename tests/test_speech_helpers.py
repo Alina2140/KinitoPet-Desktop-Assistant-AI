@@ -609,7 +609,15 @@ def test_effective_tts_volume_scales_setting(speech):
 def test_stop_active_tts_stops_sounddevice(speech):
     speech._tts_sd_active = True
     speech._tts_process = None
-    with patch("kinito.speech.sd.stop") as stop:
+
+    def _run_inline(target, **kwargs):
+        target()
+        return MagicMock()
+
+    with (
+        patch("kinito.speech.sd.stop") as stop,
+        patch("kinito.speech.threading.Thread", side_effect=_run_inline),
+    ):
         speech._stop_active_tts()
     stop.assert_called_once()
     assert speech._tts_sd_active is False
