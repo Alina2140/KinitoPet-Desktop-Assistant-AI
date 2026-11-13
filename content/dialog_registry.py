@@ -1279,9 +1279,14 @@ def _handle_rps(app, response: str) -> None:
         return
     kinito_move = random.choice(MOVES)
     outcome = rps_winner(response, kinito_move)
+    move_names = {
+        dlg.BUTTON_ROCK: "rock",
+        dlg.BUTTON_PAPER: "paper",
+        dlg.BUTTON_SCISSORS: "scissors",
+    }
     fmt = {
-        "player_move": response.lower(),
-        "kinito_move": kinito_move.lower(),
+        "player_move": move_names[response],
+        "kinito_move": move_names[kinito_move],
     }
     if outcome == "player":
         line = game_lines.pick_game_line(app, game_lines.RPS_WIN_LINES, "win").format(**fmt)
