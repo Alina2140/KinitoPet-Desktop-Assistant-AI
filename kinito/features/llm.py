@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import random
+import re
 import threading
 
 from content import dialogue as dlg
@@ -301,6 +302,19 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
             return base
         return self._system_prompt()
 
+    @staticmethod
+    def _clean_generated_speech(text: str) -> str:
+        text = text.strip()
+        match = re.match(r"^kinito\s*:\s*", text, flags=re.IGNORECASE)
+        if match is None:
+            return text
+        text = text[match.end():].strip()
+        if len(text) >= 2 and (text[0], text[-1]) in {
+            ('"', '"'), ("'", "'"), ("“", "”"), ("„", "“"), ("‘", "’"), ("«", "»"),
+        }:
+            text = text[1:-1].strip()
+        return text
+
     def _generate_and_speak(self, scripted_text: str, *, ai_hint=None, max_tokens=None, **speak_kwargs):
         """Generate a line in the background, then speak it or fall back to scripted text."""
         if getattr(self, "_is_game_active", lambda: False)():
@@ -330,7 +344,7 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
                     system=system,
                     max_tokens=max_tokens,
                 )
-                spoken = line.strip() or scripted_text.strip()
+                spoken = self._clean_generated_speech(line) or scripted_text.strip()
             except OllamaUnavailableError:
                 spoken = scripted_text.strip()
             self.root.after(
@@ -423,7 +437,7 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
         """Handle a successful Ollama chat reply on the UI thread."""
         if not getattr(self, "_chat_mode", False):
             return
-        reply = text.strip() or prompts.CHAT_EMPTY_RESPONSE_FALLBACK
+        reply = self._clean_generated_speech(text) or prompts.CHAT_EMPTY_RESPONSE_FALLBACK
         self._conversation.add_assistant(reply)
         self.append_chat_message(prompts.CHAT_ASSISTANT_LABEL, reply)
         self.set_chat_generating(False)

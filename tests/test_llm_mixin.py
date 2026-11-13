@@ -63,6 +63,32 @@ def llm_app():
     return app
 
 
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ('Kinito:"Hello friend!"', "Hello friend!"),
+        ('  kinito : "Hello friend!"  ', "Hello friend!"),
+        ('Kinito: “Hello friend!”', "Hello friend!"),
+        ('Kinito: „Hallo!“', "Hallo!"),
+        ("Kinito: 'Hello!'", "Hello!"),
+        ("Kinito: Hello friend!", "Hello friend!"),
+        ('Hello, "friend"!', 'Hello, "friend"!'),
+        ("I am Kinito: your desktop friend.", "I am Kinito: your desktop friend."),
+        ("Kinito is here!", "Kinito is here!"),
+        ("Kinito:", ""),
+    ],
+)
+def test_clean_generated_speech(raw, expected):
+    assert LLMMixin._clean_generated_speech(raw) == expected
+
+
+def test_chat_response_removes_speaker_label(llm_app):
+    llm_app._chat_mode = True
+    llm_app._on_chat_response('Kinito: "Hello friend!"')
+    llm_app._conversation.add_assistant.assert_called_once_with("Hello friend!")
+    llm_app.speak_chat_response.assert_called_once_with("Hello friend!")
+
+
 def test_append_memory_context_omits_facts_for_poem_replacement(llm_app):
     llm_app._memory.pick_user_name.return_value = "Ben"
     prompt = llm_app._append_memory_context(
@@ -217,10 +243,11 @@ def test_speak_skips_ai_for_interactive_dialog(mock_speak, llm_app):
 
 
 @pytest.mark.parametrize("long_bubble,budget", [(False, 256), (True, 1024)])
+@pytest.mark.parametrize("speaker_label", [False, True])
 @patch.object(SpeechMixin, "speak")
-def test_speak_uses_ai_for_plain_lines(mock_speak, llm_app, long_bubble, budget):
+def test_speak_uses_ai_for_plain_lines(mock_speak, llm_app, long_bubble, budget, speaker_label):
     reply = "Just checking in on you and your wonderful little world. " * 12
-    llm_app._ollama_client.generate.return_value = reply
+    llm_app._ollama_client.generate.return_value = f'Kinito: "{reply}"' if speaker_label else reply
     with patch("kinito.features.llm.find_dialog_spec", return_value=None):
         with patch("kinito.features.llm.threading.Thread") as thread_cls:
             thread_cls.return_value = MagicMock()
