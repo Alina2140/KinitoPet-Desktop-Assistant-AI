@@ -254,6 +254,11 @@ MENU_VISIBILITY_SECTIONS: tuple[tuple[str, tuple[MenuEntry, ...]], ...] = (
                 frozenset({dlg.BUTTON_ADJUST_COLORS}),
             ),
             (
+                "settings.text_size",
+                "Text Size",
+                frozenset({dlg.BUTTON_TEXT_SIZE}),
+            ),
+            (
                 "settings.emojis",
                 "Emojis",
                 frozenset({dlg.BUTTON_EMOJI, dlg.BUTTON_EMOJI_ON, dlg.BUTTON_EMOJI_OFF}),

@@ -1516,6 +1516,12 @@ COLOR_SETTINGS_OPEN_LINES = [
     "Colors panel open. Make it look like you.",
 ]
 
+TEXT_SIZE_OPEN_LINES = [
+    "Text size time! Pick how big my words should be.",
+    "Bigger? Smaller? Your call. The dropdown is open.",
+    "Font size panel open. I can shout in text now.",
+]
+
 FOCUS_ON_LINES = [
     "Focus mode on. I'll wander quietly. No chatter, no surprises. Just... presence.",
     "Quiet mode engaged. I'll keep moving, but I won't bother you. I'll still notice.",
@@ -2343,6 +2349,7 @@ BUTTON_TERMINAL_OFF = "Terminal off"
 BUTTON_RESET_MOOD = "Reset Mood"
 BUTTON_MENU_BUTTONS = "Menu Buttons"
 BUTTON_ADJUST_COLORS = "Adjust colors"
+BUTTON_TEXT_SIZE = "Text size"
 BUTTON_SING_SONG = "Sing"
 BUTTON_FUN_FACT = "Fun Fact"
 BUTTON_CHAT = "Chat"

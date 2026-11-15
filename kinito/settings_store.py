@@ -45,6 +45,7 @@ DEFAULT_INT_SETTINGS: dict[str, int] = {
     "tts_volume": 100,
     "sfx_volume": 100,
     "music_volume": 75,
+    "text_size": 10,
 }
 
 # Color settings (#rrggbb); invalid values fall back to the default.
@@ -67,6 +68,10 @@ SFX_VOLUME_DEFAULT = 100
 MUSIC_VOLUME_MIN = 0
 MUSIC_VOLUME_MAX = 100
 MUSIC_VOLUME_DEFAULT = 75
+
+TEXT_SIZE_MIN = 8
+TEXT_SIZE_MAX = 24
+TEXT_SIZE_DEFAULT = 10
 
 # Back-compat alias used by older tests/imports.
 DEFAULT_SETTINGS = DEFAULT_BOOL_SETTINGS
@@ -101,6 +106,15 @@ def clamp_music_volume(value: int | float) -> int:
     except (TypeError, ValueError):
         return MUSIC_VOLUME_DEFAULT
     return max(MUSIC_VOLUME_MIN, min(MUSIC_VOLUME_MAX, volume))
+
+
+def clamp_text_size(value: int | float) -> int:
+    """Clamp the UI text size to the supported 8–24 range."""
+    try:
+        size = int(round(float(value)))
+    except (TypeError, ValueError):
+        return TEXT_SIZE_DEFAULT
+    return max(TEXT_SIZE_MIN, min(TEXT_SIZE_MAX, size))
 
 
 def settings_file_path(directory: str | None = None) -> str:
@@ -184,6 +198,8 @@ class SettingsStore:
                 data[key] = clamp_sfx_volume(value if value is not None else default)
             elif key == "music_volume":
                 data[key] = clamp_music_volume(value if value is not None else default)
+            elif key == "text_size":
+                data[key] = clamp_text_size(value if value is not None else default)
             elif isinstance(value, bool):
                 data[key] = default
             elif isinstance(value, int):
@@ -229,6 +245,8 @@ class SettingsStore:
                 return clamp_sfx_volume(value)
             if key == "music_volume":
                 return clamp_music_volume(value)
+            if key == "text_size":
+                return clamp_text_size(value)
             return value
 
         if default is not None:
@@ -259,6 +277,8 @@ class SettingsStore:
                         coerced = clamp_sfx_volume(value)
                     elif key == "music_volume":
                         coerced = clamp_music_volume(value)
+                    elif key == "text_size":
+                        coerced = clamp_text_size(value)
                     else:
                         try:
                             coerced = int(value)

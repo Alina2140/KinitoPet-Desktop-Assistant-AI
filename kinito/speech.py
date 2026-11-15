@@ -30,6 +30,7 @@ from kinito.bubble_ui import (
     measure_chamfered_button,
     outline_canvas_pad,
 )
+from kinito.settings_store import TEXT_SIZE_DEFAULT, clamp_text_size
 from kinito.tk_timers import schedule_after
 from kinito.tts_text import normalize_text_for_tts
 
@@ -169,17 +170,29 @@ class SpeechMixin:
         """Return the maximum width of a speech bubble in pixels."""
         return self.BUBBLE_MAX_WIDTH
 
+    def text_size(self) -> int:
+        """Return the configured speech-bubble text size."""
+        return clamp_text_size(getattr(self, "_text_size", TEXT_SIZE_DEFAULT))
+
+    def set_text_size(self, size: int) -> None:
+        """Persist a new text size; new speech bubbles pick it up immediately."""
+        self._text_size = clamp_text_size(size)
+        if hasattr(self, "_persist_settings"):
+            self._persist_settings()
+
     def _bubble_font(self):
         """Return the font used inside KinitoPET-style speech bubbles."""
+        size = self.text_size()
         if os.name == "nt":
-            return ("Tahoma", 10, "italic")
-        return ("Helvetica", 11, "italic")
+            return ("Tahoma", size, "italic")
+        return ("Helvetica", size, "italic")
 
     def _bubble_button_font(self):
         """Return the font used on speech-bubble action buttons."""
+        size = self.text_size()
         if os.name == "nt":
-            return ("Tahoma", 10)
-        return ("Helvetica", 11)
+            return ("Tahoma", size)
+        return ("Helvetica", size)
 
     def _bubble_button_options(self, **extra):
         """Return shared styling kwargs for speech-bubble action buttons."""

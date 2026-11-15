@@ -76,6 +76,7 @@ from kinito.features.paint import PaintMixin
 from kinito.features.programs import ProgramsMixin
 from kinito.features.screen_comments import ScreenCommentsMixin
 from kinito.features.sticky_notes import StickyNotesMixin
+from kinito.features.text_settings import TextSettingsMixin
 from kinito.features.window_grab import WindowGrabMixin
 from kinito.movement import MovementMixin
 from kinito.settings_store import SettingsStore
@@ -173,6 +174,7 @@ class FloatingAssistant(
     StickyNotesMixin,
     MenuSettingsMixin,
     ColorSettingsMixin,
+    TextSettingsMixin,
     MovementMixin,
     MoodMixin,
     HugMixin,
@@ -363,6 +365,8 @@ class FloatingAssistant(
             "color_guess_voice_enabled", True
         )
         self._trivia_recap_enabled = self._settings.get("trivia_recap_enabled", True)
+        self._text_size = self._settings.get_int("text_size", 10)
+        self._text_settings_window = None
         self._snake_color = self._settings.get_str("snake_color")
         self._chat_name_color = self._settings.get_str("chat_name_color")
         self._connect_four_color = self._settings.get_str("connect_four_color")
@@ -530,6 +534,7 @@ class FloatingAssistant(
                 getattr(self, "_color_guess_voice_enabled", True)
             ),
             trivia_recap_enabled=bool(getattr(self, "_trivia_recap_enabled", True)),
+            text_size=int(getattr(self, "_text_size", 10)),
             terminal_enabled=bool(getattr(self, "_terminal_enabled", True)),
             snake_color=self.snake_color(),
             chat_name_color=self.chat_name_color(),
