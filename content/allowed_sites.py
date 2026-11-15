@@ -18,10 +18,6 @@ ALLOWED_SITES = {
             "url": "https://www.worldwildlife.org/species",
         },
         {
-            "title": "African Wildlife Foundation",
-            "url": "https://www.africanwildlifefoundation.org/wildlife",
-        },
-        {
             "title": "Defenders of Wildlife",
             "url": "https://defenders.org/wildlife",
         },
@@ -32,10 +28,6 @@ ALLOWED_SITES = {
         {
             "title": "Monterey Bay Aquarium — Animals",
             "url": "https://www.montereybayaquarium.org/animals",
-        },
-        {
-            "title": "Aquarium of the Pacific",
-            "url": "https://www.aquariumofpacific.org/animals",
         },
         {
             "title": "The Marine Mammal Center",
@@ -64,10 +56,6 @@ ALLOWED_SITES = {
         {
             "title": "Chester Zoo — Animals",
             "url": "https://www.chesterzoo.org/animals/",
-        },
-        {
-            "title": "Australia Zoo",
-            "url": "https://www.australiazoo.com.au/about-us/the-zoo/",
         },
         {
             "title": "RSPB — Birds & Wildlife",
@@ -209,7 +197,7 @@ ALLOWED_SITES = {
         },
         {
             "title": "Britannica — History",
-            "url": "https://www.britannica.com/browse/History",
+            "url": "https://www.britannica.com/",
         },
         {
             "title": "Britannica — Science",
@@ -226,10 +214,6 @@ ALLOWED_SITES = {
         {
             "title": "Internet Archive",
             "url": "https://archive.org/",
-        },
-        {
-            "title": "Project Gutenberg — Free eBooks",
-            "url": "https://www.gutenberg.org/",
         },
         {
             "title": "CIA World Factbook",
@@ -400,10 +384,6 @@ ALLOWED_SITES = {
             "url": "https://www.kinitopet.com/",
         },
         {
-            "title": "KinitoPET on itch.io",
-            "url": "https://kinito-interactive.itch.io/kinitopet",
-        },
-        {
             "title": "Creepypasta Wiki",
             "url": "https://creepypasta.fandom.com/wiki/Creepypasta_Wiki",
         },
@@ -424,8 +404,12 @@ ALLOWED_SITES = {
             "url": "https://scp-wiki.wikidot.com/scp-series-3",
         },
         {
+            "title": "SCP Foundation — Series IV",
+            "url": "https://scp-wiki.wikidot.com/scp-series-4",
+        },
+        {
             "title": "SCP Foundation — Hub",
-            "url": "https://scp-wiki.wikidot.com/hub",
+            "url": "https://scp-wiki.wikidot.com",
         },
         {
             "title": "Creepypasta Wiki — Famous Stories",
@@ -450,10 +434,6 @@ ALLOWED_SITES = {
         {
             "title": "LOCAL58 — Analog Horror",
             "url": "https://local58.tv/",
-        },
-        {
-            "title": "Kinito Interactive on itch.io",
-            "url": "https://kinito-interactive.itch.io/",
         },
         {
             "title": "itch.io — Survival Horror",
@@ -488,16 +468,8 @@ ALLOWED_SITES = {
             "url": "https://tvtropes.org/pmwiki/pmwiki.php/Main/AnalogHorror",
         },
         {
-            "title": "KinitoPET — Store",
-            "url": "https://www.kinitopet.com/store",
-        },
-        {
             "title": "TV Tropes — Creepypasta",
             "url": "https://tvtropes.org/pmwiki/pmwiki.php/Main/Creepypasta",
-        },
-        {
-            "title": "SCP Foundation — Series 4",
-            "url": "https://scp-wiki.wikidot.com/scp-series-4",
         },
         {
             "title": "Creepypasta — Famous Rituals",
@@ -509,11 +481,11 @@ ALLOWED_SITES = {
         },
         {
             "title": "Laughing Jack — Creepypasta Wiki",
-            "url": "https://creepypasta.fandom.com/wiki/Laughing_Jack",
+            "url": "https://creepypastafiles.fandom.com/wiki/Laughing_Jack",
         },
         {
-            "title": "Ben Drowned — Jadusable Wiki",
-            "url": "https://jadusable.fandom.com/",
+            "title": "Ben Drowned — Creepypasta Wiki",
+            "url": "https://creepypasta.fandom.com/wiki/BEN_Drowned",
         },
         {
             "title": "Petscop Wiki",
@@ -522,10 +494,6 @@ ALLOWED_SITES = {
         {
             "title": "Kane Pixels Backrooms Wiki",
             "url": "https://kanepixelsbackrooms.fandom.com/",
-        },
-        {
-            "title": "Welcome Home — Clown Illustration",
-            "url": "https://www.clownillustration.com/",
         },
         {
             "title": "Don't Hug Me I'm Scared Wiki",
