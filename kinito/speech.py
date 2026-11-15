@@ -1172,13 +1172,20 @@ class SpeechMixin:
             return
         self.interrupt_speech()
         self._speech_volume_scale = volume_scale
-        if hasattr(self, "_stop_roaming"):
-            self._stop_roaming()
+        if (
+            not preserve_sprite
+            and getattr(self, "_reading_idle_active", False)
+            and find_dialog_spec(str(text)) is not None
+        ):
+            # Menus/dialogs shouldn't yank Kinito out of the reading animation.
+            preserve_sprite = True
         epoch = self._speech_epoch
         self._tts_cancelled = False
         self.talking = True
         self._preserve_sprite = preserve_sprite
         self._talk_sprite_mode = self._infer_talk_sprite_mode(text, question=question)
+        if hasattr(self, "_stop_roaming"):
+            self._stop_roaming()
         accompaniment_path = speech_accompaniment_path
         accompaniment_volume = speech_accompaniment_volume
 

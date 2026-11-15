@@ -1626,6 +1626,10 @@ class MovementMixin:
             cache.clear()
         if getattr(self, "paused", False):
             return
+        if getattr(self, "talking", False) and getattr(self, "_preserve_sprite", False):
+            return
+        if getattr(self, "_reading_idle_active", False):
+            return
         self.change_sprite(self.tk_img_normal)
 
     def _stop_roaming(self) -> None:
@@ -1780,7 +1784,7 @@ class MovementMixin:
             and not self.paused
             and not self.moving
             and not self._is_position_locked_by_user()
-            and not self.talking
+            and (not self.talking or getattr(self, "_preserve_sprite", False))
             and not getattr(self, "_focus_mode", False)
             and not getattr(self, "_fancy_mode", False)
             and not getattr(self, "_dizzy_mode", False)
@@ -2330,7 +2334,9 @@ class MovementMixin:
                 self.change_sprite(sprite)
                 time.sleep(hold)
         elif self.talking:
-            if getattr(self, "_preserve_sprite", False):
+            if getattr(self, "_preserve_sprite", False) and getattr(
+                self, "_reading_idle_active", False
+            ):
                 time.sleep(0.1)
                 return
             if getattr(self, "_head_stroke_mode", False):
