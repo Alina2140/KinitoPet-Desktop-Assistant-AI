@@ -1274,6 +1274,8 @@ class FloatingAssistant(
             "_reminder_tick_timer",
             "_focus_timer_tick_timer",
             "_throw_after_id",
+            "_ai_generation_timer",
+            "_ai_delivery_timer",
         ):
             cancel_after(self.root, self, attr)
         if hasattr(self, "_stop_mouse_attention"):

@@ -18,7 +18,15 @@ class LLMStub(LLMMixin, SpeechMixin):
 def llm_app():
     app = LLMStub()
     app.root = MagicMock()
-    app.root.after = lambda _delay, fn, *args: fn(*args)
+    app._delayed_callbacks = []
+
+    def after(delay, fn, *args):
+        if delay == 0:
+            return fn(*args)
+        app._delayed_callbacks.append(lambda: fn(*args))
+        return f"timer-{len(app._delayed_callbacks)}"
+
+    app.root.after = after
     app.talking = False
     app._awaiting_response = False
     app._speech_epoch = 0
@@ -210,6 +218,229 @@ def test_speak_ai_idle_line_fallback_on_error(mock_speak, llm_app):
     assert llm_app._ai_generating is False
 
 
+def test_memory_question_delivered_after_thinking(llm_app):
+    from kinito.memory.questions import MemoryQuestion
+
+    question = MemoryQuestion("What is your favorite color?", "textbox", "favorite_color")
+    llm_app._memory_question_planner = MagicMock()
+    llm_app._memory_question_planner.plan.return_value = question
+    llm_app.ask_memory_question = MagicMock()
+    llm_app._can_initiate_spontaneous_speech = lambda: not llm_app._is_busy_with_speech()
+    with patch("kinito.features.llm.threading.Thread") as thread_cls:
+        llm_app.speak_ai_memory_question()
+        assert llm_app.talking is True
+        thread_cls.call_args.kwargs["target"]()
+    llm_app.ask_memory_question.assert_called_once_with(question)
+    assert llm_app._planning_memory_question is False
+    assert llm_app._ai_generating is False
+
+
+@pytest.mark.parametrize("failure_stage", ["prompt", "generation"])
+@patch.object(SpeechMixin, "speak")
+def test_unexpected_generation_error_uses_fallback(mock_speak, llm_app, failure_stage):
+    if failure_stage == "prompt":
+        llm_app._build_generation_prompt = MagicMock(side_effect=ValueError("bad context"))
+    else:
+        llm_app._ollama_client.generate.side_effect = ValueError("bad response")
+    with patch("kinito.features.llm.threading.Thread") as thread_cls:
+        llm_app._generate_and_speak("scripted fallback")
+        thread_cls.call_args.kwargs["target"]()
+    mock_speak.assert_called_once()
+    assert mock_speak.call_args.args[0] == "scripted fallback"
+    assert llm_app._ai_generating is False
+    assert llm_app.talking is False
+    assert llm_app._talk_sprite_mode == "talking"
+
+
+@patch.object(SpeechMixin, "speak")
+def test_generation_timeout_speaks_fallback_only_once(mock_speak, llm_app):
+    with patch("kinito.features.llm.threading.Thread") as thread_cls:
+        llm_app._generate_and_speak("scripted fallback")
+        worker = thread_cls.call_args.kwargs["target"]
+    llm_app._delayed_callbacks[-1]()
+    mock_speak.assert_called_once()
+    assert mock_speak.call_args.args[0] == "scripted fallback"
+    assert llm_app._ai_generating is False
+    assert llm_app.talking is False
+    worker()
+    mock_speak.assert_called_once()
+
+
+@pytest.mark.parametrize("kind", ["line", "memory"])
+@patch.object(SpeechMixin, "speak")
+def test_generated_result_waits_until_drag_ends(mock_speak, llm_app, kind):
+    llm_app._memory_question_planner = MagicMock()
+    llm_app.ask_memory_question = MagicMock()
+    llm_app._can_initiate_spontaneous_speech = lambda: not llm_app._is_busy_with_speech()
+    with patch("kinito.features.llm.threading.Thread") as thread_cls:
+        if kind == "line":
+            llm_app._generate_and_speak("fallback")
+        else:
+            llm_app.speak_ai_memory_question()
+        llm_app.is_dragging = True
+        thread_cls.call_args.kwargs["target"]()
+    mock_speak.assert_not_called()
+    llm_app.ask_memory_question.assert_not_called()
+    assert llm_app._ai_generating is True
+    assert llm_app._ai_generation_timer is None
+    llm_app._resume_pending_ai_delivery()
+    mock_speak.assert_not_called()
+    llm_app.ask_memory_question.assert_not_called()
+    llm_app.is_dragging = False
+    llm_app._resume_pending_ai_delivery()
+    llm_app._resume_pending_ai_delivery()
+    if kind == "line":
+        mock_speak.assert_called_once()
+        assert mock_speak.call_args.args[0] == "Just checking in on you."
+    else:
+        llm_app.ask_memory_question.assert_called_once_with(
+            llm_app._memory_question_planner.plan.return_value
+        )
+    assert llm_app._ai_generating is False
+    assert llm_app._planning_memory_question is False
+
+
+@patch.object(SpeechMixin, "speak")
+def test_pending_line_survives_timeout_and_waits_for_throw(mock_speak, llm_app):
+    with patch("kinito.features.llm.threading.Thread") as thread_cls:
+        llm_app._generate_and_speak("fallback")
+        timeout = llm_app._delayed_callbacks[-1]
+        llm_app.is_dragging = True
+        thread_cls.call_args.kwargs["target"]()
+    timeout()
+    llm_app.is_dragging = False
+    llm_app._throwing = True
+    llm_app._resume_pending_ai_delivery()
+    mock_speak.assert_not_called()
+    llm_app._throwing = False
+    llm_app._resume_pending_ai_delivery()
+    mock_speak.assert_called_once()
+    assert mock_speak.call_args.args[0] == "Just checking in on you."
+
+
+@patch.object(SpeechMixin, "speak")
+def test_interrupt_discards_result_waiting_for_release(mock_speak, llm_app):
+    with patch("kinito.features.llm.threading.Thread") as thread_cls:
+        llm_app._generate_and_speak("fallback")
+        llm_app.is_dragging = True
+        thread_cls.call_args.kwargs["target"]()
+    llm_app.interrupt_speech()
+    llm_app.is_dragging = False
+    llm_app._resume_pending_ai_delivery()
+    mock_speak.assert_not_called()
+    assert llm_app._pending_ai_delivery is None
+    assert llm_app._ai_delivery_timer is None
+
+
+@pytest.mark.parametrize("blocked_state", ["paused", "_focus_mode", "_game_active"])
+@patch.object(SpeechMixin, "speak")
+def test_pending_line_respects_changed_mode(mock_speak, llm_app, blocked_state):
+    with patch("kinito.features.llm.threading.Thread") as thread_cls:
+        llm_app._generate_and_speak("fallback")
+        llm_app.is_dragging = True
+        thread_cls.call_args.kwargs["target"]()
+    setattr(llm_app, blocked_state, True)
+    if blocked_state == "_game_active":
+        llm_app._is_game_active = lambda: True
+    llm_app.is_dragging = False
+    llm_app._delayed_callbacks[-1]()
+    mock_speak.assert_not_called()
+    assert llm_app._ai_generating is False
+    assert llm_app._pending_ai_delivery is None
+
+
+@patch.object(SpeechMixin, "speak")
+def test_new_generation_replaces_pending_line(mock_speak, llm_app):
+    with patch("kinito.features.llm.threading.Thread") as thread_cls:
+        llm_app._generate_and_speak("first fallback")
+        llm_app.is_dragging = True
+        llm_app._ollama_client.generate.return_value = "first result"
+        thread_cls.call_args.kwargs["target"]()
+        old_delivery = llm_app._delayed_callbacks[-1]
+        llm_app._generate_and_speak("second fallback")
+        llm_app._ollama_client.generate.return_value = "second result"
+        thread_cls.call_args.kwargs["target"]()
+    llm_app.is_dragging = False
+    llm_app._delayed_callbacks[-1]()
+    old_delivery()
+    mock_speak.assert_called_once()
+    assert mock_speak.call_args.args[0] == "second result"
+
+
+@patch.object(SpeechMixin, "speak")
+def test_generation_uses_nonempty_fallback(mock_speak, llm_app):
+    llm_app._ollama_client.generate.return_value = "Kinito:"
+    with patch("kinito.features.llm.threading.Thread") as thread_cls:
+        llm_app._generate_and_speak("")
+        thread_cls.call_args.kwargs["target"]()
+    assert mock_speak.call_args.args[0].strip()
+
+
+@patch.object(SpeechMixin, "speak")
+def test_stale_generation_does_not_clear_new_thinking_state(mock_speak, llm_app):
+    with patch("kinito.features.llm.threading.Thread") as thread_cls:
+        llm_app._generate_and_speak("first")
+        first_worker = thread_cls.call_args.kwargs["target"]
+        first_timeout = llm_app._delayed_callbacks[-1]
+        llm_app._generate_and_speak("second")
+        second_worker = thread_cls.call_args.kwargs["target"]
+    first_worker()
+    first_timeout()
+    mock_speak.assert_not_called()
+    assert llm_app._ai_generating is True
+    assert llm_app.talking is True
+    second_worker()
+    mock_speak.assert_called_once()
+    assert llm_app._ai_generating is False
+
+
+def test_memory_question_timeout_uses_template_and_ignores_late_plan(llm_app):
+    llm_app._memory_question_planner = MagicMock()
+    template = llm_app._memory_question_planner.plan_template.return_value
+    llm_app.ask_memory_question = MagicMock()
+    llm_app._can_initiate_spontaneous_speech = lambda: not llm_app._is_busy_with_speech()
+    with patch("kinito.features.llm.threading.Thread") as thread_cls:
+        llm_app.speak_ai_memory_question()
+        worker = thread_cls.call_args.kwargs["target"]
+    llm_app._delayed_callbacks[-1]()
+    llm_app.ask_memory_question.assert_called_once_with(template)
+    assert llm_app._planning_memory_question is False
+    assert llm_app.talking is False
+    worker()
+    llm_app.ask_memory_question.assert_called_once()
+
+
+def test_interruption_cancels_memory_planning_and_discards_late_result(llm_app):
+    llm_app._memory_question_planner = MagicMock()
+    llm_app.ask_memory_question = MagicMock()
+    with patch("kinito.features.llm.threading.Thread") as thread_cls:
+        llm_app.speak_ai_memory_question()
+        worker = thread_cls.call_args.kwargs["target"]
+    llm_app.interrupt_speech()
+    assert llm_app._ai_generating is False
+    assert llm_app._planning_memory_question is False
+    assert llm_app._ai_generation_timer is None
+    llm_app.talking = True
+    worker()
+    llm_app.ask_memory_question.assert_not_called()
+    assert llm_app.talking is True
+
+
+@patch.object(SpeechMixin, "speak")
+def test_template_error_leaves_no_thinking_state(mock_speak, llm_app):
+    llm_app._memory_question_planner = MagicMock()
+    llm_app._memory_question_planner.plan.side_effect = ValueError("bad plan")
+    llm_app._memory_question_planner.plan_template.side_effect = ValueError("bad template")
+    with patch("kinito.features.llm.threading.Thread") as thread_cls:
+        llm_app.speak_ai_memory_question()
+        thread_cls.call_args.kwargs["target"]()
+    mock_speak.assert_called_once()
+    assert mock_speak.call_args.args[0].strip()
+    assert llm_app._planning_memory_question is False
+    assert llm_app._ai_generating is False
+    assert llm_app.talking is False
+
+
 @patch.object(SpeechMixin, "speak")
 def test_generate_and_speak_shows_thinking_sprite(mock_speak, llm_app):
     llm_app.change_sprite = MagicMock()
@@ -345,7 +576,7 @@ def test_deliver_generated_line_ignored_when_speech_interrupted(mock_speak, llm_
 
     llm_app.close_speech_bubble.assert_not_called()
     mock_speak.assert_not_called()
-    assert llm_app.talking is False
+    assert llm_app.talking is True
 
 
 @patch.object(SpeechMixin, "speak")

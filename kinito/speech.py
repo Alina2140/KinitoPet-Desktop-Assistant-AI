@@ -779,8 +779,16 @@ class SpeechMixin:
         self._next_speech_epoch()
         self._stop_active_tts()
         self._cancel_bubble_close_timer()
-        if getattr(self, "_ai_generating", False):
-            self._ai_generating = False
+        if (
+            getattr(self, "_ai_generating", False)
+            or getattr(self, "_ai_generation_token", None) is not None
+            or getattr(self, "_planning_memory_question", False)
+        ):
+            clear_generation = getattr(self, "_clear_ai_generating", None)
+            if callable(clear_generation):
+                clear_generation()
+            else:
+                self._ai_generating = False
         if (
             not getattr(self, "_chat_mode", False)
             and not getattr(self, "_awaiting_response", False)

@@ -5,6 +5,7 @@ from __future__ import annotations
 import random
 import re
 import threading
+import tkinter as tk
 
 from content import dialogue as dlg
 from content import llm_prompts as prompts
@@ -16,6 +17,7 @@ from kinito.llm.ollama_client import OllamaClient, OllamaUnavailableError
 from kinito.memory.extractor import MemoryExtractor
 from kinito.memory.question_planner import MemoryQuestionPlanner
 from kinito.speech_chat import SpeechChatMixin
+from kinito.tk_timers import cancel_after, schedule_after
 
 
 class LLMMixin(MemoryMixin, SpeechChatMixin):
@@ -63,7 +65,78 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
 
     def _clear_ai_generating(self) -> None:
         """Clear the in-flight AI generation flag."""
+        cancel_after(self.root, self, "_ai_generation_timer")
+        cancel_after(self.root, self, "_ai_delivery_timer")
+        self._pending_ai_delivery = None
+        self._ai_generation_token = None
         self._ai_generating = False
+        self._planning_memory_question = False
+        self.talking = False
+        self._talk_sprite_mode = "talking"
+        if (
+            hasattr(self, "change_sprite")
+            and hasattr(self, "tk_img_normal")
+            and getattr(self, "_running", True)
+            and not getattr(self, "paused", False)
+            and not getattr(self, "is_dragging", False)
+            and not getattr(self, "_preserve_sprite", False)
+            and not getattr(self, "_dizzy_mode", False)
+            and not getattr(self, "_fancy_mode", False)
+        ):
+            self.change_sprite(self.tk_img_normal)
+
+    def _begin_ai_generation(self):
+        cancel_after(self.root, self, "_ai_generation_timer")
+        cancel_after(self.root, self, "_ai_delivery_timer")
+        self._pending_ai_delivery = None
+        token = object()
+        self._ai_generation_token = token
+        self._show_ai_thinking_sprite()
+        return token, getattr(self, "_speech_epoch", 0)
+
+    def _is_current_ai_generation(self, token, epoch) -> bool:
+        return (
+            (token is None or token is getattr(self, "_ai_generation_token", None))
+            and (epoch is None or epoch == getattr(self, "_speech_epoch", 0))
+        )
+
+    def _schedule_ai_generation_timeout(self, callback) -> None:
+        schedule_after(
+            self.root,
+            self,
+            "_ai_generation_timer",
+            max(1, int(self._llm_config.timeout_s * 1000)),
+            callback,
+        )
+
+    def _defer_ai_delivery(self, callback) -> bool:
+        if not getattr(self, "_running", True) or getattr(self, "paused", False):
+            return False
+        if getattr(self, "_pending_ai_delivery", None) is not None:
+            return True
+        if not (
+            getattr(self, "is_dragging", False) or getattr(self, "_throwing", False)
+        ):
+            return False
+        cancel_after(self.root, self, "_ai_generation_timer")
+        self._pending_ai_delivery = callback
+        schedule_after(self.root, self, "_ai_delivery_timer", 100, self._resume_pending_ai_delivery)
+        return True
+
+    def _resume_pending_ai_delivery(self) -> None:
+        self._ai_delivery_timer = None
+        callback = getattr(self, "_pending_ai_delivery", None)
+        if callback is None:
+            return
+        if (
+            getattr(self, "_running", True)
+            and not getattr(self, "paused", False)
+            and (getattr(self, "is_dragging", False) or getattr(self, "_throwing", False))
+        ):
+            schedule_after(self.root, self, "_ai_delivery_timer", 100, self._resume_pending_ai_delivery)
+            return
+        self._pending_ai_delivery = None
+        callback()
 
     def speak(
         self,
@@ -332,37 +405,60 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
                 if speak_kwargs.get("long_bubble")
                 else self._llm_config.max_tokens_short
             )
-        self._show_ai_thinking_sprite()
-        generation_epoch = getattr(self, "_speech_epoch", 0)
-        prompt = self._build_generation_prompt(scripted_text, ai_hint)
-        system = self._generation_system_prompt(ai_hint)
+        token, generation_epoch = self._begin_ai_generation()
+        fallback = scripted_text.strip() or random.choice(prompts.IDLE_ERROR_FALLBACK_LINES)
+
+        def deliver(spoken):
+            self._deliver_generated_line(
+                spoken,
+                speak_kwargs,
+                generation_epoch=generation_epoch,
+                generation_token=token,
+            )
+
+        self._schedule_ai_generation_timeout(lambda: deliver(fallback))
 
         def worker():
             try:
+                prompt = self._build_generation_prompt(scripted_text, ai_hint)
+                system = self._generation_system_prompt(ai_hint)
                 line = self._ollama_client.generate(
                     prompt,
                     system=system,
                     max_tokens=max_tokens,
                 )
-                spoken = self._clean_generated_speech(line) or scripted_text.strip()
-            except OllamaUnavailableError:
-                spoken = scripted_text.strip()
-            self.root.after(
-                0,
-                lambda spoken=spoken: self._deliver_generated_line(
-                    spoken,
-                    speak_kwargs,
-                    generation_epoch=generation_epoch,
-                ),
-            )
+                spoken = self._clean_generated_speech(line) or fallback
+            except Exception as exc:
+                print(f"Warning: AI line generation failed ({type(exc).__name__})", flush=True)
+                spoken = fallback
+            try:
+                self.root.after(0, lambda: deliver(spoken))
+            except (tk.TclError, RuntimeError):
+                pass
 
         threading.Thread(target=worker, daemon=True).start()
 
-    def _deliver_generated_line(self, spoken: str, speak_kwargs: dict, *, generation_epoch=None) -> None:
+    def _deliver_generated_line(
+        self, spoken: str, speak_kwargs: dict, *, generation_epoch=None, generation_token=None
+    ) -> None:
         """Speak a generated line on the UI thread."""
+        if not self._is_current_ai_generation(generation_token, generation_epoch):
+            return
+        if self._defer_ai_delivery(
+            lambda: self._deliver_generated_line(
+                spoken,
+                speak_kwargs,
+                generation_epoch=generation_epoch,
+                generation_token=generation_token,
+            )
+        ):
+            return
         self._clear_ai_generating()
-        if generation_epoch is not None and generation_epoch != getattr(self, "_speech_epoch", 0):
-            self.talking = False
+        if (
+            not getattr(self, "_running", True)
+            or getattr(self, "paused", False)
+            or getattr(self, "is_dragging", False)
+        ):
             return
         if getattr(self, "_is_game_active", lambda: False)():
             self.talking = False
@@ -503,17 +599,18 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
 
     def speak_ai_memory_question(self) -> None:
         """Plan and ask an interactive AI memory question (Ollama off the UI thread)."""
+        if threading.current_thread() is not threading.main_thread():
+            self._call_on_ui(self.speak_ai_memory_question)
+            return
         if not self._can_initiate_spontaneous_speech():
             return
         if getattr(self, "_planning_memory_question", False):
             return
+        token, generation_epoch = self._begin_ai_generation()
         self._planning_memory_question = True
-        if hasattr(self, "_show_ai_thinking_sprite"):
-            schedule = getattr(self, "_call_on_ui", None)
-            if callable(schedule):
-                schedule(self._show_ai_thinking_sprite)
-            else:
-                self._show_ai_thinking_sprite()
+        self._schedule_ai_generation_timeout(
+            lambda: self._deliver_memory_question(None, token, generation_epoch)
+        )
 
         def worker():
             spec = None
@@ -523,33 +620,45 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
                 print(f"Warning: memory question plan failed: {exc!r}", flush=True)
                 spec = None
 
-            def deliver():
-                self._planning_memory_question = False
-                if hasattr(self, "_clear_ai_generating"):
-                    self._clear_ai_generating()
-                if not self._can_initiate_spontaneous_speech():
-                    self.talking = False
-                    return
-                if spec is not None:
-                    self.ask_memory_question(spec)
-                    return
-                # Fall back to template / random on the UI thread.
-                template = self._memory_question_planner.plan_template()
-                if template is not None:
-                    self.ask_memory_question(template)
-                    return
-                if hasattr(self, "speak_random_question"):
-                    self.speak_random_question()
-                else:
-                    self.talking = False
-
             try:
-                self.root.after(0, deliver)
-            except Exception:
-                self._planning_memory_question = False
-                self.talking = False
+                self.root.after(
+                    0, lambda: self._deliver_memory_question(spec, token, generation_epoch)
+                )
+            except (tk.TclError, RuntimeError):
+                pass
 
         threading.Thread(target=worker, daemon=True).start()
+
+    def _deliver_memory_question(self, spec, token, generation_epoch) -> None:
+        if not self._is_current_ai_generation(token, generation_epoch):
+            return
+        if self._defer_ai_delivery(
+            lambda: self._deliver_memory_question(spec, token, generation_epoch)
+        ):
+            return
+        self._clear_ai_generating()
+        if (
+            not getattr(self, "_running", True)
+            or getattr(self, "paused", False)
+            or getattr(self, "is_dragging", False)
+            or not self._can_initiate_spontaneous_speech()
+        ):
+            return
+        if spec is not None:
+            self.ask_memory_question(spec)
+            return
+        # Fall back to template / random on the UI thread.
+        try:
+            template = self._memory_question_planner.plan_template()
+        except Exception as exc:
+            print(f"Warning: memory question fallback failed ({type(exc).__name__})", flush=True)
+            template = None
+        if template is not None:
+            self.ask_memory_question(template)
+        elif hasattr(self, "speak_random_question"):
+            self.speak_random_question()
+        else:
+            self.speak(random.choice(prompts.IDLE_ERROR_FALLBACK_LINES), skip_ai=True)
 
     def speak_memory_question_idle(self) -> None:
         """Ask a memory-aware question via Ollama or scripted templates."""
