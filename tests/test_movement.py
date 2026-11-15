@@ -585,6 +585,130 @@ def test_stop_roaming_clears_moving_flag(movement):
     movement._finish_surf_movement.assert_called_once()
 
 
+def test_surf_rejects_overlapping_moves_without_resetting_owner(movement):
+    movement.x = movement.y = 0
+    movement._finish_surf_movement = MagicMock()
+
+    def move(*args):
+        assert movement._run_surf_movement(0, 100) is False
+        assert movement.moving is True
+
+    movement.move_towards = MagicMock(side_effect=move)
+    assert movement._run_surf_movement(100, 0) is True
+    movement.move_towards.assert_called_once_with(100, 0)
+    movement._finish_surf_movement.assert_called_once()
+    assert movement.moving is False
+
+
+def test_surf_releases_owner_after_error(movement):
+    movement.x = 0
+    movement.move_towards = MagicMock(side_effect=RuntimeError("movement failed"))
+    with pytest.raises(RuntimeError, match="movement failed"):
+        movement._run_surf_movement(100, 0)
+    assert movement.moving is False
+    movement.move_towards.side_effect = None
+    assert movement._run_surf_movement(0, 100) is True
+
+
+@pytest.mark.parametrize("cancel", ["stop", "drag", "new_move"])
+def test_queued_surf_frame_ignores_cancelled_owner(movement, cancel):
+    movement._surf_move_token = object()
+    callbacks = []
+    movement._run_on_ui = callbacks.append
+    movement._apply_surf_geometry(120, 200, 0)
+    movement._render_surf_sprite(5, 0)
+    if cancel == "stop":
+        movement._finish_surf_movement = MagicMock()
+        movement._stop_roaming()
+    elif cancel == "drag":
+        movement.is_dragging = True
+    else:
+        movement._surf_move_token = object()
+    for callback in callbacks:
+        callback()
+    movement.root.geometry.assert_not_called()
+    movement.panel.config.assert_not_called()
+
+
+def test_queued_surf_cleanup_does_not_replace_new_movement_sprite(movement):
+    movement._surf_move_token = object()
+    callbacks = []
+    movement._run_on_ui = callbacks.append
+    movement.change_sprite = MagicMock()
+    movement._finish_surf_movement()
+    movement._surf_move_token = object()
+    movement.moving = True
+    for callback in callbacks:
+        callback()
+    movement.change_sprite.assert_not_called()
+
+
+def test_mouse_think_does_not_interrupt_existing_surf(movement):
+    movement.moving = True
+    movement._mouse_follow_state = "thinking"
+    with (
+        patch("kinito.movement.random.random", return_value=0),
+        patch("kinito.movement.threading.Thread") as thread,
+    ):
+        movement._finish_mouse_think(250, 240)
+    thread.assert_not_called()
+    assert movement.moving is True
+    assert movement._mouse_follow_state != "chasing"
+
+
+def test_roaming_tick_waits_for_existing_surf(movement):
+    movement.moving = True
+    movement.maybe_trigger_screen_glitch = MagicMock()
+    with patch("kinito.movement.time.sleep"):
+        movement._smooth_movement_tick()
+    movement.maybe_trigger_screen_glitch.assert_not_called()
+
+
+def test_surf_stops_when_clamping_prevents_progress(movement):
+    movement.x = movement.y = 0
+    movement.moving = True
+    frames = []
+    clock = [0.0]
+
+    def blocked_step(*args):
+        movement.x = 5 if movement.x == 0 else 0
+        frames.append(movement.x)
+        if len(frames) >= 100:
+            movement._running = False
+
+    def advance(_delay):
+        clock[0] += 0.1
+
+    with (
+        patch.object(movement, "_render_surf_sprite"),
+        patch.object(movement, "_apply_surf_geometry", side_effect=blocked_step),
+        patch("kinito.movement.time.monotonic", side_effect=lambda: clock[0]),
+        patch("kinito.movement.time.sleep", side_effect=advance),
+    ):
+        movement.move_towards(100, 0)
+    assert len(frames) < 100
+    assert movement.moving is False
+    assert movement._move_target is None
+
+
+def test_slow_surf_keeps_moving_while_making_progress(movement):
+    movement.x = movement.y = 0
+    movement.moving = True
+    clock = [0.0]
+
+    def advance(_delay):
+        clock[0] += movement.SURF_STALL_TIMEOUT_SECONDS + 1
+
+    with (
+        patch.object(movement, "_render_surf_sprite"),
+        patch("kinito.movement.time.monotonic", side_effect=lambda: clock[0]),
+        patch("kinito.movement.time.sleep", side_effect=advance),
+    ):
+        movement.move_towards(100, 0)
+    assert movement.x == 100
+    assert movement.y == 0
+
+
 def test_move_towards_reaches_target(movement):
     movement.x = 0
     movement.y = 0
@@ -1292,7 +1416,7 @@ def test_finish_mouse_think_starts_chase(movement):
         movement._finish_mouse_think(250, 240)
 
     assert movement._mouse_follow_state == "chasing"
-    assert movement.moving is True
+    assert movement.moving is False
     mock_thread.assert_called_once()
     worker = mock_thread.call_args.kwargs["target"]
     worker()

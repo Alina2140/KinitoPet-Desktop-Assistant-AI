@@ -63,6 +63,7 @@ class MovementMixin:
     SURF_TILT_QUANTUM = 0.5
     SURF_MOVE_SPEED = 5
     SURF_MOVE_FRAME_DELAY = 0.022
+    SURF_STALL_TIMEOUT_SECONDS = 2.0
     MOUSE_LOOK_RADIUS_PX = 230
     MOUSE_FOLLOW_RADIUS_PX = 180
     MOUSE_LOOK_DEADZONE_PX = 40
@@ -266,6 +267,7 @@ class MovementMixin:
         self._drag_samples = []
         self._drag_hold_reacted = False
         self._exit_head_stroke_mode(restore_sprite=False)
+        self._surf_move_token = None
         self.moving = False
         self._stop_audio_for_drag()
         if not self._should_skip_drag_sounds():
@@ -1275,6 +1277,9 @@ class MovementMixin:
         """Roll the follow chance after thinking; chase briefly or cool down."""
         if getattr(self, "_mouse_follow_state", "idle") != "thinking":
             return
+        if getattr(self, "moving", False):
+            self._begin_mouse_follow_cooldown()
+            return
         if getattr(self, "_chat_mode", False) or getattr(self, "talking", False):
             self._begin_mouse_follow_cooldown()
             return
@@ -1303,15 +1308,11 @@ class MovementMixin:
 
         target_x, target_y = self._mouse_follow_target(cursor_x, cursor_y)
         self._mouse_follow_state = "chasing"
-        self.moving = True
 
         def worker():
             try:
-                self.play_sfx(surf_file_path)
-                self.move_towards(target_x, target_y)
+                self._run_surf_movement(target_x, target_y)
             finally:
-                self.moving = False
-                self._finish_surf_movement()
                 self.root.after(0, self._on_mouse_chase_finished)
 
         threading.Thread(target=worker, daemon=True).start()
@@ -1591,8 +1592,11 @@ class MovementMixin:
         facing = self._surf_facing
         # Match tk_img_surf_* size — unscaled tilted frames flashed larger/smaller.
         scale = float(getattr(self, "_sprite_draw_scale", 1.0) or 1.0)
+        token = getattr(self, "_surf_move_token", None)
 
         def _apply():
+            if not self._surf_callback_is_current(token):
+                return
             if abs(tilt) < 0.05:
                 photo = self.tk_img_surf_left if facing == "left" else self.tk_img_surf_right
             else:
@@ -1630,12 +1634,47 @@ class MovementMixin:
             return
         if getattr(self, "_reading_idle_active", False):
             return
-        self.change_sprite(self.tk_img_normal)
+        token = getattr(self, "_surf_move_token", None)
+
+        def _restore():
+            if self._surf_callback_is_current(token) and not self.moving:
+                self.change_sprite(self.tk_img_normal)
+
+        self._run_on_ui(_restore)
 
     def _stop_roaming(self) -> None:
         """Abort an in-progress surf move so speech bubbles stay with Kinito."""
+        self._surf_move_token = None
         self.moving = False
         self._finish_surf_movement()
+
+    def _surf_callback_is_current(self, token) -> bool:
+        return (
+            token is getattr(self, "_surf_move_token", None)
+            and self._running
+            and not self.paused
+            and not self._is_position_locked_by_user()
+        )
+
+    def _run_surf_movement(self, target_x, target_y) -> bool:
+        lock = self.__dict__.setdefault("_surf_move_lock", threading.Lock())
+        if not lock.acquire(blocking=False):
+            return False
+        try:
+            if not self._running or self.paused or self._is_position_locked_by_user():
+                return False
+            self._surf_move_token = object()
+            self.moving = True
+            try:
+                self._render_surf_sprite(target_x - getattr(self, "x", 0), 0.0)
+                self.play_sfx(surf_file_path)
+                self.move_towards(target_x, target_y)
+            finally:
+                self.moving = False
+                self._finish_surf_movement()
+            return True
+        finally:
+            lock.release()
 
     def _realign_speech_bubble_after_move(self) -> None:
         """Keep an open speech bubble anchored above Kinito after movement stops."""
@@ -1662,8 +1701,11 @@ class MovementMixin:
             clamped_y = max(min_y, min(int(display_y), max_y))
         else:
             clamped_x, clamped_y = int(path_x), int(display_y)
+        token = getattr(self, "_surf_move_token", None)
 
         def _apply():
+            if not self._surf_callback_is_current(token):
+                return
             try:
                 # Pin client size while surfing so a mismatched frame cannot grow
                 # the overrideredirect window (looked like a one-frame size glitch).
@@ -1931,19 +1973,11 @@ class MovementMixin:
 
     def _start_keep_away_surf(self, target) -> None:
         """Surf away from the cursor because Kinito wants space."""
-        self.moving = True
         target_x, target_y = target
 
         def worker():
-            try:
-                current_x = self.root.winfo_rootx()
-                self._render_surf_sprite(target_x - current_x, 0.0)
-                self.play_sfx(surf_file_path)
-                self.move_towards(target_x, target_y)
-            finally:
-                self.moving = False
-                self._finish_surf_movement()
-            self._maybe_speak_keep_away()
+            if self._run_surf_movement(target_x, target_y):
+                self._maybe_speak_keep_away()
 
         threading.Thread(target=worker, daemon=True).start()
 
@@ -1982,15 +2016,8 @@ class MovementMixin:
     def _surf_to_reading_spot(self, target) -> None:
         """Surf to *target* and resume reading there when still appropriate."""
         target_x, target_y = target
-        self.moving = True
-        try:
-            current_x = self.root.winfo_rootx()
-            self._render_surf_sprite(target_x - current_x, 0.0)
-            self.play_sfx(surf_file_path)
-            self.move_towards(target_x, target_y)
-        finally:
-            self.moving = False
-            self._finish_surf_movement()
+        if not self._run_surf_movement(target_x, target_y):
+            return
         self._maybe_speak_reading_interrupt()
         if (
             self._running
@@ -2112,7 +2139,8 @@ class MovementMixin:
     def _smooth_movement_tick(self) -> None:
         """One iteration of the autonomous roam / speech loop."""
         if (
-            self.paused
+            self.moving
+            or self.paused
             or self._is_position_locked_by_user()
             or not self._startup_complete
             or self._is_busy_with_speech()
@@ -2181,13 +2209,8 @@ class MovementMixin:
         else:
             self._run_on_ui(self.ensure_on_screen)
             target_x, target_y = self.random_position_on_screen()
-            self.moving = True
-            current_x = int(getattr(self, "x", 0) or 0)
-            self._render_surf_sprite(target_x - current_x, 0.0)
-            self.play_sfx(surf_file_path)
-            self.move_towards(target_x, target_y)
-            self.moving = False
-            self._finish_surf_movement()
+            if not self._run_surf_movement(target_x, target_y):
+                return
             if hasattr(self, "_ensure_consistent_window_scale"):
                 self.root.after(0, self._ensure_consistent_window_scale)
             self.root.after(0, self.ensure_on_screen)
@@ -2204,6 +2227,7 @@ class MovementMixin:
         if frame_delay is None:
             frame_delay = self.SURF_MOVE_FRAME_DELAY
         target = (float(target_x), float(target_y))
+        token = getattr(self, "_surf_move_token", None)
         self._move_target = target
         try:
             # Prefer tracked coords — winfo_* from a worker thread is unsafe.
@@ -2218,6 +2242,8 @@ class MovementMixin:
                 clamped_x, clamped_y = current_x, current_y
 
                 def _snap():
+                    if not self._surf_callback_is_current(token):
+                        return
                     try:
                         self.root.geometry(f"+{clamped_x}+{clamped_y}")
                     except tk.TclError:
@@ -2232,9 +2258,13 @@ class MovementMixin:
             )
             self._move_target = (float(target_x), float(target_y))
             wave_phase = 0.0
+            best_distance = math.inf
+            last_progress_at = time.monotonic()
             while self._running:
+                if token is not getattr(self, "_surf_move_token", None):
+                    return
                 if self.paused or self._is_position_locked_by_user() or self._is_busy_with_speech():
-                    self._finish_surf_movement()
+                    self._stop_roaming()
                     self._realign_speech_bubble_after_move()
                     return
                 if not getattr(self, "moving", True):
@@ -2247,13 +2277,22 @@ class MovementMixin:
                     self.x, self.y = target_x, target_y
 
                     def _arrive():
+                        if not self._surf_callback_is_current(token):
+                            return
                         try:
-                            self.root.geometry(f"+{int(self.x)}+{int(self.y)}")
+                            self.root.geometry(f"+{int(target_x)}+{int(target_y)}")
                         except tk.TclError:
                             self._stop_roaming()
 
                     self._run_on_ui(_arrive)
                     break
+                now = time.monotonic()
+                if distance < best_distance - 0.5:
+                    best_distance = distance
+                    last_progress_at = now
+                elif now - last_progress_at >= self.SURF_STALL_TIMEOUT_SECONDS:
+                    self._stop_roaming()
+                    return
                 self._render_surf_sprite(dx, wave_phase)
                 steps = min(speed, distance)
                 theta = math.atan2(dy, dx)
