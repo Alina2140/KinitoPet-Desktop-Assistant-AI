@@ -1061,7 +1061,10 @@ def _offer_play_again(app, line: str, restart_fn, *, separator: str = " ") -> No
     """Speak *line* and show Play Again / Back buttons."""
     app._play_again_restart = restart_fn
     app.speak(
-        f"{line}{separator}{game_lines.pick_game_play_again_suffix(app)}", 45, True
+        f"{line}{separator}{game_lines.pick_game_play_again_suffix(app)}",
+        45,
+        True,
+        skip_ai=True,
     )
 
 
@@ -1184,7 +1187,7 @@ def _handle_magic_8_ball(app, response: str) -> None:
     """Answer a Magic 8-Ball question."""
     question = response.strip()
     if not question:
-        app.speak(dlg.pick_line(game_lines.MAGIC_8_BALL_INVALID_LINES))
+        app.speak(dlg.pick_line(game_lines.MAGIC_8_BALL_INVALID_LINES), skip_ai=True)
         app.speak(dlg.MAGIC_8_BALL_QUESTION, 45, True)
         return
     answer = pick_8ball_answer()
@@ -1297,7 +1300,7 @@ def _handle_rps(app, response: str) -> None:
     else:
         line = game_lines.pick_game_line(app, game_lines.RPS_DRAW_LINES, "draw").format(**fmt)
         _report_game_outcome(app, GAME_DRAW)
-    app.speak(line)
+    app.speak(line, skip_ai=True)
 
 
 def _handle_number_guess(app, response: str) -> None:
@@ -1310,7 +1313,7 @@ def _handle_number_guess(app, response: str) -> None:
 
     guess = parse_guess(response)
     if guess is None or not is_valid_guess(guess):
-        app.speak(dlg.pick_line(game_lines.NUMBER_GUESS_INVALID_LINES))
+        app.speak(dlg.pick_line(game_lines.NUMBER_GUESS_INVALID_LINES), skip_ai=True)
         app.speak(dlg.NUMBER_GUESS_QUESTION, 45, True)
         return
 
@@ -1341,21 +1344,21 @@ def _handle_number_guess(app, response: str) -> None:
         )
         line = dlg.pick_line(pool).format(**fmt)
         _report_game_outcome(app, GAME_PLAYER_WIN)
-        app.speak(line)
+        app.speak(line, skip_ai=True)
         return
 
     if app._number_guess_attempts >= MAX_ATTEMPTS:
         app._number_guess_target = None
         line = game_lines.pick_game_line(app, game_lines.NUMBER_GUESS_GIVE_UP_LINES, "lose").format(answer=target)
         _report_game_outcome(app, GAME_KINITO_WIN)
-        app.speak(line)
+        app.speak(line, skip_ai=True)
         return
 
     if result == "higher":
         hint = dlg.pick_line(game_lines.NUMBER_GUESS_HIGHER_LINES)
     else:
         hint = dlg.pick_line(game_lines.NUMBER_GUESS_LOWER_LINES)
-    app.speak(hint, 45, True)
+    app.speak(hint, 45, True, skip_ai=True)
 
 
 # --- Registry (order matters: more specific markers first) ---
