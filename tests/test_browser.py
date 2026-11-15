@@ -73,6 +73,105 @@ def test_open_allowed_site_fake_website_surprise(browser):
     assert thread_cls.call_args.kwargs["target"] == browser._launch_fake_website
 
 
+@pytest.mark.parametrize("use_system", [True, False])
+def test_launch_browser_respects_mode(browser, use_system):
+    browser._browser_use_system = use_system
+    with (
+        patch.object(browser, "_has_pywebview", return_value=True),
+        patch.object(browser, "_start_browser_process") as start,
+        patch("kinito.features.browser.webbrowser.open", return_value=True) as open_url,
+    ):
+        browser._launch_browser("https://www.kinitopet.com/", 0, 0, "Hi")
+    assert open_url.call_count == int(use_system)
+    assert start.call_count == int(not use_system)
+    assert browser._browser_active is False
+
+
+def test_launch_browser_defaults_to_system(browser):
+    with (
+        patch.object(browser, "_has_pywebview", return_value=True),
+        patch.object(browser, "_start_browser_process") as start,
+        patch("kinito.features.browser.webbrowser.open", return_value=True) as open_url,
+    ):
+        browser._launch_browser("https://www.kinitopet.com/", 0, 0, "Hi")
+    open_url.assert_called_once_with("https://www.kinitopet.com/")
+    start.assert_not_called()
+
+
+def test_internal_browser_falls_back_to_system(browser):
+    browser._browser_use_system = False
+    with (
+        patch.object(browser, "_has_pywebview", return_value=False),
+        patch("kinito.features.browser.webbrowser.open", return_value=True) as open_url,
+    ):
+        browser._launch_browser("https://www.kinitopet.com/", 0, 0, "Hi")
+    open_url.assert_called_once()
+
+
+@pytest.mark.parametrize("raises", [True, False])
+def test_system_browser_failure_is_reported(browser, raises):
+    import webbrowser
+
+    with (
+        patch.object(browser, "_has_pywebview", return_value=False),
+        patch(
+            "kinito.features.browser.webbrowser.open",
+            return_value=False,
+            side_effect=webbrowser.Error("unavailable") if raises else None,
+        ) as open_url,
+    ):
+        browser._launch_browser("https://www.kinitopet.com/", 0, 0, "Hi")
+    open_url.assert_called_once()
+    assert browser.speak.call_count == 2
+
+
+@pytest.mark.parametrize("initial", [True, False])
+def test_toggle_browser_mode_persists_without_closing_session(browser, initial):
+    browser._browser_use_system = initial
+    browser._browser_active = True
+    browser._persist_settings = MagicMock()
+    browser.toggle_browser_mode()
+    assert browser._browser_use_system is not initial
+    assert browser._browser_active is True
+    browser._persist_settings.assert_called_once()
+    assert browser.speak.call_args.kwargs["skip_ai"] is True
+
+
+@pytest.mark.parametrize("use_system", [True, False])
+def test_browser_setting_menu_label_and_dispatch(browser, use_system):
+    from content import dialogue as dlg
+    from content.dialog_registry import (
+        find_dialog_spec,
+        handle_dialog_response,
+        settings_options_for,
+    )
+
+    browser._browser_use_system = use_system
+    browser.paused = False
+    browser._focus_mode = False
+    browser._hidden_menu_buttons = set()
+    label = dlg.BUTTON_BROWSER_SYSTEM if use_system else dlg.BUTTON_BROWSER_KINITO
+    assert label in settings_options_for(browser)
+    browser.toggle_browser_mode = MagicMock()
+    handle_dialog_response(browser, find_dialog_spec(dlg.SETTINGS_MENU_QUESTION), label)
+    browser.toggle_browser_mode.assert_called_once()
+
+
+@pytest.mark.parametrize("blocked_state", ["paused", "_focus_mode"])
+def test_browser_setting_blocked_during_sleep_or_focus(browser, blocked_state):
+    from content import dialogue as dlg
+    from content.dialog_registry import find_dialog_spec, handle_dialog_response
+
+    browser.paused = False
+    browser._focus_mode = False
+    setattr(browser, blocked_state, True)
+    browser.toggle_browser_mode = MagicMock()
+    handle_dialog_response(
+        browser, find_dialog_spec(dlg.SETTINGS_MENU_QUESTION), dlg.BUTTON_BROWSER_SYSTEM
+    )
+    browser.toggle_browser_mode.assert_not_called()
+
+
 def test_launch_browser_skips_when_not_running(browser):
     browser._running = False
     with (

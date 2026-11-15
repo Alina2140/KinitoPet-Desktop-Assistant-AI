@@ -171,6 +171,9 @@ def settings_options_for(app) -> list[str]:
         app,
         [
             dlg.BUTTON_TURN_ON_OFF,
+            dlg.BUTTON_BROWSER_SYSTEM
+            if getattr(app, "_browser_use_system", True)
+            else dlg.BUTTON_BROWSER_KINITO,
             dlg.BUTTON_TTS_VOLUME,
             dlg.BUTTON_SFX_VOLUME,
             dlg.BUTTON_MUSIC_FOLDER,
@@ -798,6 +801,8 @@ def _menu_action_handlers() -> dict[str, Handler]:
         dlg.BUTTON_MENU_BUTTONS: lambda a: a.open_menu_button_settings(),
         dlg.BUTTON_ADJUST_COLORS: lambda a: a.open_color_settings(),
         dlg.BUTTON_TEXT_SIZE: lambda a: a.open_text_size_settings(),
+        dlg.BUTTON_BROWSER_SYSTEM: lambda a: a.toggle_browser_mode(),
+        dlg.BUTTON_BROWSER_KINITO: lambda a: a.toggle_browser_mode(),
         dlg.BUTTON_TURN_ON_OFF: _open_settings_toggles_menu,
         dlg.BUTTON_SING_SONG: lambda a: a.say_random_poem(),
         dlg.BUTTON_FUN_FACT: lambda a: a.say_random_fact(),

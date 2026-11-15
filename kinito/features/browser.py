@@ -190,10 +190,26 @@ class BrowserMixin:
         self.speak(intro, show_bubble=True, wait_for_tts=True)
         if not self._running:
             return
-        if self._has_pywebview():
+        if not getattr(self, "_browser_use_system", True) and self._has_pywebview():
             self._start_browser_process(url, x, y)
-        else:
-            webbrowser.open(url)
+            return
+        try:
+            opened = webbrowser.open(url)
+        except webbrowser.Error:
+            opened = False
+        if not opened:
+            self.speak(dlg.pick_line(dlg.BROWSER_ERROR_LINES))
+
+    def toggle_browser_mode(self):
+        self._browser_use_system = not getattr(self, "_browser_use_system", True)
+        if hasattr(self, "_persist_settings"):
+            self._persist_settings()
+        self.speak(
+            dlg.BROWSER_SYSTEM_SELECTED
+            if self._browser_use_system
+            else dlg.BROWSER_KINITO_SELECTED,
+            skip_ai=True,
+        )
 
     def _start_browser_process(self, url, x, y):
         """Spawn a child process running browser_process with the target URL."""

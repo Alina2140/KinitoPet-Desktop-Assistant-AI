@@ -26,6 +26,13 @@ def test_menu_button_id_for_known_labels():
     assert menu_button_id_for_label(dlg.BUTTON_SLEEP_TALK_OFF) == "settings.sleep_talk"
 
 
+def test_browser_labels_share_visibility_id():
+    labels = [dlg.BUTTON_BROWSER_SYSTEM, dlg.BUTTON_BROWSER_KINITO]
+    for label in labels:
+        assert menu_button_id_for_label(label) == "settings.website_browser"
+    assert filter_visible_menu_buttons(labels, {"settings.website_browser"}) == []
+
+
 def test_filter_hides_optional_keeps_locked():
     buttons = [
         dlg.BUTTON_MODES,

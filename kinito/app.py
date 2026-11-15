@@ -307,6 +307,7 @@ class FloatingAssistant(
         self._startup_complete = False
         self._allow_random_questions = False
         self._settings = SettingsStore()
+        self._browser_use_system = self._settings.get("browser_use_system", True)
         self._init_game_scores()
         self._screen_effects_enabled = self._settings.get("screen_effects_enabled", True)
         self._ambient_reminders_enabled = self._settings.get(
@@ -536,6 +537,7 @@ class FloatingAssistant(
             trivia_recap_enabled=bool(getattr(self, "_trivia_recap_enabled", True)),
             text_size=int(getattr(self, "_text_size", 10)),
             terminal_enabled=bool(getattr(self, "_terminal_enabled", True)),
+            browser_use_system=bool(getattr(self, "_browser_use_system", True)),
             snake_color=self.snake_color(),
             chat_name_color=self.chat_name_color(),
             connect_four_color=self.connect_four_color(),

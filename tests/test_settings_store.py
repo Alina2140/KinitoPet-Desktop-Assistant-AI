@@ -44,6 +44,20 @@ def store(settings_dir):
     return SettingsStore(directory=settings_dir)
 
 
+@pytest.mark.parametrize("value", [True, False])
+def test_browser_mode_roundtrip(store, settings_dir, value):
+    store.update(browser_use_system=value)
+    assert SettingsStore(directory=settings_dir).get("browser_use_system") is value
+
+
+@pytest.mark.parametrize("raw", [{}, {"browser_use_system": "false"}])
+def test_browser_mode_defaults_for_old_or_invalid_settings(settings_dir, raw):
+    os.makedirs(settings_dir, exist_ok=True)
+    with open(os.path.join(settings_dir, "settings.json"), "w", encoding="utf-8") as handle:
+        json.dump(raw, handle)
+    assert SettingsStore(directory=settings_dir).get("browser_use_system") is True
+
+
 def test_defaults_when_missing(store):
     assert store.get("screen_effects_enabled") is True
     assert store.get("ambient_reminders_enabled") is True
