@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from content import dialogue as dlg
 from content import llm_prompts as prompts
 from content import sticky_notes_lines
@@ -228,6 +230,182 @@ def test_toggle_sticky_notes_recall():
     host.toggle_sticky_notes_recall()
     assert host._sticky_notes_recall_enabled is True
     assert host.speak.call_args.args[0] in dlg.STICKY_NOTES_RECALL_ON_LINES
+
+
+@pytest.fixture
+def note_editor():
+    import tkinter as tk
+
+    from kinito.features.sticky_notes import StickyNoteWindow
+
+    try:
+        root = tk.Tk()
+    except tk.TclError:
+        pytest.skip("No display for Tk")
+    root.withdraw()
+    app = MagicMock()
+    app.root = root
+    editor = StickyNoteWindow(app, new_note_data())
+    editor.open()
+    root.update()
+    yield editor
+    editor._teardown(save=False)
+    root.destroy()
+
+
+def _set_editor_text(editor, value, cursor="end-1c"):
+    editor._text.delete("1.0", "end")
+    editor._text.insert("1.0", value)
+    editor._text.mark_set("insert", cursor)
+    editor._text.edit_reset()
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [("• item", "• item\n• "), ("  ☑ done", "  ☑ done\n  ☐ "),
+     ("9. item", "9. item\n10. "), ("  plain", "  plain\n  "),
+     ("• ", ""), ("  ☐ ", "☐ ")],
+)
+def test_note_enter_continues_lists(note_editor, value, expected):
+    _set_editor_text(note_editor, value)
+    assert note_editor._on_return() == "break"
+    assert note_editor._text.get("1.0", "end-1c") == expected
+    note_editor._text.edit_undo()
+    assert note_editor._text.get("1.0", "end-1c") == value
+    note_editor._text.edit_redo()
+    assert note_editor._text.get("1.0", "end-1c") == expected
+
+
+def test_note_list_selection_and_indent(note_editor):
+    _set_editor_text(note_editor, "one\ntwo\nthree")
+    text = note_editor._text
+    text.tag_add("sel", "1.0", "3.0")
+    note_editor._apply_list("number")
+    assert text.get("1.0", "end-1c") == "1. one\n2. two\nthree"
+    note_editor._indent_lines()
+    assert text.get("1.0", "end-1c") == "  1. one\n  2. two\nthree"
+    note_editor._indent_lines(outdent=True)
+    note_editor._apply_list("check")
+    assert text.get("1.0", "end-1c") == "☐ one\n☐ two\nthree"
+    note_editor._apply_list("check")
+    assert text.get("1.0", "end-1c") == "one\ntwo\nthree"
+
+
+@pytest.mark.parametrize("marker", ["☐", "☑"])
+def test_note_checkbox_hover_cursor(note_editor, marker):
+    _set_editor_text(note_editor, f"  {marker} milk\ntext ☐ elsewhere")
+    text = note_editor._text
+    note_editor.window.update()
+
+    def hover(index):
+        x, y, width, height = text.bbox(index)
+        text.event_generate("<Motion>", x=x + width // 2, y=y + height // 2)
+        note_editor.window.update()
+
+    hover("1.2")
+    assert text.cget("cursor") == "hand2"
+    hover("1.4")
+    assert text.cget("cursor") == "xterm"
+    hover("1.2")
+    text.event_generate("<Leave>")
+    assert text.cget("cursor") == "xterm"
+    hover("2.5")
+    assert text.cget("cursor") == "xterm"
+    text.event_generate("<Motion>", x=0, y=0)
+    assert text.cget("cursor") == "xterm"
+    assert text.get("1.0", "end-1c") == f"  {marker} milk\ntext ☐ elsewhere"
+
+
+def test_note_checkbox_click_and_roundtrip(note_editor, tmp_path, monkeypatch):
+    from types import SimpleNamespace
+
+    _patch_notes_dir(monkeypatch, tmp_path)
+    _set_editor_text(note_editor, "  ☐ milk")
+    text = note_editor._text
+    note_editor.window.update()
+    x, y, width, height = text.bbox("1.2")
+    note_editor._on_checkbox_click(SimpleNamespace(x=x + width // 2, y=y + height // 2))
+    assert text.get("1.0", "end-1c") == "  ☑ milk"
+    note_editor._on_checkbox_click(SimpleNamespace(x=0, y=y + height // 2))
+    assert text.get("1.0", "end-1c") == "  ☑ milk"
+    text.edit_undo()
+    assert text.get("1.0", "end-1c") == "  ☐ milk"
+    text.edit_redo()
+    note_editor.window.update()
+    assert note_editor._save_after is not None
+    note_editor.save()
+    assert load_notes()[0]["text"] == "  ☑ milk"
+    for style in NOTE_STYLES:
+        note_editor.set_style(style)
+        note_editor.set_color("pink")
+        assert text.get("1.0", "end-1c") == "  ☑ milk"
+
+
+@pytest.mark.parametrize(
+    ("line", "expected"),
+    [("plain", ("", "", "plain")), ("  • item", ("  ", "• ", "item")),
+     ("\t☑ done", ("\t", "☑ ", "done")), ("12. text", ("", "12. ", "text")),
+     ("x ☐ y", ("", "", "x ☐ y")), ("", ("", "", ""))],
+)
+def test_note_list_parts(line, expected):
+    from kinito.features.sticky_notes import _list_parts
+
+    assert _list_parts(line) == expected
+
+
+def test_note_menu_keyboard_and_reopen(note_editor, tmp_path, monkeypatch):
+    from kinito.features.sticky_notes import StickyNoteWindow
+
+    _patch_notes_dir(monkeypatch, tmp_path)
+    _set_editor_text(note_editor, "milk")
+    with patch("kinito.features.sticky_notes.Menu.tk_popup"):
+        note_editor._show_menu_button()
+    menu = note_editor._menu
+    assert [menu.entrycget(i, "label") for i in range(menu.index("end") + 1)] == [
+        "Color", "Style", "Lists",
+    ]
+    list_menu = menu.nametowidget(menu.entrycget(2, "menu"))
+    assert list_menu.index("end") == 2
+    list_menu.invoke(2)
+    text = note_editor._text
+    assert text.get("1.0", "end-1c") == "☐ milk"
+    text.focus_force()
+    note_editor.window.update()
+    text.event_generate("<Return>")
+    text.event_generate("<Tab>")
+    note_editor.window.update()
+    assert text.get("1.0", "end-1c") == "☐ milk\n  ☐ "
+    text.event_generate("<Shift-Tab>")
+    note_editor.window.update()
+    assert text.get("1.0", "end-1c") == "☐ milk\n☐ "
+    text.event_generate("<Shift-Return>")
+    note_editor.window.update()
+    assert text.get("1.0", "end-1c") == "☐ milk\n☐ \n"
+    note_editor.save()
+    reopened = StickyNoteWindow(note_editor.app, load_notes()[0])
+    try:
+        reopened.open()
+        assert reopened._text.get("1.0", "end-1c") == text.get("1.0", "end-1c")
+        reopened.toggle_collapse()
+        reopened.toggle_collapse()
+        assert not reopened._collapsed
+    finally:
+        reopened._teardown(save=False)
+
+
+def test_note_character_limit_preserved(note_editor, tmp_path, monkeypatch):
+    _patch_notes_dir(monkeypatch, tmp_path)
+    _set_editor_text(note_editor, "x" * 2000)
+    note_editor._apply_list("bullet")
+    note_editor.save()
+    assert len(load_notes()[0]["text"]) == 2000
+
+
+def test_note_shift_enter_and_selection_replacement(note_editor):
+    _set_editor_text(note_editor, "• hello world", "1.7")
+    note_editor._text.tag_add("sel", "1.7", "1.13")
+    note_editor._on_return(plain=True)
+    assert note_editor._text.get("1.0", "end-1c") == "• hello\n"
 
 
 def test_sticky_notes_mixin_on_floating_assistant():

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import random
+import re
 import time
 import tkinter as tk
 import uuid
@@ -51,6 +52,21 @@ _TAPE_EDGE = "#b8b8a0"
 
 _UI_BG = "#e6ded5"
 _LIST_COLS = 3
+_LIST_LINE = re.compile(r"^([ \t]*)(?:(• |☐ |☑ |[0-9]+\. ))?(.*)$")
+
+
+def _list_parts(line: str) -> tuple[str, str, str]:
+    match = _LIST_LINE.fullmatch(line)
+    assert match is not None
+    return match[1], match[2] or "", match[3]
+
+
+def _list_kind(marker: str) -> str:
+    if marker in ("☐ ", "☑ "):
+        return "check"
+    if marker == "• ":
+        return "bullet"
+    return "number" if marker else ""
 
 
 def _note_path(note_id: str) -> str:
@@ -305,6 +321,14 @@ class StickyNoteWindow:
             self._text.insert("1.0", self.note.get("text", ""))
             self._text.bind("<<Modified>>", self._on_modified)
             self._text.bind("<Button-3>", self._show_menu)
+            self._text.bind("<Return>", self._on_return)
+            self._text.bind("<Shift-Return>", lambda e: self._on_return(e, plain=True))
+            self._text.bind("<Tab>", self._indent_lines)
+            self._text.bind("<Shift-Tab>", lambda e: self._indent_lines(e, outdent=True))
+            self._text.bind("<ISO_Left_Tab>", lambda e: self._indent_lines(e, outdent=True))
+            self._text.bind("<Button-1>", self._on_checkbox_click)
+            self._text.bind("<Motion>", self._on_checkbox_hover)
+            self._text.bind("<Leave>", lambda _e: self._text.configure(cursor="xterm"))
         self._text.configure(bg=paper)
         canvas.create_window(
             x0 + 2,
@@ -319,6 +343,130 @@ class StickyNoteWindow:
             self._draw_folded_corner(canvas, x1, y1, paper, dark)
         elif style == "tape":
             self._draw_tape(canvas, x0, y0, x1)
+
+    def _selected_lines(self) -> tuple[int, int, bool]:
+        text = self._text
+        selection = text.tag_ranges("sel")
+        start, end = selection if selection else (text.index("insert"), text.index("insert"))
+        first = int(str(start).split(".")[0])
+        last, column = map(int, str(end).split("."))
+        if selection and column == 0 and last > first:
+            last -= 1
+        return first, last, bool(selection)
+
+    def _replace_text(self, start: str, end: str, value: str) -> None:
+        text = self._text
+        text.edit_separator()
+        text.configure(autoseparators=False)
+        try:
+            text.delete(start, end)
+            text.insert(start, value)
+        finally:
+            text.configure(autoseparators=True)
+            text.edit_separator()
+
+    def _transform_lines(self, transform) -> None:
+        text = self._text
+        first, last, selected = self._selected_lines()
+        start, end = f"{first}.0", f"{last}.end"
+        lines = text.get(start, end).split("\n")
+        cursor_line, cursor_col = map(int, text.index("insert").split("."))
+        updated = transform(lines)
+        self._replace_text(start, end, "\n".join(updated))
+        column = cursor_col
+        if first <= cursor_line <= last:
+            offset = cursor_line - first
+            column = max(0, cursor_col + len(updated[offset]) - len(lines[offset]))
+        text.mark_set("insert", f"{cursor_line}.{column}")
+        if selected:
+            selection_end = f"{last + 1}.0" if text.compare(end, "<", "end-1c") else end
+            text.tag_add("sel", start, selection_end)
+        text.focus_set()
+        text.see("insert")
+
+    def _apply_list(self, kind: str) -> None:
+        def transform(lines):
+            parts = [_list_parts(line) for line in lines]
+            remove = all(_list_kind(marker) == kind for _, marker, _ in parts)
+            result = []
+            counters = {}
+            for indent, _marker, body in parts:
+                counters[indent] = counters.get(indent, 0) + 1
+                marker = "" if remove else {
+                    "bullet": "• ", "check": "☐ ", "number": f"{counters[indent]}. ",
+                }[kind]
+                result.append(indent + marker + body)
+            return result
+        self._transform_lines(transform)
+
+    def _indent_lines(self, _event=None, *, outdent=False) -> str:
+        def transform(lines):
+            return [re.sub(r"^(?: {1,2}|\t)", "", line) if outdent else "  " + line
+                    for line in lines]
+        self._transform_lines(transform)
+        return "break"
+
+    def _on_return(self, _event=None, *, plain=False) -> str:
+        text = self._text
+        selection = text.tag_ranges("sel")
+        start, end = map(str, selection) if selection else (text.index("insert"), text.index("insert"))
+        line_start = text.index(f"{start} linestart")
+        before = text.get(line_start, start)
+        after = text.get(end, f"{end} lineend")
+        indent, marker, body = _list_parts(before)
+        if not plain and marker and not (body + after).strip():
+            replacement = indent[2:] + marker if indent.startswith("  ") else (
+                indent[1:] + marker if indent else ""
+            )
+            self._replace_text(line_start, f"{end} lineend", replacement)
+        else:
+            prefix = ""
+            if not plain:
+                if _list_kind(marker) == "number":
+                    prefix = f"{int(marker[:-2]) + 1}. "
+                elif _list_kind(marker) == "check":
+                    prefix = "☐ "
+                else:
+                    prefix = marker
+                prefix = indent + prefix
+            self._replace_text(start, end, "\n" + prefix)
+        text.see("insert")
+        return "break"
+
+    def _checkbox_at(self, event) -> str | None:
+        text = self._text
+        index = text.index(f"@{event.x},{event.y}")
+        char = text.get(index)
+        if char not in ("☐", "☑"):
+            return None
+        indent, marker, _body = _list_parts(text.get(f"{index} linestart", f"{index} lineend"))
+        if _list_kind(marker) != "check" or int(index.split(".")[1]) != len(indent):
+            return None
+        box = text.bbox(index)
+        if box is None:
+            return None
+        x, y, width, height = box
+        if not (x <= event.x < x + width and y <= event.y < y + height):
+            return None
+        return index
+
+    def _on_checkbox_hover(self, event) -> None:
+        self._text.configure(cursor="hand2" if self._checkbox_at(event) else "xterm")
+
+    def _on_checkbox_click(self, event) -> str | None:
+        index = self._checkbox_at(event)
+        if index is None:
+            return None
+        text = self._text
+        char = text.get(index)
+        cursor = text.index("insert")
+        selection = text.tag_ranges("sel")
+        self._replace_text(index, f"{index}+1c", "☑" if char == "☐" else "☐")
+        text.mark_set("insert", cursor)
+        if selection:
+            text.tag_add("sel", *selection)
+        text.focus_set()
+        return "break"
 
     def _draw_folded_corner(
         self, canvas: tk.Canvas, x1: int, y1: int, paper: str, dark: str
@@ -384,6 +532,12 @@ class StickyNoteWindow:
                 command=lambda s=style: self.set_style(s),
             )
         menu.add_cascade(label="Style", menu=style_menu)
+        list_menu = Menu(menu, tearoff=0)
+        for label, kind in (
+            ("Bullets", "bullet"), ("Numbered list", "number"), ("Checklist", "check"),
+        ):
+            list_menu.add_command(label=label, command=lambda k=kind: self._apply_list(k))
+        menu.add_cascade(label="Lists", menu=list_menu)
         return menu
 
     def _show_menu(self, event) -> None:
