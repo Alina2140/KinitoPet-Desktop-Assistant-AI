@@ -294,6 +294,27 @@ def test_list_image_files_returns_sorted_paths(tmp_path):
     assert files[1].endswith("b.png")
 
 
+def test_list_hug_sprite_paths_prefers_numbered_frames(tmp_path, monkeypatch):
+    for name in (
+        "extra.png",
+        "KinitoHug1.png",
+        "KinitoHug2.png",
+        "KinitoHug.png",
+        "ignore.txt",
+    ):
+        (tmp_path / name).write_bytes(b"x")
+    monkeypatch.setattr(assets, "sprites_hugging_directory", str(tmp_path))
+    monkeypatch.setattr(assets, "sprite_path_hug", str(tmp_path / "KinitoHug.png"))
+    monkeypatch.setattr(assets, "sprite_path_hug2", str(tmp_path / "KinitoHug2.png"))
+
+    assert [os.path.basename(path) for path in assets.list_hug_sprite_paths()] == [
+        "KinitoHug.png",
+        "KinitoHug1.png",
+        "extra.png",
+        "KinitoHug2.png",
+    ]
+
+
 @pytest.mark.skipif(
     not os.path.isdir(assets.sprites_standing_directory),
     reason="Standing sprites folder is not present in this checkout",

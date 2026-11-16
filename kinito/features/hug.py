@@ -9,6 +9,8 @@ class HugMixin:
     """Swap Kinito to dedicated hug sprites during hug interactions."""
 
     HUG_DURATION_MS = 8000
+    HUG_INTRO_SPRITE_SECONDS = 0.4
+    HUG_SPRITE_SWAP_SECONDS = 1.0
 
     def _cancel_hug_timer(self):
         """Cancel the scheduled end of the current hug pose."""
@@ -20,10 +22,45 @@ class HugMixin:
                 pass
             self._hug_timer = None
 
+    def _hug_sprite_frames(self):
+        """Return the loaded hug frames, falling back to the original pair."""
+        frames = tuple(getattr(self, "_hug_sprites", ()))
+        if frames:
+            return frames
+        return tuple(
+            sprite
+            for sprite in (
+                getattr(self, "tk_img_hug", None),
+                getattr(self, "tk_img_hug2", None),
+            )
+            if sprite is not None
+        )
+
+    def _hug_sprite_delay(self):
+        """Return how long the current hug frame should stay visible."""
+        frames = self._hug_sprite_frames()
+        frame = getattr(self, "_hug_frame", 0)
+        if frame < min(2, max(0, len(frames) - 1)):
+            return self.HUG_INTRO_SPRITE_SECONDS
+        return self.HUG_SPRITE_SWAP_SECONDS
+
+    def _next_hug_sprite(self):
+        """Return the next frame, stopping on the final hug sprite."""
+        frames = self._hug_sprite_frames()
+        if not frames:
+            return None
+        frame = getattr(self, "_hug_frame", 0)
+        last_frame = len(frames) - 1
+        if frame >= last_frame:
+            return None
+        self._hug_frame = frame + 1 if frame < 1 else last_frame
+        return frames[self._hug_frame]
+
     def end_hug(self):
         """End the hug pose and restore the normal sprite when idle."""
         self._cancel_hug_timer()
         self._hug_mode = False
+        self._hug_frame = 0
         if not self.talking:
             self.change_sprite(self.tk_img_normal)
 
@@ -35,9 +72,12 @@ class HugMixin:
 
     def _enter_hug_pose(self):
         """Show hug sprites for the hug interaction."""
+        self._cancel_hug_timer()
         self._hug_mode = True
-        self.change_sprite(self.tk_img_hug)
-        self._schedule_hug_end()
+        self._hug_frame = 0
+        frames = self._hug_sprite_frames()
+        if frames:
+            self.change_sprite(frames[0])
 
     def ask_for_hug(self):
         """Ask the user for a hug (yes/no); do not play thank-you hug lines alone."""

@@ -228,6 +228,18 @@ def list_image_files(directory):
     return sorted(files)
 
 
+def list_hug_sprite_paths() -> list[str]:
+    """Return hug intro frames followed by the canonical held final frame."""
+    paths = list_image_files(sprites_hugging_directory)
+    ordered = [sprite_path_hug] if sprite_path_hug in paths else []
+    ordered.extend(
+        path for path in paths if path not in ordered and path != sprite_path_hug2
+    )
+    if sprite_path_hug2 in paths:
+        ordered.append(sprite_path_hug2)
+    return ordered
+
+
 def list_standing_sprite_paths(*, crouch: bool = False) -> list[str]:
     """Return standing (or crouch) sprite paths with the default variant first."""
     if crouch:

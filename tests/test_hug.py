@@ -17,6 +17,9 @@ def hug():
     stub.root.after = MagicMock()
     stub.root.after_cancel = MagicMock()
     stub.tk_img_hug = "hug"
+    stub.tk_img_hug2 = "hug2"
+    stub._hug_sprites = ("hug", "hug2", "hug3")
+    stub._hug_frame = 0
     stub.tk_img_normal = "normal"
     stub._hug_timer = None
     stub._hug_mode = False
@@ -47,8 +50,31 @@ def test_enter_hug_pose_shows_sprite(hug):
     with patch.object(hug, "_schedule_hug_end") as schedule:
         hug._enter_hug_pose()
     hug.change_sprite.assert_called_once_with("hug")
-    schedule.assert_called_once()
+    schedule.assert_not_called()
     assert hug._hug_mode is True
+    assert hug._hug_frame == 0
+
+
+def test_next_hug_sprite_advances_to_final_frame_and_holds(hug):
+    assert hug._next_hug_sprite() == "hug2"
+    assert hug._next_hug_sprite() == "hug3"
+    assert hug._next_hug_sprite() is None
+    assert hug._hug_frame == 2
+
+
+def test_next_hug_sprite_falls_back_to_pair(hug):
+    hug._hug_sprites = ()
+    hug._hug_frame = 0
+    assert hug._next_hug_sprite() == "hug2"
+    assert hug._next_hug_sprite() is None
+
+
+def test_hug_sprite_delay_is_faster_for_intro_frames(hug):
+    assert hug._hug_sprite_delay() == 0.4
+    hug._hug_frame = 1
+    assert hug._hug_sprite_delay() == 0.4
+    hug._hug_frame = 2
+    assert hug._hug_sprite_delay() == 1.0
 
 
 def test_end_hug_restores_normal_sprite_when_idle(hug):
@@ -56,6 +82,7 @@ def test_end_hug_restores_normal_sprite_when_idle(hug):
     hug.end_hug()
     assert hug._hug_mode is False
     hug.change_sprite.assert_called_once_with("normal")
+    assert hug._hug_frame == 0
 
 
 def test_end_hug_keeps_sprite_while_talking(hug):

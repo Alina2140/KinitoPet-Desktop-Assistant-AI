@@ -852,6 +852,48 @@ def test_surf_sprite_for_movement_uses_direction(movement):
     assert movement._surf_sprite_for_movement(0) == "surf_right"
 
 
+def test_idle_animation_advances_hug_frames_after_frame_delay(movement):
+    movement._hug_mode = True
+    movement._hug_sprites = ("hug_a", "hug_b", "hug_c")
+    movement._hug_frame = 1
+    movement._hug_sprite_delay = MagicMock(return_value=0.4)
+    movement._next_hug_sprite = MagicMock(return_value="hug_c")
+    movement.talking = False
+    movement.tk_img_normal = "normal"
+    movement.change_sprite = MagicMock()
+
+    with patch("kinito.movement.time.sleep") as sleep:
+        movement._idle_animation_tick()
+
+    sleep.assert_called_once_with(0.4)
+    movement._next_hug_sprite.assert_called_once()
+    movement.change_sprite.assert_called_once_with("hug_c")
+
+
+def test_idle_animation_keeps_sleep_frames_priority_while_paused(movement):
+    movement._hug_mode = True
+    movement.paused = True
+    movement.tk_img_sleep = "sleep0"
+    movement.tk_img_sleep1 = "sleep1"
+    movement.tk_img_sleep2 = "sleep2"
+    movement.tk_img_sleep3 = "sleep3"
+    movement._hug_sprites = ("hug_a",)
+    movement._maybe_play_snoring = MagicMock()
+    movement.change_sprite = MagicMock()
+
+    calls = {"n": 0}
+
+    def stop_after_first_sleep_frame(_seconds):
+        calls["n"] += 1
+        if calls["n"] >= 1:
+            movement._running = False
+
+    with patch("kinito.movement.time.sleep", side_effect=stop_after_first_sleep_frame):
+        movement._idle_animation_tick()
+
+    movement.change_sprite.assert_called_once_with("sleep0")
+
+
 def test_talking_sprite_pair_switches_with_mode(movement):
     movement.tk_img_talking = "talk_a"
     movement.tk_img_talking2 = "talk_b"

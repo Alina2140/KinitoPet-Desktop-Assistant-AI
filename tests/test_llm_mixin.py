@@ -1,5 +1,6 @@
 """Tests for the Ollama LLM mixin."""
 
+import threading
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -250,6 +251,62 @@ def test_unexpected_generation_error_uses_fallback(mock_speak, llm_app, failure_
     assert llm_app._ai_generating is False
     assert llm_app.talking is False
     assert llm_app._talk_sprite_mode == "talking"
+
+
+def test_generation_fallback_shows_bubble_when_tts_lock_is_held(llm_app):
+    lock = threading.Lock()
+    lock.acquire()
+    llm_app._speech_lock = lock
+    llm_app.SPEECH_LOCK_TIMEOUT_S = 0.01
+    llm_app._ollama_client.generate.side_effect = OllamaUnavailableError("timeout")
+    llm_app._build_generation_prompt = MagicMock(return_value="prompt")
+    llm_app._generation_system_prompt = MagicMock(return_value="system")
+    llm_app._running = True
+    llm_app.paused = False
+    llm_app.is_dragging = False
+    llm_app._throwing = False
+    llm_app._pending_memory_question = None
+    llm_app._planning_memory_question = False
+    llm_app._focus_mode = False
+    llm_app._player_focus_active = lambda: False
+    llm_app._preserve_sprite = False
+    llm_app._dizzy_mode = False
+    llm_app._fancy_mode = False
+    llm_app.tk_img_normal = "normal"
+    llm_app.change_sprite = MagicMock()
+    llm_app.close_speech_bubble = MagicMock()
+    llm_app.show_speech_bubble = MagicMock()
+    llm_app._run_tts = MagicMock(return_value=True)
+    llm_app._schedule_bubble_close_if_current = MagicMock()
+    llm_app._bubble_close_delay_after_tts = MagicMock(return_value=0)
+    llm_app._tts_enabled = True
+    llm_app._player_kinito_muted = False
+    llm_app._tts_cancelled = False
+    llm_app._tts_process = None
+    llm_app._tts_sd_active = False
+    llm_app._bubble_close_timer = None
+    llm_app._response_timeout_timer = None
+    llm_app.speech_bubble = MagicMock()
+    llm_app.speech_bubble.winfo_exists.return_value = False
+
+    speech_thread = None
+    try:
+        fake_llm_threading = MagicMock(wraps=threading)
+        fake_llm_threading.Thread = MagicMock()
+        with patch("kinito.features.llm.threading", fake_llm_threading):
+            llm_app._generate_and_speak("fallback line")
+            fake_llm_threading.Thread.call_args.kwargs["target"]()
+        speech_thread = llm_app._speech_thread
+        speech_thread.join(timeout=1)
+        assert not speech_thread.is_alive()
+        llm_app.show_speech_bubble.assert_called_once()
+        assert llm_app.show_speech_bubble.call_args.args[0] == "fallback line"
+        llm_app._run_tts.assert_not_called()
+    finally:
+        if lock.locked():
+            lock.release()
+        if speech_thread is not None:
+            speech_thread.join(timeout=1)
 
 
 @patch.object(SpeechMixin, "speak")

@@ -668,8 +668,7 @@ def test_schedule_speech_bubble_position_waits_before_reveal(speech):
 
 def test_speak_uses_lock(speech):
     speech._speech_lock = MagicMock()
-    speech._speech_lock.__enter__ = MagicMock(return_value=None)
-    speech._speech_lock.__exit__ = MagicMock(return_value=False)
+    speech._speech_lock.acquire.return_value = True
     speech.root = MagicMock()
     speech._speech_epoch = 0
     speech._tts_process = None
@@ -679,8 +678,58 @@ def test_speak_uses_lock(speech):
     ):
         speech.speak("Hi", show_bubble=False, wait_for_tts=True)
     interrupt.assert_called_once()
-    speech._speech_lock.__enter__.assert_called_once()
+    speech._speech_lock.acquire.assert_called_once_with(
+        timeout=SpeechMixin.SPEECH_LOCK_TIMEOUT_S
+    )
+    speech._speech_lock.release.assert_called_once()
     run_tts.assert_called_once()
+
+
+def test_speak_activates_pending_visuals_after_interrupt(speech):
+    events = []
+    speech._speech_lock = MagicMock()
+    speech._speech_lock.acquire.return_value = True
+    speech.root = MagicMock()
+    speech._speech_epoch = 0
+    speech._tts_process = None
+    speech._activate_pending_visuals = MagicMock(
+        side_effect=lambda: events.append("visuals")
+    )
+    with (
+        patch.object(
+            speech, "interrupt_speech", side_effect=lambda: events.append("interrupt")
+        ) as interrupt,
+        patch.object(
+            speech,
+            "_run_tts",
+            side_effect=lambda *args, **kwargs: events.append("tts") or True,
+        ),
+    ):
+        speech.speak("Hi", show_bubble=False, wait_for_tts=True)
+    interrupt.assert_called_once()
+    speech._activate_pending_visuals.assert_called_once()
+    assert events == ["interrupt", "visuals", "tts"]
+
+
+def test_close_speech_bubble_ends_hug_pose(speech):
+    speech.root = MagicMock()
+    speech._bubble_close_timer = None
+    speech._response_timeout_generation = 0
+    speech._response_timeout_timer = None
+    speech._awaiting_response = False
+    speech._pending_memory_question = None
+    speech._preserve_sprite = False
+    speech._talk_sprite_mode = "talking"
+    speech._stop_active_tts = MagicMock()
+    speech._has_active_speech_bubble = MagicMock(return_value=False)
+    speech._hug_mode = True
+    speech.talking = True
+    speech.end_hug = MagicMock()
+
+    speech._close_speech_bubble_impl()
+
+    assert speech.talking is False
+    speech.end_hug.assert_called_once()
 
 
 def test_schedule_bubble_close_if_current_ignores_stale_epoch(speech):

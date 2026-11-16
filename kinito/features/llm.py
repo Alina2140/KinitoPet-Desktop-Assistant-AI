@@ -219,7 +219,6 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
         ):
             return
         if skip_ai or wait_for_tts or not self._should_ai_replace(text):
-            self._activate_pending_visuals()
             super().speak(
                 text,
                 pitch,
@@ -429,7 +428,10 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
                 )
                 spoken = self._clean_generated_speech(line) or fallback
             except Exception as exc:
-                print(f"Warning: AI line generation failed ({type(exc).__name__})", flush=True)
+                print(
+                    f"Warning: AI line generation failed ({type(exc).__name__}: {exc})",
+                    flush=True,
+                )
                 spoken = fallback
             try:
                 self.root.after(0, lambda: deliver(spoken))

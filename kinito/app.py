@@ -17,6 +17,7 @@ from content.startup import pick_startup_line
 from kinito.assets import (
     balconexe_directory,
     ensure_user_media_directories,
+    list_hug_sprite_paths,
     list_reading_color_variants,
     list_standing_sprite_paths,
     reading_direction_from_stem,
@@ -32,7 +33,6 @@ from kinito.assets import (
     sprite_path_hand_left,
     sprite_path_hand_right,
     sprite_path_hug,
-    sprite_path_hug2,
     sprite_path_idle,
     sprite_path_idle_glasses,
     sprite_path_idle_glasses_page,
@@ -236,8 +236,11 @@ class FloatingAssistant(
         self.img_talking2 = _open_sprite(sprite_path_talking2, fallback)
         self.img_thinking = _open_sprite(sprite_path_thinking, fallback)
         self.img_thinking2 = _open_sprite(sprite_path_thinking2, fallback)
-        self.img_hug = _open_sprite(sprite_path_hug, fallback)
-        self.img_hug2 = _open_sprite(sprite_path_hug2, fallback)
+        self.img_hug_frames = [
+            _open_sprite(path, fallback) for path in list_hug_sprite_paths()
+        ] or [_open_sprite(sprite_path_hug, fallback)]
+        self.img_hug = self.img_hug_frames[0]
+        self.img_hug2 = self.img_hug_frames[-1]
         self.img_hand_left = _open_sprite(sprite_path_hand_left, fallback)
         self.img_hand_right = _open_sprite(sprite_path_hand_right, fallback)
         self.img_drag_left = _open_sprite(sprite_path_drag_left, fallback)
@@ -922,8 +925,10 @@ class FloatingAssistant(
         self.tk_img_talking2 = photo(self.img_talking2)
         self.tk_img_thinking = photo(self.img_thinking)
         self.tk_img_thinking2 = photo(self.img_thinking2)
-        self.tk_img_hug = photo(self.img_hug)
-        self.tk_img_hug2 = photo(self.img_hug2)
+        self._hug_sprites = tuple(photo(image) for image in self.img_hug_frames)
+        self.tk_img_hug = self._hug_sprites[0]
+        self.tk_img_hug2 = self._hug_sprites[-1]
+        self._hug_frame = 0
         self.tk_img_hand_left = photo(self.img_hand_left)
         self.tk_img_hand_right = photo(self.img_hand_right)
         self.tk_img_drag_left = photo(self.img_drag_left)

@@ -150,6 +150,7 @@ class SpeechMixin:
     POEM_READ_MS_MIN = 2000
     POEM_READ_MS_MAX = 4000
     POEM_READ_MS_PER_CHAR = 40
+    SPEECH_LOCK_TIMEOUT_S = 2.0
 
     def _has_protected_interactive_state(self) -> bool:
         """Return True while a memory question or other response dialog must stay open."""
@@ -1179,6 +1180,9 @@ class SpeechMixin:
         if show_bubble and not self._may_start_speech(text):
             return
         self.interrupt_speech()
+        activate_visuals = getattr(self, "_activate_pending_visuals", None)
+        if callable(activate_visuals):
+            activate_visuals()
         self._speech_volume_scale = volume_scale
         if (
             not preserve_sprite
@@ -1198,16 +1202,19 @@ class SpeechMixin:
         accompaniment_volume = speech_accompaniment_volume
 
         def run_speech():
-            with self._speech_lock:
-                if show_bubble:
-                    self.root.after(
-                        0,
-                        lambda: self.show_speech_bubble(
-                            text,
-                            evergoaway=False,
-                            speech_epoch=epoch,
-                        ),
-                    )
+            if show_bubble:
+                self.root.after(
+                    0,
+                    lambda: self.show_speech_bubble(
+                        text,
+                        evergoaway=False,
+                        speech_epoch=epoch,
+                    ),
+                )
+            lock_acquired = self._speech_lock.acquire(
+                timeout=self.SPEECH_LOCK_TIMEOUT_S
+            )
+            try:
                 # Start poem music after TTS begins so SAPI4 keeps Eddie's voice.
                 music_started = {"value": False}
 
@@ -1220,9 +1227,9 @@ class SpeechMixin:
                             accompaniment_path, accompaniment_volume
                         )
 
-                if accompaniment_path:
+                if lock_acquired and accompaniment_path:
                     self.root.after(350, start_music_soon)
-                spoke = self._run_tts(
+                spoke = lock_acquired and self._run_tts(
                     text,
                     pitch,
                     voice_candidates,
@@ -1244,6 +1251,9 @@ class SpeechMixin:
                     )
                 elif not show_bubble:
                     self.talking = False
+            finally:
+                if lock_acquired:
+                    self._speech_lock.release()
 
         thread = threading.Thread(target=run_speech, daemon=True)
         self._speech_thread = thread
@@ -1576,6 +1586,11 @@ class SpeechMixin:
             self.speech_bubble.destroy()
             self._play_bubble_sfx(stoptalk_file_path)
             self.talking = False
+        if getattr(self, "_hug_mode", False):
+            self.talking = False
+            end_hug = getattr(self, "end_hug", None)
+            if callable(end_hug):
+                end_hug()
 
     def _new_speech_bubble_toplevel(self, title):
         """Create a hidden speech-bubble window parked off-screen."""

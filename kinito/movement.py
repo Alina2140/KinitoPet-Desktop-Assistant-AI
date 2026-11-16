@@ -2320,6 +2320,15 @@ class MovementMixin:
         if self.moving:
             time.sleep(0.1)
             return
+        if getattr(self, "_hug_mode", False) and not self.paused:
+            delay_getter = getattr(self, "_hug_sprite_delay", None)
+            delay = delay_getter() if callable(delay_getter) else 1.0
+            time.sleep(delay)
+            next_hug_sprite = getattr(self, "_next_hug_sprite", None)
+            sprite = next_hug_sprite() if callable(next_hug_sprite) else None
+            if sprite is not None:
+                self.change_sprite(sprite)
+            return
         if not self.paused and not self.talking:
             if self._mouse_attention_owns_sprite():
                 time.sleep(0.25)
@@ -2406,14 +2415,6 @@ class MovementMixin:
                 if not self._running:
                     return
                 self.change_sprite(sprite_b)
-                time.sleep(1)
-                return
-            if self._hug_mode:
-                self.change_sprite(self.tk_img_hug)
-                time.sleep(1)
-                if not self._running:
-                    return
-                self.change_sprite(self.tk_img_hug2)
                 time.sleep(1)
                 return
             sprite_a, sprite_b = self._talking_sprite_pair()
