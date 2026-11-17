@@ -84,6 +84,40 @@ def test_interrupt_while_talking_grumbles_without_mood_shift(monkeypatch):
     assert host.grumbled
 
 
+def test_menu_navigation_does_not_queue_interrupt_lines(monkeypatch):
+    monkeypatch.setattr(random, "random", lambda: 0.0)
+    host = _InterruptHost()
+    host.talking = True
+    for title in (
+        dlg.MENU_PROMPT,
+        dlg.MODES_MENU_QUESTION,
+        dlg.SETTINGS_MENU_QUESTION,
+        dlg.ACTIONS_MENU_QUESTION,
+    ):
+        host._speech_bubble_title = lambda title=title: title
+        host.note_user_attention(interrupt=True)
+        assert not host.root.callbacks
+    host.talking = False
+    host.root.flush()
+    assert not host.grumbled
+
+
+def test_menu_navigation_preserves_previously_queued_interrupt_line(monkeypatch):
+    monkeypatch.setattr(random, "random", lambda: 0.0)
+    host = _InterruptHost()
+    host.talking = True
+    host._speech_bubble_title = lambda: "A poem I was reciting."
+    host.note_user_attention(interrupt=True)
+    assert len(host.root.callbacks) == 1
+
+    host._speech_bubble_title = lambda: dlg.ACTIONS_MENU_QUESTION
+    host.note_user_attention(interrupt=True)
+    assert len(host.root.callbacks) == 1
+    host.talking = False
+    host.root.flush()
+    assert len(host.grumbled) == 1
+
+
 def test_interrupt_when_idle_does_nothing(monkeypatch):
     monkeypatch.setattr(random, "random", lambda: 0.0)
     host = _InterruptHost()

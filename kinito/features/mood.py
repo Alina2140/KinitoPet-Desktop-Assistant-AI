@@ -328,6 +328,29 @@ class MoodMixin:
         """Chance to grumble a line when the user cuts Kinito off."""
         if not self.is_mood_system_enabled() or not self._is_busy_mid_activity():
             return
+        title = getattr(self, "_speech_bubble_title", None)
+        if callable(title):
+            from content import dialogue as dlg
+            from content.dialog_registry import find_dialog_spec
+
+            spec = find_dialog_spec(title())
+            if spec is not None and spec.marker in {
+                dlg.MENU_PROMPT,
+                dlg.MODES_MENU_MARKER,
+                dlg.SETTINGS_MENU_MARKER,
+                dlg.SETTINGS_TOGGLES_MARKER,
+                dlg.ACTIONS_MENU_MARKER,
+                dlg.SFX_VOLUME_MENU_MARKER,
+                dlg.SFX_VOLUME_MARKER,
+                dlg.TTS_VOLUME_MARKER,
+                dlg.GAME_PICKER_MARKER,
+                dlg.QUICK_GAMES_MARKER,
+                dlg.BOARD_GAMES_MARKER,
+                dlg.COIN_DICE_MARKER,
+                dlg.PAINT_PICKER_MARKER,
+                dlg.STICKY_NOTES_PICKER_MARKER,
+            }:
+                return
         if random.random() < self._INTERRUPT_LINE_CHANCE:
             self._schedule_interrupt_grumble()
 
