@@ -515,11 +515,20 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
         if hasattr(self, "note_user_attention"):
             self.note_user_attention()
         self._last_chat_user_text = text
-        self.append_chat_message(self.chat_user_label(), text)
+        user_label = self.chat_user_label()
+        self.append_chat_message(user_label, text)
         self._conversation.add_user(text)
         self.set_chat_generating(True)
 
-        messages = self._conversation.messages_for_api(self._system_prompt())
+        system = self._system_prompt()
+        if user_label and user_label != prompts.CHAT_USER_LABEL_FALLBACK:
+            system += (
+                f"\n\nThe user's displayed name for this chat session is {user_label!r}. "
+                "When addressing the user by name, use this displayed name consistently, "
+                "not other names or aliases in memory or earlier messages. "
+                "You do not need to use their name in every reply."
+            )
+        messages = self._conversation.messages_for_api(system)
 
         def worker():
             try:

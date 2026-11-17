@@ -178,6 +178,30 @@ def test_send_chat_message_calls_ollama_and_updates_ui(llm_app):
     llm_app.speak_chat_response.assert_called_once_with("Hello friend!")
 
 
+def test_chat_uses_displayed_name_over_other_known_names(llm_app):
+    llm_app._chat_mode = True
+    llm_app.chat_user_label.return_value = "Svenja"
+    llm_app.memory_prompt_block.return_value = "Known user names: Svenja, Sydali"
+
+    with patch("kinito.features.llm.threading.Thread"):
+        llm_app.send_chat_message("Hello")
+
+    llm_app.append_chat_message.assert_called_once_with("Svenja", "Hello")
+    system = llm_app._conversation.messages_for_api.call_args.args[0]
+    assert "displayed name for this chat session is 'Svenja'" in system
+    assert "not other names or aliases in memory or earlier messages" in system
+
+
+def test_chat_without_known_name_keeps_system_prompt(llm_app):
+    llm_app._chat_mode = True
+    expected = llm_app._system_prompt()
+
+    with patch("kinito.features.llm.threading.Thread"):
+        llm_app.send_chat_message("Hello")
+
+    llm_app._conversation.messages_for_api.assert_called_once_with(expected)
+
+
 def test_send_chat_message_error_shows_fallback(llm_app):
     llm_app._chat_mode = True
     llm_app._ollama_client.chat.side_effect = OllamaUnavailableError("down")
