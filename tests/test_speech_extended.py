@@ -80,6 +80,20 @@ def test_speak_stops_speech_accompaniment_after_tts(speech):
     speech.stop_speech_accompaniment_music.assert_called_once()
 
 
+@pytest.mark.parametrize("whisper", [True, False])
+def test_poem_sprite_mode(speech, whisper):
+    speech._speech_epoch = 0
+    speech._speech_lock = threading.Lock()
+    speech._run_tts = MagicMock(return_value=True)
+    voices = speech.VOICE_WHISPER_CANDIDATES if whisper else speech.VOICE_NORMAL_CANDIDATES
+
+    speech.speak("poem line", long_bubble=True, voice_candidates=voices)
+    speech._speech_thread.join(timeout=2)
+
+    assert not speech._speech_thread.is_alive()
+    assert speech._talk_sprite_mode == ("standing" if whisper else "talking")
+
+
 def test_speak_starts_accompaniment_after_interrupt(speech):
     speech._speech_epoch = 0
     speech._speech_lock = threading.Lock()

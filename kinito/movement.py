@@ -2382,6 +2382,10 @@ class MovementMixin:
                 self.change_sprite(sprite)
                 time.sleep(hold)
         elif self.talking:
+            if getattr(self, "_talk_sprite_mode", "talking") == "standing":
+                self.change_sprite(self.tk_img_normal)
+                time.sleep(0.1)
+                return
             if getattr(self, "_preserve_sprite", False) and getattr(
                 self, "_reading_idle_active", False
             ):

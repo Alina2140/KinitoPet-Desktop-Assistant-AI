@@ -1214,7 +1214,11 @@ class SpeechMixin:
         self._tts_cancelled = False
         self.talking = True
         self._preserve_sprite = preserve_sprite
-        self._talk_sprite_mode = self._infer_talk_sprite_mode(text, question=question)
+        self._talk_sprite_mode = (
+            "standing"
+            if long_bubble and voice_candidates == self.VOICE_WHISPER_CANDIDATES
+            else self._infer_talk_sprite_mode(text, question=question)
+        )
         if hasattr(self, "_stop_roaming"):
             self._stop_roaming()
         accompaniment_path = speech_accompaniment_path

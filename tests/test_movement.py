@@ -894,6 +894,18 @@ def test_idle_animation_keeps_sleep_frames_priority_while_paused(movement):
     movement.change_sprite.assert_called_once_with("sleep0")
 
 
+def test_creepy_poem_uses_static_standing_sprite(movement):
+    movement.talking = True
+    movement._talk_sprite_mode = "standing"
+    movement.tk_img_normal = "normal"
+    movement.change_sprite = MagicMock()
+
+    with patch("kinito.movement.time.sleep"):
+        movement._idle_animation_tick()
+
+    movement.change_sprite.assert_called_once_with("normal")
+
+
 def test_talking_sprite_pair_switches_with_mode(movement):
     movement.tk_img_talking = "talk_a"
     movement.tk_img_talking2 = "talk_b"
