@@ -997,6 +997,32 @@ def test_is_game_active_with_trivia_round():
     assert app._is_game_active() is True
 
 
+def test_cancel_quick_game_clears_number_and_trivia_state():
+    from kinito.features.games import GamesMixin
+
+    app = GamesMixin()
+    app._number_guess_target = 42
+    app._trivia_current = TRIVIA_QUESTIONS[0]
+    app._trivia_round = 2
+    app._trivia_used = {TRIVIA_QUESTIONS[0]}
+    app._play_again_restart = lambda a: None
+    app._cancel_quick_game()
+    assert app._is_game_active() is False
+    assert app._number_guess_target is None
+    assert app._trivia_current is None
+    assert not app._trivia_used
+    assert app._play_again_restart is None
+
+
+def test_game_window_cleanup_also_cancels_quick_games():
+    from kinito.features.games import GamesMixin
+
+    app = GamesMixin()
+    app._number_guess_target = 42
+    app._ensure_single_game_window()
+    assert app._is_game_active() is False
+
+
 def test_is_game_active_false_when_idle():
     from kinito.features.games import GamesMixin
 

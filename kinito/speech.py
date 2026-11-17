@@ -587,6 +587,9 @@ class SpeechMixin:
             return
         if not self._has_active_speech_bubble():
             return
+        cancel_game = getattr(self, "_cancel_quick_game", None)
+        if callable(cancel_game):
+            cancel_game()
         self.close_speech_bubble()
 
     def _schedule_bubble_close(self, delay_ms):
@@ -1198,6 +1201,20 @@ class SpeechMixin:
                 return
         if show_bubble and not self._may_start_speech(text):
             return
+        spec = find_dialog_spec(str(text))
+        if spec is not None and spec.marker in {
+            dlg.MENU_PROMPT,
+            dlg.MODES_MENU_MARKER,
+            dlg.SETTINGS_MENU_MARKER,
+            dlg.ACTIONS_MENU_MARKER,
+            dlg.GAME_PICKER_MARKER,
+            dlg.QUICK_GAMES_MARKER,
+            dlg.BOARD_GAMES_MARKER,
+            dlg.COIN_DICE_MARKER,
+        }:
+            cancel_game = getattr(self, "_cancel_quick_game", None)
+            if callable(cancel_game):
+                cancel_game()
         self.interrupt_speech()
         activate_visuals = getattr(self, "_activate_pending_visuals", None)
         if callable(activate_visuals):
@@ -1571,6 +1588,9 @@ class SpeechMixin:
 
     def user_close_speech_bubble(self):
         """User clicked the bubble's × button: counts as interrupting Kinito."""
+        cancel_game = getattr(self, "_cancel_quick_game", None)
+        if callable(cancel_game):
+            cancel_game()
         if hasattr(self, "note_user_attention"):
             self.note_user_attention(interrupt=True)
         self.close_speech_bubble()

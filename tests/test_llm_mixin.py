@@ -221,6 +221,47 @@ def test_should_use_ai_idle_line_requires_availability(llm_app):
     assert llm_app._should_use_ai_idle_line() is False
 
 
+@patch.object(SpeechMixin, "speak")
+def test_hug_speaks_after_quick_game_is_cancelled(mock_speak, llm_app):
+    from content import llm_prompts as prompts
+    from kinito.features.games import GamesMixin
+
+    llm_app._number_guess_target = 50
+    llm_app._is_game_active = lambda: GamesMixin._is_game_active(llm_app)
+    assert llm_app._is_game_active()
+    GamesMixin._cancel_quick_game(llm_app)
+    llm_app._should_ai_replace = MagicMock(return_value=False)
+    llm_app._begin_hug_after_speech = True
+    llm_app.speak("A hug for you!", ai_hint=prompts.HUG_PROMPT)
+
+    mock_speak.assert_called_once()
+    assert llm_app._begin_hug_after_speech is True
+
+
+@patch.object(SpeechMixin, "speak")
+def test_menu_does_not_activate_abandoned_hug(mock_speak, llm_app):
+    from content import dialogue as dlg
+
+    llm_app._begin_hug_after_speech = True
+    llm_app.speak(dlg.MENU_PROMPT)
+
+    mock_speak.assert_called_once()
+    assert llm_app._begin_hug_after_speech is False
+
+
+@patch.object(SpeechMixin, "speak")
+def test_generated_hug_keeps_pending_pose_until_speech(mock_speak, llm_app):
+    from content import llm_prompts as prompts
+
+    llm_app._begin_hug_after_speech = True
+    with patch("kinito.features.llm.threading.Thread") as thread_cls:
+        llm_app._generate_and_speak("A hug for you!", ai_hint=prompts.HUG_PROMPT)
+        thread_cls.call_args.kwargs["target"]()
+
+    mock_speak.assert_called_once()
+    assert llm_app._begin_hug_after_speech is True
+
+
 def test_activate_pending_visuals_starts_hug(llm_app):
     llm_app._begin_hug_after_speech = True
     llm_app._enter_hug_pose = MagicMock()

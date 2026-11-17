@@ -209,6 +209,8 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
                 except Exception:
                     pass
             return
+        if ai_hint != prompts.HUG_PROMPT:
+            self._begin_hug_after_speech = False
         if show_bubble and not self._may_start_speech(str(text)):
             return
         if (
@@ -404,6 +406,8 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
                 if speak_kwargs.get("long_bubble")
                 else self._llm_config.max_tokens_short
             )
+        if ai_hint == prompts.HUG_PROMPT:
+            speak_kwargs["ai_hint"] = ai_hint
         token, generation_epoch = self._begin_ai_generation()
         fallback = scripted_text.strip() or random.choice(prompts.IDLE_ERROR_FALLBACK_LINES)
 

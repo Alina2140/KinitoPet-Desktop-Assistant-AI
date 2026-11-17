@@ -191,11 +191,49 @@ def test_handle_coin_flip_offers_play_again(mock_app):
     assert dlg.GAME_PLAY_AGAIN_MARKER.lower() in spoken.lower()
 
 
-def test_handle_play_again_restarts_coin_dice(mock_app):
-    mock_app._play_again_restart = lambda a: a.start_coin_dice()
-    spec = find_dialog_spec(dlg.GAME_PLAY_AGAIN_SUFFIX)
+def test_handle_play_again_restarts_coin_directly(mock_app):
+    handle_dialog_response(mock_app, find_dialog_spec(dlg.COIN_FLIP_QUESTION), dlg.BUTTON_HEADS)
+    spec = find_dialog_spec(mock_app.speak.call_args.args[0])
+    assert spec.marker == dlg.GAME_PLAY_AGAIN_MARKER
+    mock_app.speak.reset_mock()
     handle_dialog_response(mock_app, spec, dlg.BUTTON_PLAY_AGAIN)
-    mock_app.start_coin_dice.assert_called_once()
+    mock_app.speak.assert_called_once_with(dlg.COIN_FLIP_QUESTION, 45, True)
+    mock_app.start_coin_dice.assert_not_called()
+
+
+def test_handle_play_again_restarts_dice_directly(mock_app):
+    handle_dialog_response(mock_app, find_dialog_spec(dlg.DICE_GUESS_QUESTION), dlg.DICE_CHOICES[0])
+    spec = find_dialog_spec(mock_app.speak.call_args.args[0])
+    assert spec.marker == dlg.GAME_PLAY_AGAIN_MARKER
+    mock_app.speak.reset_mock()
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_PLAY_AGAIN)
+    mock_app.speak.assert_called_once_with(dlg.DICE_GUESS_QUESTION, 45, True)
+    mock_app.start_coin_dice.assert_not_called()
+
+
+def test_quick_game_retries_work_with_every_mood_suffix(mock_app, monkeypatch):
+    from content import game_lines
+
+    games = (
+        (dlg.COIN_FLIP_QUESTION, dlg.BUTTON_HEADS),
+        (dlg.DICE_GUESS_QUESTION, dlg.DICE_CHOICES[0]),
+        (dlg.RPS_QUESTION, dlg.BUTTON_ROCK),
+        (dlg.NUMBER_GUESS_QUESTION, "50"),
+    )
+    for pool in game_lines.GAME_PLAY_AGAIN_BY_MOOD.values():
+        for suffix in pool:
+            monkeypatch.setattr(game_lines, "pick_game_play_again_suffix", lambda app, tail=suffix: tail)
+            for question, answer in games:
+                mock_app._number_guess_target = 50
+                mock_app._number_guess_attempts = 0
+                handle_dialog_response(mock_app, find_dialog_spec(question), answer)
+                result = mock_app.speak.call_args.args[0]
+                assert result.endswith(suffix)
+                retry = find_dialog_spec(result)
+                assert retry is not None, result
+                assert retry.marker == dlg.GAME_PLAY_AGAIN_MARKER
+                assert retry.ui.buttons == (dlg.BUTTON_PLAY_AGAIN, dlg.BUTTON_BACK)
+                handle_dialog_response(mock_app, retry, dlg.BUTTON_PLAY_AGAIN)
 
 
 def test_handle_play_again_back_opens_quick_games(mock_app):
@@ -422,6 +460,10 @@ def test_handle_rps_rock(mock_app):
     spec = find_dialog_spec(dlg.RPS_QUESTION)
     handle_dialog_response(mock_app, spec, dlg.BUTTON_ROCK)
     mock_app.speak.assert_called_once()
+    retry = find_dialog_spec(mock_app.speak.call_args.args[0])
+    assert retry.marker == dlg.GAME_PLAY_AGAIN_MARKER
+    handle_dialog_response(mock_app, retry, dlg.BUTTON_PLAY_AGAIN)
+    mock_app.start_rock_paper_scissors.assert_called_once()
 
 
 def test_handle_number_guess_higher_reprompts(mock_app):
@@ -441,6 +483,23 @@ def test_handle_number_guess_correct(mock_app):
     handle_dialog_response(mock_app, spec, "50")
     mock_app.speak.assert_called_once()
     assert mock_app._number_guess_target is None
+    retry = find_dialog_spec(mock_app.speak.call_args.args[0])
+    assert retry.marker == dlg.GAME_PLAY_AGAIN_MARKER
+    handle_dialog_response(mock_app, retry, dlg.BUTTON_PLAY_AGAIN)
+    mock_app.start_number_guess.assert_called_once()
+
+
+def test_number_guess_out_of_attempts_offers_retry(mock_app):
+    from kinito.features.games.number_guess import MAX_ATTEMPTS
+
+    mock_app._number_guess_target = 50
+    mock_app._number_guess_attempts = MAX_ATTEMPTS - 1
+    handle_dialog_response(mock_app, find_dialog_spec(dlg.NUMBER_GUESS_QUESTION), "10")
+    assert mock_app._number_guess_target is None
+    retry = find_dialog_spec(mock_app.speak.call_args.args[0])
+    assert retry.marker == dlg.GAME_PLAY_AGAIN_MARKER
+    handle_dialog_response(mock_app, retry, dlg.BUTTON_PLAY_AGAIN)
+    mock_app.start_number_guess.assert_called_once()
 
 
 def test_handle_joke_sure(mock_app):

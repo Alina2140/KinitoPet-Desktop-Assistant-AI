@@ -59,6 +59,13 @@ class DialogSpec:
 def find_dialog_spec(text: str) -> DialogSpec | None:
     """Return the first DialogSpec whose marker appears in *text* (case-insensitive)."""
     text_lower = text.lower()
+    retry_tails = (
+        tail.lower()
+        for pool in game_lines.GAME_PLAY_AGAIN_BY_MOOD.values()
+        for tail in pool
+    )
+    if any(text_lower.rstrip().endswith(tail) for tail in retry_tails):
+        return next(spec for spec in DIALOG_SPECS if spec.marker == dlg.GAME_PLAY_AGAIN_MARKER)
     for spec in DIALOG_SPECS:
         if spec.marker.lower() in text_lower:
             return spec
@@ -1171,7 +1178,7 @@ def _handle_coin_flip(app, response: str) -> None:
     else:
         line = game_lines.pick_game_line(app, game_lines.COIN_LOSE_LINES, "lose").format(**fmt)
         _report_game_outcome(app, GAME_KINITO_WIN)
-    _offer_play_again(app, line, lambda a: a.start_coin_dice())
+    _offer_play_again(app, line, lambda a: a.speak(dlg.COIN_FLIP_QUESTION, 45, True))
 
 
 def _handle_dice_guess(app, response: str) -> None:
@@ -1189,7 +1196,7 @@ def _handle_dice_guess(app, response: str) -> None:
     else:
         line = game_lines.pick_game_line(app, game_lines.DICE_LOSE_LINES, "lose").format(**fmt)
         _report_game_outcome(app, GAME_KINITO_WIN)
-    _offer_play_again(app, line, lambda a: a.start_coin_dice())
+    _offer_play_again(app, line, lambda a: a.speak(dlg.DICE_GUESS_QUESTION, 45, True))
 
 
 def _handle_magic_8_ball(app, response: str) -> None:
@@ -1309,7 +1316,7 @@ def _handle_rps(app, response: str) -> None:
     else:
         line = game_lines.pick_game_line(app, game_lines.RPS_DRAW_LINES, "draw").format(**fmt)
         _report_game_outcome(app, GAME_DRAW)
-    app.speak(line, skip_ai=True)
+    _offer_play_again(app, line, lambda a: a.start_rock_paper_scissors())
 
 
 def _handle_number_guess(app, response: str) -> None:
@@ -1353,14 +1360,14 @@ def _handle_number_guess(app, response: str) -> None:
         )
         line = dlg.pick_line(pool).format(**fmt)
         _report_game_outcome(app, GAME_PLAYER_WIN)
-        app.speak(line, skip_ai=True)
+        _offer_play_again(app, line, lambda a: a.start_number_guess())
         return
 
     if app._number_guess_attempts >= MAX_ATTEMPTS:
         app._number_guess_target = None
         line = game_lines.pick_game_line(app, game_lines.NUMBER_GUESS_GIVE_UP_LINES, "lose").format(answer=target)
         _report_game_outcome(app, GAME_KINITO_WIN)
-        app.speak(line, skip_ai=True)
+        _offer_play_again(app, line, lambda a: a.start_number_guess())
         return
 
     if result == "higher":

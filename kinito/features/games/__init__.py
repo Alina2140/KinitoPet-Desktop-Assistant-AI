@@ -140,10 +140,21 @@ class GamesMixin:
 
         trivia_round = getattr(self, "_trivia_round", 0)
         trivia_used = getattr(self, "_trivia_used", None)
-        return trivia_round < ROUND_SIZE and trivia_used and len(trivia_used) > 0
+        return bool(trivia_round < ROUND_SIZE and trivia_used)
+
+    def _cancel_quick_game(self):
+        """Clear in-bubble game state when leaving or switching games."""
+        self._number_guess_target = None
+        self._number_guess_attempts = 0
+        self._trivia_current = None
+        self._trivia_round = 0
+        self._trivia_used = set()
+        self._trivia_history = []
+        self._play_again_restart = None
 
     def _ensure_single_game_window(self):
         """Close any open game window so only one game runs at a time."""
+        self._cancel_quick_game()
         window = getattr(self, "_game_window", None)
         if window is not None:
             try:

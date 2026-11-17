@@ -94,6 +94,34 @@ def test_poem_sprite_mode(speech, whisper):
     assert speech._talk_sprite_mode == ("standing" if whisper else "talking")
 
 
+@pytest.mark.parametrize("menu", [True, False])
+def test_menu_cancels_quick_game_but_game_question_keeps_it(speech, menu):
+    from content import dialogue as dlg
+    from kinito.features.games import GamesMixin
+
+    speech._speech_epoch = 0
+    speech._speech_lock = threading.Lock()
+    speech._run_tts = MagicMock(return_value=True)
+    speech._number_guess_target = 42
+    speech._cancel_quick_game = lambda: GamesMixin._cancel_quick_game(speech)
+    speech.speak(dlg.MENU_PROMPT if menu else dlg.NUMBER_GUESS_QUESTION)
+    speech._speech_thread.join(timeout=2)
+
+    assert not speech._speech_thread.is_alive()
+    assert speech._number_guess_target == (None if menu else 42)
+
+
+def test_user_closing_bubble_cancels_quick_game(speech):
+    from kinito.features.games import GamesMixin
+
+    speech._number_guess_target = 42
+    speech._cancel_quick_game = lambda: GamesMixin._cancel_quick_game(speech)
+    speech.close_speech_bubble = MagicMock()
+    speech.user_close_speech_bubble()
+    assert speech._number_guess_target is None
+    speech.close_speech_bubble.assert_called_once()
+
+
 def test_speak_starts_accompaniment_after_interrupt(speech):
     speech._speech_epoch = 0
     speech._speech_lock = threading.Lock()
