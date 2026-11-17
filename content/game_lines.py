@@ -737,7 +737,7 @@ GAME_CLOSED_BY_MOOD: dict[str, list[str]] = {
 }
 
 GAME_PLAY_AGAIN_BY_MOOD: dict[str, list[str]] = {
-    "happy": ["Again again AGAIN?! Yes please!"],
+    "happy": ["Again again AGAIN?!"],
     "bored": ["Another round? It's the only entertainment here."],
     "tired": ["One more...? A slow round...?"],
     "annoyed": ["Again? Fine. But I'm watching you."],
