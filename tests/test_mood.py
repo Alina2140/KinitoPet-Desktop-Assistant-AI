@@ -82,6 +82,7 @@ def test_interrupt_while_talking_grumbles_without_mood_shift(monkeypatch):
     host.talking = False
     host.root.flush()
     assert host.grumbled
+    assert all(line in dlg.INTERRUPT_LINES for line in host.grumbled)
 
 
 def test_menu_navigation_does_not_queue_interrupt_lines(monkeypatch):
@@ -147,6 +148,22 @@ def test_interrupt_while_surfing_counts(monkeypatch):
     host._move_target = None
     host.root.flush()
     assert host.grumbled
+    assert all(line in dlg.SURF_INTERRUPT_LINES for line in host.grumbled)
+
+
+def test_surf_interrupt_keeps_context_through_later_speech(monkeypatch):
+    monkeypatch.setattr(random, "random", lambda: 0.0)
+    host = _InterruptHost()
+    host.moving = True
+    host._is_busy_with_speech = lambda: host.moving or host.talking
+    host.note_user_attention(interrupt=True)
+    host.moving = False
+    host.talking = True
+    host.root.callbacks.pop(0)()
+    host.talking = False
+    host.root.flush()
+    assert host.grumbled
+    assert all(line in dlg.SURF_INTERRUPT_LINES for line in host.grumbled)
 
 
 def test_interrupt_while_throwing_does_not_count(monkeypatch):

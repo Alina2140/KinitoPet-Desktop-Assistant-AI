@@ -352,9 +352,14 @@ class MoodMixin:
             }:
                 return
         if random.random() < self._INTERRUPT_LINE_CHANCE:
-            self._schedule_interrupt_grumble()
+            activity = (
+                "speech"
+                if getattr(self, "talking", False) or getattr(self, "_ai_generating", False)
+                else "surf"
+            )
+            self._schedule_interrupt_grumble(activity=activity)
 
-    def _schedule_interrupt_grumble(self, poll_count: int = 0) -> None:
+    def _schedule_interrupt_grumble(self, poll_count: int = 0, *, activity: str = "speech") -> None:
         """Speak a grumble once Kinito is idle again after being interrupted."""
         busy = getattr(self, "_is_busy_with_speech", None)
         if callable(busy) and not busy():
@@ -362,8 +367,8 @@ class MoodMixin:
             from content.mood_lines import pick_mood_aware_line
 
             line = pick_mood_aware_line(
-                dlg.INTERRUPT_LINES,
-                dlg.INTERRUPT_BY_MOOD,
+                dlg.SURF_INTERRUPT_LINES if activity == "surf" else dlg.INTERRUPT_LINES,
+                dlg.SURF_INTERRUPT_BY_MOOD if activity == "surf" else dlg.INTERRUPT_BY_MOOD,
                 mood=self.get_mood(),
                 intensity=self.get_mood_intensity(),
             )
@@ -378,7 +383,7 @@ class MoodMixin:
             return
         root.after(
             self._INTERRUPT_GRUMBLE_POLL_MS,
-            lambda: self._schedule_interrupt_grumble(poll_count + 1),
+            lambda: self._schedule_interrupt_grumble(poll_count + 1, activity=activity),
         )
 
     def shift_mood(

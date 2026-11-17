@@ -894,6 +894,43 @@ def test_idle_animation_keeps_sleep_frames_priority_while_paused(movement):
     movement.change_sprite.assert_called_once_with("sleep0")
 
 
+def test_hug_start_during_thinking_does_not_restore_thinking_frame(movement):
+    movement.talking = True
+    movement._talk_sprite_mode = "thinking"
+    movement._fancy_mode = False
+    movement.tk_img_thinking = "think_a"
+    movement.tk_img_thinking2 = "think_b"
+    movement.change_sprite = MagicMock()
+
+    def start_hug(_seconds):
+        movement._hug_mode = True
+        movement._talk_sprite_mode = "talking"
+        movement.change_sprite("hug")
+
+    with patch("kinito.movement.time.sleep", side_effect=start_hug):
+        movement._idle_animation_tick()
+
+    assert [call.args[0] for call in movement.change_sprite.call_args_list] == ["think_a", "hug"]
+
+
+def test_new_speech_during_thinking_drops_stale_frame(movement):
+    movement.talking = True
+    movement._speech_epoch = 1
+    movement._talk_sprite_mode = "thinking"
+    movement._fancy_mode = False
+    movement.tk_img_thinking = "think_a"
+    movement.tk_img_thinking2 = "think_b"
+    movement.change_sprite = MagicMock()
+
+    def start_new_speech(_seconds):
+        movement._speech_epoch = 2
+
+    with patch("kinito.movement.time.sleep", side_effect=start_new_speech):
+        movement._idle_animation_tick()
+
+    movement.change_sprite.assert_called_once_with("think_a")
+
+
 def test_creepy_poem_uses_static_standing_sprite(movement):
     movement.talking = True
     movement._talk_sprite_mode = "standing"

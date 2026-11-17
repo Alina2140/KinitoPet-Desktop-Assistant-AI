@@ -2412,19 +2412,18 @@ class MovementMixin:
                     self._dizzy_frame = frame + 1
                     time.sleep(self.DIZZY_SPRITE_SWAP_SECONDS)
                     return
-            if getattr(self, "_ai_generating", False):
-                sprite_a, sprite_b = self._talking_sprite_pair()
-                self.change_sprite(sprite_a)
-                time.sleep(1)
-                if not self._running:
-                    return
-                self.change_sprite(sprite_b)
-                time.sleep(1)
-                return
+            epoch = getattr(self, "_speech_epoch", None)
+            mode = getattr(self, "_talk_sprite_mode", "talking")
             sprite_a, sprite_b = self._talking_sprite_pair()
             self.change_sprite(sprite_a)
             time.sleep(1)
-            if not self._running:
+            if (
+                not self._running
+                or not self.talking
+                or getattr(self, "_hug_mode", False)
+                or epoch != getattr(self, "_speech_epoch", None)
+                or mode != getattr(self, "_talk_sprite_mode", "talking")
+            ):
                 return
             self.change_sprite(sprite_b)
             time.sleep(1)
