@@ -303,6 +303,7 @@ class FloatingAssistant(
         self._browser_category = None
         self._hug_timer = None
         self._bubble_close_timer = None
+        self._bubble_fade_timer = None
         self._speech_epoch = 0
         self._active_bubble_epoch = 0
         self._tts_process = None
@@ -1584,6 +1585,21 @@ class FloatingAssistant(
                 pass
 
         self._submit_audio_task(_stop)
+
+    def fade_speech_accompaniment_music(self, fade_ms):
+        """Fade out poem/fancy background music instead of cutting it off."""
+        if not getattr(self, "_speech_accompaniment_active", False):
+            return
+        self._speech_accompaniment_active = False
+
+        def _fade():
+            try:
+                if pygame.mixer.get_init():
+                    pygame.mixer.music.fadeout(int(fade_ms))
+            except pygame.error:
+                pass
+
+        self._submit_audio_task(_fade)
 
     def _player_sounds_muted(self) -> bool:
         """True when Player Focus is on and the music player window is open."""

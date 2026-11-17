@@ -150,6 +150,7 @@ class SpeechMixin:
     POEM_READ_MS_MIN = 2000
     POEM_READ_MS_MAX = 4000
     POEM_READ_MS_PER_CHAR = 40
+    ACCOMPANIMENT_FADE_MS = 1500
     SPEECH_LOCK_TIMEOUT_S = 2.0
 
     def _has_protected_interactive_state(self) -> bool:
@@ -551,6 +552,12 @@ class SpeechMixin:
             except (tk.TclError, ValueError):
                 pass
             self._bubble_close_timer = None
+        if getattr(self, "_bubble_fade_timer", None) is not None:
+            try:
+                self.root.after_cancel(self._bubble_fade_timer)
+            except (tk.TclError, ValueError):
+                pass
+            self._bubble_fade_timer = None
 
     def _cancel_response_timeout_timer(self):
         """Cancel any scheduled auto-dismiss for an unanswered dialog."""
@@ -585,7 +592,19 @@ class SpeechMixin:
     def _schedule_bubble_close(self, delay_ms):
         """Close the speech bubble after *delay_ms* milliseconds."""
         self._cancel_bubble_close_timer()
+        if getattr(self, "_speech_accompaniment_active", False):
+            fade_start = max(0, delay_ms - self.ACCOMPANIMENT_FADE_MS)
+            self._bubble_fade_timer = self.root.after(
+                fade_start, self._auto_fade_speech_accompaniment
+            )
         self._bubble_close_timer = self.root.after(delay_ms, self._auto_close_speech_bubble)
+
+    def _auto_fade_speech_accompaniment(self):
+        """Timer callback that fades poem music out before the bubble closes."""
+        self._bubble_fade_timer = None
+        fade = getattr(self, "fade_speech_accompaniment_music", None)
+        if callable(fade):
+            fade(self.ACCOMPANIMENT_FADE_MS)
 
     def _auto_close_speech_bubble(self):
         """Timer callback that destroys the speech bubble."""
@@ -1241,7 +1260,8 @@ class SpeechMixin:
                     time.sleep(min(2.5, 0.35 + 0.045 * max(len(text), 1)))
                 if epoch != self._speech_epoch:
                     return
-                if hasattr(self, "stop_speech_accompaniment_music"):
+                # No bubble to wait for — stop poem music with the speech.
+                if not show_bubble and hasattr(self, "stop_speech_accompaniment_music"):
                     self.stop_speech_accompaniment_music()
                 if show_bubble and find_dialog_spec(text) is None:
                     delay = self._bubble_close_delay_after_tts(text, long_read=long_bubble)
@@ -1582,6 +1602,8 @@ class SpeechMixin:
         self._speech_bubble_outer = None
         if stop_tts:
             self._stop_active_tts()
+        if hasattr(self, "fade_speech_accompaniment_music"):
+            self.fade_speech_accompaniment_music(self.ACCOMPANIMENT_FADE_MS)
         if self._has_active_speech_bubble():
             self.speech_bubble.destroy()
             self._play_bubble_sfx(stoptalk_file_path)
