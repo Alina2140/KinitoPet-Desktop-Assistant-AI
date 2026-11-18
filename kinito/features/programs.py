@@ -2,6 +2,7 @@
 
 import os
 import random
+import re
 import time
 import tkinter as tk
 from datetime import datetime
@@ -66,14 +67,56 @@ class ProgramsMixin:
             command=self.open_focus_timer_controls,
         )
 
+    _DURATION_PART_RE = re.compile(
+        r"(\d+)\s*(h|hrs?|hours?|m|mins?|minutes?|s|secs?|seconds?)",
+        re.IGNORECASE,
+    )
+
     @staticmethod
-    def _parse_reminder_minutes(minutes_text: str) -> int | None:
-        """Return whole minutes parsed from *minutes_text*, or None if invalid."""
-        digits = [char for char in minutes_text if char.isdigit()]
+    def _parse_reminder_duration(duration_text: str) -> int | None:
+        """Return seconds parsed from *duration_text*, or None if invalid.
+
+        Accepts ``MM:SS`` / ``H:MM:SS`` clock formats, h/m/s suffixes such
+        as ``1h 30m`` or ``45s``, and a bare number meaning minutes.
+        """
+        text = str(duration_text).strip()
+        if not text:
+            return None
+
+        if ":" in text:
+            parts = text.split(":")
+            if not (2 <= len(parts) <= 3) or not all(
+                part.isdigit() for part in parts
+            ):
+                return None
+            values = [int(part) for part in parts]
+            hours, minutes, seconds = (
+                (0, values[0], values[1]) if len(values) == 2 else tuple(values)
+            )
+            if minutes >= 60 or seconds >= 60:
+                return None
+            total = hours * 3600 + minutes * 60 + seconds
+            return total if total > 0 else None
+
+        matches = ProgramsMixin._DURATION_PART_RE.findall(text)
+        if matches:
+            total = 0
+            for amount, unit in matches:
+                value = int(amount)
+                unit = unit.lower()
+                if unit.startswith("h"):
+                    total += value * 3600
+                elif unit.startswith("s"):
+                    total += value
+                else:
+                    total += value * 60
+            return total if total > 0 else None
+
+        digits = [char for char in text if char.isdigit()]
         if not digits:
             return None
         value = int("".join(digits))
-        return value if value > 0 else None
+        return value * 60 if value > 0 else None
 
     @staticmethod
     def format_reminder_countdown(total_seconds: int) -> str:
@@ -373,11 +416,11 @@ class ProgramsMixin:
             return
         self.speak(dlg.FOCUS_TIMER_MINUTES_PROMPT, 45, True, allow_in_focus=True)
 
-    def set_focus_timer(self, minutes):
-        """Start a focus-mode countdown for the given number of minutes."""
+    def set_focus_timer(self, duration):
+        """Start a focus-mode countdown for the given duration."""
         if not getattr(self, "_focus_mode", False):
             return
-        parsed = self._parse_reminder_minutes(minutes)
+        parsed = self._parse_reminder_duration(duration)
         if parsed is None:
             self.speak(
                 dlg.pick_line(dlg.REMINDER_INVALID_LINES),
@@ -387,7 +430,7 @@ class ProgramsMixin:
             )
             return
 
-        self._start_focus_timer(parsed * 60)
+        self._start_focus_timer(parsed)
         self.speak(
             dlg.pick_line(dlg.FOCUS_TIMER_SET_LINES),
             show_bubble=False,
@@ -395,11 +438,11 @@ class ProgramsMixin:
             skip_ai=True,
         )
 
-    def adjust_focus_timer(self, minutes):
-        """Replace the running focus timer with a new duration in minutes."""
+    def adjust_focus_timer(self, duration):
+        """Replace the running focus timer with a new duration."""
         if not getattr(self, "_focus_mode", False):
             return
-        parsed = self._parse_reminder_minutes(minutes)
+        parsed = self._parse_reminder_duration(duration)
         if parsed is None:
             self.speak(
                 dlg.pick_line(dlg.REMINDER_INVALID_LINES),
@@ -409,7 +452,7 @@ class ProgramsMixin:
             )
             return
 
-        self._start_focus_timer(parsed * 60)
+        self._start_focus_timer(parsed)
         self.speak(
             dlg.pick_line(dlg.FOCUS_TIMER_ADJUSTED_LINES),
             show_bubble=False,
@@ -687,24 +730,24 @@ class ProgramsMixin:
         """Restore normal mouse motion handling."""
         self.root.unbind("<Motion>")
 
-    def set_reminder(self, minutes):
-        """Start a background timer for the given number of minutes."""
-        parsed = self._parse_reminder_minutes(minutes)
+    def set_reminder(self, duration):
+        """Start a background timer for the given duration."""
+        parsed = self._parse_reminder_duration(duration)
         if parsed is None:
             self.speak(dlg.pick_line(dlg.REMINDER_INVALID_LINES), 45, True)
             return
 
-        self._start_reminder(parsed * 60)
+        self._start_reminder(parsed)
         self.speak(dlg.pick_line(dlg.REMINDER_SET_LINES), show_bubble=False)
 
-    def adjust_reminder(self, minutes):
-        """Replace the running reminder with a new duration in minutes."""
-        parsed = self._parse_reminder_minutes(minutes)
+    def adjust_reminder(self, duration):
+        """Replace the running reminder with a new duration."""
+        parsed = self._parse_reminder_duration(duration)
         if parsed is None:
             self.speak(dlg.pick_line(dlg.REMINDER_INVALID_LINES), 45, True)
             return
 
-        self._start_reminder(parsed * 60)
+        self._start_reminder(parsed)
         self.speak(dlg.pick_line(dlg.REMINDER_ADJUSTED_LINES), show_bubble=False)
 
     def _fire_reminder(self):

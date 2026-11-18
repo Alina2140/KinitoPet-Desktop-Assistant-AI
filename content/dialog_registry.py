@@ -895,12 +895,12 @@ def _handle_credits(app, response: str) -> None:
 
 
 def _handle_reminder(app, response: str) -> None:
-    """Parse minutes from the reminder textbox and start the timer."""
+    """Parse the duration from the reminder textbox and start the timer."""
     app.set_reminder(f"{response}")
 
 
 def _handle_reminder_adjust(app, response: str) -> None:
-    """Parse minutes from the adjust dialog and restart the timer."""
+    """Parse the duration from the adjust dialog and restart the timer."""
     app.adjust_reminder(f"{response}")
 
 
@@ -913,12 +913,12 @@ def _handle_reminder_manage(app, response: str) -> None:
 
 
 def _handle_focus_timer(app, response: str) -> None:
-    """Parse minutes from the focus-timer textbox and start the countdown."""
+    """Parse the duration from the focus-timer textbox and start the countdown."""
     app.set_focus_timer(f"{response}")
 
 
 def _handle_focus_timer_adjust(app, response: str) -> None:
-    """Parse minutes from the adjust dialog and restart the focus timer."""
+    """Parse the duration from the adjust dialog and restart the focus timer."""
     app.adjust_focus_timer(f"{response}")
 
 

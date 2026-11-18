@@ -1583,12 +1583,20 @@ FOCUS_TIMER_DONE_LINES = [
 ]
 
 # Interactive prompts
-REMINDER_MINUTES_PROMPT = "How many minutes until I should remind you?"
+REMINDER_MINUTES_PROMPT = (
+    "How long until I should remind you? (minutes, MM:SS, or H:MM:SS)"
+)
 REMINDER_MANAGE_PROMPT = "Your timer is still running. What would you like to do?"
-REMINDER_ADJUST_PROMPT = "How many minutes from now should I remind you?"
-FOCUS_TIMER_MINUTES_PROMPT = "How many minutes should focus mode last?"
+REMINDER_ADJUST_PROMPT = (
+    "How long from now should I remind you? (minutes, MM:SS, or H:MM:SS)"
+)
+FOCUS_TIMER_MINUTES_PROMPT = (
+    "How long should focus mode last? (minutes, MM:SS, or H:MM:SS)"
+)
 FOCUS_TIMER_MANAGE_PROMPT = "Your focus timer is still running. What would you like to do?"
-FOCUS_TIMER_ADJUST_PROMPT = "How many minutes from now should focus mode end?"
+FOCUS_TIMER_ADJUST_PROMPT = (
+    "How long from now should focus mode end? (minutes, MM:SS, or H:MM:SS)"
+)
 
 # Sleep / wake
 PAUSE_LINES = [

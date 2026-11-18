@@ -62,6 +62,63 @@ def test_adjust_reminder_restarts_timer(programs):
     start.assert_called_once_with(10 * 60)
 
 
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("10", 600),
+        ("1:10", 70),
+        ("0:45", 45),
+        ("1:30:00", 5400),
+        ("2:00:00", 7200),
+        ("45s", 45),
+        ("90m", 5400),
+        ("1h 30m", 5400),
+        ("1 hour 15 minutes", 4500),
+        ("about 5 minutes please", 300),
+        ("in 20 seconds", 20),
+    ],
+)
+def test_parse_reminder_duration_accepts_formats(text, expected):
+    assert ProgramsMixin._parse_reminder_duration(text) == expected
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "no digits here",
+        "1:70",
+        "1:2:3:4",
+        "a:b",
+        "0:00",
+        "0",
+        "",
+        "   ",
+    ],
+)
+def test_parse_reminder_duration_rejects_invalid(text):
+    assert ProgramsMixin._parse_reminder_duration(text) is None
+
+
+def test_set_reminder_accepts_clock_duration(programs):
+    with patch.object(programs, "_start_reminder") as start:
+        programs.set_reminder("1:30:00")
+    start.assert_called_once_with(5400)
+
+
+def test_set_reminder_rejects_bad_duration(programs):
+    with patch.object(programs, "_start_reminder") as start:
+        programs.set_reminder("1:70")
+    start.assert_not_called()
+    programs.speak.assert_called_once()
+
+
+def test_set_focus_timer_accepts_clock_duration(programs):
+    programs._focus_mode = True
+    with patch.object(programs, "_start_focus_timer") as start:
+        programs.set_focus_timer("0:25")
+    start.assert_called_once_with(25)
+
+
 def test_launch_shortcut_returns_false_on_error(programs):
     with patch("kinito.features.programs.os.startfile", side_effect=OSError):
         assert programs._launch_shortcut("missing.lnk") is False
