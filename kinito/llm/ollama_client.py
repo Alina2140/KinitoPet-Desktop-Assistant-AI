@@ -144,13 +144,27 @@ class OllamaClient:
             payload = json.dumps(body).encode("utf-8")
 
         request = urllib.request.Request(url, data=payload, headers=headers, method=method)
+        effective_timeout = timeout_s or self.config.timeout_s
         try:
-            with urllib.request.urlopen(request, timeout=timeout_s or self.config.timeout_s) as response:
+            with urllib.request.urlopen(request, timeout=effective_timeout) as response:
                 raw = response.read().decode("utf-8")
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="replace")
             raise OllamaUnavailableError(f"Ollama HTTP {exc.code}: {detail}") from exc
-        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        except TimeoutError as exc:
+            # A slow generation is not "unreachable" — don't poison the
+            # availability cache, and say what actually happened.
+            raise OllamaUnavailableError(
+                f"Ollama did not answer within {effective_timeout}s "
+                "(model still loading or too slow for this device)"
+            ) from exc
+        except (urllib.error.URLError, OSError) as exc:
+            reason = getattr(exc, "reason", exc)
+            if isinstance(reason, (TimeoutError,)):
+                raise OllamaUnavailableError(
+                    f"Ollama did not answer within {effective_timeout}s "
+                    "(model still loading or too slow for this device)"
+                ) from exc
             self._availability.set(False)
             raise OllamaUnavailableError(f"Could not reach Ollama at {self.config.base_url}") from exc
 
