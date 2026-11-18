@@ -1445,6 +1445,22 @@ SFX_CHANNEL_VOLUME_SET_LINES = [
     "{label} volume: {volume}%. Dialed in.",
 ]
 
+AI_MODEL_MARKER = "which ai model should i think with"
+AI_MODEL_QUESTION = (
+    "Which AI model should I think with? Current: {model}. "
+    "Installed models are below — docs/ollama-models.md explains "
+    "how to download more."
+)
+AI_MODEL_SET_LINES = [
+    "Brain swapped to {model}. Fresh thoughts loading.",
+    "Now thinking with {model}. Same me, different gears.",
+    "{model} it is. Mind quietly rearranged.",
+]
+AI_MODEL_UNAVAILABLE_LINES = [
+    "I can't reach Ollama right now, so I can't list models. Is it running?",
+    "Ollama isn't answering — no model list for me. Check that it's started.",
+]
+
 EMOJI_PICKER_ON_LINES = [
     "Emoji button on! Pixel faces in chat. Soft smiles.",
     "Chat emojis enabled. Tap the smile. Express yourself.",
@@ -2327,6 +2343,7 @@ BUTTON_TTS_VOLUME_SOFT = "Soft"
 BUTTON_TTS_VOLUME_NORMAL = "Normal"
 BUTTON_TTS_VOLUME_LOUD = "Loud"
 BUTTON_SFX_VOLUME = "SFX Volume"
+BUTTON_AI_MODEL = "AI Model"
 BUTTON_SFX_ALL = "All Sounds"
 BUTTON_SFX_SURF = "Surf"
 BUTTON_SFX_MAGIC = "Magic"

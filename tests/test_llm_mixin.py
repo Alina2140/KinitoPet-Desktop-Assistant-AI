@@ -740,3 +740,75 @@ def test_speak_preserves_poem_accompaniment_through_ai(mock_speak, llm_app):
     assert mock_speak.call_args.kwargs["speech_accompaniment_path"] == "poem.mp3"
     assert mock_speak.call_args.kwargs["speech_accompaniment_volume"] == 0.75
     assert mock_speak.call_args.kwargs["long_bubble"] is True
+
+
+def test_set_ollama_model_updates_config_client_and_settings(llm_app):
+    llm_app._settings = MagicMock()
+    llm_app.speak = MagicMock()
+
+    llm_app.set_ollama_model(" llama3.2:3b ")
+
+    assert llm_app._llm_config.model == "llama3.2:3b"
+    llm_app._ollama_client.set_model.assert_called_once_with("llama3.2:3b")
+    llm_app._settings.set_ollama_model.assert_called_once_with("llama3.2:3b")
+    spoken = llm_app.speak.call_args.args[0]
+    assert "llama3.2:3b" in spoken
+
+
+def test_set_ollama_model_ignores_empty(llm_app):
+    llm_app.speak = MagicMock()
+    llm_app.set_ollama_model("   ")
+    assert llm_app._llm_config.model != ""
+    llm_app._ollama_client.set_model.assert_not_called()
+    llm_app.speak.assert_not_called()
+
+
+def test_offer_ai_model_picker_shows_installed_models(llm_app):
+    from content import dialogue as dlg
+
+    llm_app._ollama_client.list_models.return_value = ["llama3.1:8b"]
+    llm_app.speak = MagicMock()
+    thread_calls = []
+
+    def fake_thread(target=None, daemon=None):
+        thread_calls.append(target)
+        return MagicMock()
+
+    with patch("kinito.features.llm.threading.Thread", side_effect=fake_thread):
+        llm_app.offer_ai_model_picker()
+    thread_calls[0]()
+
+    assert llm_app._ai_model_choices == ["llama3.1:8b"]
+    spoken = llm_app.speak.call_args.args[0]
+    assert dlg.AI_MODEL_MARKER.lower() in spoken.lower()
+
+
+def test_offer_ai_model_picker_speaks_unavailable_on_error(llm_app):
+    from content import dialogue as dlg
+
+    llm_app._ollama_client.list_models.side_effect = OllamaUnavailableError("down")
+    llm_app.speak = MagicMock()
+    thread_calls = []
+
+    def fake_thread(target=None, daemon=None):
+        thread_calls.append(target)
+        return MagicMock()
+
+    with patch("kinito.features.llm.threading.Thread", side_effect=fake_thread):
+        llm_app.offer_ai_model_picker()
+    thread_calls[0]()
+
+    spoken = llm_app.speak.call_args.args[0]
+    assert spoken in dlg.AI_MODEL_UNAVAILABLE_LINES
+
+
+def test_init_llm_prefers_saved_model(llm_app):
+    llm_app._settings = MagicMock()
+    llm_app._settings.get_ollama_model.return_value = "llama3.2:1b"
+    llm_app._init_memory = MagicMock()
+    llm_app._init_chat_state = MagicMock()
+
+    with patch("kinito.features.llm.threading.Thread"):
+        llm_app._init_llm()
+
+    assert llm_app._llm_config.model == "llama3.2:1b"

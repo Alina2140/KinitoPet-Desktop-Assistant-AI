@@ -249,6 +249,11 @@ MENU_VISIBILITY_SECTIONS: tuple[tuple[str, tuple[MenuEntry, ...]], ...] = (
                 ),
             ),
             (
+                "settings.ai_model",
+                "AI Model",
+                frozenset({dlg.BUTTON_AI_MODEL}),
+            ),
+            (
                 "settings.music_folder",
                 "Music Folder",
                 frozenset({dlg.BUTTON_MUSIC_FOLDER}),

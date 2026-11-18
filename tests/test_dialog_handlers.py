@@ -437,6 +437,35 @@ def test_sfx_volume_menu_question_matches_menu_spec():
     assert spec.marker == dlg.SFX_VOLUME_MENU_MARKER
 
 
+def test_handle_ai_model_picks_model(mock_app):
+    mock_app._ai_model_choices = ["llama3.1:8b", "llama3.2:3b"]
+    question = dlg.AI_MODEL_QUESTION.format(model="llama3.1:8b")
+    spec = find_dialog_spec(question)
+    handle_dialog_response(mock_app, spec, "llama3.2:3b")
+    mock_app.set_ollama_model.assert_called_once_with("llama3.2:3b")
+
+
+def test_handle_ai_model_ignores_unknown_choice(mock_app):
+    mock_app._ai_model_choices = ["llama3.1:8b"]
+    spec = find_dialog_spec(dlg.AI_MODEL_QUESTION.format(model="llama3.1:8b"))
+    handle_dialog_response(mock_app, spec, "not-a-model")
+    mock_app.set_ollama_model.assert_not_called()
+
+
+def test_handle_ai_model_back_opens_settings(mock_app):
+    mock_app._ai_model_choices = []
+    spec = find_dialog_spec(dlg.AI_MODEL_QUESTION.format(model="llama3.1:8b"))
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_BACK)
+    spoken = mock_app.speak.call_args[0][0]
+    assert dlg.SETTINGS_MENU_MARKER.lower() in spoken.lower()
+
+
+def test_handle_settings_ai_model_opens_picker(mock_app):
+    spec = find_dialog_spec(dlg.SETTINGS_MENU_QUESTION)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_AI_MODEL)
+    mock_app.offer_ai_model_picker.assert_called_once()
+
+
 def test_handle_settings_turn_on_off_opens_toggles(mock_app):
     spec = find_dialog_spec(dlg.SETTINGS_MENU_QUESTION)
     handle_dialog_response(mock_app, spec, dlg.BUTTON_TURN_ON_OFF)

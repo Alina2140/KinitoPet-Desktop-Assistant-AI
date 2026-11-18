@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import dataclasses
 import json
 import urllib.error
 import urllib.request
@@ -53,6 +54,29 @@ class OllamaClient:
             return True
         except OllamaError:
             return False
+
+    def list_models(self) -> list[str]:
+        """Return names of locally installed models (``ollama list``)."""
+        data = self._request(
+            "GET",
+            "/api/tags",
+            body=None,
+            timeout_s=min(self._PING_TIMEOUT_S, self.config.timeout_s),
+        )
+        models = data.get("models")
+        if not isinstance(models, list):
+            return []
+        names: list[str] = []
+        for item in models:
+            if isinstance(item, dict) and item.get("name"):
+                names.append(str(item["name"]))
+        return names
+
+    def set_model(self, model: str) -> None:
+        """Point this client at a different chat model."""
+        model = (model or "").strip()
+        if model:
+            self.config = dataclasses.replace(self.config, model=model)
 
     def chat(self, messages: list[dict[str, str]], *, max_tokens: int | None = None) -> str:
         """Send a chat completion request and return the assistant reply text."""

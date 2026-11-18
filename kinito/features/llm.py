@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import random
 import re
 import threading
@@ -28,7 +29,16 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
         self._init_memory()
         self._init_chat_state()
         self._llm_config = LLMConfig.from_env()
+        saved_model = ""
+        settings = getattr(self, "_settings", None)
+        if settings is not None:
+            get_model = getattr(settings, "get_ollama_model", None)
+            if callable(get_model):
+                saved_model = get_model()
+        if saved_model:
+            self._llm_config = dataclasses.replace(self._llm_config, model=saved_model)
         self._ollama_client = OllamaClient(self._llm_config)
+        self._ai_model_choices: list[str] = []
         self._conversation = ConversationHistory(max_messages=self._llm_config.max_history)
         self._memory_extractor = MemoryExtractor(self._ollama_client, self._memory)
         self._memory_question_planner = MemoryQuestionPlanner(self._ollama_client, self._memory)
@@ -44,6 +54,48 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
                 self._ollama_client.warmup()
         except OllamaUnavailableError:
             pass
+
+    def offer_ai_model_picker(self) -> None:
+        """Fetch installed Ollama models, then open the model picker dialog."""
+
+        def worker():
+            try:
+                models = self._ollama_client.list_models()
+            except OllamaUnavailableError:
+                models = None
+            try:
+                self.root.after(0, lambda: self._show_ai_model_picker(models))
+            except (tk.TclError, RuntimeError):
+                pass
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _show_ai_model_picker(self, models) -> None:
+        """Show the model picker bubble (UI thread)."""
+        if models is None:
+            self.speak(dlg.pick_line(dlg.AI_MODEL_UNAVAILABLE_LINES), skip_ai=True)
+            return
+        self._ai_model_choices = list(models)
+        self.speak(
+            dlg.AI_MODEL_QUESTION.format(model=self._llm_config.model),
+            skip_ai=True,
+        )
+
+    def set_ollama_model(self, model: str) -> None:
+        """Switch the Ollama chat model at runtime and persist the choice."""
+        model = (model or "").strip()
+        if not model:
+            return
+        self._llm_config = dataclasses.replace(self._llm_config, model=model)
+        self._ollama_client.set_model(model)
+        settings = getattr(self, "_settings", None)
+        setter = getattr(settings, "set_ollama_model", None)
+        if callable(setter):
+            setter(model)
+        self.speak(
+            dlg.pick_line(dlg.AI_MODEL_SET_LINES).format(model=model),
+            skip_ai=True,
+        )
 
     def _activate_pending_visuals(self) -> None:
         """Start pose-specific visuals once the spoken line is actually ready."""

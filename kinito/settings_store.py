@@ -80,6 +80,7 @@ DEFAULT_SETTINGS = DEFAULT_BOOL_SETTINGS
 HIDDEN_MENU_BUTTONS_KEY = "hidden_menu_buttons"
 MUSIC_FOLDER_KEY = "music_folder"
 SFX_CHANNEL_VOLUMES_KEY = "sfx_channel_volumes"
+OLLAMA_MODEL_KEY = "ollama_model"
 
 
 def clamp_tts_volume(value: int | float) -> int:
@@ -144,6 +145,7 @@ class SettingsStore:
             HIDDEN_MENU_BUTTONS_KEY: [],
             MUSIC_FOLDER_KEY: "",
             SFX_CHANNEL_VOLUMES_KEY: {},
+            OLLAMA_MODEL_KEY: "",
         }
 
     @staticmethod
@@ -221,6 +223,8 @@ class SettingsStore:
             data[HIDDEN_MENU_BUTTONS_KEY] = []
         folder = raw.get(MUSIC_FOLDER_KEY, "")
         data[MUSIC_FOLDER_KEY] = str(folder).strip() if isinstance(folder, str) else ""
+        model = raw.get(OLLAMA_MODEL_KEY, "")
+        data[OLLAMA_MODEL_KEY] = str(model).strip() if isinstance(model, str) else ""
         data[SFX_CHANNEL_VOLUMES_KEY] = self._normalize_sfx_channel_volumes(
             raw.get(SFX_CHANNEL_VOLUMES_KEY, {})
         )
@@ -294,7 +298,7 @@ class SettingsStore:
                     if self._data.get(key) != coerced:
                         self._data[key] = coerced
                         changed = True
-                elif key == MUSIC_FOLDER_KEY:
+                elif key in (MUSIC_FOLDER_KEY, OLLAMA_MODEL_KEY):
                     coerced = str(value).strip() if value is not None else ""
                     if self._data.get(key) != coerced:
                         self._data[key] = coerced
@@ -326,6 +330,14 @@ class SettingsStore:
     def set_music_folder(self, folder: str) -> None:
         """Persist the music playlist folder path."""
         self.update(**{MUSIC_FOLDER_KEY: folder})
+
+    def get_ollama_model(self) -> str:
+        """Return the persisted Ollama chat model ("" = env/default)."""
+        return self.get_str(OLLAMA_MODEL_KEY, "")
+
+    def set_ollama_model(self, model: str) -> None:
+        """Persist the chosen Ollama chat model."""
+        self.update(**{OLLAMA_MODEL_KEY: model})
 
     def get_sfx_channel_volumes(self) -> dict[str, int]:
         """Return per-sound SFX volumes (missing keys mean 100%)."""

@@ -171,6 +171,16 @@ def test_sfx_volume_clamped(store):
     assert store.get_int("sfx_volume") == 0
 
 
+def test_ollama_model_roundtrip(store, settings_dir):
+    assert store.get_ollama_model() == ""
+    store.set_ollama_model("llama3.2:3b")
+    assert store.get_ollama_model() == "llama3.2:3b"
+    reloaded = SettingsStore(directory=settings_dir)
+    assert reloaded.get_ollama_model() == "llama3.2:3b"
+    reloaded.set_ollama_model("  ")
+    assert reloaded.get_ollama_model() == ""
+
+
 def test_sfx_channel_volumes_roundtrip(store, settings_dir):
     assert store.get_sfx_channel_volumes() == {}
     store.set_sfx_channel_volume("surf", 40)

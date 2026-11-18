@@ -85,6 +85,8 @@ def apply_dialog_ui(app, spec: DialogSpec) -> None:
             buttons = settings_toggles_options_for(app)
         elif spec.marker == dlg.SFX_VOLUME_MENU_MARKER:
             buttons = sfx_volume_menu_options_for(app)
+        elif spec.marker == dlg.AI_MODEL_MARKER:
+            buttons = ai_model_options_for(app)
         elif spec.marker == dlg.ACTIONS_MENU_MARKER:
             buttons = actions_options_for(app)
         else:
@@ -183,6 +185,7 @@ def settings_options_for(app) -> list[str]:
             else dlg.BUTTON_BROWSER_KINITO,
             dlg.BUTTON_TTS_VOLUME,
             dlg.BUTTON_SFX_VOLUME,
+            dlg.BUTTON_AI_MODEL,
             dlg.BUTTON_MUSIC_FOLDER,
             dlg.BUTTON_ADJUST_COLORS,
             dlg.BUTTON_TEXT_SIZE,
@@ -220,6 +223,12 @@ def sfx_volume_menu_options_for(app) -> list[str]:
             buttons.append(label)
     buttons.append(dlg.BUTTON_BACK)
     return buttons
+
+
+def ai_model_options_for(app) -> list[str]:
+    """Return installed Ollama models as picker buttons, plus Back."""
+    choices = getattr(app, "_ai_model_choices", ()) or ()
+    return [*choices, dlg.BUTTON_BACK]
 
 
 def settings_toggles_options_for(app) -> list[str]:
@@ -786,6 +795,7 @@ def _menu_action_handlers() -> dict[str, Handler]:
         dlg.BUTTON_MUSIC_COMMENTS_OFF: lambda a: a.toggle_music_comments(),
         dlg.BUTTON_TTS_VOLUME: lambda a: a.offer_tts_volume_picker(),
         dlg.BUTTON_SFX_VOLUME: lambda a: a.offer_sfx_volume_menu(),
+        dlg.BUTTON_AI_MODEL: lambda a: a.offer_ai_model_picker(),
         dlg.BUTTON_MUSIC_FOLDER: lambda a: a.root.after(0, a.choose_music_folder),
         dlg.BUTTON_EMOJI: lambda a: a.toggle_emoji_picker_setting(),
         dlg.BUTTON_EMOJI_ON: lambda a: a.toggle_emoji_picker_setting(),
@@ -1124,6 +1134,16 @@ def _handle_sfx_volume_menu(app, response: str) -> None:
         app.offer_sfx_volume_picker(channel_id=channel_id)
 
 
+def _handle_ai_model(app, response: str) -> None:
+    """Switch Kinito's Ollama chat model from the picker."""
+    if response == dlg.BUTTON_BACK:
+        _open_settings_menu(app)
+        return
+    choices = getattr(app, "_ai_model_choices", ()) or ()
+    if response in choices and hasattr(app, "set_ollama_model"):
+        app.set_ollama_model(response)
+
+
 def _handle_sfx_volume(app, response: str) -> None:
     """Apply a sound-effects volume preset from the Soft/Normal/Loud picker."""
     volume_map = {
@@ -1399,6 +1419,11 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
         dlg.SETTINGS_TOGGLES_MARKER,
         DialogUI("buttons"),
         _handle_settings_toggles_menu,
+    ),
+    DialogSpec(
+        dlg.AI_MODEL_MARKER,
+        DialogUI("buttons"),
+        _handle_ai_model,
     ),
     DialogSpec(
         dlg.SFX_VOLUME_MENU_MARKER,

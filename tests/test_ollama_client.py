@@ -110,6 +110,36 @@ def test_connection_error_raises_unavailable(client):
             client.chat([{"role": "user", "content": "Hi"}])
 
 
+def test_list_models_returns_installed_names(client):
+    payload = {"models": [{"name": "llama3.1:8b"}, {"name": "llama3.2:3b"}]}
+    with patch("urllib.request.urlopen", return_value=_mock_urlopen(payload)):
+        assert client.list_models() == ["llama3.1:8b", "llama3.2:3b"]
+
+
+def test_list_models_handles_odd_payloads(client):
+    with patch("urllib.request.urlopen", return_value=_mock_urlopen({"models": "nope"})):
+        assert client.list_models() == []
+    with patch(
+        "urllib.request.urlopen",
+        return_value=_mock_urlopen({"models": [{"name": "a"}, {}, {"name": 0}]}),
+    ):
+        assert client.list_models() == ["a"]
+
+
+def test_set_model_repoints_client(client):
+    client.set_model("llama3.2:3b")
+    assert client.config.model == "llama3.2:3b"
+    client.set_model("  ")
+    assert client.config.model == "llama3.2:3b"
+
+
+def test_timeout_does_not_poison_availability_cache(client):
+    with patch("urllib.request.urlopen", side_effect=TimeoutError("timed out")):
+        with pytest.raises(OllamaUnavailableError, match="did not answer within"):
+            client.chat([{"role": "user", "content": "Hi"}])
+    assert client._availability.get() is None
+
+
 def test_conversation_history_trim_and_api_payload():
     history = ConversationHistory(max_messages=2)
     history.add_user("one")
