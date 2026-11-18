@@ -1283,6 +1283,11 @@ class MovementMixin:
         if getattr(self, "_chat_mode", False) or getattr(self, "talking", False):
             self._begin_mouse_follow_cooldown()
             return
+        busy = getattr(self, "_is_busy_with_speech", None)
+        if callable(busy) and busy():
+            # A menu/dialog opened during the think delay — don't chase now.
+            self._begin_mouse_follow_cooldown()
+            return
         if getattr(self, "paused", False) or self._is_position_locked_by_user():
             self._mouse_follow_state = "idle"
             return
@@ -1663,6 +1668,11 @@ class MovementMixin:
         try:
             if not self._running or self.paused or self._is_position_locked_by_user():
                 return False
+            # Interaction may have started between scheduling and this worker
+            # acquiring the lock — abort before the surf sound/sprite flashes.
+            busy = getattr(self, "_is_busy_with_speech", None)
+            if callable(busy) and busy():
+                return False
             self._surf_move_token = object()
             self.moving = True
             try:
@@ -1832,6 +1842,20 @@ class MovementMixin:
             and not getattr(self, "_dizzy_mode", False)
         )
 
+    def _reading_sprite_on_screen(self, sprite) -> bool:
+        """Return True when *sprite* is what the panel currently displays.
+
+        The reading-idle flag can outlive the reading visuals when another
+        sprite (talking, thinking, normal) took over — e.g. a menu answer
+        spoken without preserve_sprite. Page-turn sounds must not play then.
+        """
+        if sprite is None:
+            return True
+        try:
+            return str(self.panel.cget("image")) == str(sprite)
+        except (tk.TclError, AttributeError):
+            return True
+
     def _maybe_play_reading_page_turn(self, session: int, *, page_sprites=(), restore_sprite=None) -> bool:
         """Play a page-turn sound/animation during an active, uninterrupted reading idle."""
         if not self._can_play_reading_page_turn(session):
@@ -1839,6 +1863,8 @@ class MovementMixin:
         if random.random() >= self.READING_PAGE_TURN_CHANCE:
             return False
         if not self._can_play_reading_page_turn(session):
+            return False
+        if not self._reading_sprite_on_screen(restore_sprite):
             return False
 
         frames = tuple(page_sprites) if page_sprites else ()

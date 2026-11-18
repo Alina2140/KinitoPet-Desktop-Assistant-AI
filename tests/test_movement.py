@@ -1205,6 +1205,7 @@ def test_maybe_play_reading_page_turn_plays_when_active(movement):
     movement._reading_idle_active = True
     movement._reading_idle_session = 1
     movement._is_reading_idle_active = MagicMock(return_value=True)
+    movement.panel.cget = MagicMock(return_value="idle2")
 
     with (
         patch("kinito.movement.random.random", return_value=0.0),
@@ -1240,6 +1241,28 @@ def test_maybe_play_reading_page_turn_without_page_sprites_still_plays_sound(mov
 
     movement.play_sfx.assert_called_once()
     movement.change_sprite.assert_not_called()
+
+
+def test_maybe_play_reading_page_turn_skips_when_sprite_taken_over(movement):
+    """No page-turn sound while a non-reading sprite is on screen (menu answer)."""
+    movement.play_sfx = MagicMock()
+    movement.change_sprite = MagicMock()
+    movement._reading_idle_active = True
+    movement._reading_idle_session = 1
+    movement._is_reading_idle_active = MagicMock(return_value=True)
+    movement.panel.cget = MagicMock(return_value="talking_sprite")
+
+    with patch("kinito.movement.random.random", return_value=0.0):
+        assert (
+            movement._maybe_play_reading_page_turn(
+                1,
+                page_sprites=("page1",),
+                restore_sprite="idle2",
+            )
+            is False
+        )
+
+    movement.play_sfx.assert_not_called()
 
 
 def test_pick_normal_idle_sprite_prefers_default(movement):
