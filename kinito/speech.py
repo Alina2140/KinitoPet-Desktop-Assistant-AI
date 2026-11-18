@@ -649,7 +649,8 @@ class SpeechMixin:
     def _has_active_speech_bubble(self):
         """Return True if a speech bubble Toplevel exists."""
         try:
-            return hasattr(self, "speech_bubble") and self.speech_bubble.winfo_exists()
+            bubble = getattr(self, "speech_bubble", None)
+            return bubble is not None and bool(bubble.winfo_exists())
         except tk.TclError:
             return False
 
@@ -1354,37 +1355,60 @@ class SpeechMixin:
             self._active_bubble_epoch = speech_epoch
 
         self._play_bubble_sfx(starttalk_file_path)
-        self.speech_bubble = self._new_speech_bubble_toplevel(text)
-        self._speech_bubble_ready = False
-        self._speech_bubble_label = None
-        self._speech_bubble_text_frame = None
-        self._speech_bubble_button_frame = None
-        self._speech_bubble_buttons_content_width = 0
-        self._speech_bubble_entry = None
-        bubble_body = self._create_bubble_shell(self.speech_bubble)
+        try:
+            self.speech_bubble = self._new_speech_bubble_toplevel(text)
+            self._speech_bubble_ready = False
+            self._speech_bubble_label = None
+            self._speech_bubble_text_frame = None
+            self._speech_bubble_button_frame = None
+            self._speech_bubble_buttons_content_width = 0
+            self._speech_bubble_entry = None
+            bubble_body = self._create_bubble_shell(self.speech_bubble)
 
-        text_frame = tk.Frame(bubble_body, bg=self.BUBBLE_BG)
-        text_frame.pack(fill=tk.X, anchor="w")
-        self._speech_bubble_text_frame = text_frame
+            text_frame = tk.Frame(bubble_body, bg=self.BUBBLE_BG)
+            text_frame.pack(fill=tk.X, anchor="w")
+            self._speech_bubble_text_frame = text_frame
 
-        label = self.create_wrapped_label(text_frame, text)
-        label.pack(fill=tk.X, expand=False, ipadx=self.BUBBLE_PAD_X, ipady=self.BUBBLE_PAD_Y, anchor="w")
-        self._speech_bubble_label = label
+            label = self.create_wrapped_label(text_frame, text)
+            label.pack(fill=tk.X, expand=False, ipadx=self.BUBBLE_PAD_X, ipady=self.BUBBLE_PAD_Y, anchor="w")
+            self._speech_bubble_label = label
 
-        spec = find_dialog_spec(text)
-        pending = getattr(self, "_pending_memory_question", None)
-        needs_response = spec is not None
-        if pending is not None and pending.question == text:
-            if pending.ui == "yes_no":
-                self.show_response_buttons([dlg.BUTTON_YES, dlg.BUTTON_NO])
-            else:
-                self.show_response_textbox(pending.question)
-            needs_response = True
-        elif spec:
-            apply_dialog_ui(self, spec)
+            spec = find_dialog_spec(text)
+            pending = getattr(self, "_pending_memory_question", None)
+            needs_response = spec is not None
+            try:
+                if pending is not None and pending.question == text:
+                    if pending.ui == "yes_no":
+                        self.show_response_buttons([dlg.BUTTON_YES, dlg.BUTTON_NO])
+                    else:
+                        self.show_response_textbox(pending.question)
+                    needs_response = True
+                elif spec:
+                    apply_dialog_ui(self, spec)
+            except Exception as exc:
+                # A dialog-UI failure must not strand the bubble invisible
+                # (alpha=0 topmost windows still swallow clicks).
+                print(
+                    f"Warning: dialog UI for speech bubble failed ({exc!r}); "
+                    "showing text-only bubble.",
+                    flush=True,
+                )
+                needs_response = spec is not None
 
-        self._fit_speech_bubble_to_content()
-        self._schedule_speech_bubble_position()
+            self._fit_speech_bubble_to_content()
+            self._schedule_speech_bubble_position()
+        except Exception as exc:
+            # Never leave an invisible topmost window behind: it swallows
+            # clicks. Tear it down so the next line can try again.
+            print(f"Warning: speech bubble creation failed ({exc!r})", flush=True)
+            try:
+                if self._has_active_speech_bubble():
+                    self.speech_bubble.destroy()
+            except tk.TclError:
+                pass
+            self.speech_bubble = None
+            self._speech_bubble_ready = False
+            return
 
         if needs_response:
             self._awaiting_response = True
@@ -1450,7 +1474,7 @@ class SpeechMixin:
         bubble_body = getattr(self, "_speech_bubble_body", None)
         if bubble_body is None or not bubble_body.winfo_exists():
             return
-        if hasattr(self, "speech_bubble") and self.speech_bubble.winfo_exists():
+        if self._has_active_speech_bubble():
             button_frame = tk.Frame(bubble_body, bg=self.BUBBLE_BG)
             button_frame.pack(fill=tk.X, padx=self.BUBBLE_PAD_X, pady=(0, self.BUBBLE_PAD_Y))
             self._speech_bubble_button_frame = button_frame
@@ -1676,11 +1700,14 @@ class SpeechMixin:
         if getattr(self, "_speech_bubble_ready", False):
             self.position_speech_bubble(force=True)
             return
-        if hasattr(self, "_sync_kinito_screen_position"):
-            self._sync_kinito_screen_position()
-        self._fit_speech_bubble_to_content()
         bubble = self.speech_bubble
+        attempts = getattr(bubble, "_reveal_attempts", 0)
+        attempts = attempts + 1 if isinstance(attempts, int) else 1
+        bubble._reveal_attempts = attempts
         try:
+            if hasattr(self, "_sync_kinito_screen_position"):
+                self._sync_kinito_screen_position()
+            self._fit_speech_bubble_to_content()
             self.root.update_idletasks()
             bubble.update_idletasks()
             width, height = self._bubble_screen_size()
@@ -1710,13 +1737,52 @@ class SpeechMixin:
                 pass
             bubble.lift()
         except tk.TclError:
+            # Dead widgets need no retry; transient layout failures do.
             self._speech_bubble_ready = False
+            if self._has_active_speech_bubble():
+                self._retry_speech_bubble_reveal(attempts)
+            return
+        except Exception as exc:
+            self._speech_bubble_ready = False
+            print(
+                f"Warning: speech bubble reveal failed (attempt {attempts}): {exc!r}",
+                flush=True,
+            )
+            self._retry_speech_bubble_reveal(attempts)
             return
         if hasattr(self, "_raise_screen_effect_overlays"):
             self._raise_screen_effect_overlays()
         self._focus_bubble_entry(force=True)
         # Focus (normal chat Entry) may have reordered topmost peers — raise again.
         self._raise_active_speech_bubble()
+
+    BUBBLE_REVEAL_MAX_ATTEMPTS = 6
+    BUBBLE_REVEAL_RETRY_MS = 150
+
+    def _retry_speech_bubble_reveal(self, attempts: int) -> None:
+        """Retry a failed reveal, or tear down the invisible bubble for good."""
+        if attempts < self.BUBBLE_REVEAL_MAX_ATTEMPTS:
+            try:
+                self.root.after(self.BUBBLE_REVEAL_RETRY_MS, self._reveal_speech_bubble)
+                return
+            except (tk.TclError, RuntimeError):
+                pass
+        self._abandon_speech_bubble()
+
+    def _abandon_speech_bubble(self) -> None:
+        """Destroy a bubble that could never be revealed.
+
+        An unrevealed bubble stays at alpha=0 — an invisible topmost window
+        that still swallows clicks. Better to drop it than to keep a ghost.
+        """
+        bubble = getattr(self, "speech_bubble", None)
+        try:
+            if bubble is not None and bubble.winfo_exists():
+                bubble.destroy()
+        except tk.TclError:
+            pass
+        self.speech_bubble = None
+        self._speech_bubble_ready = False
 
     def _schedule_speech_bubble_position(self):
         """Position and reveal the bubble after layout has settled."""
@@ -1737,7 +1803,7 @@ class SpeechMixin:
         refresh_layout: bool = True,
     ):
         """Compute side + geometry for the active speech bubble."""
-        if not hasattr(self, "speech_bubble") or not self.speech_bubble.winfo_exists():
+        if not self._has_active_speech_bubble():
             return
         if not force and not getattr(self, "_speech_bubble_ready", False):
             return
@@ -1859,7 +1925,7 @@ class SpeechMixin:
         """Right-click handler: open or close the action menu speech bubble."""
         if hasattr(self, "note_user_attention"):
             self.note_user_attention(interrupt=True)
-        if hasattr(self, "speech_bubble") and self.speech_bubble.winfo_exists():
+        if self._has_active_speech_bubble():
             title = self.speech_bubble.wm_title() or ""
             menu_titles = (
                 dlg.MENU_PROMPT,

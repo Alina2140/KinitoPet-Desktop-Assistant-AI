@@ -653,6 +653,83 @@ def test_show_speech_bubble_ignores_stale_epoch(speech):
     speech._schedule_speech_bubble_position.assert_not_called()
 
 
+def test_show_speech_bubble_survives_dialog_ui_failure(speech):
+    """A failing dialog-UI hook must not strand the bubble invisible."""
+    speech.root = MagicMock()
+    speech.play_sfx = MagicMock()
+    bubble = MagicMock()
+    speech._new_speech_bubble_toplevel = MagicMock(return_value=bubble)
+    speech._create_bubble_shell = MagicMock(return_value=MagicMock())
+    speech.create_wrapped_label = MagicMock(return_value=MagicMock())
+    speech._fit_speech_bubble_to_content = MagicMock()
+    speech._schedule_speech_bubble_position = MagicMock()
+    speech._pending_memory_question = None
+    spec = MagicMock()
+
+    with (
+        patch("kinito.speech.find_dialog_spec", return_value=spec),
+        patch("kinito.speech.apply_dialog_ui", side_effect=RuntimeError("boom")),
+        patch("kinito.speech.tk.Frame", lambda *a, **k: MagicMock()),
+    ):
+        speech.show_speech_bubble("menu?", evergoaway=False, force=True)
+
+    speech._schedule_speech_bubble_position.assert_called_once()
+    assert speech._awaiting_response is True
+
+
+def test_show_speech_bubble_creation_failure_leaves_no_ghost(speech):
+    """If the Toplevel build fails, no invisible click-swallowing window stays."""
+    speech.root = MagicMock()
+    speech.play_sfx = MagicMock()
+    speech._new_speech_bubble_toplevel = MagicMock(
+        side_effect=RuntimeError("no window")
+    )
+
+    speech.show_speech_bubble("hi", evergoaway=False, force=True)
+
+    assert speech.speech_bubble is None
+    assert speech._speech_bubble_ready is False
+    assert speech._has_active_speech_bubble() is False
+
+
+def test_reveal_retries_on_unexpected_error(speech):
+    speech.root = MagicMock()
+    bubble = MagicMock()
+    bubble.winfo_exists.return_value = True
+    speech.speech_bubble = bubble
+    speech._speech_bubble_ready = False
+    speech._sync_kinito_screen_position = MagicMock(
+        side_effect=ValueError("bad position")
+    )
+
+    speech._reveal_speech_bubble()
+
+    speech.root.after.assert_called_once_with(
+        SpeechMixin.BUBBLE_REVEAL_RETRY_MS, speech._reveal_speech_bubble
+    )
+    bubble.destroy.assert_not_called()
+    assert speech.speech_bubble is bubble
+
+
+def test_reveal_abandons_bubble_after_max_attempts(speech):
+    speech.root = MagicMock()
+    bubble = MagicMock()
+    bubble.winfo_exists.return_value = True
+    bubble._reveal_attempts = SpeechMixin.BUBBLE_REVEAL_MAX_ATTEMPTS - 1
+    speech.speech_bubble = bubble
+    speech._speech_bubble_ready = False
+    speech._sync_kinito_screen_position = MagicMock(
+        side_effect=ValueError("bad position")
+    )
+
+    speech._reveal_speech_bubble()
+
+    speech.root.after.assert_not_called()
+    bubble.destroy.assert_called_once()
+    assert speech.speech_bubble is None
+    assert speech._speech_bubble_ready is False
+
+
 def test_schedule_speech_bubble_position_waits_before_reveal(speech):
     speech.root = MagicMock()
     speech._reveal_speech_bubble = MagicMock()
