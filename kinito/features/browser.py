@@ -6,12 +6,23 @@ import subprocess
 import sys
 import threading
 import time
+import tkinter as tk
 import webbrowser
 
+from PIL import Image, ImageTk
+
 from content import dialogue as dlg
+from content import llm_prompts as prompts
 from content.browser_lines import BROWSER_LINES, CATEGORY_BROWSER_LINES
 from content.site_validator import is_allowed_url, pick_random_site
 from kinito.assets import kinito_pet_url, list_image_files, websites_directory
+from kinito.tk_toplevels import (
+    create_staged_toplevel,
+    pin_assistant_screen_position,
+    reveal_staged_toplevel,
+    schedule_assistant_position_restore,
+)
+from kinito.window_icon import apply_window_icon
 
 
 class BrowserMixin:
@@ -23,6 +34,7 @@ class BrowserMixin:
     BROWSER_MIN_HEIGHT = 360
     WEBSITE_SURPRISE_CHANCE = 0.05
     GENERAL_BROWSER_LINE_CHANCE = 0.3
+    BROWSER_OPEN_DEADLINE_S = 10.0
     CATEGORY_CLOSE_LINES = {
         "animals": dlg.BROWSER_ANIMALS_CLOSE_LINES,
         "knowledge": dlg.BROWSER_KNOWLEDGE_CLOSE_LINES,
@@ -102,7 +114,7 @@ class BrowserMixin:
             site = {"title": "KinitoPET — Official Site", "url": kinito_pet_url}
             threading.Thread(
                 target=self._launch_browser,
-                args=(site["url"], x, y, browse_line),
+                args=(site["url"], x, y, browse_line, category),
                 daemon=True,
             ).start()
             return
@@ -113,14 +125,14 @@ class BrowserMixin:
                 intro = f"{browse_line} I found a page that looks... familiar."
                 threading.Thread(
                     target=self._launch_fake_website,
-                    args=(image_path, x, y, intro),
+                    args=(image_path, x, y, intro, category),
                     daemon=True,
                 ).start()
                 return
 
         threading.Thread(
             target=self._launch_browser,
-            args=(site["url"], x, y, browse_line),
+            args=(site["url"], x, y, browse_line, category),
             daemon=True,
         ).start()
 
@@ -141,9 +153,68 @@ class BrowserMixin:
             return None
         return random.choice(images)
 
-    def _launch_fake_website(self, image_path, x, y, intro):
+    def _run_on_ui(self, fn):
+        """Run *fn* on the Tk main thread (immediately when already there)."""
+        if threading.current_thread() is threading.main_thread():
+            fn()
+            return
+        schedule = getattr(self, "_call_on_ui", None)
+        if callable(schedule):
+            schedule(fn)
+            return
+        try:
+            self.root.after(0, fn)
+        except Exception:
+            pass
+
+    def _speak_browser_intro(self, intro, deadline, category=None):
+        """Speak *intro*, preferring an AI-generated line, bounded by *deadline*.
+
+        The Ollama request runs on a daemon thread so a slow model can never
+        push the browser open past the deadline; on timeout the scripted
+        line is used instead. While generation runs, the thinking sprite is
+        shown on the UI thread.
+        """
+        spoken = intro
+        gen = getattr(self, "generate_line_sync", None)
+        should_replace = getattr(self, "_should_ai_replace", None)
+        will_generate = (
+            callable(gen)
+            and callable(should_replace)
+            and not getattr(self, "_ai_generating", False)
+            and should_replace(intro)
+        )
+        if will_generate:
+            ai_hint = prompts.build_browse_website_prompt(category)
+            show_thinking = getattr(self, "_show_ai_thinking_sprite", None)
+            if callable(show_thinking):
+                self._run_on_ui(show_thinking)
+            done = threading.Event()
+            box = {}
+
+            def gen_worker():
+                try:
+                    box["line"] = gen(intro, ai_hint=ai_hint)
+                finally:
+                    done.set()
+
+            threading.Thread(target=gen_worker, daemon=True).start()
+            done.wait(timeout=max(0.0, deadline - time.monotonic()))
+            spoken = box.get("line") or intro
+            clear_thinking = getattr(self, "_clear_ai_generating", None)
+            if callable(clear_thinking):
+                self._run_on_ui(clear_thinking)
+        self.speak(
+            spoken,
+            show_bubble=True,
+            wait_for_tts=True,
+            max_wait_s=max(0.0, deadline - time.monotonic()),
+        )
+
+    def _launch_fake_website(self, image_path, x, y, intro, category=None):
         """Speak the intro, then show a static website screenshot."""
-        self.speak(intro, show_bubble=True, wait_for_tts=True)
+        deadline = time.monotonic() + self.BROWSER_OPEN_DEADLINE_S
+        self._speak_browser_intro(intro, deadline, category)
         if not self._running:
             return
         self._browser_active = True
@@ -158,16 +229,63 @@ class BrowserMixin:
         ).start()
 
     def _open_fake_website_window(self, image_path, x, y):
-        """Display a website screenshot in a browser-sized popup."""
-        self.show_popup_image(
-            image_path,
-            width=self.BROWSER_WIDTH,
-            height=self.BROWSER_HEIGHT,
-            x=x,
-            y=y,
-            title="Kinito's Window",
-            on_close=self._finish_fake_website,
+        """Display a website screenshot in a scrollable browser-sized window."""
+        try:
+            img = Image.open(image_path)
+        except OSError:
+            self._finish_fake_website()
+            return
+
+        # Fit the screenshot to the window width; scroll handles the height.
+        width = self.BROWSER_WIDTH
+        scale = width / max(img.width, 1)
+        scaled_h = max(1, int(img.height * scale))
+        if img.size != (width, scaled_h):
+            img = img.resize((width, scaled_h), Image.Resampling.LANCZOS)
+
+        pin = getattr(self, "_pin_assistant_screen_position", None)
+        pinned = pin() if callable(pin) else pin_assistant_screen_position(self)
+        popup = create_staged_toplevel(self.root)
+        popup.title("Kinito's Window")
+        apply_window_icon(popup)
+        try:
+            popup.wm_attributes("-toolwindow", True)
+        except tk.TclError:
+            pass
+
+        canvas = tk.Canvas(popup, bd=0, highlightthickness=0, bg="white")
+        canvas.pack(side="left", fill="both", expand=True)
+        if scaled_h > self.BROWSER_HEIGHT:
+            scrollbar = tk.Scrollbar(popup, orient="vertical", command=canvas.yview)
+            scrollbar.pack(side="right", fill="y")
+            canvas.configure(yscrollcommand=scrollbar.set)
+
+        tk_img = ImageTk.PhotoImage(img)
+        canvas.create_image(0, 0, anchor="nw", image=tk_img)
+        canvas.image = tk_img
+        canvas.configure(scrollregion=(0, 0, width, scaled_h))
+
+        def _on_mousewheel(event):
+            canvas.yview_scroll(-1 if event.delta > 0 else 1, "units")
+
+        canvas.bind("<MouseWheel>", _on_mousewheel)
+        canvas.bind("<Button-4>", lambda e: canvas.yview_scroll(-1, "units"))
+        canvas.bind("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))
+
+        def _handle_close():
+            self._finish_fake_website()
+            try:
+                popup.destroy()
+            except tk.TclError:
+                pass
+
+        popup.protocol("WM_DELETE_WINDOW", _handle_close)
+        reveal_staged_toplevel(
+            popup,
+            geometry=f"{width}x{self.BROWSER_HEIGHT}+{int(x)}+{int(y)}",
+            noactivate=True,
         )
+        schedule_assistant_position_restore(self, *pinned)
 
     def _finish_fake_website(self):
         """Mark the fake browser session as closed."""
@@ -185,9 +303,10 @@ class BrowserMixin:
             return
         self.speak(self._browser_close_line(category))
 
-    def _launch_browser(self, url, x, y, intro):
+    def _launch_browser(self, url, x, y, intro, category=None):
         """Speak the intro, then open the URL in pywebview or the default browser."""
-        self.speak(intro, show_bubble=True, wait_for_tts=True)
+        deadline = time.monotonic() + self.BROWSER_OPEN_DEADLINE_S
+        self._speak_browser_intro(intro, deadline, category)
         if not self._running:
             return
         if not getattr(self, "_browser_use_system", True) and self._has_pywebview():

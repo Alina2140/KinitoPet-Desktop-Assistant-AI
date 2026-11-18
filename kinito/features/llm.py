@@ -208,8 +208,13 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
         speech_accompaniment_path=None,
         speech_accompaniment_volume=None,
         volume_scale=1.0,
+        max_wait_s=None,
     ):
-        """Speak *text*, optionally replacing scripted lines with Ollama output."""
+        """Speak *text*, optionally replacing scripted lines with Ollama output.
+
+        When called off the UI thread with ``wait_for_tts``, ``max_wait_s``
+        caps how long the caller blocks for the speech to finish.
+        """
         # Thinking sprite / bubble teardown must run on the Tk main thread.
         if threading.current_thread() is not threading.main_thread():
             schedule = getattr(self, "_call_on_ui", None)
@@ -229,6 +234,7 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
                 speech_accompaniment_path=speech_accompaniment_path,
                 speech_accompaniment_volume=speech_accompaniment_volume,
                 volume_scale=volume_scale,
+                max_wait_s=max_wait_s,
             )
             if wait_for_tts:
                 # Join the speech thread on *this* worker — joining on the UI
@@ -248,10 +254,13 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
                         self.root.after(0, _invoke_speak)
                     except Exception:
                         ui_done.set()
-                ui_done.wait()
+                ui_done.wait(max_wait_s)
                 speech_thread = getattr(self, "_speech_thread", None)
                 if speech_thread is not None:
-                    speech_thread.join()
+                    try:
+                        speech_thread.join(max_wait_s)
+                    except RuntimeError:
+                        pass
                 return
             if callable(schedule):
                 schedule(lambda: self.speak(**kwargs))
@@ -390,7 +399,9 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
             ai_hint,
             include_special_day=bool(getattr(self, "_special_days_enabled", True)),
         )
-        prompt = prompts.append_app_context(prompt, self._prompt_app_snapshot())
+        is_browse = (ai_hint or "").startswith(prompts.BROWSE_WEBSITE_PROMPT_PREFIX)
+        if not is_browse:
+            prompt = prompts.append_app_context(prompt, self._prompt_app_snapshot())
         if hasattr(self, "mood_tone_hint"):
             prompt = prompts.append_mood_context(prompt, self.mood_tone_hint())
         return self._append_memory_context(prompt, scripted_text=scripted_text, ai_hint=ai_hint)
@@ -419,7 +430,9 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
 
     def _generation_system_prompt(self, ai_hint: str | None) -> str:
         """System prompt for short line generation; idle lines omit memory facts."""
-        if ai_hint in prompts.IDLE_GENERATION_HINTS:
+        if ai_hint in prompts.IDLE_GENERATION_HINTS or (ai_hint or "").startswith(
+            prompts.BROWSE_WEBSITE_PROMPT_PREFIX
+        ):
             base = prompts.append_app_context(
                 prompts.SYSTEM_PROMPT, self._prompt_app_snapshot()
             )
@@ -440,6 +453,32 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
         }:
             text = text[1:-1].strip()
         return text
+
+    def generate_line_sync(
+        self, scripted_text: str, *, ai_hint=None, max_tokens=None
+    ) -> str | None:
+        """Return a generated replacement line, or None when unavailable.
+
+        Blocking Ollama call — only invoke this from worker threads, never on
+        the Tk main thread. Does not touch any UI state.
+        """
+        if not self._should_ai_replace(scripted_text):
+            return None
+        try:
+            prompt = self._build_generation_prompt(scripted_text, ai_hint)
+            system = self._generation_system_prompt(ai_hint)
+            line = self._ollama_client.generate(
+                prompt,
+                system=system,
+                max_tokens=max_tokens or self._llm_config.max_tokens_short,
+            )
+            return self._clean_generated_speech(line) or None
+        except Exception as exc:
+            print(
+                f"Warning: AI line generation failed ({type(exc).__name__}: {exc})",
+                flush=True,
+            )
+            return None
 
     def _generate_and_speak(self, scripted_text: str, *, ai_hint=None, max_tokens=None, **speak_kwargs):
         """Generate a line in the background, then speak it or fall back to scripted text."""

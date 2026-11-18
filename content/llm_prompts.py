@@ -332,6 +332,29 @@ GAME_INVITE_HINT = (
     "Do not invent that a game is already in progress, or that the user just won or lost."
 )
 
+_BROWSE_CATEGORY_THEMES = {
+    "animals": "animals",
+    "knowledge": "interesting facts and knowledge",
+    "games": "games and fun",
+    "horror": "horror content",
+}
+
+
+BROWSE_WEBSITE_PROMPT_PREFIX = "You are about to open a website"
+
+
+def build_browse_website_prompt(category: str) -> str:
+    """Prompt for the line Kinito says while opening a website together."""
+    theme = _BROWSE_CATEGORY_THEMES.get(category, category or "interesting")
+    return (
+        f"{BROWSE_WEBSITE_PROMPT_PREFIX} about {theme} for the user. "
+        "Say one short, line inviting them to look at it together. "
+        "Match the mood of the website theme. "
+        "One or two sentences. Spoken style, no markdown. "
+        "Do not mention URLs, browsers, or being an AI."
+    )
+
+
 REPLACEMENT_PROMPT = (
     'You were going to say something like: "{scripted}"\n'
     "Say it in your own words as Kinito instead. {hint} "

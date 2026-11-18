@@ -812,3 +812,49 @@ def test_init_llm_prefers_saved_model(llm_app):
         llm_app._init_llm()
 
     assert llm_app._llm_config.model == "llama3.2:1b"
+
+
+def test_generate_line_sync_returns_cleaned_line(llm_app):
+    llm_app._ollama_client.generate.return_value = 'Kinito: "Off we go!"'
+    assert llm_app.generate_line_sync("scripted line") == "Off we go!"
+    llm_app._ollama_client.generate.assert_called_once()
+
+
+def test_generate_line_sync_none_when_unavailable(llm_app):
+    llm_app._ollama_client.is_available.return_value = False
+    assert llm_app.generate_line_sync("scripted line") is None
+    llm_app._ollama_client.generate.assert_not_called()
+
+
+def test_generate_line_sync_none_on_error(llm_app):
+    llm_app._ollama_client.generate.side_effect = OllamaUnavailableError("down")
+    assert llm_app.generate_line_sync("scripted line") is None
+
+
+def test_browse_prompt_omits_app_snapshot(llm_app):
+    from content import llm_prompts as prompts
+
+    llm_app.get_app_snapshot = MagicMock(return_value="SNAPSHOT_SENTINEL")
+    hint = prompts.build_browse_website_prompt("horror")
+    prompt = llm_app._build_generation_prompt("Check this out.", ai_hint=hint)
+    assert "horror content" in prompt
+    assert "SNAPSHOT_SENTINEL" not in prompt
+
+
+def test_browse_system_prompt_skips_memory(llm_app):
+    from content import llm_prompts as prompts
+
+    hint = prompts.build_browse_website_prompt("animals")
+    llm_app._generation_system_prompt(hint)
+    llm_app.memory_prompt_block.assert_not_called()
+
+
+def test_browse_prompt_covers_known_categories():
+    from content import llm_prompts as prompts
+
+    assert "animals" in prompts.build_browse_website_prompt("animals")
+    assert "games" in prompts.build_browse_website_prompt("games")
+    assert "knowledge" in prompts.build_browse_website_prompt("knowledge")
+    assert "horror" in prompts.build_browse_website_prompt("horror")
+    assert "unknown-cat" in prompts.build_browse_website_prompt("unknown-cat")
+    assert "interesting" in prompts.build_browse_website_prompt("")

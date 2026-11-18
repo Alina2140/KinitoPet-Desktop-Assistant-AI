@@ -1,3 +1,4 @@
+import time
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -179,5 +180,82 @@ def test_launch_browser_skips_when_not_running(browser):
         patch("kinito.features.browser.webbrowser.open") as open_url,
     ):
         browser._launch_browser("https://www.kinitopet.com/", 0, 0, "Hi")
-    browser.speak.assert_called_once_with("Hi", show_bubble=True, wait_for_tts=True)
+    browser.speak.assert_called_once()
+    assert browser.speak.call_args.args[0] == "Hi"
+    assert browser.speak.call_args.kwargs["wait_for_tts"] is True
     open_url.assert_not_called()
+
+
+def _enable_browser_ai(browser):
+    browser._should_ai_replace = MagicMock(return_value=True)
+    browser._ai_generating = False
+    browser._show_ai_thinking_sprite = MagicMock()
+    browser._clear_ai_generating = MagicMock()
+
+
+def test_speak_browser_intro_uses_generated_line(browser):
+    _enable_browser_ai(browser)
+    browser.generate_line_sync = MagicMock(return_value="AI browse line")
+    browser._speak_browser_intro("scripted", time.monotonic() + 5)
+    browser.speak.assert_called_once()
+    assert browser.speak.call_args.args[0] == "AI browse line"
+    assert browser.speak.call_args.kwargs["max_wait_s"] <= 5
+
+
+def test_speak_browser_intro_shows_thinking_sprite_while_generating(browser):
+    _enable_browser_ai(browser)
+    order = []
+    browser._show_ai_thinking_sprite.side_effect = lambda: order.append("think")
+    browser._clear_ai_generating.side_effect = lambda: order.append("clear")
+    browser.speak.side_effect = lambda *a, **k: order.append("speak")
+    browser.generate_line_sync = MagicMock(return_value="AI line")
+    browser._speak_browser_intro("scripted", time.monotonic() + 5)
+    assert order == ["think", "clear", "speak"]
+
+
+def test_speak_browser_intro_skips_generation_when_ai_busy(browser):
+    _enable_browser_ai(browser)
+    browser._ai_generating = True
+    browser.generate_line_sync = MagicMock(return_value="AI line")
+    browser._speak_browser_intro("scripted", time.monotonic() + 5)
+    browser.generate_line_sync.assert_not_called()
+    browser._show_ai_thinking_sprite.assert_not_called()
+    assert browser.speak.call_args.args[0] == "scripted"
+
+
+def test_speak_browser_intro_falls_back_when_generation_is_slow(browser):
+    _enable_browser_ai(browser)
+    browser.generate_line_sync = MagicMock(
+        side_effect=lambda *a, **k: time.sleep(2)
+    )
+    browser._speak_browser_intro("scripted", time.monotonic() + 0.05)
+    assert browser.speak.call_args.args[0] == "scripted"
+    browser._clear_ai_generating.assert_called_once()
+
+
+def test_speak_browser_intro_without_llm_support(browser):
+    browser._speak_browser_intro("scripted", time.monotonic() + 5)
+    assert browser.speak.call_args.args[0] == "scripted"
+
+
+def test_launch_browser_opens_within_deadline(browser):
+    browser.generate_line_sync = MagicMock(return_value="AI line")
+    deadline_margin = 1.0
+    started = time.monotonic()
+    with (
+        patch.object(browser, "_speak_browser_intro") as intro,
+        patch("kinito.features.browser.webbrowser.open", return_value=True) as open_url,
+    ):
+        browser._launch_browser("https://example.com", 10, 20, "hi")
+    intro.assert_called_once()
+    deadline = intro.call_args.args[1]
+    assert deadline - started <= BrowserMixin.BROWSER_OPEN_DEADLINE_S + deadline_margin
+    open_url.assert_called_once_with("https://example.com")
+
+
+def test_speak_browser_intro_passes_category_hint(browser):
+    _enable_browser_ai(browser)
+    browser.generate_line_sync = MagicMock(return_value="AI line")
+    browser._speak_browser_intro("scripted", time.monotonic() + 5, "horror")
+    hint = browser.generate_line_sync.call_args.kwargs["ai_hint"]
+    assert "horror" in hint
