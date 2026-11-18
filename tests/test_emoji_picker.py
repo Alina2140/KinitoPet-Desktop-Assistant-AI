@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import json
+import tkinter as tk
 from pathlib import Path
 from unittest.mock import MagicMock
 
 from PIL import Image
 
+import kinito.features.emoji_picker as emoji_picker_module
 from kinito.assets import emoji_catalog_path, emoji_sheet_path
 from kinito.features.emoji_picker import (
     TK_SAFE_WHITE,
@@ -19,6 +21,7 @@ from kinito.features.emoji_picker import (
     insert_emoji_into_entry,
     load_emoji_catalog,
     normalize_emoji_char,
+    warm_emoji_glyph_cache,
 )
 
 
@@ -154,6 +157,88 @@ def test_catalog_path_constants():
     assert emoji_sheet_path.endswith("emojis.png")
     assert Path(emoji_catalog_path).is_file()
     assert Path(emoji_sheet_path).is_file()
+
+
+def test_warm_emoji_glyph_cache_noop_without_parent():
+    warm_emoji_glyph_cache(None, ("Tahoma", 10), chars="😀")
+    parent = MagicMock()
+    parent.winfo_exists.return_value = False
+    warm_emoji_glyph_cache(parent, ("Tahoma", 10), chars="😀")
+
+
+def test_warm_emoji_glyph_cache_renders_offscreen_and_destroys(monkeypatch):
+    parent = MagicMock()
+    parent.winfo_exists.return_value = True
+    label = MagicMock()
+    created = []
+
+    def fake_label(p, **kwargs):
+        assert p is parent
+        created.append(kwargs)
+        return label
+
+    monkeypatch.setattr(emoji_picker_module.tk, "Label", fake_label)
+    warm_emoji_glyph_cache(parent, [("Tahoma", 10), ("Tahoma", 11)], chars="😀❤")
+
+    assert len(created) == 2
+    assert all(kw["text"] == "😀❤" for kw in created)
+    assert label.place.call_count == 2
+    label.place.assert_called_with(x=-9999, y=-9999)
+    assert label.update_idletasks.call_count == 2
+    assert label.destroy.call_count == 2
+
+
+def test_warm_emoji_glyph_cache_swallows_tcl_errors(monkeypatch):
+    parent = MagicMock()
+    parent.winfo_exists.return_value = True
+
+    def failing_label(*args, **kwargs):
+        raise tk.TclError("dead widget")
+
+    monkeypatch.setattr(emoji_picker_module.tk, "Label", failing_label)
+    warm_emoji_glyph_cache(parent, ("Tahoma", 10), chars="😀")
+
+
+def test_warm_emoji_glyph_cache_uses_catalog_chars(monkeypatch):
+    parent = MagicMock()
+    parent.winfo_exists.return_value = True
+    label = MagicMock()
+    texts = []
+
+    def fake_label(p, **kwargs):
+        texts.append(kwargs["text"])
+        return label
+
+    monkeypatch.setattr(emoji_picker_module.tk, "Label", fake_label)
+    warm_emoji_glyph_cache(parent, ("Tahoma", 10))
+
+    expected = [normalize_emoji_char(e["char"]) for e in load_emoji_catalog()]
+    assert all(ch in texts[0] for ch in expected if ch)
+    assert len(expected) >= 100
+
+
+def test_emoji_font_warmup_runs_once():
+    from kinito.features.emoji_picker import EmojiPickerMixin
+
+    stub = EmojiPickerMixin()
+    stub._init_emoji_picker_state()
+    stub._emoji_dropdown_parent = MagicMock()
+    stub._emoji_dropdown_parent.winfo_exists.return_value = True
+    stub._chat_entry_font = lambda: ("Tahoma", 10)
+    stub._bubble_font = lambda: ("Tahoma", 11)
+
+    calls = []
+
+    original = emoji_picker_module.warm_emoji_glyph_cache
+    emoji_picker_module.warm_emoji_glyph_cache = lambda *a, **k: calls.append((a, k))
+    try:
+        stub._schedule_emoji_font_warmup()
+        stub._schedule_emoji_font_warmup()
+    finally:
+        emoji_picker_module.warm_emoji_glyph_cache = original
+
+    assert len(calls) == 1
+    assert calls[0][0][1] == [("Tahoma", 10), ("Tahoma", 11)]
 
 
 def test_close_chat_mode_closes_emoji_picker():

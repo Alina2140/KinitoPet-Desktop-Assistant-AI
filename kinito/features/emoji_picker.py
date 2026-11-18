@@ -187,6 +187,45 @@ def load_emoji_button_icon(
     return ImageTk.PhotoImage(tile)
 
 
+def warm_emoji_glyph_cache(parent, fonts, chars: str | None = None) -> None:
+    """Render catalog emoji once in an offscreen label to warm Tk font fallback.
+
+    Tk loads the emoji fallback font (Segoe UI Emoji on Windows) lazily on
+    first render, so the first emoji clicked in chat stalls briefly. Rendering
+    every glyph once while idle moves that cost out of the click path.
+    """
+    if parent is None:
+        return
+    try:
+        if not parent.winfo_exists():
+            return
+    except tk.TclError:
+        return
+    if chars is None:
+        seen: set[str] = set()
+        unique: list[str] = []
+        for item in load_emoji_catalog():
+            ch = normalize_emoji_char(item.get("char", ""))
+            if ch and ch not in seen:
+                seen.add(ch)
+                unique.append(ch)
+        chars = "".join(unique) or "😀❤😂👍"
+    if not chars:
+        return
+    if not isinstance(fonts, (list, tuple)):
+        fonts = [fonts]
+    for font in fonts:
+        if font is None:
+            continue
+        try:
+            probe = tk.Label(parent, text=chars, font=font)
+            probe.place(x=-9999, y=-9999)
+            probe.update_idletasks()
+            probe.destroy()
+        except tk.TclError:
+            return
+
+
 def insert_emoji_into_entry(entry: tk.Entry, char: str) -> None:
     """Insert *char* at the Entry cursor."""
     char = normalize_emoji_char(char)
@@ -238,6 +277,22 @@ class EmojiPickerMixin:
         self._emoji_button_photo: ImageTk.PhotoImage | None = None
         self._emoji_dropdown_parent = None
         self._emoji_sheet_cache: Image.Image | None = None
+        self._emoji_fonts_warmed = False
+
+    def _schedule_emoji_font_warmup(self) -> None:
+        """Warm the emoji font fallback once; scheduled via ``after_idle``."""
+        if self._emoji_fonts_warmed:
+            return
+        self._emoji_fonts_warmed = True
+        parent = getattr(self, "_emoji_dropdown_parent", None)
+        fonts = []
+        entry_font = getattr(self, "_chat_entry_font", None)
+        if callable(entry_font):
+            fonts.append(entry_font())
+        bubble_font = getattr(self, "_bubble_font", None)
+        if callable(bubble_font):
+            fonts.append(bubble_font())
+        warm_emoji_glyph_cache(parent, fonts)
 
     def _toggle_emoji_picker(self) -> None:
         """Open or close the emoji dropdown."""
@@ -301,6 +356,7 @@ class EmojiPickerMixin:
         self._refit_bubble_after_picker()
 
     def _open_emoji_picker(self) -> None:
+        self._schedule_emoji_font_warmup()
         entry = getattr(self, "_chat_entry_widget", None)
         parent = getattr(self, "_emoji_dropdown_parent", None)
         if entry is None or parent is None:

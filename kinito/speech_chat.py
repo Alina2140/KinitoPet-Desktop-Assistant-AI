@@ -307,6 +307,7 @@ class SpeechChatMixin(EmojiPickerMixin):
                     )
                 emoji_button.pack(side=tk.LEFT, padx=(5, 0))
                 self._emoji_picker_button = emoji_button
+                entry.after_idle(self._schedule_emoji_font_warmup)
             else:
                 self._emoji_button_photo = None
                 self._emoji_picker_button = None
