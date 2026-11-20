@@ -31,6 +31,22 @@ def programs():
     return stub
 
 
+def test_timer_expiry_preserves_active_chat_and_speech(programs):
+    programs._chat_mode = True
+    programs._chat_generating = True
+    programs.talking = True
+    programs._conversation = MagicMock()
+    programs.append_chat_message = MagicMock()
+    programs.queue_chat_notification = MagicMock()
+    programs._fire_reminder()
+    programs.play_sfx.assert_called_once()
+    programs.append_chat_message.assert_called_once()
+    programs._conversation.add_assistant.assert_called_once()
+    programs.queue_chat_notification.assert_called_once_with(programs.append_chat_message.call_args.args[1])
+    programs.speak.assert_not_called()
+    assert programs._chat_mode and programs._chat_generating and programs.talking
+
+
 def test_set_reminder_invalid_input(programs):
     programs.set_reminder("no digits here")
     programs.speak.assert_called_once()

@@ -56,6 +56,19 @@ def test_chat_uses_long_budget_and_keeps_full_reply(client):
     assert body["options"]["num_predict"] == 1024
 
 
+def test_action_plan_uses_schema_without_changing_chat(client):
+    from kinito.llm.chat_actions import ACTION_PLAN_SCHEMA
+
+    raw = '{"actions": [], "question": ""}'
+    with patch("urllib.request.urlopen", return_value=_mock_urlopen({"message": {"content": raw}})) as urlopen:
+        assert client.plan_chat_actions([{"role": "user", "content": "Hi"}]) == raw
+    body = json.loads(urlopen.call_args.args[0].data)
+    assert body["format"] == ACTION_PLAN_SCHEMA
+    assert body["stream"] is False
+    assert body["options"]["temperature"] == 0
+    assert body["options"]["num_ctx"] == 8192
+
+
 def test_chat_returns_assistant_message(client):
     payload = {"message": {"role": "assistant", "content": "Hello there!"}}
     with patch("urllib.request.urlopen", return_value=_mock_urlopen(payload)):

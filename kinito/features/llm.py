@@ -11,6 +11,7 @@ import tkinter as tk
 from content import dialogue as dlg
 from content import llm_prompts as prompts
 from content.dialog_registry import find_dialog_spec
+from kinito.features.chat_actions import ChatActionsMixin
 from kinito.features.memory import MemoryMixin
 from kinito.llm.config import LLMConfig
 from kinito.llm.conversation import ConversationHistory
@@ -21,7 +22,7 @@ from kinito.speech_chat import SpeechChatMixin
 from kinito.tk_timers import cancel_after, schedule_after
 
 
-class LLMMixin(MemoryMixin, SpeechChatMixin):
+class LLMMixin(ChatActionsMixin, MemoryMixin, SpeechChatMixin):
     """Chat with a local Ollama model and optional AI-generated lines."""
 
     def _init_llm(self) -> None:
@@ -444,11 +445,13 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
     @staticmethod
     def _clean_generated_speech(text: str) -> str:
         text = text.strip()
-        match = re.match(r"^kinito\s*:\s*", text, flags=re.IGNORECASE)
-        if match is None:
-            return text
-        text = text[match.end():].strip()
-        if len(text) >= 2 and (text[0], text[-1]) in {
+        stripped_label = False
+        while match := re.match(
+            r"^(?:kinito|assistant|assistent)\s*(?::\s*|\r?\n\s*|$)", text, flags=re.IGNORECASE
+        ):
+            stripped_label = True
+            text = text[match.end():].strip()
+        if stripped_label and len(text) >= 2 and (text[0], text[-1]) in {
             ('"', '"'), ("'", "'"), ("“", "”"), ("„", "“"), ("‘", "’"), ("«", "»"),
         }:
             text = text[1:-1].strip()
@@ -595,6 +598,9 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
         if not self._ollama_client.is_available():
             self.speak(dlg.CHAT_UNAVAILABLE, skip_ai=True)
             return
+        self._chat_session_id = getattr(self, "_chat_session_id", 0) + 1
+        self._pending_chat_action = None
+        self._chat_action_phase = None
         self._conversation.reset()
         self._pin_chat_user_label()
         self.open_chat_mode_picker()
@@ -625,15 +631,11 @@ class LLMMixin(MemoryMixin, SpeechChatMixin):
             )
         messages = self._conversation.messages_for_api(system)
 
-        def worker():
-            try:
-                reply = self._ollama_client.chat(messages)
-            except OllamaUnavailableError:
-                self.root.after(0, self._on_chat_error)
-                return
-            self.root.after(0, lambda: self._on_chat_response(reply))
-
-        threading.Thread(target=worker, daemon=True).start()
+        self._chat_request_id = getattr(self, "_chat_request_id", 0) + 1
+        token = (getattr(self, "_chat_session_id", 0), self._chat_request_id)
+        self._chat_action_phase = "planning"
+        confirmed = self.confirm_pending_chat_action(text)
+        self.begin_chat_action_request(token, messages, text, self.chat_action_snapshot(text), confirmed)
 
     def _on_chat_response(self, text: str) -> None:
         """Handle a successful Ollama chat reply on the UI thread."""

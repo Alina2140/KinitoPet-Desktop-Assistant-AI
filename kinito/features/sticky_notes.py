@@ -18,6 +18,7 @@ from content import sticky_notes_lines
 from kinito.assets import ensure_user_media_directories, sticky_notes_directory
 from kinito.features.games.base import center_toplevel
 from kinito.memory.store import _write_text_atomic
+from kinito.tk_toplevels import create_staged_toplevel, reveal_staged_toplevel
 
 # Post-it palette: name -> (paper, darker fold/header shade).
 NOTE_COLORS: dict[str, tuple[str, str]] = {
@@ -182,9 +183,9 @@ class StickyNoteWindow:
 
     # -- construction -----------------------------------------------------
 
-    def open(self) -> None:
+    def open(self, *, activate=True) -> None:
         """Create the note window (must run on the UI thread)."""
-        window = Toplevel(self.app.root)
+        window = Toplevel(self.app.root) if activate else create_staged_toplevel(self.app.root)
         self.window = window
         window.overrideredirect(True)
         window.wm_attributes("-topmost", True)
@@ -204,6 +205,8 @@ class StickyNoteWindow:
         window.geometry(f"{_WIN_W}x{height}+{x}+{y}")
         window.protocol("WM_DELETE_WINDOW", self.hide_to_list)
         self.app._register_sticky_note_window(self)
+        if not activate:
+            reveal_staged_toplevel(window, noactivate=True)
 
     def _initial_position(self) -> tuple[int, int]:
         x, y = self.note.get("x"), self.note.get("y")
@@ -816,6 +819,13 @@ class StickyNotesMixin:
             else sticky_notes_lines.STICKY_NOTE_CREATE_BY_MOOD
         )
         self.speak_sticky_note_line(self._pick_sticky_note_line(pool, mood_pool))
+
+    def create_chat_note(self, title: str, text: str) -> None:
+        note = new_note_data()
+        note.update(title=title, text=text)
+        if not save_note(note):
+            raise OSError("The sticky note could not be saved.")
+        StickyNoteWindow(self, note).open(activate=False)
 
     def open_sticky_notes_list(self) -> None:
         """Open the My Notes list, or speak an empty-list line."""

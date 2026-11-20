@@ -11,6 +11,7 @@ from typing import Any
 from kinito.assets import user_media_directory
 from kinito.colors import normalize_hex_color
 from kinito.memory.store import _write_text_atomic
+from kinito.websites import normalize_saved_websites
 
 SETTINGS_VERSION = 1
 SETTINGS_FILENAME = "settings.json"
@@ -146,6 +147,7 @@ class SettingsStore:
             MUSIC_FOLDER_KEY: "",
             SFX_CHANNEL_VOLUMES_KEY: {},
             OLLAMA_MODEL_KEY: "",
+            "saved_websites": [],
         }
 
     @staticmethod
@@ -228,7 +230,23 @@ class SettingsStore:
         data[SFX_CHANNEL_VOLUMES_KEY] = self._normalize_sfx_channel_volumes(
             raw.get(SFX_CHANNEL_VOLUMES_KEY, {})
         )
+        data["saved_websites"] = normalize_saved_websites(raw.get("saved_websites", []), strict=False)
         return data
+
+    def get_saved_websites(self) -> list[dict]:
+        with self._lock:
+            return normalize_saved_websites(self._data.get("saved_websites", []))
+
+    def set_saved_websites(self, websites: list[dict]) -> None:
+        cleaned = normalize_saved_websites(websites)
+        with self._lock:
+            previous = self._data.get("saved_websites", [])
+            self._data["saved_websites"] = cleaned
+            try:
+                self.save()
+            except Exception:
+                self._data["saved_websites"] = previous
+                raise
 
     def get(self, key: str, default: bool | None = None) -> bool:
         """Return a boolean setting, falling back to *default* or built-in default."""

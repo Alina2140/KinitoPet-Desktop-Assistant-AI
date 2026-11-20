@@ -22,6 +22,7 @@ from kinito.tk_toplevels import (
     reveal_staged_toplevel,
     schedule_assistant_position_restore,
 )
+from kinito.websites import find_saved_website, normalize_saved_websites, split_website_aliases
 from kinito.window_icon import apply_window_icon
 
 
@@ -319,6 +320,130 @@ class BrowserMixin:
         if not opened:
             self.speak(dlg.pick_line(dlg.BROWSER_ERROR_LINES))
 
+    def save_named_website(self, name, url, aliases, *, previous_name=""):
+        store = getattr(self, "_settings", None)
+        if store is None:
+            raise ValueError("Website settings are unavailable.")
+        sites = store.get_saved_websites()
+        previous = find_saved_website(previous_name, sites) if previous_name else None
+        if previous_name and previous is None:
+            raise ValueError("That saved website does not exist. Please check its name.")
+        entry = {
+            "name": name or (previous["name"] if previous else ""),
+            "url": url if url is not None else (previous["url"] if previous else ""),
+            "aliases": (previous["aliases"] if previous else []) if aliases is None else (
+                split_website_aliases(aliases) if isinstance(aliases, str) else aliases
+            ),
+        }
+        updated = [entry if site is previous else site for site in sites] if previous else [*sites, entry]
+        cleaned = normalize_saved_websites(updated)
+        store.set_saved_websites(cleaned)
+        refresh = getattr(self, "_refresh_saved_websites", None)
+        if callable(refresh):
+            try:
+                refresh()
+            except tk.TclError:
+                pass
+        return find_saved_website(entry["name"], cleaned)
+
+    def open_saved_website_settings(self):
+        existing = getattr(self, "_saved_websites_window", None)
+        if existing is not None:
+            try:
+                if existing.winfo_exists():
+                    existing.lift()
+                    return existing
+            except tk.TclError:
+                pass
+        window = tk.Toplevel(self.root)
+        self._saved_websites_window = window
+        window.title("Saved Websites")
+        apply_window_icon(window)
+        window.wm_attributes("-topmost", True)
+        window.geometry("560x430")
+        bg = "#e6ded5"
+        window.configure(bg=bg)
+        tk.Label(window, text="Save a name and optional aliases to open websites from chat.", wraplength=520, bg=bg).pack(pady=8)
+        listing = tk.Listbox(window, exportselection=False, height=7)
+        listing.pack(fill="both", expand=True, padx=12)
+        fields = {}
+        for key, title in (("name", "Name"), ("url", "URL"), ("aliases", "Aliases (comma-separated)")):
+            row = tk.Frame(window, bg=bg)
+            row.pack(fill="x", padx=12, pady=3)
+            tk.Label(row, text=title, width=23, anchor="w", bg=bg).pack(side="left")
+            fields[key] = tk.StringVar(window)
+            tk.Entry(row, textvariable=fields[key]).pack(side="left", fill="x", expand=True)
+        status = tk.Label(window, text="", wraplength=520, anchor="w", bg=bg)
+        status.pack(fill="x", padx=12)
+        editing = ""
+        entries = []
+
+        def refresh():
+            nonlocal entries
+            if not window.winfo_exists():
+                return
+            entries = self._settings.get_saved_websites()
+            listing.delete(0, tk.END)
+            for site in entries:
+                listing.insert(tk.END, site["name"] + (" — " + ", ".join(site["aliases"]) if site["aliases"] else ""))
+
+        def select(_event=None):
+            nonlocal editing
+            selected = listing.curselection()
+            if not selected:
+                return
+            site = entries[selected[0]]
+            editing = site["name"]
+            for key in fields:
+                fields[key].set(", ".join(site[key]) if key == "aliases" else site[key])
+            status.configure(text="Editing " + editing, fg="black")
+
+        def new():
+            nonlocal editing
+            editing = ""
+            listing.selection_clear(0, tk.END)
+            for value in fields.values():
+                value.set("")
+            status.configure(text="New website", fg="black")
+
+        def save():
+            nonlocal editing
+            try:
+                entry = self.save_named_website(
+                    fields["name"].get(), fields["url"].get(), fields["aliases"].get(), previous_name=editing
+                )
+            except (ValueError, OSError) as exc:
+                status.configure(text=str(exc), fg="#b91c1c")
+                return
+            editing = entry["name"]
+            status.configure(text="Saved " + editing, fg="#166534")
+
+        buttons = tk.Frame(window, bg=bg)
+        buttons.pack(pady=8)
+        tk.Button(buttons, text="New", command=new).pack(side="left", padx=6)
+        tk.Button(buttons, text="Save", command=save).pack(side="left", padx=6)
+        tk.Button(buttons, text="Close", command=window.destroy).pack(side="left", padx=6)
+        listing.bind("<<ListboxSelect>>", select)
+        self._refresh_saved_websites = refresh
+        refresh()
+        return window
+
+    def open_chat_website(self, url, force_system, position):
+        if not force_system and not is_allowed_url(url):
+            raise ValueError("This address is not approved for the embedded browser.")
+        if force_system or getattr(self, "_browser_use_system", True) or not self._has_pywebview():
+            try:
+                opened = webbrowser.open(url)
+            except webbrowser.Error as exc:
+                raise OSError("The system browser could not be started.") from exc
+            if not opened:
+                raise OSError("The system browser did not accept the address.")
+            return f"Address sent to the system browser: {url}"
+        if getattr(self, "_browser_active", False):
+            raise ValueError("Kinito's browser is already open. Please close it first.")
+        self._start_browser_process(url, *position, silent=True)
+        return f"Kinito's browser launch requested for: {url}"
+
     def toggle_browser_mode(self):
         self._browser_use_system = not getattr(self, "_browser_use_system", True)
         if hasattr(self, "_persist_settings"):
@@ -330,7 +455,7 @@ class BrowserMixin:
             skip_ai=True,
         )
 
-    def _start_browser_process(self, url, x, y):
+    def _start_browser_process(self, url, x, y, *, silent=False):
         """Spawn a child process running browser_process with the target URL."""
         try:
             process = subprocess.Popen(
@@ -350,6 +475,8 @@ class BrowserMixin:
         except OSError:
             self._browser_active = False
             self._browser_process = None
+            if silent:
+                raise
             self.speak(dlg.pick_line(dlg.BROWSER_ERROR_LINES))
             return
 
@@ -357,11 +484,11 @@ class BrowserMixin:
         self._browser_active = True
         threading.Thread(
             target=self._wait_for_browser_process,
-            args=(self._browser_category,),
+            args=(getattr(self, "_browser_category", None), silent),
             daemon=True,
         ).start()
 
-    def _wait_for_browser_process(self, category):
+    def _wait_for_browser_process(self, category, silent=False):
         """Wait for the browser subprocess and speak a closing line."""
         process = self._browser_process
         if process is None:
@@ -372,7 +499,7 @@ class BrowserMixin:
         self._browser_active = False
         self._browser_process = None
 
-        if not self._running:
+        if silent or not self._running or getattr(self, "_chat_mode", False):
             return
 
         if exit_code != 0:

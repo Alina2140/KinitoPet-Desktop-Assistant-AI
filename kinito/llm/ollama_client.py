@@ -94,6 +94,22 @@ class OllamaClient:
             raise OllamaUnavailableError("Ollama returned an empty chat response.")
         return content
 
+    def plan_chat_actions(self, messages: list[dict[str, str]]) -> str:
+        from kinito.llm.chat_actions import ACTION_PLAN_SCHEMA
+
+        data = self._request("POST", "/api/chat", body={
+            "model": self.config.model,
+            "messages": messages,
+            "format": ACTION_PLAN_SCHEMA,
+            "stream": False,
+            "keep_alive": self.config.keep_alive,
+            "options": {"num_predict": 1024, "num_ctx": 8192, "temperature": 0},
+        })
+        content = self._extract_message_content(data)
+        if not content:
+            raise OllamaUnavailableError("Ollama returned an empty action plan.")
+        return content
+
     def chat_with_image(
         self,
         prompt: str,

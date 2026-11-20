@@ -32,6 +32,7 @@ from kinito.assets import (
 )
 from kinito.settings_store import clamp_music_volume
 from kinito.tk_timers import cancel_after, schedule_after
+from kinito.tk_toplevels import create_staged_toplevel, reveal_staged_toplevel
 from kinito.window_icon import apply_window_icon
 
 
@@ -167,7 +168,7 @@ class MusicMixin:
 
     def _silence_for_player_focus(self) -> None:
         """Stop talking when Player Focus applies to the open player."""
-        if not self._player_focus_active():
+        if not self._player_focus_active() or getattr(self, "_chat_mode", False):
             return
         interrupt = getattr(self, "interrupt_speech", None)
         if callable(interrupt):
@@ -203,7 +204,7 @@ class MusicMixin:
 
     def _music_comments_may_speak(self) -> bool:
         """Shared gates for song comments and pause-continue prompts."""
-        if not getattr(self, "_music_comments_enabled", True):
+        if getattr(self, "_chat_mode", False) or not getattr(self, "_music_comments_enabled", True):
             return False
         if not self._is_music_player_open() or self._is_music_player_minimized():
             return False
@@ -320,6 +321,72 @@ class MusicMixin:
         self._show_music_player_window()
         if not self._user_music_is_active() and not self._music_paused:
             self._play_playlist_index(self._music_index, announce=True)
+
+    def control_music_from_chat(self, action: dict) -> str:
+        name = action["name"]
+        if name == "music_volume":
+            self.set_music_volume(action["volume"])
+            return f"Music volume set to {action['volume']}%."
+        if name == "music_shuffle":
+            if bool(getattr(self, "_music_shuffle", False)) != action["enabled"]:
+                self.toggle_music_shuffle()
+            return f"Shuffle set to {action['enabled']}."
+        if name == "music_repeat":
+            self._music_repeat_mode = action["mode"]
+            self._refresh_music_player_ui()
+            return f"Repeat mode set to {action['mode']}."
+        if name == "music_stop":
+            if getattr(self, "_user_music_path", None):
+                self.stop_background_music()
+            return "Music stopped."
+        if name == "music_pause":
+            if not getattr(self, "_user_music_path", None):
+                return "No song is currently loaded."
+            if self._music_paused:
+                return "Music is already paused."
+            self._pause_user_music()
+            return "Music paused."
+        if not self._ensure_music_folder(prompt=False):
+            raise ValueError("Please configure a music folder in Settings first.")
+        if not self._reload_music_playlist():
+            raise ValueError("No MP3 songs were found in the configured music folder.")
+        index = self._music_index
+        if name == "music_track":
+            title = action["title"].strip().casefold()
+            if any(char in title for char in ("/", "\\", ":")):
+                raise ValueError("Please give a song title, not a file path.")
+            titles = [os.path.splitext(os.path.basename(path))[0].casefold()
+                      for path in self._music_playlist]
+            matches = [i for i, song in enumerate(titles) if song == title or song + ".mp3" == title]
+            if not matches:
+                matches = [i for i, song in enumerate(titles) if title in song]
+            if not matches:
+                raise ValueError("No matching song was found in the local music folder.")
+            if len(matches) > 1:
+                choices = [os.path.basename(self._music_playlist[i]) for i in matches[:10]]
+                raise ValueError("Which song do you mean? " + ", ".join(choices))
+            index = matches[0]
+        elif name == "music_next":
+            index = self._resolve_next_track_index(wrap=True)
+        elif name == "music_previous":
+            index = self._resolve_previous_track_index()
+        elif name not in {"music_open", "music_play"}:
+            raise ValueError("Unsupported music action.")
+        prefix = "Music player opened. " if name == "music_open" else ""
+        if name == "music_open":
+            self._show_music_player_window(activate=False)
+        if name in {"music_open", "music_play"}:
+            if self._music_paused:
+                self._unpause_user_music()
+                return prefix + "Requested music resume."
+            if self._user_music_is_active():
+                return prefix + "Music is already playing."
+        if index is None:
+            raise ValueError("No track is available.")
+        path = self._music_playlist[index]
+        self._music_index = index
+        self.play_user_mp3(path, announce=False, quiet_errors=True)
+        return prefix + f"Requested playback of {os.path.splitext(os.path.basename(path))[0]}."
 
     def choose_music_folder(self):
         """Let the user pick a new playlist folder (Settings or first open)."""
@@ -1127,15 +1194,19 @@ class MusicMixin:
         self._music_index = index
         self.play_user_mp3(playlist[index], announce=announce)
 
-    def play_user_mp3(self, file_path, *, announce: bool = True):
+    def play_user_mp3(self, file_path, *, announce: bool = True, quiet_errors: bool = False):
         """Validate and play an MP3, then optionally announce the song name."""
         if not file_path.lower().endswith(".mp3") or not os.path.isfile(file_path):
+            if quiet_errors:
+                raise ValueError("The selected MP3 file is no longer available.")
             self.speak(dlg.pick_line(dlg.MUSIC_PLAYER_ERROR_LINES))
             return
 
         try:
             self.play_mp3(file_path, volume=self._music_volume_fraction())
-        except (OSError, pygame.error):
+        except (OSError, pygame.error) as exc:
+            if quiet_errors:
+                raise ValueError("The selected song could not be played.") from exc
             self.speak(dlg.pick_line(dlg.MUSIC_PLAYER_ERROR_LINES))
             return
 
@@ -1499,7 +1570,7 @@ class MusicMixin:
         self._music_player_photos = photos
         return photos
 
-    def _show_music_player_window(self):
+    def _show_music_player_window(self, *, activate=True):
         """Create or raise the music player popup."""
         existing = getattr(self, "_music_player_window", None)
         if existing is not None:
@@ -1508,7 +1579,8 @@ class MusicMixin:
                     if str(existing.state()) == "withdrawn":
                         existing.deiconify()
                     existing.lift()
-                    existing.focus_force()
+                    if activate:
+                        existing.focus_force()
                     self._refresh_music_player_ui()
                     self._schedule_music_progress_tick()
                     self._schedule_music_comment_tick()
@@ -1517,7 +1589,7 @@ class MusicMixin:
             except tk.TclError:
                 self._music_player_window = None
 
-        window = tk.Toplevel(self.root)
+        window = tk.Toplevel(self.root) if activate else create_staged_toplevel(self.root)
         self._music_player_window = window
         window.title("Kinito's Musik Player")
         apply_window_icon(window)
@@ -1777,6 +1849,8 @@ class MusicMixin:
 
         self._music_player_widgets = widgets
         window.protocol("WM_DELETE_WINDOW", self._close_music_player_window)
+        if not activate:
+            reveal_staged_toplevel(window, noactivate=True)
         self._refresh_music_player_ui()
         self._schedule_music_progress_tick()
         self._schedule_music_comment_tick()

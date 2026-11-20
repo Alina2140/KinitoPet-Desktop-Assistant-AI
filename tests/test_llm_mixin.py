@@ -43,6 +43,7 @@ def llm_app():
     app._ollama_client = MagicMock()
     app._ollama_client.is_available.return_value = True
     app._ollama_client.chat.return_value = "Hello friend!"
+    app._ollama_client.plan_chat_actions.return_value = '{"actions": [], "question": ""}'
     app._ollama_client.generate.return_value = "Just checking in on you."
     app._init_chat_state()
     app._memory = MagicMock()
@@ -85,6 +86,12 @@ def llm_app():
         ("I am Kinito: your desktop friend.", "I am Kinito: your desktop friend."),
         ("Kinito is here!", "Kinito is here!"),
         ("Kinito:", ""),
+        ("assistant\n\nThe music is resumed.", "The music is resumed."),
+        ("Assistant: Hello!", "Hello!"),
+        ("assistent\nHallo!", "Hallo!"),
+        ('Kinito: assistant\n\n"Hello!"', "Hello!"),
+        ("assistant", ""),
+        ("An assistant can help.", "An assistant can help."),
     ],
 )
 def test_clean_generated_speech(raw, expected):
@@ -171,6 +178,7 @@ def test_send_chat_message_calls_ollama_and_updates_ui(llm_app):
         thread_cls.assert_called_once()
         worker = thread_cls.call_args.kwargs["target"]
         worker()
+        thread_cls.call_args.kwargs["target"]()
 
     llm_app._conversation.add_user.assert_called_once_with("Hello")
     llm_app.append_chat_message.assert_called()
@@ -209,6 +217,7 @@ def test_send_chat_message_error_shows_fallback(llm_app):
     with patch("kinito.features.llm.threading.Thread") as thread_cls:
         thread_cls.return_value = MagicMock()
         llm_app.send_chat_message("Hello")
+        thread_cls.call_args.kwargs["target"]()
         thread_cls.call_args.kwargs["target"]()
 
     llm_app.speak_chat_response.assert_called_once()

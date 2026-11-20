@@ -34,6 +34,29 @@ def _patch_notes_dir(monkeypatch, tmp_path):
     return notes
 
 
+def test_chat_note_is_saved_with_content_without_speech(tmp_path, monkeypatch):
+    _patch_notes_dir(monkeypatch, tmp_path)
+    app = MagicMock()
+    with patch("kinito.features.sticky_notes.StickyNoteWindow") as window:
+        StickyNotesMixin.create_chat_note(app, "Shopping", "Milk\nBread")
+    notes = load_notes()
+    assert len(notes) == 1
+    assert notes[0]["title"] == "Shopping"
+    assert notes[0]["text"] == "Milk\nBread"
+    window.return_value.open.assert_called_once_with(activate=False)
+    app.speak.assert_not_called()
+
+
+def test_chat_note_save_failure_does_not_open_window():
+    with (
+        patch("kinito.features.sticky_notes.save_note", return_value=False),
+        patch("kinito.features.sticky_notes.StickyNoteWindow") as window,
+        pytest.raises(OSError),
+    ):
+        StickyNotesMixin.create_chat_note(MagicMock(), "Title", "Text")
+    window.assert_not_called()
+
+
 def test_sticky_notes_picker_dialog_registered():
     spec = find_dialog_spec(dlg.STICKY_NOTES_PICKER_QUESTION)
     assert spec is not None

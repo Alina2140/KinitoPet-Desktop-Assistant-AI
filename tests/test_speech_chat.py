@@ -55,6 +55,34 @@ def chat_app():
     return stub
 
 
+@pytest.mark.parametrize("busy", ["talking", "generating", "idle"])
+def test_timer_notification_is_spoken_when_chat_is_idle(chat_app, busy):
+    chat_app._chat_mode = True
+    chat_app.talking = busy == "talking"
+    chat_app._chat_generating = busy == "generating"
+    chat_app.speak_chat_response = MagicMock()
+    chat_app.queue_chat_notification("Timer finished!")
+    if busy != "idle":
+        chat_app.speak_chat_response.assert_not_called()
+        callback = chat_app.root.after.call_args.args[1]
+        chat_app.talking = False
+        chat_app._chat_generating = False
+        callback()
+    chat_app.speak_chat_response.assert_called_once_with("Timer finished!")
+
+
+def test_timer_notification_does_not_cross_chat_sessions(chat_app):
+    chat_app._chat_mode = True
+    chat_app.talking = True
+    chat_app.speak_chat_response = MagicMock()
+    chat_app.queue_chat_notification("Timer finished!")
+    callback = chat_app.root.after.call_args.args[1]
+    chat_app._chat_session_id += 1
+    chat_app.talking = False
+    callback()
+    chat_app.speak_chat_response.assert_not_called()
+
+
 def test_init_chat_state_defaults(chat_app):
     assert chat_app._chat_mode is False
     assert chat_app._chat_generating is False

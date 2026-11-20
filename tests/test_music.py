@@ -28,6 +28,83 @@ def music():
     return stub
 
 
+def test_chat_music_missing_folder_never_prompts(music):
+    with patch("kinito.features.music.filedialog.askdirectory") as picker:
+        with pytest.raises(ValueError, match="Settings"):
+            music.control_music_from_chat({"name": "music_open"})
+    picker.assert_not_called()
+    music.speak.assert_not_called()
+
+
+def test_chat_music_title_is_resolved_locally(music, tmp_path):
+    for title in ("First.mp3", "Second.mp3"):
+        (tmp_path / title).write_bytes(b"x")
+    music._music_folder = str(tmp_path)
+    music.control_music_from_chat({"name": "music_track", "title": "Second"})
+    assert music.play_mp3.call_args.args[0].endswith("Second.mp3")
+    music.play_mp3.assert_called_once()
+    music.speak.assert_not_called()
+
+
+def test_chat_music_ambiguous_song_never_plays(music, tmp_path):
+    for title in ("Hello.mp3", "Hello Again.mp3"):
+        (tmp_path / title).write_bytes(b"x")
+    music._music_folder = str(tmp_path)
+    with pytest.raises(ValueError, match="Which song"):
+        music.control_music_from_chat({"name": "music_track", "title": "Hell"})
+    music.play_mp3.assert_not_called()
+    music.speak.assert_not_called()
+
+
+def test_chat_music_open_starts_playback(music, tmp_path):
+    (tmp_path / "song.mp3").write_bytes(b"x")
+    music._music_folder = str(tmp_path)
+    with patch.object(music, "_show_music_player_window") as show:
+        music.control_music_from_chat({"name": "music_open"})
+    show.assert_called_once_with(activate=False)
+    music.play_mp3.assert_called_once_with(str(tmp_path / "song.mp3"), volume=0.75)
+    music.speak.assert_not_called()
+
+
+@pytest.mark.parametrize("paused", [False, True])
+def test_chat_music_open_keeps_current_song(music, tmp_path, paused):
+    path = str(tmp_path / "song.mp3")
+    (tmp_path / "song.mp3").write_bytes(b"x")
+    music._music_folder = str(tmp_path)
+    music._user_music_path = path
+    music._music_paused = paused
+    with (
+        patch.object(music, "_show_music_player_window"),
+        patch.object(music, "_unpause_user_music") as resume,
+    ):
+        music.control_music_from_chat({"name": "music_open"})
+    assert resume.call_count == int(paused)
+    music.play_mp3.assert_not_called()
+
+
+def test_chat_music_pause_does_not_toggle_back(music):
+    music._user_music_path = "song.mp3"
+    music._music_paused = True
+    with patch.object(music, "_pause_user_music") as pause:
+        music.control_music_from_chat({"name": "music_pause"})
+    pause.assert_not_called()
+
+
+def test_chat_music_error_is_silent(music):
+    with pytest.raises(ValueError):
+        music.play_user_mp3("missing.mp3", announce=False, quiet_errors=True)
+    music.speak.assert_not_called()
+
+
+def test_chat_disables_music_comment_and_focus_interrupt(music):
+    music._chat_mode = True
+    music.interrupt_speech = MagicMock()
+    with patch.object(music, "_player_focus_active", return_value=True):
+        music._silence_for_player_focus()
+    music.interrupt_speech.assert_not_called()
+    assert not music._music_comments_may_speak()
+
+
 def test_list_folder_mp3s_non_recursive(tmp_path):
     (tmp_path / "song1.mp3").write_bytes(b"x")
     (tmp_path / "song2.MP3").write_bytes(b"x")

@@ -27,6 +27,41 @@ def browser():
     return stub
 
 
+def test_chat_foreign_url_uses_system_browser_without_speech(browser):
+    browser._browser_use_system = False
+    with patch("kinito.features.browser.webbrowser.open", return_value=True) as open_url:
+        result = browser.open_chat_website("https://example.org", True, (0, 0))
+    assert "https://example.org" in result
+    open_url.assert_called_once_with("https://example.org")
+    browser.speak.assert_not_called()
+
+
+def test_chat_approved_site_respects_browser_preference(browser):
+    browser._browser_use_system = False
+    url = ALLOWED_SITES["animals"][0]["url"]
+    with (
+        patch.object(browser, "_has_pywebview", return_value=True),
+        patch.object(browser, "_start_browser_process") as start,
+    ):
+        browser.open_chat_website(url, False, (100, 200))
+    start.assert_called_once_with(url, 100, 200, silent=True)
+    browser.speak.assert_not_called()
+
+
+def test_chat_browser_reports_failure_without_speech(browser):
+    with (
+        patch("kinito.features.browser.webbrowser.open", return_value=False),
+        pytest.raises(OSError),
+    ):
+        browser.open_chat_website("https://example.org", True, (0, 0))
+    browser.speak.assert_not_called()
+
+
+def test_chat_browser_never_expands_embedded_allowlist(browser):
+    with pytest.raises(ValueError):
+        browser.open_chat_website("https://example.org", False, (0, 0))
+
+
 def test_open_allowed_site_rejects_invalid_category_site(browser):
     with patch(
         "kinito.features.browser.pick_random_site",

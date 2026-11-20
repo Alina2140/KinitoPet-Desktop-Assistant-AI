@@ -68,6 +68,11 @@ MENU_VISIBILITY_SECTIONS: tuple[tuple[str, tuple[MenuEntry, ...]], ...] = (
                 frozenset({dlg.BUTTON_BROWSER_SYSTEM, dlg.BUTTON_BROWSER_KINITO}),
             ),
             (
+                "settings.saved_websites",
+                "Saved Websites",
+                frozenset({dlg.BUTTON_SAVED_WEBSITES}),
+            ),
+            (
                 "settings.turn_on_off",
                 "Turn on/off",
                 frozenset({dlg.BUTTON_TURN_ON_OFF}),

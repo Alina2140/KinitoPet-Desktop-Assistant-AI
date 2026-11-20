@@ -12,6 +12,7 @@ import pyautogui
 from PIL import Image, ImageTk
 
 from content import dialogue as dlg
+from content import llm_prompts as prompts
 from kinito.assets import secret_images_directory, timer_file_path
 from kinito.tk_timers import cancel_after, schedule_after
 from kinito.tk_toplevels import (
@@ -755,7 +756,13 @@ class ProgramsMixin:
         if not self._running:
             return
         self.play_sfx(timer_file_path)
-        self.speak(dlg.pick_line(dlg.REMINDER_DONE_LINES))
+        line = dlg.pick_line(dlg.REMINDER_DONE_LINES)
+        if getattr(self, "_chat_mode", False):
+            self._conversation.add_assistant(line)
+            self.append_chat_message(prompts.CHAT_ASSISTANT_LABEL, line)
+            self.queue_chat_notification(line)
+            return
+        self.speak(line)
 
     def print_current_datetime(self):
         """Speak the current local date and time together."""

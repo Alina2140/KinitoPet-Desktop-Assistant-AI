@@ -56,6 +56,13 @@ class SpeechChatMixin(EmojiPickerMixin):
         """Initialize chat-related instance attributes (call from app __init__)."""
         self._chat_mode = False
         self._chat_generating = False
+        self._chat_session_id = getattr(self, "_chat_session_id", 0) + 1
+        self._chat_action_phase = None
+        self._pending_chat_action = None
+        self._confirmed_chat_timer = None
+        self._pending_chat_website = None
+        self._chat_pending_notifications = []
+        self._chat_notification_timer = None
         self._chat_log_widget = None
         self._chat_entry_widget = None
         self._chat_voice_mode = None
@@ -201,6 +208,13 @@ class SpeechChatMixin(EmojiPickerMixin):
             self._stop_dizzy_reaction()
         self._chat_mode = True
         self._chat_generating = False
+        self._chat_session_id = getattr(self, "_chat_session_id", 0) + 1
+        self._chat_action_phase = None
+        self._pending_chat_action = None
+        self._confirmed_chat_timer = None
+        self._pending_chat_website = None
+        self._chat_pending_notifications = []
+        self._chat_notification_timer = None
         if hasattr(self, "_pin_chat_user_label") and not getattr(self, "_chat_session_user_label", None):
             self._pin_chat_user_label()
         self._cancel_bubble_close_timer()
@@ -481,6 +495,25 @@ class SpeechChatMixin(EmojiPickerMixin):
             return
         self._start_voice_listening()
 
+    def queue_chat_notification(self, text: str) -> None:
+        if not getattr(self, "_chat_mode", False):
+            return
+        self._chat_pending_notifications.append(text)
+        if getattr(self, "_chat_notification_timer", None) is None:
+            self._drain_chat_notifications(self._chat_session_id)
+
+    def _drain_chat_notifications(self, session_id) -> None:
+        if (not getattr(self, "_chat_mode", False) or not getattr(self, "_running", True)
+                or session_id != self._chat_session_id):
+            return
+        self._chat_notification_timer = None
+        if not self.talking and not self._chat_generating and self._chat_pending_notifications:
+            self.speak_chat_response(self._chat_pending_notifications.pop(0))
+        if self._chat_pending_notifications:
+            self._chat_notification_timer = self.root.after(
+                250, lambda: self._drain_chat_notifications(session_id)
+            )
+
     def _on_chat_tts_finished(self) -> None:
         """Resume continuous listening after Kinito finishes speaking."""
         if self._chat_voice_mode == CHAT_VOICE_CONTINUOUS:
@@ -671,6 +704,13 @@ class SpeechChatMixin(EmojiPickerMixin):
             self._conversation.reset()
         self._chat_mode = False
         self._chat_generating = False
+        self._chat_session_id = getattr(self, "_chat_session_id", 0) + 1
+        self._chat_action_phase = None
+        self._pending_chat_action = None
+        self._confirmed_chat_timer = None
+        self._pending_chat_website = None
+        self._chat_pending_notifications = []
+        self._chat_notification_timer = None
         self._chat_log_widget = None
         self._chat_entry_widget = None
         self._emoji_picker_button = None
