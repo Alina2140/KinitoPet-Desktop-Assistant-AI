@@ -1805,6 +1805,10 @@ class MovementMixin:
         """No-op unless StickyNotesMixin is mixed in."""
         return False
 
+    def maybe_trigger_kinito_note(self) -> bool:
+        """No-op unless StickyNotesMixin is mixed in."""
+        return False
+
     def maybe_trigger_window_grab(self) -> bool:
         """No-op unless WindowGrabMixin is mixed in."""
         return False
@@ -2182,6 +2186,7 @@ class MovementMixin:
         self.maybe_trigger_terminal()
         self.maybe_trigger_random_ad()
         self.maybe_trigger_ambient_reminder()
+        self.maybe_trigger_kinito_note()
         if self.maybe_trigger_screen_comment():
             time.sleep(self._idle_wait_before_next_action())
             return

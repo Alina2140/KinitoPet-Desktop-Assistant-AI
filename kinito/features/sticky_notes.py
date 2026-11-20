@@ -122,6 +122,7 @@ def new_note_data(x: int | None = None, y: int | None = None) -> dict:
         "x": x,
         "y": y,
         "collapsed": False,
+        "author": "user",
         "created": datetime.now().isoformat(timespec="seconds"),
         "updated": datetime.now().isoformat(timespec="seconds"),
     }
@@ -158,6 +159,7 @@ def load_notes() -> list[dict]:
                 "x": raw.get("x") if isinstance(raw.get("x"), (int, float)) else None,
                 "y": raw.get("y") if isinstance(raw.get("y"), (int, float)) else None,
                 "collapsed": bool(raw.get("collapsed", False)),
+                "author": "kinito" if raw.get("author") == "kinito" else "user",
                 "created": str(raw.get("created", "")),
                 "updated": str(raw.get("updated", "")),
             }
@@ -713,6 +715,8 @@ class StickyNoteWindow:
     def hide_to_list(self) -> None:
         """Save and hide; the note stays reachable via My Notes."""
         self._teardown()
+        if self.note.get("author") == "kinito":
+            return
         self.app.speak_sticky_note_line(
             self.app._pick_sticky_note_line(
                 sticky_notes_lines.STICKY_NOTE_HIDE_LINES, {}
@@ -759,6 +763,10 @@ class StickyNotesMixin:
 
     STICKY_NOTE_RECALL_CHANCE = 1 / 350
     STICKY_NOTE_RECALL_COOLDOWN_SECONDS = 900
+    KINITO_NOTE_CHANCE = 1 / 600
+    KINITO_NOTE_COOLDOWN_SECONDS = 1800
+    KINITO_NOTE_MAX = 8
+    KINITO_NOTE_COMMENT_CHANCE = 0.5
 
     # -- registry ---------------------------------------------------------
 
@@ -838,6 +846,8 @@ class StickyNotesMixin:
             0,
             lambda n=note: StickyNoteWindow(self, n).open(),
         )
+        if self._maybe_comment_on_kinito_note(note):
+            return
         pool = (
             sticky_notes_lines.STICKY_NOTE_OPEN_LINES
             if note_id is not None
@@ -1154,14 +1164,64 @@ class StickyNotesMixin:
                     return
             except tk.TclError:
                 pass
-        self.speak(
-            self._pick_sticky_note_line(
-                sticky_notes_lines.STICKY_NOTE_RECALL_LINES,
-                sticky_notes_lines.STICKY_NOTE_RECALL_BY_MOOD,
-            ),
-            skip_ai=True,
-        )
+        if not self._maybe_comment_on_kinito_note(note):
+            self.speak(
+                self._pick_sticky_note_line(
+                    sticky_notes_lines.STICKY_NOTE_RECALL_LINES,
+                    sticky_notes_lines.STICKY_NOTE_RECALL_BY_MOOD,
+                ),
+                skip_ai=True,
+            )
         StickyNoteWindow(self, note).open()
+
+    # -- Kinito's own notes -----------------------------------------------
+
+    def _maybe_comment_on_kinito_note(self, note: dict) -> bool:
+        """Handle speech for Kinito's own notes: a creepy line or silence.
+
+        Returns True for Kinito notes so callers skip their normal lines.
+        """
+        if note.get("author") != "kinito":
+            return False
+        if random.random() < self.KINITO_NOTE_COMMENT_CHANCE:
+            self.speak(
+                random.choice(sticky_notes_lines.KINITO_NOTE_OPEN_LINES), skip_ai=True
+            )
+        return True
+
+    def maybe_trigger_kinito_note(self) -> bool:
+        """Roll for Kinito silently writing and saving a note of his own."""
+        if not getattr(self, "_kinito_notes_enabled", True):
+            return False
+        if getattr(self, "_focus_mode", False) or self.paused:
+            return False
+        last_at = getattr(self, "_last_kinito_note_at", 0.0)
+        if (
+            last_at > 0
+            and time.monotonic() - last_at < self.KINITO_NOTE_COOLDOWN_SECONDS
+        ):
+            return False
+        if random.random() >= self.KINITO_NOTE_CHANCE:
+            return False
+        if sum(n["author"] == "kinito" for n in load_notes()) >= self.KINITO_NOTE_MAX:
+            return False
+        self._last_kinito_note_at = time.monotonic()
+        title, text = random.choice(sticky_notes_lines.KINITO_NOTE_CONTENTS)
+        note = new_note_data()
+        note.update(title=title, text=text, author="kinito")
+        return save_note(note)
+
+    def toggle_kinito_notes(self):
+        """Enable or disable Kinito writing his own notes."""
+        self._kinito_notes_enabled = not getattr(self, "_kinito_notes_enabled", True)
+        if hasattr(self, "_persist_settings"):
+            self._persist_settings()
+        lines = (
+            dlg.KINITO_NOTES_ON_LINES
+            if self._kinito_notes_enabled
+            else dlg.KINITO_NOTES_OFF_LINES
+        )
+        self.speak(dlg.pick_line(lines), skip_ai=True)
 
     def toggle_sticky_notes_recall(self):
         """Enable or disable spontaneous sticky-note popups."""

@@ -155,6 +155,17 @@ MENU_VISIBILITY_SECTIONS: tuple[tuple[str, tuple[MenuEntry, ...]], ...] = (
                 ),
             ),
             (
+                "settings.kinito_notes",
+                "Kinito Notes",
+                frozenset(
+                    {
+                        dlg.BUTTON_KINITO_NOTES,
+                        dlg.BUTTON_KINITO_NOTES_ON,
+                        dlg.BUTTON_KINITO_NOTES_OFF,
+                    }
+                ),
+            ),
+            (
                 "settings.snoring",
                 "Snoring",
                 frozenset(

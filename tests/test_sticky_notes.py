@@ -277,6 +277,105 @@ def test_toggle_sticky_notes_recall():
     assert host.speak.call_args.args[0] in dlg.STICKY_NOTES_RECALL_ON_LINES
 
 
+def test_kinito_note_is_saved_silently(tmp_path, monkeypatch):
+    _patch_notes_dir(monkeypatch, tmp_path)
+    host = _StickyHost()
+    with (
+        patch("kinito.features.sticky_notes.random.random", return_value=0.0),
+        patch("kinito.features.sticky_notes.StickyNoteWindow") as window,
+    ):
+        assert host.maybe_trigger_kinito_note() is True
+    notes = load_notes()
+    assert len(notes) == 1
+    assert notes[0]["author"] == "kinito"
+    assert (notes[0]["title"], notes[0]["text"]) in (
+        sticky_notes_lines.KINITO_NOTE_CONTENTS
+    )
+    window.assert_not_called()
+    host.speak.assert_not_called()
+    host.root.after.assert_not_called()
+
+
+def test_kinito_note_guards(tmp_path, monkeypatch):
+    _patch_notes_dir(monkeypatch, tmp_path)
+    host = _StickyHost()
+    host._kinito_notes_enabled = False
+    with patch("kinito.features.sticky_notes.random.random", return_value=0.0):
+        assert host.maybe_trigger_kinito_note() is False
+        host._kinito_notes_enabled = True
+        host.KINITO_NOTE_MAX = 1
+        assert host.maybe_trigger_kinito_note() is True
+        host._last_kinito_note_at = 0.0
+        assert host.maybe_trigger_kinito_note() is False
+    assert len(load_notes()) == 1
+
+
+def test_user_notes_default_author(tmp_path, monkeypatch):
+    _patch_notes_dir(monkeypatch, tmp_path)
+    save_note(new_note_data())
+    assert load_notes()[0]["author"] == "user"
+
+
+@pytest.mark.parametrize(("roll", "comments"), [(0.0, True), (0.99, False)])
+def test_opening_kinito_note_may_deny_writing_it(tmp_path, monkeypatch, roll, comments):
+    _patch_notes_dir(monkeypatch, tmp_path)
+    note = new_note_data()
+    note["author"] = "kinito"
+    save_note(note)
+    host = _StickyHost()
+    with (
+        patch("kinito.features.sticky_notes.random.random", return_value=roll),
+        patch("kinito.features.sticky_notes.StickyNoteWindow"),
+    ):
+        host.open_sticky_note(note["id"])
+    if comments:
+        host.speak.assert_called_once()
+        assert host.speak.call_args.args[0] in sticky_notes_lines.KINITO_NOTE_OPEN_LINES
+    else:
+        host.speak.assert_not_called()
+
+
+@pytest.mark.parametrize("author", ["kinito", "user"])
+def test_hiding_note_speaks_only_for_user_notes(author):
+    from kinito.features.sticky_notes import StickyNoteWindow
+
+    app = MagicMock()
+    note_window = StickyNoteWindow(app, {**new_note_data(), "author": author})
+    with patch.object(note_window, "_teardown"):
+        note_window.hide_to_list()
+    assert app.speak_sticky_note_line.called is (author == "user")
+
+
+def test_recalled_kinito_note_never_uses_normal_recall_line():
+    host = _StickyHost()
+    note = {**new_note_data(), "author": "kinito"}
+    with (
+        patch("kinito.features.sticky_notes.random.random", return_value=0.99),
+        patch("kinito.features.sticky_notes.StickyNoteWindow") as window,
+    ):
+        host._present_sticky_note_recall(note)
+    host.speak.assert_not_called()
+    window.return_value.open.assert_called_once()
+
+
+def test_toggle_kinito_notes():
+    host = _StickyHost()
+    host._persist_settings = MagicMock()
+    host.toggle_kinito_notes()
+    assert host._kinito_notes_enabled is False
+    assert host.speak.call_args.args[0] in dlg.KINITO_NOTES_OFF_LINES
+    host.toggle_kinito_notes()
+    assert host._kinito_notes_enabled is True
+    assert host.speak.call_args.args[0] in dlg.KINITO_NOTES_ON_LINES
+    assert host._persist_settings.call_count == 2
+
+
+def test_kinito_notes_toggle_dialog_buttons(mock_app):
+    spec = find_dialog_spec(dlg.SETTINGS_TOGGLES_QUESTION)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_KINITO_NOTES_OFF)
+    mock_app.toggle_kinito_notes.assert_called_once()
+
+
 @pytest.fixture
 def note_editor():
     import tkinter as tk

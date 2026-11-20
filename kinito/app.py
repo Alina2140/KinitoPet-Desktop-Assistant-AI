@@ -344,6 +344,8 @@ class FloatingAssistant(
             "sticky_notes_recall_enabled", True
         )
         self._last_sticky_notes_recall_at = 0.0
+        self._kinito_notes_enabled = self._settings.get("kinito_notes_enabled", True)
+        self._last_kinito_note_at = 0.0
         self._window_grab_enabled = self._settings.get("window_grab_enabled", True)
         self._last_window_grab_at = 0.0
         self._window_grab_active = False
@@ -516,6 +518,7 @@ class FloatingAssistant(
             sticky_notes_recall_enabled=bool(
                 getattr(self, "_sticky_notes_recall_enabled", True)
             ),
+            kinito_notes_enabled=bool(getattr(self, "_kinito_notes_enabled", True)),
             snoring_enabled=bool(getattr(self, "_snoring_enabled", True)),
             sleep_talk_enabled=bool(getattr(self, "_sleep_talk_enabled", True)),
             sound_effects_enabled=bool(

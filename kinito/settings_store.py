@@ -24,6 +24,7 @@ DEFAULT_BOOL_SETTINGS: dict[str, bool] = {
     "paint_recall_enabled": True,
     "paint_requests_enabled": True,
     "sticky_notes_recall_enabled": True,
+    "kinito_notes_enabled": True,
     "snoring_enabled": True,
     "sleep_talk_enabled": True,
     "sound_effects_enabled": True,

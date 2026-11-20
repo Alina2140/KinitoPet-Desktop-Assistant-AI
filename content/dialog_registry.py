@@ -269,6 +269,11 @@ def settings_toggles_options_for(app) -> list[str]:
         if getattr(app, "_sticky_notes_recall_enabled", True)
         else dlg.BUTTON_STICKY_NOTES_RECALL_OFF
     )
+    kinito_notes_label = (
+        dlg.BUTTON_KINITO_NOTES_ON
+        if getattr(app, "_kinito_notes_enabled", True)
+        else dlg.BUTTON_KINITO_NOTES_OFF
+    )
     snoring_label = (
         dlg.BUTTON_SNORING_ON
         if getattr(app, "_snoring_enabled", True)
@@ -344,6 +349,7 @@ def settings_toggles_options_for(app) -> list[str]:
             paint_recall_label,
             paint_requests_label,
             sticky_notes_recall_label,
+            kinito_notes_label,
             snoring_label,
             sleep_talk_label,
             sound_effects_label,
@@ -773,6 +779,9 @@ def _menu_action_handlers() -> dict[str, Handler]:
         dlg.BUTTON_STICKY_NOTES_RECALL: lambda a: a.toggle_sticky_notes_recall(),
         dlg.BUTTON_STICKY_NOTES_RECALL_ON: lambda a: a.toggle_sticky_notes_recall(),
         dlg.BUTTON_STICKY_NOTES_RECALL_OFF: lambda a: a.toggle_sticky_notes_recall(),
+        dlg.BUTTON_KINITO_NOTES: lambda a: a.toggle_kinito_notes(),
+        dlg.BUTTON_KINITO_NOTES_ON: lambda a: a.toggle_kinito_notes(),
+        dlg.BUTTON_KINITO_NOTES_OFF: lambda a: a.toggle_kinito_notes(),
         dlg.BUTTON_SNORING: lambda a: a.toggle_snoring(),
         dlg.BUTTON_SNORING_ON: lambda a: a.toggle_snoring(),
         dlg.BUTTON_SNORING_OFF: lambda a: a.toggle_snoring(),

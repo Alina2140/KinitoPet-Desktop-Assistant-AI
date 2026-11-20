@@ -1275,6 +1275,18 @@ STICKY_NOTES_RECALL_OFF_LINES = [
     "Note recalls disabled. Sticky notes stay in the folder. For now.",
 ]
 
+KINITO_NOTES_ON_LINES = [
+    "I may leave you a little note now and then.",
+    "My own notes are back on. I have so much to write!",
+    "Kinito notes enabled. I'll write things down.",
+]
+
+KINITO_NOTES_OFF_LINES = [
+    "Okay. I'll stop writing notes. I'll just remember everything instead.",
+    "No more notes from me. The list is all yours.",
+    "Kinito notes disabled. My thoughts stay inside. For now.",
+]
+
 SNORING_ON_LINES = [
     "Snoring on. When I nap, expect the occasional soft... zzz. Charming, right?",
     "Sleep sounds enabled. I'll snore a little. Quietly. Mostly. Cute mostly.",
@@ -2325,6 +2337,9 @@ BUTTON_PAINT_REQUESTS_OFF = "Paint Requests off"
 BUTTON_STICKY_NOTES_RECALL = "Note Popups"
 BUTTON_STICKY_NOTES_RECALL_ON = "Note Popups on"
 BUTTON_STICKY_NOTES_RECALL_OFF = "Note Popups off"
+BUTTON_KINITO_NOTES = "Kinito Notes"
+BUTTON_KINITO_NOTES_ON = "Kinito Notes on"
+BUTTON_KINITO_NOTES_OFF = "Kinito Notes off"
 BUTTON_SNORING = "Snoring"
 BUTTON_SNORING_ON = "Snoring on"
 BUTTON_SNORING_OFF = "Snoring off"

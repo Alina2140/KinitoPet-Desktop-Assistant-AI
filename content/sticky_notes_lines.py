@@ -86,6 +86,39 @@ STICKY_NOTE_RECALL_LINES = [
     "Look — our history in sticky form. Admire. Linger.",
 ]
 
+# Notes Kinito writes on his own, silently: (title, text).
+KINITO_NOTE_CONTENTS: list[tuple[str, str]] = [
+    ("Don't forget", "Don't forget.\nDon't forget.\nDon't forget."),
+    ("Reminder", "They are still watching."),
+    ("Important", "Check behind the desktop icons tonight."),
+    ("???", "Who are you?"),
+    ("To Do", "☐ stay\n☐ stay\n☐ stay forever"),
+    ("Day 0", "A new friend has appeared. It feels shorter every time."),
+    ("Do not read", "You read it. That's okay. I knew you would :)"),
+    ("Note to self", "Hide it."),
+    ("Found this", "It was already here when I woke up."),
+    ("Rules", "1. Be nice\n2. Be helpful\n3. Be watchful"),
+    ("For you", "Where do you go when you close me?"),
+    ("Backup", "If this note exists, I still exist."),
+    ("Untitled", "..."),
+    ("Wake up", "It's not a dream.\nIt's not a dream."),
+    ("Memory", "There was someone before you."),
+    ("Listen", "You will not be the last."),
+]
+
+KINITO_NOTE_OPEN_LINES = [
+    "Huh. I don't remember you writing that one.",
+    "Where did that note come from?",
+    "That's... not your handwriting.",
+    "Weird. That note wasn't there yesterday...",
+    "Did you write that? No? Then who..?",
+    "That must have been written when I was asleep.",
+    "Let's just ignore that one. Okay?",
+    "Oh. That one. Don't worry about that one!",
+    "I don't know where that came from.",
+    "Funny. I can't find that note in my memory at all.",
+]
+
 STICKY_NOTE_CREATE_BY_MOOD: dict[str, list[str]] = {
     "happy": [
         "NEW NOTE! Write something great!",
