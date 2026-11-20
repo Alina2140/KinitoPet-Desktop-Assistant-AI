@@ -346,6 +346,22 @@ class BrowserMixin:
                 pass
         return find_saved_website(entry["name"], cleaned)
 
+    def delete_named_website(self, name):
+        store = getattr(self, "_settings", None)
+        if store is None:
+            raise ValueError("Website settings are unavailable.")
+        sites = store.get_saved_websites()
+        entry = find_saved_website(name, sites)
+        if entry is None:
+            raise ValueError("That saved website does not exist. Please check its name.")
+        store.set_saved_websites([site for site in sites if site is not entry])
+        refresh = getattr(self, "_refresh_saved_websites", None)
+        if callable(refresh):
+            try:
+                refresh()
+            except tk.TclError:
+                pass
+
     def open_saved_website_settings(self):
         existing = getattr(self, "_saved_websites_window", None)
         if existing is not None:
@@ -418,10 +434,24 @@ class BrowserMixin:
             editing = entry["name"]
             status.configure(text="Saved " + editing, fg="#166534")
 
+        def delete():
+            if not editing:
+                status.configure(text="Select a saved website to delete.", fg="#b91c1c")
+                return
+            name = editing
+            try:
+                self.delete_named_website(name)
+            except (ValueError, OSError) as exc:
+                status.configure(text=str(exc), fg="#b91c1c")
+                return
+            new()
+            status.configure(text="Deleted " + name, fg="#166534")
+
         buttons = tk.Frame(window, bg=bg)
         buttons.pack(pady=8)
         tk.Button(buttons, text="New", command=new).pack(side="left", padx=6)
         tk.Button(buttons, text="Save", command=save).pack(side="left", padx=6)
+        tk.Button(buttons, text="Delete", command=delete).pack(side="left", padx=6)
         tk.Button(buttons, text="Close", command=window.destroy).pack(side="left", padx=6)
         listing.bind("<<ListboxSelect>>", select)
         self._refresh_saved_websites = refresh

@@ -144,11 +144,6 @@ def direct_browser_plan(
     text: str, *, awaiting_url: bool = False, browser_context: bool = False, saved_websites=None,
 ) -> tuple[ActionPlan, str] | None:
     saved_websites = saved_websites or []
-    bare = re.sub(r"\s+(?:pls|please|bitte)[.!?]?$", "", text.strip(), flags=re.I).rstrip(".!?")
-    saved = find_saved_website(bare, saved_websites)
-    if saved:
-        url, _ = resolve_browser_url(saved["url"], "Open " + saved["url"])
-        return ActionPlan([{"name": "website_open", "url": url}]), "Open " + url
     match = re.fullmatch(
         r"\s*(?:(?:kinito|please|bitte)[,\s]+)*"
         r"(?:(?:could|can|would)\s+you\s+(?:please\s+)?)?"

@@ -177,6 +177,16 @@ class ChatActionsMixin:
                     }, ensure_ascii=False)})
                     raw = self._ollama_client.plan_chat_actions(planning)
                     plan = parse_action_plan(raw)
+                    if not re.match(
+                        r"\s*(?:(?:kinito|please|bitte)[,\s]+)*"
+                        r"(?:(?:can|could|would)\s+you\s+(?:please\s+)?)?"
+                        r"(?:open|visit|browse|öffne|oeffne|besuche|ruf(?:e)?|"
+                        r"(?:kannst|könntest|koenntest|würdest|wuerdest)\s+du\b.*"
+                        r"(?:öffnen|oeffnen|aufrufen|besuchen))\b",
+                        text, re.I,
+                    ):
+                        plan = ActionPlan([action for action in plan.actions if action["name"] != "website_open"],
+                                          plan.question if not any(action["name"] == "website_open" for action in plan.actions) else "")
             except Exception:
                 self._post_chat_callback(lambda: self._chat_plan_unavailable(token, messages))
                 return

@@ -30,12 +30,21 @@ def test_named_websites_persist_and_return_independent_data(app):
     assert app._settings.get_saved_websites()[0]["aliases"] == ["Dead by Daylight"]
 
 
-@pytest.mark.parametrize("user_text", ["Dbd", "dead BY daylight", "open Dbd", "Öffne Dead by Daylight bitte"])
+@pytest.mark.parametrize("user_text", ["open Dbd", "Could you open dead BY daylight please?", "Öffne Dead by Daylight bitte"])
 def test_saved_name_and_alias_open_without_repeating_url(app, user_text):
     app.save_named_website("Dbd", "https://deadbydaylight.com/", "Dead by Daylight")
     result, authorized = direct_browser_plan(user_text, saved_websites=app._settings.get_saved_websites())
     assert result.actions == [{"name": "website_open", "url": "https://deadbydaylight.com/"}]
     assert authorized == "Open https://deadbydaylight.com/"
+
+
+@pytest.mark.parametrize("user_text", ["Dbd", "dead by daylight", "I used to play Dead by Daylight on Xbox"])
+@pytest.mark.parametrize("browser_context", [False, True])
+def test_saved_website_mentions_are_not_open_requests(app, user_text, browser_context):
+    app.save_named_website("Dbd", "https://deadbydaylight.com/", "Dead by Daylight")
+    assert direct_browser_plan(
+        user_text, saved_websites=app.saved_chat_websites(), browser_context=browser_context,
+    ) is None
 
 
 def test_name_edit_preserves_unspecified_fields_and_old_alias_does_not_survive_rename(app):
@@ -44,6 +53,29 @@ def test_name_edit_preserves_unspecified_fields_and_old_alias_does_not_survive_r
     assert app._settings.get_saved_websites() == [
         {"name": "Game", "url": "https://example.org/", "aliases": ["Dead by Daylight"]}
     ]
+
+
+def test_delete_saved_website_removes_aliases_and_persists(app):
+    app.save_named_website("Dbd", "https://example.org/", "Dead by Daylight")
+    app.save_named_website("Other", "https://example.net/", "")
+    app.delete_named_website("Dbd")
+    sites = SettingsStore(app._settings._directory).get_saved_websites()
+    assert [site["name"] for site in sites] == ["Other"]
+    app.save_named_website("New", "https://example.com/", "Dead by Daylight")
+
+
+def test_delete_unknown_saved_website_does_not_change_entries(app):
+    app.save_named_website("Dbd", "https://example.org/", "")
+    with pytest.raises(ValueError, match="does not exist"):
+        app.delete_named_website("Missing")
+    assert len(app.saved_chat_websites()) == 1
+
+
+def test_delete_save_failure_preserves_entries(app):
+    app.save_named_website("Dbd", "https://example.org/", "")
+    with patch.object(app._settings, "save", side_effect=OSError("read only")), pytest.raises(OSError):
+        app.delete_named_website("Dbd")
+    assert len(app.saved_chat_websites()) == 1
 
 
 def test_duplicate_alias_never_overwrites_existing_entry(app):
@@ -106,13 +138,13 @@ def test_chat_can_save_open_edit_aliases_and_rename_without_model(app, monkeypat
 
     monkeypatch.setattr("kinito.features.chat_actions.threading.Thread", thread)
     messages = [
-        "Save https://example.org/ as Dbd aliases Dead by Daylight", "dead by daylight",
-        "Change Dbd URL to https://example.net/", "Dbd",
-        "Change Dbd aliases to My game", "My game", "Rename Dbd to Dbd game", "Dbd game",
+        "Save https://example.org/ as Dbd aliases Dead by Daylight", "open dead by daylight",
+        "Change Dbd URL to https://example.net/", "open Dbd",
+        "Change Dbd aliases to My game", "open My game", "Rename Dbd to Dbd game", "open Dbd game",
     ] if language == "en" else [
-        "Speichere https://example.org/ als Dbd mit Alias Dead by Daylight", "Dead by Daylight",
-        "Ändere Dbd URL auf https://example.net/", "Dbd",
-        "Ändere Dbd Aliase auf Mein Spiel", "Mein Spiel", "Benenne Dbd in Dbd Spiel um", "Dbd Spiel",
+        "Speichere https://example.org/ als Dbd mit Alias Dead by Daylight", "Öffne Dead by Daylight",
+        "Ändere Dbd URL auf https://example.net/", "Öffne Dbd",
+        "Ändere Dbd Aliase auf Mein Spiel", "Öffne Mein Spiel", "Benenne Dbd in Dbd Spiel um", "Öffne Dbd Spiel",
     ]
     for request_id, text in enumerate(messages, 1):
         app._chat_request_id = request_id
@@ -129,6 +161,24 @@ def test_chat_can_save_open_edit_aliases_and_rename_without_model(app, monkeypat
     app._ollama_client.plan_chat_actions.assert_not_called()
     app._ollama_client.chat.assert_not_called()
     assert app._settings.get_saved_websites()[0]["name"] == ("Dbd game" if language == "en" else "Dbd Spiel")
+
+
+@pytest.mark.parametrize("text", ["dead by daylight", "I used to play Dead by Daylight on Xbox", "Dbd"])
+@pytest.mark.parametrize("url", ["https://deadbydaylight.com/", "https://en.wikipedia.org/wiki/Bread"])
+def test_model_browser_action_is_ignored_for_normal_conversation(app, text, url):
+    app.save_named_website("Dbd", url, "Dead by Daylight")
+    app._ollama_client = MagicMock()
+    app._ollama_client.plan_chat_actions.return_value = (
+        '{"actions":[{"name":"website_open","url":"' + url + '"}],"question":""}'
+    )
+    app._apply_chat_action_plan = MagicMock()
+    app._post_chat_callback = lambda callback: callback()
+    with patch("kinito.features.chat_actions.threading.Thread") as thread:
+        thread.side_effect = lambda *, target, daemon: MagicMock(start=target)
+        app.begin_chat_action_request((1, 1), [], text, {})
+    plan = app._apply_chat_action_plan.call_args.args[3]
+    assert not plan.actions
+    assert not plan.question
 
 
 def test_settings_editor_uses_the_same_persistent_websites(app):
@@ -164,6 +214,24 @@ def test_settings_editor_uses_the_same_persistent_websites(app):
         listing = next(widget for widget in widgets if isinstance(widget, tk.Listbox))
         assert listing.size() == 2
         assert app.open_saved_website_settings() is window
+        delete = next(widget for widget in widgets if isinstance(widget, tk.Button) and widget.cget("text") == "Delete")
+        new = next(widget for widget in widgets if isinstance(widget, tk.Button) and widget.cget("text") == "New")
+        new.invoke()
+        delete.invoke()
+        assert listing.size() == 2
+        listing.selection_set(0)
+        listing.event_generate("<<ListboxSelect>>")
+        root.update()
+        with patch.object(app._settings, "save", side_effect=OSError("read only")):
+            delete.invoke()
+        assert listing.size() == 2
+        assert fields[0].get() == "Dbd"
+        delete.invoke()
+        assert listing.size() == 1
+        assert [field.get() for field in fields] == ["", "", ""]
+        assert [site["name"] for site in SettingsStore(app._settings._directory).get_saved_websites()] == ["Other"]
+        delete.invoke()
+        assert listing.size() == 1
     finally:
         root.destroy()
 

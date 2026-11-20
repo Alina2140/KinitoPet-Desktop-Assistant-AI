@@ -44,7 +44,9 @@ known_since returns the actual stored friendship duration.
 website_open(url): use an available approved site's URL, or the EXACT HTTP/HTTPS URL
 explicitly supplied by the user for opening. Never invent an unlisted URL. Ask for an address
 if an unknown site is requested by name. Category requests may choose a relevant approved site.
-Saved websites are in available_state.saved_websites. Their names and aliases resolve to the stored URL.
+Saved websites are in available_state.saved_websites. Their names and aliases resolve to the stored URL
+ONLY when the user explicitly asks to open/visit the website. A bare name such as "Dbd" or
+"Dead by Daylight", or discussing that game, is ordinary conversation: return empty actions and question.
 website_save(site_name, url, aliases): persist a new named website; aliases is a comma-separated string, or empty.
 website_edit(site_name, new_name, url, aliases, replace_aliases): edit an existing saved name or alias.
 Empty new_name/url keep existing values. replace_aliases=false keeps aliases (send aliases="");
