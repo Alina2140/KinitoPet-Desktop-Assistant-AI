@@ -70,6 +70,36 @@ def _list_kind(marker: str) -> str:
     return "number" if marker else ""
 
 
+def _draw_note_preview(canvas, note: dict, width: int, height: int) -> None:
+    paper, dark = NOTE_COLORS.get(note.get("color"), NOTE_COLORS["yellow"])
+    top, edge, fold = 14, 2, 12
+    right, bottom = width - edge, height - edge
+    canvas.delete("decoration")
+    canvas.create_rectangle(
+        edge, top, right, bottom, fill=paper, outline=dark, tags="decoration"
+    )
+    canvas.create_rectangle(
+        edge, top, right, top + 8, fill=dark, outline=dark, tags="decoration"
+    )
+    if note.get("style") == "folded":
+        canvas.create_polygon(
+            right, bottom, right - fold, bottom, right, bottom - fold,
+            fill=_UI_BG, outline=_UI_BG, tags="decoration",
+        )
+        canvas.create_polygon(
+            right - fold, bottom, right - fold, bottom - fold, right, bottom - fold,
+            fill="#ffffff", outline=dark, tags="decoration",
+        )
+    elif note.get("style") == "tape":
+        center = width // 2
+        canvas.create_polygon(
+            center - 22, 2, center + 22, 2,
+            center + 18, top + 8, center - 26, top + 8,
+            fill=_TAPE_FILL, outline=_TAPE_EDGE, stipple="gray50", tags="decoration",
+        )
+    canvas.tag_lower("decoration")
+
+
 def _note_path(note_id: str) -> str:
     return os.path.join(sticky_notes_directory, f"note_{note_id}.json")
 
@@ -944,17 +974,42 @@ class StickyNotesMixin:
 
         for index, note in enumerate(notes):
             row, col = divmod(index, _LIST_COLS)
-            paper, _dark = NOTE_COLORS[note["color"]]
+            paper, dark = NOTE_COLORS[note["color"]]
+            preview = tk.Canvas(
+                grid, bg=_UI_BG, highlightthickness=0, bd=0, cursor="hand2",
+                width=126, height=140,
+            )
+            preview.grid(row=row, column=col, padx=6, pady=6, sticky="n")
+            preview.bind(
+                "<Button-1>",
+                lambda _e, n=note["id"]: self.open_sticky_note(n),
+            )
             cell = Frame(
-                grid,
+                preview,
                 bg=paper,
-                bd=1,
-                relief=tk.RIDGE,
                 padx=6,
                 pady=6,
                 cursor="hand2",
+                width=120,
+                height=113,
             )
-            cell.grid(row=row, column=col, padx=6, pady=6, sticky="n")
+            cell.grid_propagate(False)
+            cell.columnconfigure(0, weight=1)
+            preview.create_window(3, 23, window=cell, anchor="nw")
+            _draw_note_preview(preview, note, 126, 140)
+            if note.get("style") == "folded":
+                corner = tk.Canvas(
+                    preview, width=13, height=13, bg=_UI_BG,
+                    highlightthickness=0, bd=0, cursor="hand2",
+                )
+                corner.create_polygon(
+                    0, 12, 0, 0, 12, 0, fill="#ffffff", outline=dark
+                )
+                corner.bind(
+                    "<Button-1>",
+                    lambda _e, n=note["id"]: self.open_sticky_note(n),
+                )
+                preview.create_window(112, 126, window=corner, anchor="nw")
             cell.bind(
                 "<Button-1>",
                 lambda _e, n=note["id"]: self.open_sticky_note(n),
@@ -963,6 +1018,7 @@ class StickyNotesMixin:
             def _open_on_click(_e, n=note["id"]):
                 self.open_sticky_note(n)
 
+            next_row = 0
             title = (note.get("title") or "").strip()
             if title:
                 title_label = Label(
@@ -974,8 +1030,13 @@ class StickyNotesMixin:
                     justify="left",
                     font=("Segoe UI", 8, "bold"),
                 )
-                title_label.pack(anchor="w")
+                title_label.grid(row=0, column=0, sticky="nw")
                 title_label.bind("<Button-1>", _open_on_click)
+                next_row = 1
+            meta = note.get("updated", "")[:10]
+            suffix = " (open)" if note["id"] in open_ids else ""
+            footer = Frame(cell, bg=paper)
+            footer.grid(row=next_row + 1, column=0, sticky="ew", pady=(2, 0))
             snippet = (note.get("text") or "").strip().replace("\n", " ")
             if len(snippet) > 60:
                 snippet = snippet[:57] + "..."
@@ -990,13 +1051,9 @@ class StickyNotesMixin:
                 justify="left",
                 font=("Segoe UI", 8),
             )
-            snippet_label.pack()
+            snippet_label.grid(row=next_row, column=0, sticky="nw")
+            cell.rowconfigure(next_row, weight=1)
             snippet_label.bind("<Button-1>", _open_on_click)
-
-            meta = note.get("updated", "")[:10]
-            suffix = " (open)" if note["id"] in open_ids else ""
-            footer = Frame(cell, bg=paper)
-            footer.pack(fill=tk.X, pady=(2, 0))
             trash = _trash_icon(footer, note)
             trash.pack(side=tk.LEFT)
             meta_label = Label(

@@ -14,6 +14,7 @@ from kinito.features.sticky_notes import (
     NOTE_COLORS,
     NOTE_STYLES,
     StickyNotesMixin,
+    _draw_note_preview,
     _sanitize_note_id,
     delete_note_file,
     load_notes,
@@ -87,6 +88,27 @@ def test_handle_sticky_notes_picker_list(mock_app):
 def test_sticky_note_prompt_exists():
     assert isinstance(prompts.STICKY_NOTE_PROMPT, str)
     assert prompts.STICKY_NOTE_PROMPT.strip()
+
+
+@pytest.mark.parametrize("style", NOTE_STYLES)
+@pytest.mark.parametrize("color", NOTE_COLORS)
+def test_note_preview_shows_saved_style_and_color(style, color):
+    canvas = MagicMock()
+    _draw_note_preview(canvas, {"style": style, "color": color}, 126, 140)
+    paper, dark = NOTE_COLORS[color]
+    assert canvas.create_rectangle.call_args_list[0].kwargs["fill"] == paper
+    assert canvas.create_rectangle.call_args_list[1].kwargs["fill"] == dark
+    polygons = canvas.create_polygon.call_args_list
+    assert len(polygons) == {"plain": 0, "folded": 2, "tape": 1}[style]
+    if style == "folded":
+        assert polygons[0].kwargs["fill"] == "#e6ded5"
+        assert polygons[1].kwargs["fill"] == "#ffffff"
+        assert polygons[1].args == (112, 138, 112, 126, 124, 126)
+    elif style == "tape":
+        assert polygons[0].kwargs["stipple"] == "gray50"
+        assert polygons[0].args[1] < 14
+    canvas.delete.assert_called_once_with("decoration")
+    canvas.tag_lower.assert_called_once_with("decoration")
 
 
 def test_sanitize_note_id():
