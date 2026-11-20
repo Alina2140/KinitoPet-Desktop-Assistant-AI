@@ -321,7 +321,7 @@ class MemoryMixin:
         except OSError as exc:
             print(f"Warning: memory editor save failed: {exc!r}", flush=True)
             self.speak(
-                "I couldn't save your memories right now. Please try again.",
+                "I couldn't save the memories right now. Please try again.",
                 skip_ai=True,
             )
             return

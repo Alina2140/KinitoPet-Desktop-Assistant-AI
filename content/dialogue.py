@@ -1168,7 +1168,7 @@ MEMORY_EMPTY_LINE = (
     "I don't have anything saved about you yet. Tell me about yourself! I'll listen carefully."
 )
 MEMORY_SAVED_LINE = (
-    "Saved! Your memories are tucked away again. Carefully. Permanently. Mostly."
+    "Saved! All memories are tucked away again. Carefully. Permanently. Mostly."
 )
 MEMORY_FORGET_CONFIRM_TITLE = "Forget everything?"
 MEMORY_FORGET_CONFIRM_MESSAGE = (

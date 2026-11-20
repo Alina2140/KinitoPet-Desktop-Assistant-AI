@@ -723,7 +723,7 @@ GAME_CLOSED_BY_MOOD: dict[str, list[str]] = {
         "Window shut... games need naps too...",
     ],
     "annoyed": [
-        "Game closed. It was winning anyway.",
+        "Game closed. I was winning anyway.",
         "Window's gone. My high score lives on. Yours doesn't.",
     ],
     "sad": [
