@@ -58,7 +58,7 @@ If `gameAssets` is missing, sprites and sounds will not load. Contact the reposi
 ## Step 2: Install Python
 
 1. Go to [https://www.python.org/downloads/](https://www.python.org/downloads/)
-2. Download **Python 3.12** (or 3.11)
+2. Download **Python 3.14**
 3. Run the installer
 4. **IMPORTANT:** On the first screen, check:
    - ☑ **Add python.exe to PATH**
@@ -74,7 +74,7 @@ If `gameAssets` is missing, sprites and sounds will not load. Contact the reposi
 python --version
 ```
 
-You should see something like `Python 3.12.x`.
+You should see something like `Python 3.14.x`.
 
 If you see an error (“python is not recognized”), Python was not added to PATH. Re-run the installer and enable **Add to PATH**, or use **“Modify”** on the existing install.
 
@@ -141,7 +141,7 @@ This downloads and installs:
 | Package | What it does |
 |---------|----------------|
 | Pillow | Loads PNG sprites |
-| pygame | Plays MP3 sound effects |
+| pygame-ce | Plays MP3 sound effects |
 | pyttsx3 | Backup text-to-speech |
 | pyautogui | Keyboard shortcuts (Windows) |
 | opencv-python | Webcam |
@@ -160,7 +160,7 @@ pip install -r requirements.txt --trusted-host pypi.org --trusted-host files.pyt
 **Still failing?** Install the minimum set manually:
 
 ```powershell
-pip install Pillow pygame pyttsx3
+pip install Pillow pygame-ce pyttsx3
 ```
 
 You can add `opencv-python` and `pywebview` later.
@@ -287,7 +287,7 @@ python Kinito.py
 |---------|----------|
 | Black window flashes and closes | Run `python Kinito.py` in PowerShell and read the red error text |
 | No character visible | Check `gameAssets/Kinito.png` exists |
-| No sound | Check volume; install `pygame` |
+| No sound | Check volume; install `pygame-ce` |
 | No speech | Install `pyttsx3`; check `gameAssets/programs/balcon.exe` |
 | Permission errors | Run PowerShell as normal user, not from a restricted folder |
 

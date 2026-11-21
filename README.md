@@ -51,7 +51,7 @@ A free, open-source desktop companion inspired by **KinitoPET**. Kinito lives on
 ### What you need
 
 - **Windows 10 or 11**
-- **Python 3.11 or 3.12** (recommended) — [python.org/downloads](https://www.python.org/downloads/)
+- **Python 3.14** (recommended) — [python.org/downloads](https://www.python.org/downloads/)
   - During install, check **“Add python.exe to PATH”**
 - This repository folder, including the **`gameAssets`** directory (sprites, sounds, `balcon.exe`)
 
@@ -206,7 +206,7 @@ KinitoPET-Python-Virtual-Assistant/
 | `opencv-python` | Webcam feature | Camera questions still appear; opening camera shows a message |
 | `faster-whisper` + `sounddevice` | Chat voice input (local STT) | Chat still works by typing; voice mode shows a message |
 | `pyttsx3` | TTS fallback | Uses `balcon.exe` only |
-| `pygame` | Sound effects & MP3 | Required for sounds |
+| `pygame-ce` | Sound effects & MP3 | Required for sounds |
 | `pyautogui` | Minimize windows (poem/image easter egg) | That easter egg silently fails |
 | `Pillow` | Images / sprites | Required |
 | **Ollama** (local) | AI chat & optional idle lines | Chat disabled; scripted lines still work |

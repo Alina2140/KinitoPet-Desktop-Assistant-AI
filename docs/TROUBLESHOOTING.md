@@ -18,7 +18,7 @@ Some corporate networks block PyPI. Try:
 pip install -r requirements.txt --trusted-host pypi.org --trusted-host files.pythonhosted.org
 ```
 
-Or install packages one by one. **Minimum to start:** `Pillow`, `pygame`, `pyttsx3`.
+Or install packages one by one. **Minimum to start:** `Pillow`, `pygame-ce`, `pyttsx3`.
 
 ### Chat does not work / “can't reach my brain”
 
