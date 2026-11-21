@@ -60,7 +60,7 @@ _LowLevelMouseProc = ctypes.WINFUNCTYPE(
     wintypes.LPARAM, ctypes.c_int, wintypes.WPARAM, wintypes.LPARAM
 )
 _kernel32.GetCurrentThreadId.restype = wintypes.DWORD
-_user32.SetWindowsHookExW.restype = wintypes.HHOOK
+_user32.SetWindowsHookExW.restype = wintypes.HANDLE
 _user32.SetWindowsHookExW.argtypes = (
     ctypes.c_int,
     _LowLevelMouseProc,
@@ -78,22 +78,22 @@ _user32.LoadImageW.argtypes = (
 )
 _user32.CallNextHookEx.restype = wintypes.LPARAM
 _user32.CallNextHookEx.argtypes = (
-    wintypes.HHOOK,
+    wintypes.HANDLE,
     ctypes.c_int,
     wintypes.WPARAM,
     wintypes.LPARAM,
 )
-_user32.UnhookWindowsHookEx.argtypes = (wintypes.HHOOK,)
+_user32.UnhookWindowsHookEx.argtypes = (wintypes.HANDLE,)
 _user32.PostThreadMessageW.argtypes = (
     wintypes.DWORD,
     wintypes.UINT,
     wintypes.WPARAM,
     wintypes.LPARAM,
 )
-_user32.SetSystemCursor.argtypes = (wintypes.HCURSOR, wintypes.DWORD)
-_user32.CopyIcon.restype = wintypes.HICON
-_user32.CopyIcon.argtypes = (wintypes.HICON,)
-_user32.DestroyCursor.argtypes = (wintypes.HCURSOR,)
+_user32.SetSystemCursor.argtypes = (wintypes.HANDLE, wintypes.DWORD)
+_user32.CopyIcon.restype = wintypes.HANDLE
+_user32.CopyIcon.argtypes = (wintypes.HANDLE,)
+_user32.DestroyCursor.argtypes = (wintypes.HANDLE,)
 _user32.SystemParametersInfoW.argtypes = (
     wintypes.UINT,
     wintypes.UINT,
