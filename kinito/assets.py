@@ -199,6 +199,7 @@ crash_image_path = os.path.join(crash_directory, "blueScreen.png")
 CRASH_IMAGE_VARIANTS = (
     ("blueScreen.png", False),
     ("blueScreenKinito Head.png", False),
+    ("creature.png", False),
     ("kinitoHead.png", True),
 )
 kinito_pet_url = "https://www.kinitopet.com/"
