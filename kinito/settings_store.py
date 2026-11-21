@@ -85,6 +85,7 @@ MUSIC_FOLDER_KEY = "music_folder"
 SFX_CHANNEL_VOLUMES_KEY = "sfx_channel_volumes"
 ACTIVITY_WEIGHTS_KEY = "activity_weights"
 OLLAMA_MODEL_KEY = "ollama_model"
+CURSOR_STYLE_KEY = "cursor_style"
 
 
 def clamp_tts_volume(value: int | float) -> int:
@@ -151,6 +152,7 @@ class SettingsStore:
             SFX_CHANNEL_VOLUMES_KEY: {},
             ACTIVITY_WEIGHTS_KEY: {},
             OLLAMA_MODEL_KEY: "",
+            CURSOR_STYLE_KEY: "system",
             "saved_websites": [],
         }
 
@@ -231,6 +233,11 @@ class SettingsStore:
         data[MUSIC_FOLDER_KEY] = str(folder).strip() if isinstance(folder, str) else ""
         model = raw.get(OLLAMA_MODEL_KEY, "")
         data[OLLAMA_MODEL_KEY] = str(model).strip() if isinstance(model, str) else ""
+        from kinito.cursors import normalize_cursor_style
+
+        data[CURSOR_STYLE_KEY] = normalize_cursor_style(
+            raw.get(CURSOR_STYLE_KEY, "system")
+        )
         data[SFX_CHANNEL_VOLUMES_KEY] = self._normalize_sfx_channel_volumes(
             raw.get(SFX_CHANNEL_VOLUMES_KEY, {})
         )
@@ -365,6 +372,23 @@ class SettingsStore:
     def set_ollama_model(self, model: str) -> None:
         """Persist the chosen Ollama chat model."""
         self.update(**{OLLAMA_MODEL_KEY: model})
+
+    def get_cursor_style(self) -> str:
+        """Return the persisted cursor style id ('system' = normal cursor)."""
+        from kinito.cursors import normalize_cursor_style
+
+        return normalize_cursor_style(self._data.get(CURSOR_STYLE_KEY, "system"))
+
+    def set_cursor_style(self, style: str) -> None:
+        """Persist the chosen cursor style id."""
+        from kinito.cursors import normalize_cursor_style
+
+        cleaned = normalize_cursor_style(style)
+        with self._lock:
+            if self._data.get(CURSOR_STYLE_KEY) == cleaned:
+                return
+            self._data[CURSOR_STYLE_KEY] = cleaned
+            self.save()
 
     def get_sfx_channel_volumes(self) -> dict[str, int]:
         """Return per-sound SFX volumes (missing keys mean 100%)."""

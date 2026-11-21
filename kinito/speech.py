@@ -199,6 +199,11 @@ class SpeechMixin:
     def _bubble_button_options(self, **extra):
         """Return shared styling kwargs for speech-bubble action buttons."""
         del extra
+        cursor = "hand2"
+        if getattr(self, "_cursor_style", "system") != "system":
+            # Custom cursor is already installed as the system arrow; an empty
+            # widget cursor inherits it instead of overriding with hand2.
+            cursor = ""
         return {
             "font": self._bubble_button_font(),
             "bg": self.BUBBLE_BTN_BG,
@@ -209,7 +214,7 @@ class SpeechMixin:
             "chamfer": self.BUBBLE_BTN_CHAMFER,
             "padx": self.BUBBLE_BTN_PAD_X,
             "pady": self.BUBBLE_BTN_PAD_Y,
-            "cursor": "hand2",
+            "cursor": cursor,
         }
 
     def _create_bubble_button(self, parent, text, command, **extra):

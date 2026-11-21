@@ -64,6 +64,7 @@ from kinito.features.browser import BrowserMixin
 from kinito.features.camera import CameraMixin
 from kinito.features.color_settings import ColorSettingsMixin
 from kinito.features.content import ContentMixin
+from kinito.features.cursor_settings import CursorSettingsMixin
 from kinito.features.fake_terminal import FakeTerminalMixin
 from kinito.features.games import GamesMixin
 from kinito.features.glitch import GlitchMixin
@@ -175,6 +176,7 @@ class FloatingAssistant(
     StickyNotesMixin,
     MenuSettingsMixin,
     ActivitySettingsMixin,
+    CursorSettingsMixin,
     ColorSettingsMixin,
     TextSettingsMixin,
     MovementMixin,
@@ -387,6 +389,7 @@ class FloatingAssistant(
         self._menu_settings_window = None
         self._activity_weights = self._settings.get_activity_weights()
         self._activity_settings_window = None
+        self._cursor_style = self._settings.get_cursor_style()
         self._init_app_awareness(
             enabled=self._settings.get("app_awareness_enabled", True)
         )
@@ -470,6 +473,7 @@ class FloatingAssistant(
         self.mouse_click_offset_y = 0
         self.setup_mouse_bindings()
         self._start_mouse_attention()
+        self._apply_saved_cursor_style()
         self.root.after(300, self._schedule_startup_line)
 
     def _log_optional_deps(self):
@@ -1471,6 +1475,7 @@ class FloatingAssistant(
         self.end_hug()
         self.hide_screen_glitch()
         self.hide_blue_screen()
+        self._restore_cursor_on_exit()
         line = pick_goodbye_line(
             self.get_mood() if hasattr(self, "get_mood") else None,
             self.get_mood_intensity() if hasattr(self, "get_mood_intensity") else 0.0,
@@ -1517,6 +1522,7 @@ class FloatingAssistant(
         self.end_hug()
         self.hide_screen_glitch()
         self.hide_blue_screen()
+        self._restore_cursor_on_exit()
 
     def _start_worker_threads(self):
         """Start movement, idle animation, and speech-bubble position update loops."""

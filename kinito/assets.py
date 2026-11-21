@@ -47,6 +47,7 @@ emojis_directory = os.path.join(assets_directory, "emojis")
 emoji_sheet_path = os.path.join(emojis_directory, "emojis.png")
 emoji_catalog_path = os.path.join(emojis_directory, "catalog.json")
 crash_directory = os.path.join(assets_directory, "crash")
+cursors_directory = os.path.join(assets_directory, "cursors")
 balconexe_directory = os.path.join(programs_directory, "balcon.exe")
 
 SPRITE_NORMAL_DEFAULT = "KinitoNormal.png"

@@ -364,6 +364,11 @@ MENU_VISIBILITY_SECTIONS: tuple[tuple[str, tuple[MenuEntry, ...]], ...] = (
                 "Activities",
                 frozenset({dlg.BUTTON_ACTIVITIES}),
             ),
+            (
+                "settings.cursor",
+                "Cursor",
+                frozenset({dlg.BUTTON_CURSOR}),
+            ),
             ("settings.memories", "Memories", frozenset({dlg.BUTTON_REMEMBER})),
             ("settings.forget", "Forget", frozenset({dlg.BUTTON_FORGET})),
             ("settings.credits", "Credits", frozenset({dlg.BUTTON_SHOW_CREDITS})),

@@ -1483,6 +1483,21 @@ AI_MODEL_UNAVAILABLE_LINES = [
     "Ollama isn't answering — no model list for me. Check that it's started.",
 ]
 
+CURSOR_MENU_MARKER = "which cursor should i lend you"
+CURSOR_MENU_QUESTION = (
+    "Which cursor should I lend you? Mine are pixel-perfect. "
+    "Yours can go back anytime. Current: {style}."
+)
+CURSOR_SET_LINES = [
+    "Cursor swapped. Enjoy the {style} edition. It suits you.",
+    "Your pointer is now {style}-flavored.",
+    "{style} cursor installed!",
+]
+CURSOR_UNAVAILABLE_LINES = [
+    "I couldn't swap the cursor — missing cursor art, maybe?",
+    "Cursor change failed. Your old pointer stays.",
+]
+
 EMOJI_PICKER_ON_LINES = [
     "Emoji button on! Pixel faces in chat. Soft smiles.",
     "Chat emojis enabled. Tap the smile. Express yourself.",
@@ -2420,6 +2435,11 @@ BUTTON_TERMINAL_OFF = "Terminal off"
 BUTTON_RESET_MOOD = "Reset Mood"
 BUTTON_MENU_BUTTONS = "Menu Buttons"
 BUTTON_ACTIVITIES = "Activities"
+BUTTON_CURSOR = "Cursor"
+BUTTON_CURSOR_SYSTEM = "Normal cursor"
+BUTTON_CURSOR_POINTER = "Kinito pointer"
+BUTTON_CURSOR_HAND = "Kinito hand"
+BUTTON_CURSOR_SQUID = "Kinito squid"
 BUTTON_ADJUST_COLORS = "Adjust colors"
 BUTTON_TEXT_SIZE = "Text size"
 BUTTON_SING_SONG = "Sing"

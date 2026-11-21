@@ -87,6 +87,8 @@ def apply_dialog_ui(app, spec: DialogSpec) -> None:
             buttons = sfx_volume_menu_options_for(app)
         elif spec.marker == dlg.AI_MODEL_MARKER:
             buttons = ai_model_options_for(app)
+        elif spec.marker == dlg.CURSOR_MENU_MARKER:
+            buttons = cursor_options_for(app)
         elif spec.marker == dlg.ACTIONS_MENU_MARKER:
             buttons = actions_options_for(app)
         else:
@@ -105,6 +107,27 @@ def _button_images_for(app, spec: DialogSpec, buttons: list[str]) -> dict:
         images = {}
         for index, label in enumerate(buttons, start=1):
             image = dice_face_image(app.root, index)
+            if image is not None:
+                images[label] = image
+        return images
+    if spec.marker == dlg.CURSOR_MENU_MARKER:
+        from kinito.cursors import (
+            CURSOR_STYLE_HAND,
+            CURSOR_STYLE_POINTER,
+            CURSOR_STYLE_SQUID,
+            CURSOR_STYLE_SYSTEM,
+            cursor_style_image,
+        )
+
+        styles = {
+            dlg.BUTTON_CURSOR_SYSTEM: CURSOR_STYLE_SYSTEM,
+            dlg.BUTTON_CURSOR_POINTER: CURSOR_STYLE_POINTER,
+            dlg.BUTTON_CURSOR_HAND: CURSOR_STYLE_HAND,
+            dlg.BUTTON_CURSOR_SQUID: CURSOR_STYLE_SQUID,
+        }
+        images = {}
+        for label in buttons:
+            image = cursor_style_image(app.root, styles.get(label, ""))
             if image is not None:
                 images[label] = image
         return images
@@ -193,6 +216,7 @@ def settings_options_for(app) -> list[str]:
             dlg.BUTTON_RESET_MOOD,
             dlg.BUTTON_MENU_BUTTONS,
             dlg.BUTTON_ACTIVITIES,
+            dlg.BUTTON_CURSOR,
             dlg.BUTTON_REMEMBER,
             dlg.BUTTON_FORGET,
             dlg.BUTTON_SHOW_CREDITS,
@@ -231,6 +255,17 @@ def ai_model_options_for(app) -> list[str]:
     """Return installed Ollama models as picker buttons, plus Back."""
     choices = getattr(app, "_ai_model_choices", ()) or ()
     return [*choices, dlg.BUTTON_BACK]
+
+
+def cursor_options_for(app) -> list[str]:
+    """Return cursor style picker buttons, plus Back."""
+    return [
+        dlg.BUTTON_CURSOR_SYSTEM,
+        dlg.BUTTON_CURSOR_POINTER,
+        dlg.BUTTON_CURSOR_HAND,
+        dlg.BUTTON_CURSOR_SQUID,
+        dlg.BUTTON_BACK,
+    ]
 
 
 def settings_toggles_options_for(app) -> list[str]:
@@ -814,6 +849,7 @@ def _menu_action_handlers() -> dict[str, Handler]:
         dlg.BUTTON_TTS_VOLUME: lambda a: a.offer_tts_volume_picker(),
         dlg.BUTTON_SFX_VOLUME: lambda a: a.offer_sfx_volume_menu(),
         dlg.BUTTON_AI_MODEL: lambda a: a.offer_ai_model_picker(),
+        dlg.BUTTON_CURSOR: lambda a: a.offer_cursor_picker(),
         dlg.BUTTON_MUSIC_FOLDER: lambda a: a.root.after(0, a.choose_music_folder),
         dlg.BUTTON_EMOJI: lambda a: a.toggle_emoji_picker_setting(),
         dlg.BUTTON_EMOJI_ON: lambda a: a.toggle_emoji_picker_setting(),
@@ -1154,6 +1190,22 @@ def _handle_sfx_volume_menu(app, response: str) -> None:
         app.offer_sfx_volume_picker(channel_id=channel_id)
 
 
+def _handle_cursor_menu(app, response: str) -> None:
+    """Apply a cursor style from the picker."""
+    if response == dlg.BUTTON_BACK:
+        _open_settings_menu(app)
+        return
+    styles = {
+        dlg.BUTTON_CURSOR_SYSTEM: "system",
+        dlg.BUTTON_CURSOR_POINTER: "pointer",
+        dlg.BUTTON_CURSOR_HAND: "hand",
+        dlg.BUTTON_CURSOR_SQUID: "squid",
+    }
+    style = styles.get(response)
+    if style is not None and hasattr(app, "set_cursor_style"):
+        app.set_cursor_style(style)
+
+
 def _handle_ai_model(app, response: str) -> None:
     """Switch Kinito's Ollama chat model from the picker."""
     if response == dlg.BUTTON_BACK:
@@ -1444,6 +1496,11 @@ DIALOG_SPECS: tuple[DialogSpec, ...] = (
         dlg.AI_MODEL_MARKER,
         DialogUI("buttons"),
         _handle_ai_model,
+    ),
+    DialogSpec(
+        dlg.CURSOR_MENU_MARKER,
+        DialogUI("buttons"),
+        _handle_cursor_menu,
     ),
     DialogSpec(
         dlg.SFX_VOLUME_MENU_MARKER,
