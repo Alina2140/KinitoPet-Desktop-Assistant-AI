@@ -236,6 +236,9 @@ _SFX_CHANNEL_BUTTONS: dict[str, str] = {
     "bomp": dlg.BUTTON_SFX_BOMP,
     "snoring": dlg.BUTTON_SFX_SNORING,
     "timer": dlg.BUTTON_SFX_TIMER,
+    "battleships_hit": dlg.BUTTON_SFX_BATTLESHIPS_HIT,
+    "battleships_sunk": dlg.BUTTON_SFX_BATTLESHIPS_SUNK,
+    "battleships_splash": dlg.BUTTON_SFX_BATTLESHIPS_SPLASH,
 }
 
 

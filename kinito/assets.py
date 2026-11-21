@@ -215,6 +215,9 @@ bomp_file_path = os.path.join(sounds_directory, "Bomp.mp3")
 page_turn_file_path = os.path.join(sounds_directory, "PageTurn.mp3")
 snoring_file_path = os.path.join(sounds_directory, "snoring.mp3")
 crunch_file_path = os.path.join(sounds_directory, "crunch.wav")
+battleships_explosion_file_path = os.path.join(sounds_directory, "battleships_explosion.wav")
+battleships_cannon_file_path = os.path.join(sounds_directory, "battleships_cannon.wav")
+battleships_splash_file_path = os.path.join(sounds_directory, "battleships_splash.wav")
 
 _IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp")
 

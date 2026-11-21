@@ -1643,14 +1643,16 @@ class FloatingAssistant(
         return clamp_sfx_volume(getattr(self, "_sfx_volume", 100))
 
     def get_sfx_channel_volume(self, channel_id: str) -> int:
-        """Return one channel's volume (0–100); missing channels default to 100."""
+        """Return one channel's volume (0–100); missing entries use the channel default."""
         from kinito.settings_store import clamp_sfx_volume
-        from kinito.sfx_channels import SFX_CHANNEL_IDS
+        from kinito.sfx_channels import SFX_CHANNEL_IDS, channel_default_volume
 
         if channel_id not in SFX_CHANNEL_IDS:
             return 100
         volumes = getattr(self, "_sfx_channel_volumes", None) or {}
-        return clamp_sfx_volume(volumes.get(channel_id, 100))
+        return clamp_sfx_volume(
+            volumes.get(channel_id, channel_default_volume(channel_id))
+        )
 
     def offer_sfx_volume_menu(self) -> None:
         """Open the SFX volume submenu (all sounds + per-effect entries)."""

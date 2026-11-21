@@ -42,6 +42,9 @@ DEFAULT_BOOL_SETTINGS: dict[str, bool] = {
     "terminal_enabled": True,
     "browser_use_system": True,
     "tetris_grid_enabled": False,
+    "battleships_sfx_hit_enabled": True,
+    "battleships_sfx_sunk_enabled": True,
+    "battleships_sfx_splash_enabled": True,
 }
 
 # Integer settings (clamped on load/save).

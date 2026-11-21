@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import os
-from typing import TypedDict
+from typing import NotRequired, TypedDict
 
 from kinito.assets import (
+    battleships_cannon_file_path,
+    battleships_explosion_file_path,
+    battleships_splash_file_path,
     bomp_file_path,
     crunch_file_path,
     newbeginnings_file_path,
@@ -25,6 +28,7 @@ class SfxChannel(TypedDict):
     label: str
     path: str
     kind: str  # "sfx" (Sound) or "music" (mixer.music accompaniment)
+    default_volume: NotRequired[int]  # 0-100; defaults to 100 when absent
 
 
 # Order is menu order. "magic" is the fancy/magician TinyTune accompaniment.
@@ -95,6 +99,27 @@ SFX_CHANNELS: tuple[SfxChannel, ...] = (
         "path": crunch_file_path,
         "kind": "sfx",
     },
+    {
+        "id": "battleships_hit",
+        "label": "Battleships Hit",
+        "path": battleships_cannon_file_path,
+        "kind": "sfx",
+        "default_volume": 70,
+    },
+    {
+        "id": "battleships_sunk",
+        "label": "Battleships Sunk",
+        "path": battleships_explosion_file_path,
+        "kind": "sfx",
+        "default_volume": 70,
+    },
+    {
+        "id": "battleships_splash",
+        "label": "Battleships Splash",
+        "path": battleships_splash_file_path,
+        "kind": "sfx",
+        "default_volume": 70,
+    },
 )
 
 SFX_CHANNEL_IDS: frozenset[str] = frozenset(channel["id"] for channel in SFX_CHANNELS)
@@ -122,6 +147,14 @@ def channel_by_id(channel_id: str) -> SfxChannel | None:
         if channel["id"] == channel_id:
             return channel
     return None
+
+
+def channel_default_volume(channel_id: str) -> int:
+    """Volume used when no persisted value exists for *channel_id*."""
+    channel = channel_by_id(channel_id)
+    if channel is None:
+        return 100
+    return channel.get("default_volume", 100)
 
 
 def channel_label(channel_id: str) -> str:

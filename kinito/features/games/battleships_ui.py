@@ -3,6 +3,11 @@
 import tkinter as tk
 
 from content import game_lines
+from kinito.assets import (
+    battleships_cannon_file_path,
+    battleships_explosion_file_path,
+    battleships_splash_file_path,
+)
 from kinito.colors import RAINBOW_COLOR, normalize_hex_color, rainbow_at
 from kinito.features.games import battleships as bs
 from kinito.features.games.base import open_game_window
@@ -47,6 +52,17 @@ class BattleshipsGame:
         self.rotate = tk.Button(controls, text="Rotate (R / right-click)", command=self._rotate)
         self.rotate.pack(side=tk.LEFT, padx=6)
         tk.Button(controls, text="New Game", command=self._reset).pack(side=tk.LEFT, padx=6)
+        sfx = tk.LabelFrame(self.window, text="Sounds")
+        sfx.pack(pady=4, padx=8, fill=tk.X)
+        for setting_key, label in (
+            ("battleships_sfx_hit_enabled", "Hit (cannon)"),
+            ("battleships_sfx_sunk_enabled", "Sunk (explosion)"),
+            ("battleships_sfx_splash_enabled", "Miss (splash)"),
+        ):
+            var = tk.BooleanVar(value=self._sfx_enabled(setting_key))
+            tk.Checkbutton(sfx, text=label, variable=var,
+                           command=lambda k=setting_key, v=var: self._toggle_sfx(k, v.get())
+                           ).pack(side=tk.LEFT, padx=6)
         self.canvas.bind("<Configure>", lambda event: self._draw())
         self.canvas.bind("<ButtonPress-1>", self._press)
         self.canvas.bind("<B1-Motion>", self._motion)
@@ -67,6 +83,30 @@ class BattleshipsGame:
             self._cancel()
             if getattr(self.app, "_battleships_game", None) is self:
                 self.app._battleships_game = None
+
+    def _sfx_enabled(self, setting_key):
+        store = getattr(self.app, "_settings", None)
+        return bool(store.get(setting_key, True)) if store is not None else True
+
+    def _toggle_sfx(self, setting_key, enabled):
+        store = getattr(self.app, "_settings", None)
+        if store is not None:
+            store.update(**{setting_key: bool(enabled)})
+
+    def _play_shot_sound(self, result):
+        play_sfx = getattr(self.app, "play_sfx", None)
+        if not callable(play_sfx):
+            return
+        if result in ("sunk", "win"):
+            setting_key, path = "battleships_sfx_sunk_enabled", battleships_explosion_file_path
+        elif result == "hit":
+            setting_key, path = "battleships_sfx_hit_enabled", battleships_cannon_file_path
+        elif result == "miss":
+            setting_key, path = "battleships_sfx_splash_enabled", battleships_splash_file_path
+        else:
+            return
+        if self._sfx_enabled(setting_key):
+            play_sfx(path)
 
     def _player_color(self, ship=0):
         getter = getattr(self.app, "battleships_color", None)
@@ -147,6 +187,7 @@ class BattleshipsGame:
         result = bs.shoot(self.state, attacker, index)
         if result == "already":
             return
+        self._play_shot_sound(result)
         if result == "win":
             self._end()
         elif attacker == "kinito" and result == "sunk":
