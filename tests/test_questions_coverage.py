@@ -40,6 +40,7 @@ def _menu_app(**kwargs):
     app.paused = kwargs.get("paused", False)
     app._focus_mode = kwargs.get("focus_mode", False)
     app._screen_effects_enabled = kwargs.get("screen_effects_enabled", True)
+    app._ads_enabled = kwargs.get("ads_enabled", True)
     app._ambient_reminders_enabled = kwargs.get("ambient_reminders_enabled", True)
     app._app_awareness_enabled = kwargs.get("app_awareness_enabled", True)
     app._screen_comments_enabled = kwargs.get("screen_comments_enabled", True)
@@ -182,6 +183,7 @@ def test_settings_and_actions_options():
         dlg.BUTTON_TEXT_SIZE,
         dlg.BUTTON_RESET_MOOD,
         dlg.BUTTON_MENU_BUTTONS,
+        dlg.BUTTON_ACTIVITIES,
         dlg.BUTTON_REMEMBER,
         dlg.BUTTON_FORGET,
         dlg.BUTTON_SHOW_CREDITS,
@@ -200,6 +202,7 @@ def test_settings_and_actions_options():
         dlg.BUTTON_TEXT_SIZE,
         dlg.BUTTON_RESET_MOOD,
         dlg.BUTTON_MENU_BUTTONS,
+        dlg.BUTTON_ACTIVITIES,
         dlg.BUTTON_REMEMBER,
         dlg.BUTTON_FORGET,
         dlg.BUTTON_SHOW_CREDITS,
@@ -208,6 +211,7 @@ def test_settings_and_actions_options():
 
     assert settings_toggles_options_for(_menu_app()) == [
         dlg.BUTTON_SCREEN_EFFECTS_ON,
+        dlg.BUTTON_ADS_ON,
         dlg.BUTTON_REMINDERS_ON,
         dlg.BUTTON_APP_AWARENESS_ON,
         dlg.BUTTON_SCREEN_COMMENTS_ON,
@@ -233,68 +237,72 @@ def test_settings_and_actions_options():
     assert settings_toggles_options_for(_menu_app(screen_effects_enabled=False))[0] == (
         dlg.BUTTON_SCREEN_EFFECTS_OFF
     )
-    assert settings_toggles_options_for(_menu_app(ambient_reminders_enabled=False))[1] == (
+    assert settings_toggles_options_for(_menu_app(ads_enabled=False))[1] == (
+        dlg.BUTTON_ADS_OFF
+    )
+    assert settings_toggles_options_for(_menu_app(ambient_reminders_enabled=False))[2] == (
         dlg.BUTTON_REMINDERS_OFF
     )
-    assert settings_toggles_options_for(_menu_app(app_awareness_enabled=False))[2] == (
+    assert settings_toggles_options_for(_menu_app(app_awareness_enabled=False))[3] == (
         dlg.BUTTON_APP_AWARENESS_OFF
     )
-    assert settings_toggles_options_for(_menu_app(screen_comments_enabled=False))[3] == (
+    assert settings_toggles_options_for(_menu_app(screen_comments_enabled=False))[4] == (
         dlg.BUTTON_SCREEN_COMMENTS_OFF
     )
-    assert settings_toggles_options_for(_menu_app(paint_recall_enabled=False))[4] == (
+    assert settings_toggles_options_for(_menu_app(paint_recall_enabled=False))[5] == (
         dlg.BUTTON_PAINT_RECALL_OFF
     )
-    assert settings_toggles_options_for(_menu_app(paint_requests_enabled=False))[5] == (
+    assert settings_toggles_options_for(_menu_app(paint_requests_enabled=False))[6] == (
         dlg.BUTTON_PAINT_REQUESTS_OFF
     )
     assert settings_toggles_options_for(_menu_app(sticky_notes_recall_enabled=False))[
-        6
+        7
     ] == (dlg.BUTTON_STICKY_NOTES_RECALL_OFF)
-    assert settings_toggles_options_for(_menu_app(kinito_notes_enabled=False))[7] == (
+    assert settings_toggles_options_for(_menu_app(kinito_notes_enabled=False))[8] == (
         dlg.BUTTON_KINITO_NOTES_OFF
     )
-    assert settings_toggles_options_for(_menu_app(snoring_enabled=False))[8] == (
+    assert settings_toggles_options_for(_menu_app(snoring_enabled=False))[9] == (
         dlg.BUTTON_SNORING_OFF
     )
-    assert settings_toggles_options_for(_menu_app(sleep_talk_enabled=False))[9] == (
+    assert settings_toggles_options_for(_menu_app(sleep_talk_enabled=False))[10] == (
         dlg.BUTTON_SLEEP_TALK_OFF
     )
-    assert settings_toggles_options_for(_menu_app(sound_effects_enabled=False))[10] == (
+    assert settings_toggles_options_for(_menu_app(sound_effects_enabled=False))[11] == (
         dlg.BUTTON_SOUND_EFFECTS_OFF
     )
-    assert settings_toggles_options_for(_menu_app(window_grab_enabled=False))[11] == (
+    assert settings_toggles_options_for(_menu_app(window_grab_enabled=False))[12] == (
         dlg.BUTTON_WINDOW_PLAY_OFF
     )
-    assert settings_toggles_options_for(_menu_app(tts_enabled=False))[12] == dlg.BUTTON_TTS_OFF
-    assert settings_toggles_options_for(_menu_app(player_focus_enabled=False))[13] == (
+    assert settings_toggles_options_for(_menu_app(tts_enabled=False))[13] == dlg.BUTTON_TTS_OFF
+    assert settings_toggles_options_for(_menu_app(player_focus_enabled=False))[14] == (
         dlg.BUTTON_PLAYER_FOCUS_OFF
     )
-    assert settings_toggles_options_for(_menu_app(music_comments_enabled=False))[14] == (
+    assert settings_toggles_options_for(_menu_app(music_comments_enabled=False))[15] == (
         dlg.BUTTON_MUSIC_COMMENTS_OFF
     )
-    assert settings_toggles_options_for(_menu_app(emoji_picker_enabled=False))[15] == (
+    assert settings_toggles_options_for(_menu_app(emoji_picker_enabled=False))[16] == (
         dlg.BUTTON_EMOJI_OFF
     )
-    assert settings_toggles_options_for(_menu_app(special_days_enabled=False))[16] == (
+    assert settings_toggles_options_for(_menu_app(special_days_enabled=False))[17] == (
         dlg.BUTTON_SPECIAL_DAYS_OFF
     )
-    assert settings_toggles_options_for(_menu_app(mood_system_enabled=False))[17] == (
+    assert settings_toggles_options_for(_menu_app(mood_system_enabled=False))[18] == (
         dlg.BUTTON_MOOD_SYSTEM_OFF
     )
-    assert settings_toggles_options_for(_menu_app(color_guess_voice_enabled=False))[18] == (
+    assert settings_toggles_options_for(_menu_app(color_guess_voice_enabled=False))[19] == (
         dlg.BUTTON_COLOR_GUESS_VOICE_OFF
     )
-    assert settings_toggles_options_for(_menu_app(trivia_recap_enabled=False))[19] == (
+    assert settings_toggles_options_for(_menu_app(trivia_recap_enabled=False))[20] == (
         dlg.BUTTON_TRIVIA_RECAP_OFF
     )
-    assert settings_toggles_options_for(_menu_app(terminal_enabled=False))[20] == (
+    assert settings_toggles_options_for(_menu_app(terminal_enabled=False))[21] == (
         dlg.BUTTON_TERMINAL_OFF
     )
     assert settings_toggles_options_for(
         _menu_app(hidden_menu_buttons={"settings.snoring", "main.chat"})
     ) == [
         dlg.BUTTON_SCREEN_EFFECTS_ON,
+        dlg.BUTTON_ADS_ON,
         dlg.BUTTON_REMINDERS_ON,
         dlg.BUTTON_APP_AWARENESS_ON,
         dlg.BUTTON_SCREEN_COMMENTS_ON,

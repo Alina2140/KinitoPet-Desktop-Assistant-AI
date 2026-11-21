@@ -75,6 +75,9 @@ class NudgesMixin:
             from content.special_days import seasonal_multiplier
 
             chance *= seasonal_multiplier("nudge_mult")
+        chance *= getattr(self, "_activity_chance_mult", lambda _id: 1.0)(
+            "ambient_reminder"
+        )
         if random.random() >= chance:
             return False
         self.root.after(0, self._present_ambient_nudge)

@@ -96,6 +96,7 @@ class FakeTerminalMixin:
             from content.special_days import seasonal_multiplier
 
             chance *= seasonal_multiplier("terminal_mult")
+        chance *= getattr(self, "_activity_chance_mult", lambda _id: 1.0)("terminal")
         if random.random() >= chance:
             return False
         self._last_terminal_at = time.monotonic()

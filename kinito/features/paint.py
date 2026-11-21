@@ -1288,7 +1288,10 @@ class PaintMixin:
         last_at = getattr(self, "_last_paint_recall_at", 0.0)
         if last_at > 0 and time.monotonic() - last_at < self.PAINT_RECALL_COOLDOWN_SECONDS:
             return False
-        if random.random() >= self.PAINT_RECALL_CHANCE:
+        recall_chance = self.PAINT_RECALL_CHANCE * getattr(
+            self, "_activity_chance_mult", lambda _id: 1.0
+        )("paint_recall")
+        if random.random() >= recall_chance:
             return False
         self._last_paint_recall_at = time.monotonic()
         self.root.after(0, self._start_paint_recall)
@@ -1319,7 +1322,10 @@ class PaintMixin:
             and time.monotonic() - last_at < self.PAINT_REQUEST_COOLDOWN_SECONDS
         ):
             return False
-        if random.random() >= self.PAINT_REQUEST_CHANCE:
+        request_chance = self.PAINT_REQUEST_CHANCE * getattr(
+            self, "_activity_chance_mult", lambda _id: 1.0
+        )("paint_request")
+        if random.random() >= request_chance:
             return False
         self._last_paint_request_at = time.monotonic()
         self.root.after(0, self._start_paint_request)

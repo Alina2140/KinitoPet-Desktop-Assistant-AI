@@ -192,6 +192,16 @@ def test_sfx_channel_volumes_roundtrip(store, settings_dir):
     assert reloaded.get_sfx_channel_volumes() == {"reading": 70, "surf": 100}
 
 
+def test_activity_weights_roundtrip(store, settings_dir):
+    assert store.get_activity_weights() == {}
+    store.set_activity_weights({"idle_fancy": 0, "poem": 50, "bogus": 10})
+    assert store.get_activity_weights() == {"idle_fancy": 0, "poem": 50}
+    reloaded = SettingsStore(directory=settings_dir)
+    assert reloaded.get_activity_weights() == {"idle_fancy": 0, "poem": 50}
+    reloaded.set_activity_weights({"poem": 250})
+    assert reloaded.get_activity_weights() == {"poem": 100}
+
+
 def test_music_volume_clamped(store):
     store.update(music_volume=250)
     assert store.get_int("music_volume") == 100

@@ -192,6 +192,7 @@ def settings_options_for(app) -> list[str]:
             dlg.BUTTON_TEXT_SIZE,
             dlg.BUTTON_RESET_MOOD,
             dlg.BUTTON_MENU_BUTTONS,
+            dlg.BUTTON_ACTIVITIES,
             dlg.BUTTON_REMEMBER,
             dlg.BUTTON_FORGET,
             dlg.BUTTON_SHOW_CREDITS,
@@ -234,6 +235,9 @@ def ai_model_options_for(app) -> list[str]:
 
 def settings_toggles_options_for(app) -> list[str]:
     """Return Settings on/off toggle labels showing each feature's current state."""
+    ads_label = (
+        dlg.BUTTON_ADS_ON if getattr(app, "_ads_enabled", True) else dlg.BUTTON_ADS_OFF
+    )
     screen_effects_label = (
         dlg.BUTTON_SCREEN_EFFECTS_ON
         if getattr(app, "_screen_effects_enabled", True)
@@ -343,6 +347,7 @@ def settings_toggles_options_for(app) -> list[str]:
         app,
         [
             screen_effects_label,
+            ads_label,
             reminders_label,
             app_awareness_label,
             screen_comments_label,
@@ -761,6 +766,9 @@ def _menu_action_handlers() -> dict[str, Handler]:
         dlg.BUTTON_SCREEN_EFFECTS: lambda a: a.toggle_screen_effects(),
         dlg.BUTTON_SCREEN_EFFECTS_ON: lambda a: a.toggle_screen_effects(),
         dlg.BUTTON_SCREEN_EFFECTS_OFF: lambda a: a.toggle_screen_effects(),
+        dlg.BUTTON_ADS: lambda a: a.toggle_ads(),
+        dlg.BUTTON_ADS_ON: lambda a: a.toggle_ads(),
+        dlg.BUTTON_ADS_OFF: lambda a: a.toggle_ads(),
         dlg.BUTTON_REMINDERS: lambda a: a.toggle_ambient_reminders(),
         dlg.BUTTON_REMINDERS_ON: lambda a: a.toggle_ambient_reminders(),
         dlg.BUTTON_REMINDERS_OFF: lambda a: a.toggle_ambient_reminders(),
@@ -827,6 +835,7 @@ def _menu_action_handlers() -> dict[str, Handler]:
         dlg.BUTTON_TERMINAL_OFF: lambda a: a.toggle_terminal(),
         dlg.BUTTON_RESET_MOOD: lambda a: a.reset_mood(),
         dlg.BUTTON_MENU_BUTTONS: lambda a: a.open_menu_button_settings(),
+        dlg.BUTTON_ACTIVITIES: lambda a: a.open_activity_settings(),
         dlg.BUTTON_ADJUST_COLORS: lambda a: a.open_color_settings(),
         dlg.BUTTON_TEXT_SIZE: lambda a: a.open_text_size_settings(),
         dlg.BUTTON_SAVED_WEBSITES: lambda a: a.open_saved_website_settings(),

@@ -674,6 +674,12 @@ def test_handle_menu_open_menu_buttons(mock_app):
     mock_app.open_menu_button_settings.assert_called_once()
 
 
+def test_handle_menu_open_activities(mock_app):
+    spec = find_dialog_spec(dlg.SETTINGS_MENU_QUESTION)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_ACTIVITIES)
+    mock_app.open_activity_settings.assert_called_once()
+
+
 def test_handle_menu_open_adjust_colors(mock_app):
     spec = find_dialog_spec(dlg.SETTINGS_MENU_QUESTION)
     handle_dialog_response(mock_app, spec, dlg.BUTTON_ADJUST_COLORS)

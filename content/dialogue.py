@@ -1193,6 +1193,16 @@ SCREEN_EFFECTS_OFF_LINES = [
     "Visual effects disabled. Your desktop is safe. For now.",
 ]
 
+ADS_ON_LINES = [
+    "Ad popups on. Totally legitimate offers. Trust me. I'm the ad.",
+    "Advertising enabled. You will hear about great products. From me.",
+]
+
+ADS_OFF_LINES = [
+    "Ad popups off. No more commercials. The void remains ad-free.",
+    "Ads disabled. Capitalism loses again. You're welcome.",
+]
+
 TERMINAL_ON_LINES = [
     "Terminal tricks on. If a console window types at you, relax. It's only me.",
     "Spooky terminal enabled.",
@@ -1543,6 +1553,12 @@ MENU_BUTTONS_OPEN_LINES = [
     "Here's the menu button list. Check what you want to see.",
     "Customize the menus. Tick boxes. Make it yours.",
     "Menu buttons panel open. Hide what you don't need.",
+]
+
+ACTIVITY_SETTINGS_OPEN_LINES = [
+    "Here's everything I might do on my own. Slide the chances around.",
+    "Activity control panel. Less of me, more of me — your pick.",
+    "Tune my randomness. Zero percent means never. I won't be sad. Much.",
 ]
 
 COLOR_SETTINGS_OPEN_LINES = [
@@ -2319,6 +2335,9 @@ BUTTON_MOOD = "Mood"
 BUTTON_SCREEN_EFFECTS = "Screen Effects"
 BUTTON_SCREEN_EFFECTS_ON = "Screen Effects on"
 BUTTON_SCREEN_EFFECTS_OFF = "Screen Effects off"
+BUTTON_ADS = "Ad Popups"
+BUTTON_ADS_ON = "Ad Popups on"
+BUTTON_ADS_OFF = "Ad Popups off"
 BUTTON_REMINDERS = "Reminders"
 BUTTON_REMINDERS_ON = "Reminders on"
 BUTTON_REMINDERS_OFF = "Reminders off"
@@ -2400,6 +2419,7 @@ BUTTON_TERMINAL_ON = "Terminal on"
 BUTTON_TERMINAL_OFF = "Terminal off"
 BUTTON_RESET_MOOD = "Reset Mood"
 BUTTON_MENU_BUTTONS = "Menu Buttons"
+BUTTON_ACTIVITIES = "Activities"
 BUTTON_ADJUST_COLORS = "Adjust colors"
 BUTTON_TEXT_SIZE = "Text size"
 BUTTON_SING_SONG = "Sing"

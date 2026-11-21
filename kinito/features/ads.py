@@ -18,7 +18,7 @@ class AdsMixin:
 
     def maybe_trigger_random_ad(self) -> bool:
         """Roll for a rare ad popup; schedule on the Tk main thread if it hits."""
-        if not getattr(self, "_screen_effects_enabled", True):
+        if not getattr(self, "_ads_enabled", True):
             return False
         if getattr(self, "_focus_mode", False):
             return False
@@ -29,11 +29,24 @@ class AdsMixin:
         last_at = getattr(self, "_last_ad_popup_at", 0.0)
         if last_at > 0 and time.monotonic() - last_at < self.AD_POPUP_COOLDOWN_SECONDS:
             return False
-        if random.random() >= self.AD_POPUP_CHANCE:
+        ad_chance = self.AD_POPUP_CHANCE * getattr(
+            self, "_activity_chance_mult", lambda _id: 1.0
+        )("random_ad")
+        if random.random() >= ad_chance:
             return False
         self._last_ad_popup_at = time.monotonic()
         self.root.after(0, self._show_random_ad_popup)
         return True
+
+    def toggle_ads(self):
+        """Enable or disable random ad popups."""
+        from content import dialogue as dlg
+
+        self._ads_enabled = not getattr(self, "_ads_enabled", True)
+        if hasattr(self, "_persist_settings"):
+            self._persist_settings()
+        lines = dlg.ADS_ON_LINES if self._ads_enabled else dlg.ADS_OFF_LINES
+        self.speak(dlg.pick_line(lines), skip_ai=True)
 
     def _show_random_ad_popup(self):
         """Open a small ad image window and optionally comment with mock surprise."""

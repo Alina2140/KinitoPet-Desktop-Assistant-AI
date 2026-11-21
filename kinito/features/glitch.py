@@ -94,6 +94,7 @@ class GlitchMixin:
             from content.special_days import seasonal_multiplier
 
             chance *= seasonal_multiplier("glitch_mult")
+        chance *= getattr(self, "_activity_chance_mult", lambda _id: 1.0)("screen_glitch")
         if random.random() >= chance:
             return False
         self.root.after(0, self._flash_screen_glitch)
@@ -119,6 +120,7 @@ class GlitchMixin:
             from content.special_days import seasonal_multiplier
 
             chance *= seasonal_multiplier("blue_screen_mult")
+        chance *= getattr(self, "_activity_chance_mult", lambda _id: 1.0)("blue_screen")
         if random.random() >= chance:
             return False
         self.root.after(0, self._flash_blue_screen)

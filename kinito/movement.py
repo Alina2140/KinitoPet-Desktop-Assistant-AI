@@ -2218,6 +2218,9 @@ class MovementMixin:
 
             speech_chance *= seasonal_multiplier("speech_chance_mult")
             menu_chance *= seasonal_multiplier("menu_action_mult")
+        activity_mult = getattr(self, "_activity_chance_mult", lambda _id: 1.0)
+        speech_chance *= activity_mult("random_speech")
+        memory_chance *= activity_mult("memory_question")
         if (
             random.random() < speech_chance
             and self._allow_random_questions
@@ -2367,10 +2370,13 @@ class MovementMixin:
             idle_roll = random.random()
             focus_mode = getattr(self, "_focus_mode", False)
             game_active = getattr(self, "_is_game_active", lambda: False)()
+            activity_mult = getattr(self, "_activity_chance_mult", lambda _id: 1.0)
+            reading_chance = self.IDLE_READING_CHANCE * activity_mult("idle_reading")
+            fancy_chance = self.IDLE_FANCY_CHANCE * activity_mult("idle_fancy")
             if (
                 not focus_mode
                 and not game_active
-                and idle_roll < self.IDLE_READING_CHANCE
+                and idle_roll < reading_chance
                 and self._allow_random_questions
             ):
                 self._run_reading_idle()
@@ -2378,7 +2384,7 @@ class MovementMixin:
             if (
                 not focus_mode
                 and not game_active
-                and idle_roll < self.IDLE_READING_CHANCE + self.IDLE_FANCY_CHANCE
+                and idle_roll < reading_chance + fancy_chance
                 and self._allow_random_questions
                 and self._can_initiate_spontaneous_speech()
             ):

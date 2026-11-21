@@ -93,6 +93,9 @@ class WindowGrabMixin:
         grab_chance = self.WINDOW_GRAB_CHANCE
         if hasattr(self, "mood_window_grab_mult"):
             grab_chance *= max(0.05, float(self.mood_window_grab_mult()))
+        grab_chance *= getattr(self, "_activity_chance_mult", lambda _id: 1.0)(
+            "window_grab"
+        )
         if random.random() >= grab_chance:
             return False
         self._last_window_grab_at = time.monotonic()

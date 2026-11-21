@@ -41,7 +41,10 @@ class ScreenCommentsMixin:
         last_at = getattr(self, "_last_screen_comment_at", 0.0)
         if last_at > 0 and time.monotonic() - last_at < self.SCREEN_COMMENT_COOLDOWN_SECONDS:
             return False
-        if random.random() >= self.SCREEN_COMMENT_CHANCE:
+        comment_chance = self.SCREEN_COMMENT_CHANCE * getattr(
+            self, "_activity_chance_mult", lambda _id: 1.0
+        )("screen_comment")
+        if random.random() >= comment_chance:
             return False
         self._last_screen_comment_at = time.monotonic()
         self.root.after(0, self._start_screen_comment)

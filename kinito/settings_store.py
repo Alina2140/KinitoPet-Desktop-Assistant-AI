@@ -18,6 +18,7 @@ SETTINGS_FILENAME = "settings.json"
 
 DEFAULT_BOOL_SETTINGS: dict[str, bool] = {
     "screen_effects_enabled": True,
+    "ads_enabled": True,
     "ambient_reminders_enabled": True,
     "app_awareness_enabled": True,
     "screen_comments_enabled": True,
@@ -82,6 +83,7 @@ DEFAULT_SETTINGS = DEFAULT_BOOL_SETTINGS
 HIDDEN_MENU_BUTTONS_KEY = "hidden_menu_buttons"
 MUSIC_FOLDER_KEY = "music_folder"
 SFX_CHANNEL_VOLUMES_KEY = "sfx_channel_volumes"
+ACTIVITY_WEIGHTS_KEY = "activity_weights"
 OLLAMA_MODEL_KEY = "ollama_model"
 
 
@@ -147,6 +149,7 @@ class SettingsStore:
             HIDDEN_MENU_BUTTONS_KEY: [],
             MUSIC_FOLDER_KEY: "",
             SFX_CHANNEL_VOLUMES_KEY: {},
+            ACTIVITY_WEIGHTS_KEY: {},
             OLLAMA_MODEL_KEY: "",
             "saved_websites": [],
         }
@@ -230,6 +233,11 @@ class SettingsStore:
         data[OLLAMA_MODEL_KEY] = str(model).strip() if isinstance(model, str) else ""
         data[SFX_CHANNEL_VOLUMES_KEY] = self._normalize_sfx_channel_volumes(
             raw.get(SFX_CHANNEL_VOLUMES_KEY, {})
+        )
+        from content.activity_weights import normalize_activity_weights
+
+        data[ACTIVITY_WEIGHTS_KEY] = normalize_activity_weights(
+            raw.get(ACTIVITY_WEIGHTS_KEY, {})
         )
         data["saved_websites"] = normalize_saved_websites(raw.get("saved_websites", []), strict=False)
         return data
@@ -388,4 +396,21 @@ class SettingsStore:
             if self._data.get(SFX_CHANNEL_VOLUMES_KEY) == cleaned:
                 return
             self._data[SFX_CHANNEL_VOLUMES_KEY] = cleaned
+            self.save()
+
+    def get_activity_weights(self) -> dict[str, int]:
+        """Return per-activity chance weights 0–100 (missing keys mean 100%)."""
+        from content.activity_weights import normalize_activity_weights
+
+        return normalize_activity_weights(self._data.get(ACTIVITY_WEIGHTS_KEY, {}))
+
+    def set_activity_weights(self, weights: dict[str, int] | None) -> None:
+        """Replace the whole per-activity weight map."""
+        from content.activity_weights import normalize_activity_weights
+
+        cleaned = normalize_activity_weights(weights or {})
+        with self._lock:
+            if self._data.get(ACTIVITY_WEIGHTS_KEY) == cleaned:
+                return
+            self._data[ACTIVITY_WEIGHTS_KEY] = cleaned
             self.save()

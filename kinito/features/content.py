@@ -126,8 +126,18 @@ class ContentMixin:
         for key, value in self._seasonal_modifiers_if_enabled().items():
             if key in action_keys and isinstance(value, (int, float)):
                 weights_map[key] = weights_map.get(key, 1.0) * float(value)
-        probs = [max(0.05, weights_map.get(key, 1.0)) for key, _ in actions]
-        _key, action = random.choices(actions, weights=probs, k=1)[0]
+        activity_mult = getattr(self, "_activity_chance_mult", lambda _id: 1.0)
+        for key in action_keys:
+            weights_map[key] = weights_map.get(key, 1.0) * activity_mult(key)
+        enabled_actions = [
+            (key, action)
+            for key, action in actions
+            if weights_map.get(key, 1.0) > 0.0
+        ]
+        if not enabled_actions:
+            return
+        probs = [max(0.05, weights_map.get(key, 1.0)) for key, _ in enabled_actions]
+        _key, action = random.choices(enabled_actions, weights=probs, k=1)[0]
         action()
 
     def toggle_special_days(self):

@@ -89,6 +89,11 @@ MENU_VISIBILITY_SECTIONS: tuple[tuple[str, tuple[MenuEntry, ...]], ...] = (
                 ),
             ),
             (
+                "settings.ads",
+                "Ad Popups",
+                frozenset({dlg.BUTTON_ADS, dlg.BUTTON_ADS_ON, dlg.BUTTON_ADS_OFF}),
+            ),
+            (
                 "settings.reminders",
                 "Reminders",
                 frozenset(
@@ -353,6 +358,11 @@ MENU_VISIBILITY_SECTIONS: tuple[tuple[str, tuple[MenuEntry, ...]], ...] = (
                 "settings.menu_buttons",
                 "Menu Buttons",
                 frozenset({dlg.BUTTON_MENU_BUTTONS}),
+            ),
+            (
+                "settings.activities",
+                "Activities",
+                frozenset({dlg.BUTTON_ACTIVITIES}),
             ),
             ("settings.memories", "Memories", frozenset({dlg.BUTTON_REMEMBER})),
             ("settings.forget", "Forget", frozenset({dlg.BUTTON_FORGET})),

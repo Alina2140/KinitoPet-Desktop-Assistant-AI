@@ -57,6 +57,7 @@ from kinito.assets import (
     sprites_reading_glasses_directory,
     standing_direction_from_path,
 )
+from kinito.features.activity_settings import ActivitySettingsMixin
 from kinito.features.ads import AdsMixin
 from kinito.features.app_awareness import AppAwarenessMixin
 from kinito.features.browser import BrowserMixin
@@ -173,6 +174,7 @@ class FloatingAssistant(
     PaintMixin,
     StickyNotesMixin,
     MenuSettingsMixin,
+    ActivitySettingsMixin,
     ColorSettingsMixin,
     TextSettingsMixin,
     MovementMixin,
@@ -314,6 +316,7 @@ class FloatingAssistant(
         self._browser_use_system = self._settings.get("browser_use_system", True)
         self._init_game_scores()
         self._screen_effects_enabled = self._settings.get("screen_effects_enabled", True)
+        self._ads_enabled = self._settings.get("ads_enabled", True)
         self._ambient_reminders_enabled = self._settings.get(
             "ambient_reminders_enabled", True
         )
@@ -382,6 +385,8 @@ class FloatingAssistant(
         self._color_settings_window = None
         self._hidden_menu_buttons = self._settings.get_hidden_menu_buttons()
         self._menu_settings_window = None
+        self._activity_weights = self._settings.get_activity_weights()
+        self._activity_settings_window = None
         self._init_app_awareness(
             enabled=self._settings.get("app_awareness_enabled", True)
         )
@@ -502,6 +507,7 @@ class FloatingAssistant(
             screen_effects_enabled=bool(
                 getattr(self, "_screen_effects_enabled", True)
             ),
+            ads_enabled=bool(getattr(self, "_ads_enabled", True)),
             ambient_reminders_enabled=bool(
                 getattr(self, "_ambient_reminders_enabled", True)
             ),
@@ -555,6 +561,7 @@ class FloatingAssistant(
             getattr(self, "_sfx_channel_volumes", {}) or {}
         )
         store.set_hidden_menu_buttons(getattr(self, "_hidden_menu_buttons", set()))
+        store.set_activity_weights(getattr(self, "_activity_weights", {}) or {})
 
     def _schedule_startup_line(self):
         """Start the welcome speech in a background thread after a short delay."""

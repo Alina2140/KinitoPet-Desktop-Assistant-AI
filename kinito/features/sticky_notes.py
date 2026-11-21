@@ -1142,7 +1142,10 @@ class StickyNotesMixin:
             and time.monotonic() - last_at < self.STICKY_NOTE_RECALL_COOLDOWN_SECONDS
         ):
             return False
-        if random.random() >= self.STICKY_NOTE_RECALL_CHANCE:
+        recall_chance = self.STICKY_NOTE_RECALL_CHANCE * getattr(
+            self, "_activity_chance_mult", lambda _id: 1.0
+        )("sticky_notes_recall")
+        if random.random() >= recall_chance:
             return False
         self._last_sticky_notes_recall_at = time.monotonic()
         note = random.choice(notes)
@@ -1201,7 +1204,10 @@ class StickyNotesMixin:
             and time.monotonic() - last_at < self.KINITO_NOTE_COOLDOWN_SECONDS
         ):
             return False
-        if random.random() >= self.KINITO_NOTE_CHANCE:
+        kinito_note_chance = self.KINITO_NOTE_CHANCE * getattr(
+            self, "_activity_chance_mult", lambda _id: 1.0
+        )("kinito_note")
+        if random.random() >= kinito_note_chance:
             return False
         if sum(n["author"] == "kinito" for n in load_notes()) >= self.KINITO_NOTE_MAX:
             return False
