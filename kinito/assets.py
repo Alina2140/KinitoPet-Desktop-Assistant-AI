@@ -193,6 +193,13 @@ music_player_volume_icon_path = os.path.join(music_player_directory, "volume.png
 music_player_list_icon_path = os.path.join(music_player_directory, "list.png")
 
 crash_image_path = os.path.join(crash_directory, "blueScreen.png")
+# (filename, transparent_overlay): opaque crash images cover the screen, the
+# transparent overlay keeps the normal desktop visible behind the head.
+CRASH_IMAGE_VARIANTS = (
+    ("blueScreen.png", False),
+    ("blueScreenKinito Head.png", False),
+    ("kinitoHead.png", True),
+)
 kinito_pet_url = "https://www.kinitopet.com/"
 
 newbeginnings_file_path = os.path.join(sounds_directory, "NewBeginningsPoemEdit.mp3")

@@ -9,7 +9,7 @@ import tkinter as tk
 
 from PIL import Image, ImageTk
 
-from kinito.assets import crash_image_path
+from kinito.assets import CRASH_IMAGE_VARIANTS, crash_directory
 from kinito.tk_toplevels import (
     create_staged_toplevel,
     reveal_staged_toplevel,
@@ -29,6 +29,19 @@ class GlitchMixin:
     BLUE_SCREEN_CHANCE = 1 / 1000
     BLUE_SCREEN_DURATION_MS = 2000
     BLUE_SCREEN_COOLDOWN_SECONDS = 300
+    # Chroma-key color for the transparent head overlay (Tk -transparentcolor).
+    CRASH_OVERLAY_CHROMA = "#ff01fe"
+    # Head overlay height as a fraction of the primary monitor height.
+    CRASH_HEAD_HEIGHT_RATIO = 0.6
+
+    def _pick_crash_variant(self) -> tuple[str, bool] | None:
+        """Return (path, is_overlay) for an available crash image, or None."""
+        variants = [
+            (os.path.join(crash_directory, name), is_overlay)
+            for name, is_overlay in CRASH_IMAGE_VARIANTS
+            if os.path.isfile(os.path.join(crash_directory, name))
+        ]
+        return random.choice(variants) if variants else None
 
     def _overlay_virtual_screen_rect(self):
         """Return (x, y, width, height) covering the full virtual desktop."""
@@ -110,7 +123,7 @@ class GlitchMixin:
             return False
         if self.paused or getattr(self, "_is_position_locked_by_user", lambda: self.is_dragging)() or self._camera_active or self._browser_active:
             return False
-        if not os.path.isfile(crash_image_path):
+        if self._pick_crash_variant() is None:
             return False
         last_at = getattr(self, "_last_blue_screen_at", 0.0)
         if last_at > 0 and time.monotonic() - last_at < self.BLUE_SCREEN_COOLDOWN_SECONDS:
@@ -334,14 +347,19 @@ class GlitchMixin:
                 self.hide_screen_glitch()
 
     def _flash_blue_screen(self):
-        """Show the BSOD on the primary monitor; black out other screens briefly."""
+        """Show a crash variant on the primary monitor (BSOD or head overlay)."""
         if not self._running or not getattr(self, "_screen_effects_enabled", True):
             return
         if self._has_blue_screen_overlay() or getattr(self, "_blue_screen_prepare_pending", False):
             return
 
+        variant = self._pick_crash_variant()
+        if variant is None:
+            return
+        crash_path, is_overlay = variant
+
         try:
-            crash_img = Image.open(crash_image_path).convert("RGB")
+            crash_img = Image.open(crash_path).convert("RGBA")
         except OSError:
             return
 
@@ -355,9 +373,32 @@ class GlitchMixin:
         def worker():
             resized = crash_img
             try:
-                if crash_img.size != (pw, ph):
+                if is_overlay:
+                    # Composite the transparent head onto the chroma-key color so
+                    # Tk's -transparentcolor can punch a see-through hole.
+                    head_h = max(1, int(ph * self.CRASH_HEAD_HEIGHT_RATIO))
+                    head_w = max(1, int(crash_img.size[0] * head_h / crash_img.size[1]))
+                    head = crash_img.resize(
+                        (head_w, head_h), Image.Resampling.LANCZOS
+                    )
+                    # Threshold alpha so anti-aliased edges stay head-colored;
+                    # below the threshold chroma key keeps the desktop visible.
+                    mask = head.getchannel("A").point(
+                        lambda a: 255 if a >= 128 else 0
+                    )
+                    resized = Image.new(
+                        "RGB", (pw, ph), self.CRASH_OVERLAY_CHROMA
+                    )
+                    resized.paste(
+                        head, ((pw - head_w) // 2, (ph - head_h) // 2), mask
+                    )
+                elif crash_img.size != (pw, ph):
                     # BILINEAR is much cheaper than LANCZOS on 4K primaries.
-                    resized = crash_img.resize((pw, ph), Image.Resampling.BILINEAR)
+                    resized = crash_img.convert("RGB").resize(
+                        (pw, ph), Image.Resampling.BILINEAR
+                    )
+                else:
+                    resized = crash_img.convert("RGB")
             except Exception as exc:  # noqa: BLE001
                 print(f"Warning: blue screen flash failed: {exc!r}", flush=True)
                 resized = None
@@ -369,6 +410,7 @@ class GlitchMixin:
                     return
                 self._apply_blue_screen(
                     resized,
+                    is_overlay=is_overlay,
                     vx=vx,
                     vy=vy,
                     vw=vw,
@@ -390,6 +432,7 @@ class GlitchMixin:
         self,
         crash_img,
         *,
+        is_overlay: bool,
         vx: int,
         vy: int,
         vw: int,
@@ -407,12 +450,20 @@ class GlitchMixin:
 
         shown = False
         try:
-            # Full virtual desktop goes black; BSOD sits on top of the primary only.
-            self._crash_blackout_window = self._make_overlay_window(
-                x=vx, y=vy, width=vw, height=vh
-            )
+            if not is_overlay:
+                # Full virtual desktop goes black; BSOD sits on the primary only.
+                self._crash_blackout_window = self._make_overlay_window(
+                    x=vx, y=vy, width=vw, height=vh
+                )
 
             self._crash_window = self._make_overlay_window(x=px, y=py, width=pw, height=ph)
+            if is_overlay:
+                try:
+                    self._crash_window.wm_attributes(
+                        "-transparentcolor", self.CRASH_OVERLAY_CHROMA
+                    )
+                except tk.TclError:
+                    pass
             self._crash_tk_image = ImageTk.PhotoImage(crash_img)
             label = tk.Label(
                 self._crash_window, image=self._crash_tk_image, bd=0, highlightthickness=0
@@ -420,8 +471,13 @@ class GlitchMixin:
             label.pack(fill="both", expand=True)
 
             self._raise_screen_effect_overlays()
+            duration_ms = (
+                self.BLUE_SCREEN_DURATION_MS // 2
+                if is_overlay
+                else self.BLUE_SCREEN_DURATION_MS
+            )
             self._crash_hide_timer = self.root.after(
-                self.BLUE_SCREEN_DURATION_MS,
+                duration_ms,
                 self.hide_blue_screen,
             )
             shown = True
