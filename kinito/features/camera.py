@@ -2,6 +2,7 @@
 
 import random
 import threading
+import time
 import tkinter as tk
 from tkinter import Toplevel
 
@@ -33,9 +34,77 @@ class CameraMixin:
     CAMERA_BRIGHT_LIT_FRACTION = 0.12
     CAMERA_DARK_STREAK_FRAMES = 60   # ~2 s at 33 ms
     CAMERA_BRIGHT_STREAK_FRAMES = 15  # ~0.5 s hysteresis before "bright again"
+    CAMERA_RANDOM_OPEN_CHANCE = 1 / 400
+    CAMERA_RANDOM_OPEN_COOLDOWN_SECONDS = 600
+    CAMERA_RANDOM_OPEN_LINE_CHANCE = 0.5
 
-    def open_camera(self):
-        """Open the default webcam and start the live preview loop."""
+    def toggle_camera_random_open(self):
+        """Enable or disable Kinito opening the camera on its own."""
+        self._camera_random_open_enabled = not getattr(
+            self, "_camera_random_open_enabled", True
+        )
+        if hasattr(self, "_persist_settings"):
+            self._persist_settings()
+        lines = (
+            dlg.CAMERA_RANDOM_ON_LINES
+            if self._camera_random_open_enabled
+            else dlg.CAMERA_RANDOM_OFF_LINES
+        )
+        self.speak(dlg.pick_line(lines), skip_ai=True)
+
+    def maybe_trigger_camera_open(self) -> bool:
+        """Roll for an unprompted camera peek; schedule it if it hits."""
+        if not getattr(self, "_camera_random_open_enabled", True):
+            return False
+        if getattr(self, "_focus_mode", False):
+            return False
+        if getattr(self, "_is_game_active", lambda: False)():
+            return False
+        if getattr(self, "_camera_active", False):
+            return False
+        if getattr(self, "_window_grab_active", False):
+            return False
+        if (
+            self.paused
+            or getattr(self, "_is_position_locked_by_user", lambda: self.is_dragging)()
+            or getattr(self, "_browser_active", False)
+        ):
+            return False
+        if getattr(self, "_is_busy_with_speech", lambda: False)():
+            return False
+        last_at = getattr(self, "_last_camera_random_open_at", 0.0)
+        if (
+            last_at > 0
+            and time.monotonic() - last_at < self.CAMERA_RANDOM_OPEN_COOLDOWN_SECONDS
+        ):
+            return False
+        open_chance = self.CAMERA_RANDOM_OPEN_CHANCE * getattr(
+            self, "_activity_chance_mult", lambda _id: 1.0
+        )("camera_open")
+        if random.random() >= open_chance:
+            return False
+        self._last_camera_random_open_at = time.monotonic()
+        self.root.after(0, self._start_random_camera_open)
+        return True
+
+    def _start_random_camera_open(self):
+        """Open the camera unprompted; sometimes comment on doing so."""
+        if not getattr(self, "_running", True):
+            return
+        if not getattr(self, "_camera_random_open_enabled", True):
+            return
+        if getattr(self, "_camera_active", False):
+            return
+        if random.random() < self.CAMERA_RANDOM_OPEN_LINE_CHANCE:
+            self.speak(dlg.pick_line(dlg.CAMERA_RANDOM_OPEN_LINES), skip_ai=True)
+        self.open_camera(quiet=True)
+
+    def open_camera(self, *, quiet: bool = False):
+        """Open the default webcam and start the live preview loop.
+
+        With *quiet* the usual "camera's on" / "no signal" spoken lines are
+        suppressed, used for unprompted random peeks.
+        """
         if self._camera_active:
             self._speak_camera_comment(dlg.CAMERA_ALREADY_OPEN_LINES)
             return
@@ -58,6 +127,7 @@ class CameraMixin:
 
             self._camera_cap = cap
             self._camera_active = True
+            self._camera_quiet_open = quiet
             self._camera_feed_live = False
             self._camera_success_streak = 0
             self._camera_failed_reads = 0
@@ -215,7 +285,8 @@ class CameraMixin:
             return
         self._camera_open_line_spoken = True
         self._show_camera_no_signal_placeholder()
-        self._speak_camera_comment(dlg.CAMERA_NO_SIGNAL_LINES)
+        if not getattr(self, "_camera_quiet_open", False):
+            self._speak_camera_comment(dlg.CAMERA_NO_SIGNAL_LINES)
 
     def _show_camera_no_signal_placeholder(self):
         """Show a helpful message when the camera feed is black."""
@@ -239,7 +310,8 @@ class CameraMixin:
             self._speak_camera_comment(dlg.CAMERA_SIGNAL_RESTORED_LINES)
         else:
             self._camera_open_line_spoken = True
-            self._speak_camera_comment(dlg.CAMERA_OPEN_LINES)
+            if not getattr(self, "_camera_quiet_open", False):
+                self._speak_camera_comment(dlg.CAMERA_OPEN_LINES)
             if self._camera_line_timer is None:
                 delay_ms = random.randint(15000, 25000)
                 self._camera_line_timer = self.root.after(
@@ -391,6 +463,7 @@ class CameraMixin:
 
         was_active = self._camera_active
         self._camera_active = False
+        self._camera_quiet_open = False
         self._camera_feed_live = False
         self._camera_success_streak = 0
         self._camera_failed_reads = 0

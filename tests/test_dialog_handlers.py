@@ -638,6 +638,21 @@ def test_handle_menu_toggle_player_focus(mock_app):
     mock_app.toggle_player_focus.assert_called_once()
 
 
+def test_handle_menu_toggle_camera_peeks(mock_app):
+    spec = find_dialog_spec(dlg.SETTINGS_MENU_QUESTION)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_CAMERA_PEEK_ON)
+    mock_app.toggle_camera_random_open.assert_called_once()
+
+
+def test_camera_random_open_lines_do_not_open_dialogs():
+    for line in (
+        dlg.CAMERA_RANDOM_OPEN_LINES
+        + dlg.CAMERA_RANDOM_ON_LINES
+        + dlg.CAMERA_RANDOM_OFF_LINES
+    ):
+        assert find_dialog_spec(line) is None
+
+
 def test_handle_menu_toggle_music_comments(mock_app):
     spec = find_dialog_spec(dlg.SETTINGS_MENU_QUESTION)
     handle_dialog_response(mock_app, spec, dlg.BUTTON_MUSIC_COMMENTS_ON)

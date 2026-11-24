@@ -61,6 +61,7 @@ def _menu_app(**kwargs):
     app._color_guess_voice_enabled = kwargs.get("color_guess_voice_enabled", True)
     app._trivia_recap_enabled = kwargs.get("trivia_recap_enabled", True)
     app._terminal_enabled = kwargs.get("terminal_enabled", True)
+    app._camera_random_open_enabled = kwargs.get("camera_random_open_enabled", True)
     app._hidden_menu_buttons = kwargs.get("hidden_menu_buttons", set())
     app._is_music_player_minimized = lambda: bool(
         kwargs.get("music_player_minimized", False)
@@ -234,6 +235,7 @@ def test_settings_and_actions_options():
         dlg.BUTTON_COLOR_GUESS_VOICE_ON,
         dlg.BUTTON_TRIVIA_RECAP_ON,
         dlg.BUTTON_TERMINAL_ON,
+        dlg.BUTTON_CAMERA_PEEK_ON,
         dlg.BUTTON_BACK,
     ]
     assert settings_toggles_options_for(_menu_app(screen_effects_enabled=False))[0] == (
@@ -300,6 +302,9 @@ def test_settings_and_actions_options():
     assert settings_toggles_options_for(_menu_app(terminal_enabled=False))[21] == (
         dlg.BUTTON_TERMINAL_OFF
     )
+    assert settings_toggles_options_for(_menu_app(camera_random_open_enabled=False))[
+        22
+    ] == (dlg.BUTTON_CAMERA_PEEK_OFF)
     assert settings_toggles_options_for(
         _menu_app(hidden_menu_buttons={"settings.snoring", "main.chat"})
     ) == [
@@ -324,6 +329,7 @@ def test_settings_and_actions_options():
         dlg.BUTTON_COLOR_GUESS_VOICE_ON,
         dlg.BUTTON_TRIVIA_RECAP_ON,
         dlg.BUTTON_TERMINAL_ON,
+        dlg.BUTTON_CAMERA_PEEK_ON,
         dlg.BUTTON_BACK,
     ]
 

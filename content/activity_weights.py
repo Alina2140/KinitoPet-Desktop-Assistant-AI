@@ -59,6 +59,7 @@ ACTIVITY_SECTIONS: tuple[tuple[str, tuple[ActivityEntry, ...]], ...] = (
             ("paint_request", "Paint requests"),
             ("sticky_notes_recall", "Sticky note popups"),
             ("window_grab", "Window play"),
+            ("camera_open", "Camera peeks"),
         ),
     ),
 )
@@ -81,6 +82,7 @@ ACTIVITY_TOGGLE_ATTRS: dict[str, str] = {
     "paint_request": "_paint_requests_enabled",
     "sticky_notes_recall": "_sticky_notes_recall_enabled",
     "window_grab": "_window_grab_enabled",
+    "camera_open": "_camera_random_open_enabled",
 }
 
 ACTIVITY_WEIGHT_MIN = 0

@@ -26,6 +26,17 @@ def camera():
     stub._camera_dark = False
     stub._camera_dark_streak = 0
     stub._camera_bright_streak = 0
+    stub._camera_quiet_open = False
+    stub._camera_random_open_enabled = True
+    stub._last_camera_random_open_at = 0.0
+    stub.paused = False
+    stub.is_dragging = False
+    stub._browser_active = False
+    stub._focus_mode = False
+    stub._window_grab_active = False
+    stub._is_game_active = MagicMock(return_value=False)
+    stub._is_position_locked_by_user = MagicMock(return_value=False)
+    stub._running = True
     stub.root = MagicMock()
     stub.root.after = MagicMock()
     stub.root.after_cancel = MagicMock()
@@ -226,3 +237,81 @@ def test_schedule_camera_line_speaks_dark_lines_when_dark(camera):
 
     camera._speak_camera_comment.assert_called_once_with(dlg.CAMERA_TOO_DARK_LINES)
     camera.say_random_camera_line.assert_not_called()
+
+
+def test_toggle_camera_random_open(camera):
+    camera._persist_settings = MagicMock()
+
+    camera.toggle_camera_random_open()
+    assert camera._camera_random_open_enabled is False
+    camera.speak.assert_called_once()
+
+    camera.toggle_camera_random_open()
+    assert camera._camera_random_open_enabled is True
+
+
+def test_maybe_trigger_camera_open_disabled(camera):
+    camera._camera_random_open_enabled = False
+    assert camera.maybe_trigger_camera_open() is False
+    camera.root.after.assert_not_called()
+
+
+def test_maybe_trigger_camera_open_while_active(camera):
+    camera._camera_active = True
+    assert camera.maybe_trigger_camera_open() is False
+    camera.root.after.assert_not_called()
+
+
+def test_maybe_trigger_camera_open_hit_schedules_open(camera):
+    with patch("kinito.features.camera.random.random", return_value=0.0):
+        assert camera.maybe_trigger_camera_open() is True
+    assert camera._last_camera_random_open_at > 0
+    camera.root.after.assert_called_once_with(
+        0, camera._start_random_camera_open
+    )
+
+
+def test_maybe_trigger_camera_open_respects_cooldown(camera):
+    camera._last_camera_random_open_at = 1e12  # far future -> inside cooldown
+    with patch("kinito.features.camera.random.random", return_value=0.0):
+        assert camera.maybe_trigger_camera_open() is False
+
+
+def test_start_random_camera_open_speaks_line_on_roll(camera):
+    camera.open_camera = MagicMock()
+    with patch("kinito.features.camera.random.random", return_value=0.0):
+        camera._start_random_camera_open()
+    camera.speak.assert_called_once()
+    assert camera.speak.call_args[0][0] in dlg.CAMERA_RANDOM_OPEN_LINES
+    camera.open_camera.assert_called_once_with(quiet=True)
+
+
+def test_start_random_camera_open_can_stay_silent(camera):
+    camera.open_camera = MagicMock()
+    with patch("kinito.features.camera.random.random", return_value=0.99):
+        camera._start_random_camera_open()
+    camera.speak.assert_not_called()
+    camera.open_camera.assert_called_once_with(quiet=True)
+
+
+def test_feed_restored_quiet_open_skips_open_line(camera):
+    camera._camera_active = True
+    camera._camera_quiet_open = True
+    camera._speak_camera_comment = MagicMock()
+
+    camera._on_camera_feed_restored()
+
+    assert camera._camera_open_line_spoken is True
+    camera._speak_camera_comment.assert_not_called()
+
+
+def test_initial_signal_quiet_open_stays_silent(camera):
+    camera._camera_active = True
+    camera._camera_quiet_open = True
+    camera._camera_label = MagicMock()
+    camera._speak_camera_comment = MagicMock()
+
+    camera._check_camera_initial_signal()
+
+    assert camera._camera_open_line_spoken is True
+    camera._speak_camera_comment.assert_not_called()

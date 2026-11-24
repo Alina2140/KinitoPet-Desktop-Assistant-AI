@@ -352,6 +352,11 @@ class FloatingAssistant(
         self._kinito_notes_enabled = self._settings.get("kinito_notes_enabled", True)
         self._last_kinito_note_at = 0.0
         self._window_grab_enabled = self._settings.get("window_grab_enabled", True)
+        self._camera_random_open_enabled = self._settings.get(
+            "camera_random_open_enabled", True
+        )
+        self._last_camera_random_open_at = 0.0
+        self._camera_quiet_open = False
         self._last_window_grab_at = 0.0
         self._window_grab_active = False
         self._window_grab_state = None
@@ -535,6 +540,9 @@ class FloatingAssistant(
                 getattr(self, "_sound_effects_enabled", True)
             ),
             window_grab_enabled=bool(getattr(self, "_window_grab_enabled", True)),
+            camera_random_open_enabled=bool(
+                getattr(self, "_camera_random_open_enabled", True)
+            ),
             tts_enabled=bool(getattr(self, "_tts_enabled", True)),
             player_focus_enabled=bool(getattr(self, "_player_focus_enabled", True)),
             music_comments_enabled=bool(

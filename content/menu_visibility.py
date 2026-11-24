@@ -350,6 +350,17 @@ MENU_VISIBILITY_SECTIONS: tuple[tuple[str, tuple[MenuEntry, ...]], ...] = (
                 ),
             ),
             (
+                "settings.camera_peeks",
+                "Camera Peeks",
+                frozenset(
+                    {
+                        dlg.BUTTON_CAMERA_PEEK,
+                        dlg.BUTTON_CAMERA_PEEK_ON,
+                        dlg.BUTTON_CAMERA_PEEK_OFF,
+                    }
+                ),
+            ),
+            (
                 "settings.reset_mood",
                 "Reset Mood",
                 frozenset({dlg.BUTTON_RESET_MOOD}),

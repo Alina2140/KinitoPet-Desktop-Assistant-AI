@@ -866,6 +866,29 @@ CAMERA_CLOSE_LINES = [
     "Camera off. I'll remember what I saw. I always do.",
     "Goodbye for now, little lens. The eyes in the dark remain.",
 ]
+# Spoken (sometimes) when Kinito opens the camera on its own, without asking.
+# Must NOT contain CAMERA_QUESTION_MARKER ("open the camera") or other dialog markers.
+CAMERA_RANDOM_OPEN_LINES = [
+    "Peek-a-boo! I'm turning my camera on for a sec. You don't mind, right?",
+    "Don't mind me. I'm just taking a little look at you.",
+    "I'm sneaking a peek at you.",
+    "I missed your face, so... camera time!",
+    "Surprise! I wanted to see what you look like right now.",
+    "I got curious about you again. One little look only, promise.",
+    "Eyes open! I mean — my eyes. Looking at you. Hi.",
+    "No need to ask this time — I'm just going to look.",
+]
+
+CAMERA_RANDOM_ON_LINES = [
+    "Camera peeks on! I may take a little look at you now and then. No asking.",
+    "Spontaneous camera peeks enabled.",
+    "I can check in on you by myself now. Just a peek, now and then.",
+]
+CAMERA_RANDOM_OFF_LINES = [
+    "Camera peeks off. I'll ask first like a polite little assistant.",
+    "No more surprise peeks. The lens stays closed unless you say so.",
+    "Random camera peeks disabled. I'll only imagine your face again...",
+]
 
 # Browser (detected via marker substrings in speech bubble title)
 BROWSER_QUESTION_MARKER = "visit a website"
@@ -2450,6 +2473,9 @@ BUTTON_TRIVIA_RECAP_OFF = "Trivia Answers off"
 BUTTON_TERMINAL = "Terminal"
 BUTTON_TERMINAL_ON = "Terminal on"
 BUTTON_TERMINAL_OFF = "Terminal off"
+BUTTON_CAMERA_PEEK = "Camera Peeks"
+BUTTON_CAMERA_PEEK_ON = "Camera Peeks on"
+BUTTON_CAMERA_PEEK_OFF = "Camera Peeks off"
 BUTTON_RESET_MOOD = "Reset Mood"
 BUTTON_MENU_BUTTONS = "Menu Buttons"
 BUTTON_ACTIVITIES = "Activities"
