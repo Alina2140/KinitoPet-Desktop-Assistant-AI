@@ -418,8 +418,8 @@ class LLMMixin(ChatActionsMixin, MemoryMixin, SpeechChatMixin):
         """Return a chat greeting, personalizing when the user's name is known."""
         name = self.chat_user_label()
         if name and name != "You":
-            return dlg.CHAT_GREETING_WITH_NAME.format(user_name=name)
-        return dlg.CHAT_GREETING
+            return dlg.pick_line(dlg.CHAT_GREETINGS_WITH_NAME).format(user_name=name)
+        return dlg.pick_line(dlg.CHAT_GREETINGS)
 
     def _system_prompt(self) -> str:
         """Build the system prompt including persistent memory and live app context."""

@@ -1128,8 +1128,23 @@ SETTINGS_TOGGLES_QUESTION = "Turn features on or off!"
 ACTIONS_MENU_MARKER = "actions!"
 ACTIONS_MENU_QUESTION = "Actions! What should I do?"
 
-CHAT_GREETING = "Hey! I'm all ears — what's on your mind? I've been waiting."
-CHAT_GREETING_WITH_NAME = "Hey {user_name}! I'm all ears — what's on your mind? I've been waiting."
+CHAT_GREETINGS = [
+    "Hey! I'm all ears — what's on your mind?",
+    "Hi! You came to talk to me! What's on your mind today?",
+    "You're here! I saved up so many things to say.",
+    "Hello! I've been waiting for you. Talk to me!",
+    "Hey! Chat time! I promise I'll be a very good listener.",
+    "You want to chat? Good choice. So — what's on your mind?",
+    "Hi! I was just thinking about you. Tell me everything.",
+]
+CHAT_GREETINGS_WITH_NAME = [
+    "Hey {user_name}! I'm all ears — what's on your mind? I've been waiting.",
+    "Hi {user_name}! What's on your mind today?",
+    "{user_name}! You're here! I saved up so many things to say. Go on!",
+    "Hello {user_name}! I've been waiting for you. What are we talking about?",
+    "Hey {user_name}! Chat time with my favorite person. What's up?",
+    "{user_name}, hi! I was hoping you'd stop by. Tell me everything!",
+]
 CHAT_UNAVAILABLE = (
     "I'd love to chat, but I can't reach my brain right now. Don't worry — I'm still here."
 )

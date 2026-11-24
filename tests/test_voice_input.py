@@ -212,7 +212,7 @@ def chat_app():
     stub.BUBBLE_OFF_SCREEN_GEOMETRY = SpeechMixin.BUBBLE_OFF_SCREEN_GEOMETRY
     stub.BUBBLE_BTN_BG = SpeechMixin.BUBBLE_BTN_BG
     stub.BUBBLE_BTN_ACTIVE = SpeechMixin.BUBBLE_BTN_ACTIVE
-    stub._chat_greeting = MagicMock(return_value=dlg.CHAT_GREETING)
+    stub._chat_greeting = MagicMock(return_value=dlg.CHAT_GREETINGS[0])
     stub.speak = MagicMock()
     stub.create_wrapped_label = MagicMock(return_value=MagicMock())
     stub._create_bubble_shell = MagicMock(return_value=MagicMock())
@@ -232,7 +232,7 @@ def test_begin_chat_sets_push_mode(chat_app):
         chat_app._begin_chat_with_voice_mode(CHAT_VOICE_PUSH)
     assert chat_app._chat_voice_mode == CHAT_VOICE_PUSH
     chat_app.open_chat_bubble.assert_called_once()
-    chat_app.speak_chat_response.assert_not_called()
+    chat_app.speak_chat_response.assert_called_once_with(dlg.CHAT_GREETINGS[0])
 
 
 def test_begin_chat_continuous_speaks_greeting(chat_app):
@@ -244,7 +244,7 @@ def test_begin_chat_continuous_speaks_greeting(chat_app):
     ):
         chat_app._begin_chat_with_voice_mode(CHAT_VOICE_CONTINUOUS)
     assert chat_app._chat_voice_mode == CHAT_VOICE_CONTINUOUS
-    chat_app.speak_chat_response.assert_called_once_with(dlg.CHAT_GREETING)
+    chat_app.speak_chat_response.assert_called_once_with(dlg.CHAT_GREETINGS[0])
 
 
 def test_continuous_mode_hides_text_entry(chat_app):
@@ -305,7 +305,7 @@ def test_begin_chat_continuous_falls_back_without_stt(chat_app):
         chat_app._begin_chat_with_voice_mode(CHAT_VOICE_CONTINUOUS)
     assert chat_app._chat_voice_mode == CHAT_VOICE_PUSH
     chat_app.append_chat_message.assert_called()
-    chat_app.speak_chat_response.assert_not_called()
+    chat_app.speak_chat_response.assert_called_once_with(dlg.CHAT_GREETINGS[0])
 
 
 def test_voice_transcript_sends_chat_message(chat_app):

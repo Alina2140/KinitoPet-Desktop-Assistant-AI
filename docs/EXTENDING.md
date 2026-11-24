@@ -457,7 +457,7 @@ Set environment variable `OLLAMA_ENABLED=false` before starting Kinito.
 | File | Role |
 |------|------|
 | `content/llm_prompts.py` | System prompt, idle prompt, error fallbacks |
-| `content/dialogue.py` | `BUTTON_CHAT`, `CHAT_GREETING`, `CHAT_UNAVAILABLE` |
+| `content/dialogue.py` | `BUTTON_CHAT`, `CHAT_GREETINGS`, `CHAT_UNAVAILABLE` |
 | `kinito/llm/config.py` | Env-based settings |
 | `kinito/features/llm.py` | Chat start, send message, idle AI lines |
 | `kinito/speech_chat.py` | Scrollable chat bubble |

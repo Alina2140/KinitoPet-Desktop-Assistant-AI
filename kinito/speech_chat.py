@@ -192,12 +192,15 @@ class SpeechChatMixin(EmojiPickerMixin):
                 fell_back = True
         self._chat_voice_mode = mode
         self._chat_voice_paused = False
-        greeting = self._chat_greeting() if hasattr(self, "_chat_greeting") else dlg.CHAT_GREETING
+        greeting = (
+            self._chat_greeting()
+            if hasattr(self, "_chat_greeting")
+            else dlg.pick_line(dlg.CHAT_GREETINGS)
+        )
         self.open_chat_bubble(greeting)
         if fell_back:
             self.append_chat_message(prompts.CHAT_ASSISTANT_LABEL, dlg.CHAT_VOICE_UNAVAILABLE)
-        elif mode == CHAT_VOICE_CONTINUOUS:
-            self.speak_chat_response(greeting)
+        self.speak_chat_response(greeting)
 
     def open_chat_bubble(self, greeting: str) -> None:
         """Open a persistent chat bubble with an initial assistant greeting."""
