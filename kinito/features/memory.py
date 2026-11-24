@@ -41,6 +41,11 @@ class MemoryMixin:
 
     def open_memory_editor(self) -> None:
         """Show an editable window for facts and notes from memory.json."""
+        if hasattr(self, "close_speech_bubble"):
+            try:
+                self.close_speech_bubble()
+            except Exception:
+                pass
         existing = getattr(self, "_memory_editor_window", None)
         if existing is not None:
             try:

@@ -62,6 +62,7 @@ def _menu_app(**kwargs):
     app._trivia_recap_enabled = kwargs.get("trivia_recap_enabled", True)
     app._terminal_enabled = kwargs.get("terminal_enabled", True)
     app._camera_random_open_enabled = kwargs.get("camera_random_open_enabled", True)
+    app._pets_enabled = kwargs.get("pets_enabled", True)
     app._hidden_menu_buttons = kwargs.get("hidden_menu_buttons", set())
     app._is_music_player_minimized = lambda: bool(
         kwargs.get("music_player_minimized", False)
@@ -186,6 +187,7 @@ def test_settings_and_actions_options():
         dlg.BUTTON_MENU_BUTTONS,
         dlg.BUTTON_ACTIVITIES,
         dlg.BUTTON_CURSOR,
+        dlg.BUTTON_PETS,
         dlg.BUTTON_REMEMBER,
         dlg.BUTTON_FORGET,
         dlg.BUTTON_SHOW_CREDITS,
@@ -206,6 +208,7 @@ def test_settings_and_actions_options():
         dlg.BUTTON_MENU_BUTTONS,
         dlg.BUTTON_ACTIVITIES,
         dlg.BUTTON_CURSOR,
+        dlg.BUTTON_PETS,
         dlg.BUTTON_REMEMBER,
         dlg.BUTTON_FORGET,
         dlg.BUTTON_SHOW_CREDITS,
@@ -236,6 +239,7 @@ def test_settings_and_actions_options():
         dlg.BUTTON_TRIVIA_RECAP_ON,
         dlg.BUTTON_TERMINAL_ON,
         dlg.BUTTON_CAMERA_PEEK_ON,
+        dlg.BUTTON_PETS_ON,
         dlg.BUTTON_BACK,
     ]
     assert settings_toggles_options_for(_menu_app(screen_effects_enabled=False))[0] == (
@@ -305,6 +309,9 @@ def test_settings_and_actions_options():
     assert settings_toggles_options_for(_menu_app(camera_random_open_enabled=False))[
         22
     ] == (dlg.BUTTON_CAMERA_PEEK_OFF)
+    assert settings_toggles_options_for(_menu_app(pets_enabled=False))[23] == (
+        dlg.BUTTON_PETS_OFF
+    )
     assert settings_toggles_options_for(
         _menu_app(hidden_menu_buttons={"settings.snoring", "main.chat"})
     ) == [
@@ -330,6 +337,7 @@ def test_settings_and_actions_options():
         dlg.BUTTON_TRIVIA_RECAP_ON,
         dlg.BUTTON_TERMINAL_ON,
         dlg.BUTTON_CAMERA_PEEK_ON,
+        dlg.BUTTON_PETS_ON,
         dlg.BUTTON_BACK,
     ]
 
@@ -348,6 +356,7 @@ def test_settings_and_actions_options():
         dlg.BUTTON_PLAY_GAME,
         dlg.BUTTON_PAINT,
         dlg.BUTTON_STICKY_NOTES,
+        dlg.BUTTON_PET,
         dlg.BUTTON_BACK,
     ]
     assert actions_options_for(_menu_app()) == [
@@ -363,6 +372,7 @@ def test_settings_and_actions_options():
         dlg.BUTTON_PAINT,
         dlg.BUTTON_STICKY_NOTES,
         dlg.BUTTON_GIVE_HUG,
+        dlg.BUTTON_PET,
         dlg.BUTTON_BACK,
     ]
     assert actions_options_for(_menu_app(music_player_minimized=True)) == [
@@ -378,6 +388,7 @@ def test_settings_and_actions_options():
         dlg.BUTTON_PAINT,
         dlg.BUTTON_STICKY_NOTES,
         dlg.BUTTON_GIVE_HUG,
+        dlg.BUTTON_PET,
         dlg.BUTTON_BACK,
     ]
 

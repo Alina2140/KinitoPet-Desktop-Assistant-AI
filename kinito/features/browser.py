@@ -363,6 +363,11 @@ class BrowserMixin:
                 pass
 
     def open_saved_website_settings(self):
+        if hasattr(self, "close_speech_bubble"):
+            try:
+                self.close_speech_bubble()
+            except Exception:
+                pass
         existing = getattr(self, "_saved_websites_window", None)
         if existing is not None:
             try:

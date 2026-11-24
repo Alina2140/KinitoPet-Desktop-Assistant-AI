@@ -44,6 +44,7 @@ user_media_directory = os.path.join(assets_directory, "userMedia")
 paintings_directory = os.path.join(user_media_directory, "paintings")
 sticky_notes_directory = os.path.join(user_media_directory, "sticky_notes")
 emojis_directory = os.path.join(assets_directory, "emojis")
+minis_directory = os.path.join(assets_directory, "minis")
 emoji_sheet_path = os.path.join(emojis_directory, "emojis.png")
 emoji_catalog_path = os.path.join(emojis_directory, "catalog.json")
 crash_directory = os.path.join(assets_directory, "crash")
@@ -250,6 +251,48 @@ def list_hug_sprite_paths() -> list[str]:
     if sprite_path_hug2 in paths:
         ordered.append(sprite_path_hug2)
     return ordered
+
+
+def list_mini_sprites() -> list[dict]:
+    """Discover mini-pet sprites in gameAssets/minis (``mini<Name>.png``).
+
+    Files ending in ``Sleep`` (e.g. ``miniJadeSleep.png``) are sleep variants of
+    the sprite with the same stem, not standalone pets.
+    Returns ``[{"id", "name", "path", "sleep_path"}]`` sorted by name.
+    """
+    sprites: dict[str, dict] = {}
+    for path in list_image_files(minis_directory):
+        stem = os.path.splitext(os.path.basename(path))[0]
+        if not stem.startswith("mini") or len(stem) <= len("mini"):
+            continue
+        key = stem[len("mini") :]
+        if key.lower().endswith("sleep") and len(key) > len("Sleep"):
+            base = key[: -len("Sleep")]
+            entry = sprites.setdefault(
+                base.lower(),
+                {
+                    "id": base.lower(),
+                    "name": base.capitalize(),
+                    "path": "",
+                    "sleep_path": "",
+                },
+            )
+            entry["sleep_path"] = path
+            continue
+        entry = sprites.setdefault(
+            key.lower(),
+            {
+                "id": key.lower(),
+                "name": key.capitalize(),
+                "path": "",
+                "sleep_path": "",
+            },
+        )
+        entry["path"] = path
+    return sorted(
+        (entry for entry in sprites.values() if entry["path"]),
+        key=lambda entry: entry["name"],
+    )
 
 
 def list_standing_sprite_paths(*, crouch: bool = False) -> list[str]:

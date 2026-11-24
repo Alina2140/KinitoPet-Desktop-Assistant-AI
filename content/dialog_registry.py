@@ -217,6 +217,7 @@ def settings_options_for(app) -> list[str]:
             dlg.BUTTON_MENU_BUTTONS,
             dlg.BUTTON_ACTIVITIES,
             dlg.BUTTON_CURSOR,
+            dlg.BUTTON_PETS,
             dlg.BUTTON_REMEMBER,
             dlg.BUTTON_FORGET,
             dlg.BUTTON_SHOW_CREDITS,
@@ -386,6 +387,11 @@ def settings_toggles_options_for(app) -> list[str]:
         if getattr(app, "_camera_random_open_enabled", True)
         else dlg.BUTTON_CAMERA_PEEK_OFF
     )
+    pets_label = (
+        dlg.BUTTON_PETS_ON
+        if getattr(app, "_pets_enabled", True)
+        else dlg.BUTTON_PETS_OFF
+    )
     return _visible_menu_buttons(
         app,
         [
@@ -412,6 +418,7 @@ def settings_toggles_options_for(app) -> list[str]:
             trivia_recap_label,
             terminal_label,
             camera_peek_label,
+            pets_label,
             dlg.BUTTON_BACK,
         ],
     )
@@ -438,6 +445,7 @@ def actions_options_for(app) -> list[str]:
             dlg.BUTTON_PAINT,
             dlg.BUTTON_STICKY_NOTES,
             dlg.BUTTON_GIVE_HUG,
+            dlg.BUTTON_PET,
             dlg.BUTTON_BACK,
         ],
     )
@@ -881,6 +889,8 @@ def _menu_action_handlers() -> dict[str, Handler]:
         dlg.BUTTON_CAMERA_PEEK: lambda a: a.toggle_camera_random_open(),
         dlg.BUTTON_CAMERA_PEEK_ON: lambda a: a.toggle_camera_random_open(),
         dlg.BUTTON_CAMERA_PEEK_OFF: lambda a: a.toggle_camera_random_open(),
+        dlg.BUTTON_PETS_ON: lambda a: a.toggle_pets(),
+        dlg.BUTTON_PETS_OFF: lambda a: a.toggle_pets(),
         dlg.BUTTON_RESET_MOOD: lambda a: a.reset_mood(),
         dlg.BUTTON_MENU_BUTTONS: lambda a: a.open_menu_button_settings(),
         dlg.BUTTON_ACTIVITIES: lambda a: a.open_activity_settings(),
@@ -902,6 +912,8 @@ def _menu_action_handlers() -> dict[str, Handler]:
         dlg.BUTTON_PAINT: lambda a: a.offer_paint_picker(),
         dlg.BUTTON_STICKY_NOTES: lambda a: a.offer_sticky_notes_picker(),
         dlg.BUTTON_GIVE_HUG: lambda a: a.give_hug(),
+        dlg.BUTTON_PET: lambda a: a.spawn_pet(),
+        dlg.BUTTON_PETS: lambda a: a.open_pet_settings(),
         dlg.BUTTON_TELL_TIME: lambda a: a.print_current_datetime(),
         dlg.BUTTON_KNOWN_SINCE: lambda a: a.say_known_since(),
         dlg.BUTTON_SHOW_CREDITS: lambda a: a.show_credits(),

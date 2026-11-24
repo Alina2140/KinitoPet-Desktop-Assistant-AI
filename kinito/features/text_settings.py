@@ -22,6 +22,11 @@ class TextSettingsMixin:
         """Show a dropdown to pick the text size used by speech bubbles."""
         from content import dialogue as dlg
 
+        if hasattr(self, "close_speech_bubble"):
+            try:
+                self.close_speech_bubble()
+            except Exception:
+                pass
         if hasattr(self, "speak"):
             try:
                 self.speak(dlg.pick_line(dlg.TEXT_SIZE_OPEN_LINES), skip_ai=True)

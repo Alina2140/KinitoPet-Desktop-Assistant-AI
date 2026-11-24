@@ -2205,6 +2205,12 @@ class MovementMixin:
         if hasattr(self, "maybe_trigger_camera_open") and self.maybe_trigger_camera_open():
             time.sleep(self._idle_wait_before_next_action())
             return
+        if hasattr(self, "maybe_trigger_pet") and self.maybe_trigger_pet():
+            time.sleep(self._idle_wait_before_next_action())
+            return
+        if hasattr(self, "maybe_dismiss_pet") and self.maybe_dismiss_pet():
+            time.sleep(self._idle_wait_before_next_action())
+            return
         if hasattr(self, "maybe_drift_mood"):
             self.maybe_drift_mood()
         speech_chance = self.SPONTANEOUS_CHANCE

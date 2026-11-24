@@ -44,6 +44,11 @@ class ActivitySettingsMixin:
         """Show a scrollable panel of sliders for spontaneous activity chances."""
         from content import dialogue as dlg
 
+        if hasattr(self, "close_speech_bubble"):
+            try:
+                self.close_speech_bubble()
+            except Exception:
+                pass
         if hasattr(self, "speak"):
             try:
                 self.speak(

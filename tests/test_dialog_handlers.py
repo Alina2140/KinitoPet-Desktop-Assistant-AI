@@ -695,6 +695,18 @@ def test_handle_menu_open_activities(mock_app):
     mock_app.open_activity_settings.assert_called_once()
 
 
+def test_handle_menu_open_pet_settings(mock_app):
+    spec = find_dialog_spec(dlg.SETTINGS_MENU_QUESTION)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_PETS)
+    mock_app.open_pet_settings.assert_called_once()
+
+
+def test_handle_menu_spawn_pet(mock_app):
+    spec = find_dialog_spec(dlg.ACTIONS_MENU_QUESTION)
+    handle_dialog_response(mock_app, spec, dlg.BUTTON_PET)
+    mock_app.spawn_pet.assert_called_once()
+
+
 def test_handle_menu_open_adjust_colors(mock_app):
     spec = find_dialog_spec(dlg.SETTINGS_MENU_QUESTION)
     handle_dialog_response(mock_app, spec, dlg.BUTTON_ADJUST_COLORS)

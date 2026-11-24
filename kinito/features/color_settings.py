@@ -169,6 +169,11 @@ class ColorSettingsMixin:
         """Show the Adjust Colors window with separate Snake and Chat name sections."""
         from content import dialogue as dlg
 
+        if hasattr(self, "close_speech_bubble"):
+            try:
+                self.close_speech_bubble()
+            except Exception:
+                pass
         if hasattr(self, "speak"):
             try:
                 self.speak(dlg.pick_line(dlg.COLOR_SETTINGS_OPEN_LINES), skip_ai=True)

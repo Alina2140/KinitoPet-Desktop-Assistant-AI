@@ -31,6 +31,7 @@ DEFAULT_BOOL_SETTINGS: dict[str, bool] = {
     "sound_effects_enabled": True,
     "window_grab_enabled": True,
     "camera_random_open_enabled": True,
+    "pets_enabled": True,
     "tts_enabled": True,
     "player_focus_enabled": True,
     "music_comments_enabled": True,
@@ -54,6 +55,7 @@ DEFAULT_INT_SETTINGS: dict[str, int] = {
     "sfx_volume": 100,
     "music_volume": 75,
     "text_size": 10,
+    "pets_max_count": 1,
 }
 
 # Color settings (#rrggbb); invalid values fall back to the default.
@@ -81,6 +83,10 @@ TEXT_SIZE_MIN = 8
 TEXT_SIZE_MAX = 24
 TEXT_SIZE_DEFAULT = 10
 
+PETS_MAX_COUNT_MIN = 1
+PETS_MAX_COUNT_MAX = 3
+PETS_MAX_COUNT_DEFAULT = 1
+
 # Back-compat alias used by older tests/imports.
 DEFAULT_SETTINGS = DEFAULT_BOOL_SETTINGS
 
@@ -90,6 +96,7 @@ SFX_CHANNEL_VOLUMES_KEY = "sfx_channel_volumes"
 ACTIVITY_WEIGHTS_KEY = "activity_weights"
 OLLAMA_MODEL_KEY = "ollama_model"
 CURSOR_STYLE_KEY = "cursor_style"
+PET_ENABLED_SPRITES_KEY = "pet_enabled_sprites"
 
 
 def clamp_tts_volume(value: int | float) -> int:
@@ -117,6 +124,15 @@ def clamp_music_volume(value: int | float) -> int:
     except (TypeError, ValueError):
         return MUSIC_VOLUME_DEFAULT
     return max(MUSIC_VOLUME_MIN, min(MUSIC_VOLUME_MAX, volume))
+
+
+def clamp_pets_max_count(value: int | float) -> int:
+    """Clamp the simultaneous pet count to the supported 1–3 range."""
+    try:
+        count = int(round(float(value)))
+    except (TypeError, ValueError):
+        return PETS_MAX_COUNT_DEFAULT
+    return max(PETS_MAX_COUNT_MIN, min(PETS_MAX_COUNT_MAX, count))
 
 
 def clamp_text_size(value: int | float) -> int:
@@ -215,6 +231,10 @@ class SettingsStore:
                 data[key] = clamp_music_volume(value if value is not None else default)
             elif key == "text_size":
                 data[key] = clamp_text_size(value if value is not None else default)
+            elif key == "pets_max_count":
+                data[key] = clamp_pets_max_count(
+                    value if value is not None else default
+                )
             elif isinstance(value, bool):
                 data[key] = default
             elif isinstance(value, int):
@@ -251,6 +271,10 @@ class SettingsStore:
             raw.get(ACTIVITY_WEIGHTS_KEY, {})
         )
         data["saved_websites"] = normalize_saved_websites(raw.get("saved_websites", []), strict=False)
+        if PET_ENABLED_SPRITES_KEY in raw and isinstance(
+            raw.get(PET_ENABLED_SPRITES_KEY), str
+        ):
+            data[PET_ENABLED_SPRITES_KEY] = raw[PET_ENABLED_SPRITES_KEY]
         return data
 
     def get_saved_websites(self) -> list[dict]:
@@ -290,6 +314,8 @@ class SettingsStore:
                 return clamp_music_volume(value)
             if key == "text_size":
                 return clamp_text_size(value)
+            if key == "pets_max_count":
+                return clamp_pets_max_count(value)
             return value
 
         if default is not None:
@@ -322,6 +348,8 @@ class SettingsStore:
                         coerced = clamp_music_volume(value)
                     elif key == "text_size":
                         coerced = clamp_text_size(value)
+                    elif key == "pets_max_count":
+                        coerced = clamp_pets_max_count(value)
                     else:
                         try:
                             coerced = int(value)
@@ -424,6 +452,27 @@ class SettingsStore:
             if self._data.get(SFX_CHANNEL_VOLUMES_KEY) == cleaned:
                 return
             self._data[SFX_CHANNEL_VOLUMES_KEY] = cleaned
+            self.save()
+
+    def get_pet_enabled_sprites(self, available_ids: Iterable[str]) -> set[str] | None:
+        """Return enabled pet sprite ids; None means "all available" (default)."""
+        raw = self._data.get(PET_ENABLED_SPRITES_KEY, None)
+        available = {str(sprite_id) for sprite_id in available_ids}
+        if raw is None:
+            return None
+        if not isinstance(raw, str) or not raw.strip():
+            return set()
+        return {part.strip().lower() for part in raw.split(",")} & available
+
+    def set_pet_enabled_sprites(self, sprite_ids: Iterable[str] | None) -> None:
+        """Persist the enabled pet sprite ids (None resets to "all")."""
+        with self._lock:
+            if sprite_ids is None:
+                self._data.pop(PET_ENABLED_SPRITES_KEY, None)
+            else:
+                self._data[PET_ENABLED_SPRITES_KEY] = ",".join(
+                    sorted({str(sprite_id).strip().lower() for sprite_id in sprite_ids})
+                )
             self.save()
 
     def get_activity_weights(self) -> dict[str, int]:

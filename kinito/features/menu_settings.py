@@ -22,6 +22,11 @@ class MenuSettingsMixin:
         """Show a scrollable checkbox panel for menu button visibility."""
         from content import dialogue as dlg
 
+        if hasattr(self, "close_speech_bubble"):
+            try:
+                self.close_speech_bubble()
+            except Exception:
+                pass
         if hasattr(self, "speak"):
             try:
                 self.speak(dlg.pick_line(dlg.MENU_BUTTONS_OPEN_LINES), skip_ai=True)

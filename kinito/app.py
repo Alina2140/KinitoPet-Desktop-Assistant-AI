@@ -18,6 +18,7 @@ from kinito.assets import (
     balconexe_directory,
     ensure_user_media_directories,
     list_hug_sprite_paths,
+    list_mini_sprites,
     list_reading_color_variants,
     list_standing_sprite_paths,
     reading_direction_from_stem,
@@ -75,6 +76,7 @@ from kinito.features.mood import MoodMixin
 from kinito.features.music import MusicMixin
 from kinito.features.nudges import NudgesMixin
 from kinito.features.paint import PaintMixin
+from kinito.features.pets import PetsMixin
 from kinito.features.programs import ProgramsMixin
 from kinito.features.screen_comments import ScreenCommentsMixin
 from kinito.features.sticky_notes import StickyNotesMixin
@@ -187,6 +189,7 @@ class FloatingAssistant(
     MusicMixin,
     ProgramsMixin,
     CameraMixin,
+    PetsMixin,
     BrowserMixin,
     AppAwarenessMixin,
 ):
@@ -357,6 +360,17 @@ class FloatingAssistant(
         )
         self._last_camera_random_open_at = 0.0
         self._camera_quiet_open = False
+        self._pets = []
+        self._pets_enabled = self._settings.get("pets_enabled", True)
+        self._pets_max_count = self._settings.get_int("pets_max_count", 1)
+        self._pet_sprite_catalog = None
+        self._pet_enabled_sprites = self._settings.get_pet_enabled_sprites(
+            entry["id"] for entry in list_mini_sprites()
+        )
+        self._pet_tick_timer = None
+        self._pet_settings_window = None
+        self._last_pet_spawn_at = 0.0
+        self._last_pet_dismiss_at = 0.0
         self._last_window_grab_at = 0.0
         self._window_grab_active = False
         self._window_grab_state = None
@@ -561,6 +575,8 @@ class FloatingAssistant(
             ),
             trivia_recap_enabled=bool(getattr(self, "_trivia_recap_enabled", True)),
             text_size=int(getattr(self, "_text_size", 10)),
+            pets_max_count=int(getattr(self, "_pets_max_count", 1)),
+            pets_enabled=bool(getattr(self, "_pets_enabled", True)),
             terminal_enabled=bool(getattr(self, "_terminal_enabled", True)),
             browser_use_system=bool(getattr(self, "_browser_use_system", True)),
             snake_color=self.snake_color(),
@@ -574,6 +590,10 @@ class FloatingAssistant(
         )
         store.set_hidden_menu_buttons(getattr(self, "_hidden_menu_buttons", set()))
         store.set_activity_weights(getattr(self, "_activity_weights", {}) or {})
+        if hasattr(store, "set_pet_enabled_sprites"):
+            store.set_pet_enabled_sprites(
+                getattr(self, "_pet_enabled_sprites", None)
+            )
 
     def _schedule_startup_line(self):
         """Start the welcome speech in a background thread after a short delay."""
@@ -1299,6 +1319,7 @@ class FloatingAssistant(
             "_screen_bounds_timer",
             "_camera_frame_timer",
             "_camera_comment_timer",
+            "_pet_tick_timer",
             "_reminder_tick_timer",
             "_focus_timer_tick_timer",
             "_throw_after_id",
@@ -1477,6 +1498,8 @@ class FloatingAssistant(
             self.stop_background_music()
         self.close_camera()
         self.close_browser()
+        if hasattr(self, "_stop_pets"):
+            self._stop_pets()
         self._ensure_single_game_window()
         if hasattr(self, "_ensure_single_paint_window"):
             self._ensure_single_paint_window()
@@ -1522,6 +1545,8 @@ class FloatingAssistant(
             self.stop_background_music()
         self.close_camera()
         self.close_browser()
+        if hasattr(self, "_stop_pets"):
+            self._stop_pets()
         self._ensure_single_game_window()
         if hasattr(self, "_ensure_single_paint_window"):
             self._ensure_single_paint_window()

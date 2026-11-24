@@ -884,6 +884,44 @@ CAMERA_RANDOM_ON_LINES = [
     "Spontaneous camera peeks enabled.",
     "I can check in on you by myself now. Just a peek, now and then.",
 ]
+# Mini pets (little companions that follow Kinito around)
+PET_SUMMON_LINES = [
+    "Come here, little one! Come say hi to my favorite person.",
+    "I invited a friend. He doesn't say much — but look how cute he is!",
+    "Look who followed me home! I'm keeping him. You can't stop me.",
+    "A tiny visitor! Don't mind him, he just wanted to meet you.",
+    "I made a friend and brought him over. Friendship squared.",
+    "Company! I summoned a little buddy. Isn't he adorable?",
+]
+PET_SEND_AWAY_LINES = [
+    "Alright little buddy, time to head home. I'll call you again soon!",
+    "Off you go, tiny one. Thanks for hanging out with us!",
+    "Okay friend, playtime's over. Back to the asset folder with you.",
+    "Go on home now, little guy. Say hi to the others for me!",
+    "That's enough adventure for today. Off you hop, cutie!",
+    "Bye bye, little one! I'll summon you again. Probably soon.",
+]
+PETS_ON_LINES = [
+    "Pets on! The little ones may come visit again.",
+    "Pet visits enabled. Prepare for tiny friends.",
+    "The minis are free to come over now!",
+]
+PETS_OFF_LINES = [
+    "Pets off. No more tiny visitors for now.",
+    "Pet visits disabled. The minis went home.",
+    "Okay, the little ones stay away for now.",
+]
+PET_DISABLED_LINE = "Pet visits are turned off right now."
+PET_NO_SPRITES_LINE = (
+    "I tried to call a pet, but none of them are enabled. "
+    "Turn one on in the pet options first!"
+)
+PETS_SETTINGS_OPEN_LINES = [
+    "Pet control panel! Pick how many little friends may visit.",
+    "Here's the pet menu. More minis, more friendship.",
+    "Pet options! Choose which buddies can come over.",
+]
+
 CAMERA_RANDOM_OFF_LINES = [
     "Camera peeks off. I'll ask first like a polite little assistant.",
     "No more surprise peeks. The lens stays closed unless you say so.",
@@ -2545,6 +2583,10 @@ BUTTON_ROCK = "✊"
 BUTTON_PAPER = "✋"
 BUTTON_SCISSORS = "✌"
 BUTTON_GIVE_HUG = "Hug"
+BUTTON_PET = "Pet"
+BUTTON_PETS = "Pets"
+BUTTON_PETS_ON = "Pets on"
+BUTTON_PETS_OFF = "Pets off"
 BUTTON_PICK_SONG = "Pick a Song"
 BUTTON_CATEGORY_ANIMALS = "Animals"
 BUTTON_CATEGORY_KNOWLEDGE = "Knowledge"

@@ -361,6 +361,11 @@ MENU_VISIBILITY_SECTIONS: tuple[tuple[str, tuple[MenuEntry, ...]], ...] = (
                 ),
             ),
             (
+                "settings.pets_toggle",
+                "Pet Visits",
+                frozenset({dlg.BUTTON_PETS_ON, dlg.BUTTON_PETS_OFF}),
+            ),
+            (
                 "settings.reset_mood",
                 "Reset Mood",
                 frozenset({dlg.BUTTON_RESET_MOOD}),
@@ -380,6 +385,7 @@ MENU_VISIBILITY_SECTIONS: tuple[tuple[str, tuple[MenuEntry, ...]], ...] = (
                 "Cursor",
                 frozenset({dlg.BUTTON_CURSOR}),
             ),
+            ("settings.pets", "Pets", frozenset({dlg.BUTTON_PETS})),
             ("settings.memories", "Memories", frozenset({dlg.BUTTON_REMEMBER})),
             ("settings.forget", "Forget", frozenset({dlg.BUTTON_FORGET})),
             ("settings.credits", "Credits", frozenset({dlg.BUTTON_SHOW_CREDITS})),
@@ -417,6 +423,7 @@ MENU_VISIBILITY_SECTIONS: tuple[tuple[str, tuple[MenuEntry, ...]], ...] = (
                 frozenset({dlg.BUTTON_STICKY_NOTES}),
             ),
             ("actions.hug", "Hug", frozenset({dlg.BUTTON_GIVE_HUG})),
+            ("actions.pet", "Pet", frozenset({dlg.BUTTON_PET})),
             ("actions.back", "Back", frozenset({dlg.BUTTON_BACK})),
         ),
     ),
