@@ -291,15 +291,21 @@ class MiniPet:
         if getattr(app, "paused", False):
             self.state = PET_STATE_SLEEP
             self.target = app._pet_sleep_spot_for(self)
-            self._move_toward(now, speed=app.PET_SPEED_PX)
-            if self._target_reached(app.PET_ARRIVE_RADIUS):
+            if not self._target_reached(0.5):
+                self.sleeping = False
+                self._set_image("left" if self.facing_left else "right")
+                self._move_toward(now, speed=app.PET_SPEED_PX)
+            if self._target_reached(0.5):
+                self.x, self.y = self.target
                 self.sleeping = True
                 self._set_image("sleep")
+                self._place(self.x, self.y)
             return
 
-        if self.sleeping:
+        if self.state == PET_STATE_SLEEP:
             self.sleeping = False
             self.state = PET_STATE_FOLLOW
+            self._set_image("left" if self.facing_left else "right")
 
         # Return rule: long time away or very far -> head back to Kinito.
         if dist > app.PET_NEAR_RADIUS:
@@ -663,9 +669,71 @@ class PetsMixin:
         )
 
     def _pet_sleep_spot_for(self, pet: MiniPet) -> tuple[float, float]:
+        pets = [
+            p for p in getattr(self, "_pets", [])
+            if not p.destroyed and p.state != PET_STATE_LEAVE
+        ]
+        if pet not in pets:
+            pets.append(pet)
+        sizes = [
+            (
+                max(photo.width() for photo in p.photos.values()),
+                max(photo.height() for photo in p.photos.values()),
+            )
+            for p in pets
+        ]
         cx, cy = self._pet_anchor_point()
-        side = -1.0 if math.cos(pet.orbit_angle) < 0 else 1.0
-        return (cx + side * 70.0, cy + 40.0)
+        get_size = getattr(self, "_window_screen_size", None)
+        if callable(get_size):
+            buddy_w, buddy_h = get_size()
+        else:
+            buddy_w = max(int(self.root.winfo_width()), 1)
+            buddy_h = max(int(self.root.winfo_height()), 1)
+        rect = self._pet_screen_rect(cx, cy)
+        gap = 10.0
+        index = pets.index(pet)
+        fallback = None
+        for columns in range(len(pets), 0, -1):
+            rows = [sizes[i:i + columns] for i in range(0, len(pets), columns)]
+            widths = [sum(w for w, _ in row) + gap * (len(row) - 1) for row in rows]
+            heights = [max(h for _, h in row) for row in rows]
+            width = max(max(widths), buddy_w if columns == len(pets) else 0)
+            height = sum(heights) + gap * (len(rows) - 1)
+            offsets = []
+            row_y = 0.0
+            for row, row_width, row_height in zip(rows, widths, heights, strict=True):
+                spacing = gap
+                if len(row) > 1:
+                    spacing += (width - row_width) / (len(row) - 1)
+                row_x = (width - row[0][0]) / 2 if len(row) == 1 else 0.0
+                for w, h in row:
+                    offsets.append((row_x, row_y + row_height - h))
+                    row_x += w + spacing
+                row_y += row_height + gap
+            candidates = [
+                (cx - width / 2, cy + buddy_h / 2 + gap),
+                (cx - width / 2, cy - buddy_h / 2 - gap - height),
+                (cx + buddy_w / 2 + gap, cy - height / 2),
+                (cx - buddy_w / 2 - gap - width, cy - height / 2),
+            ]
+            if fallback is None:
+                fallback = (candidates[0], offsets)
+            for side, (x, y) in enumerate(candidates):
+                if rect is not None:
+                    mx, my, mw, mh = rect
+                    if width > mw or height > mh:
+                        continue
+                    if side < 2:
+                        x = max(mx, min(mx + mw - width, x))
+                    else:
+                        y = max(my, min(my + mh - height, y))
+                    if not (mx <= x <= mx + mw - width and my <= y <= my + mh - height):
+                        continue
+                dx, dy = offsets[index]
+                return x + dx, y + dy
+        (x, y), offsets = fallback
+        dx, dy = offsets[index]
+        return x + dx, y + dy
 
     def _pet_cursor_point(self) -> tuple[float, float] | None:
         getter = getattr(self, "_cursor_screen_pos", None)

@@ -51,9 +51,12 @@ def pets():
 
 
 def _fake_pet(app, sprite_id="jade", *, with_sleep=True):
-    photos = {"right": MagicMock(), "left": MagicMock()}
+    photos = {
+        key: MagicMock(width=lambda: 60, height=lambda: 50)
+        for key in ("right", "left")
+    }
     if with_sleep:
-        photos["sleep"] = MagicMock()
+        photos["sleep"] = MagicMock(width=lambda: 60, height=lambda: 50)
     sprite = {"id": sprite_id, "name": sprite_id.capitalize(),
               "path": "p", "sleep_path": ""}
     pet = MiniPet(app, sprite, photos)
@@ -174,11 +177,103 @@ def test_maybe_dismiss_pet_hit_speaks_line_and_sends_away(pets):
     assert pet.state == PET_STATE_LEAVE
 
 
+def test_sleep_spots_do_not_overlap_for_same_orbit(pets):
+    pets._window_screen_size = lambda: (240, 180)
+    pets._buddy_center = lambda: (620.0, 490.0)
+    pets._pet_screen_rect = lambda *_: (0, 0, 1920, 1080)
+    pets._pets = [_fake_pet(pets) for _ in range(3)]
+    for pet in pets._pets:
+        pet.orbit_angle = 0.0
+    spots = [pets._pet_sleep_spot_for(pet) for pet in pets._pets]
+    assert all(y >= 580 for _, y in spots)
+    assert all(spots[i + 1][0] - spots[i][0] >= 68 for i in range(2))
+    assert spots == [pets._pet_sleep_spot_for(pet) for pet in pets._pets]
+
+
+@pytest.mark.parametrize("count", [1, 2, 3])
+@pytest.mark.parametrize("center", [(120, 90), (940, 690), (-1100, 690)])
+def test_sleep_layout_fits_monitor_and_pet_sizes(pets, count, center):
+    mx = -1200 if center[0] < 0 else 0
+    pets._pet_screen_rect = lambda *_: (mx, 0, 1000, 800)
+    pets._window_screen_size = lambda: (200, 140)
+    pets._buddy_center = lambda: center
+    pets._pets = [_fake_pet(pets, with_sleep=i != 1) for i in range(count)]
+    for i, pet in enumerate(pets._pets):
+        if "sleep" in pet.photos:
+            pet.photos["sleep"].width = MagicMock(return_value=90 + 10 * i)
+            pet.photos["sleep"].height = MagicMock(return_value=70)
+    boxes = []
+    for pet in pets._pets:
+        x, y = pets._pet_sleep_spot_for(pet)
+        w = max(photo.width() for photo in pet.photos.values())
+        h = max(photo.height() for photo in pet.photos.values())
+        assert mx <= x <= mx + 1000 - w
+        assert 0 <= y <= 800 - h
+        boxes.append((x, y, w, h))
+    for i, (x, y, w, h) in enumerate(boxes):
+        for ox, oy, ow, oh in boxes[i + 1:]:
+            assert x + w <= ox or ox + ow <= x or y + h <= oy or oy + oh <= y
+
+
+def test_sleep_layout_wraps_on_narrow_monitor(pets):
+    pets._pet_screen_rect = lambda *_: (0, 0, 150, 800)
+    pets._window_screen_size = lambda: (100, 100)
+    pets._buddy_center = lambda: (75, 100)
+    pets._pets = [_fake_pet(pets) for _ in range(3)]
+    spots = [pets._pet_sleep_spot_for(pet) for pet in pets._pets]
+    assert len(set(spots)) == 3
+    assert len({y for _, y in spots}) > 1
+    assert all(0 <= x <= 90 and 150 <= y <= 750 for x, y in spots)
+
+
+def test_sleep_layout_ignores_leaving_and_destroyed_pets(pets):
+    pets._pet_screen_rect = lambda *_: (0, 0, 1920, 1080)
+    pets._pets = [_fake_pet(pets) for _ in range(3)]
+    first, leaving, destroyed = pets._pets
+    leaving.state = PET_STATE_LEAVE
+    destroyed.destroyed = True
+    spot = pets._pet_sleep_spot_for(first)
+    pets._pets = [first]
+    assert pets._pet_sleep_spot_for(first) == spot
+    extra = _fake_pet(pets)
+    pets._pets.append(extra)
+    assert pets._pet_sleep_spot_for(first) != pets._pet_sleep_spot_for(extra)
+    pets._pets.remove(extra)
+    assert pets._pet_sleep_spot_for(first) == spot
+
+
+def test_sleep_arrival_stays_exact_and_retargets(pets):
+    pets.paused = True
+    pets._pet_screen_rect = lambda *_: (0, 0, 1920, 1080)
+    pet = _fake_pet(pets)
+    pets._pets = [pet]
+    target = pets._pet_sleep_spot_for(pet)
+    pet.x, pet.y = target[0] - 2, target[1]
+    for now in range(5):
+        pet.tick(float(now))
+        assert (pet.x, pet.y) == target
+        assert pet.sleeping
+        pet.label.config.assert_called_with(image=pet.photos["sleep"])
+        pet.window.geometry.assert_called_with(f"+{int(target[0])}+{int(target[1])}")
+    pets.x += 100
+    pet.tick(10.0)
+    assert not pet.sleeping
+    assert pet.x > target[0]
+
+
+def test_pet_resumes_if_woken_before_arrival(pets):
+    pet = _fake_pet(pets)
+    pet.state = PET_STATE_SLEEP
+    pet.tick(1000.0)
+    assert pet.state == PET_STATE_FOLLOW
+    assert not pet.sleeping
+
+
 def test_pet_tick_sleep_when_kinito_paused(pets):
     pets.paused = True
     pet = _fake_pet(pets)
     pet.orbit_angle = 0.0  # sleep spot lands on +70 offset
-    pet.x, pet.y = pets.x + 70.0, pets.y + 40.0
+    pet.x, pet.y = pets._pet_sleep_spot_for(pet)
     pet.tick(1000.0)
     assert pet.state == PET_STATE_SLEEP
     assert pet.sleeping is True
