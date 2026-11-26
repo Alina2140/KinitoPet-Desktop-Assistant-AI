@@ -107,6 +107,7 @@ class MiniPet:
         self.hurry_until = 0.0
         self.idle_hop_until = 0.0
         self.rest_after_wander = True
+        self.social: dict | None = None
         self.orbit_angle = random.uniform(0, math.tau)
         self.dragging = False
         self._drag_offset = (0, 0)
@@ -149,6 +150,7 @@ class MiniPet:
     def _on_drag_start(self, event=None):
         """Begin dragging the pet with the left mouse button."""
         self.dragging = True
+        self.social = None
         self._close_dismiss_popup()
         try:
             self._drag_offset = (
@@ -194,8 +196,6 @@ class MiniPet:
             except tk.TclError:
                 pass
             self.dismiss_popup = None
-        root_x = int(getattr(event, "x_root", self.x))
-        root_y = int(getattr(event, "y_root", self.y))
         popup = Toplevel(self.window or self.app.root)
         popup.wm_overrideredirect(True)
         popup.wm_attributes("-topmost", True)
@@ -209,7 +209,17 @@ class MiniPet:
         )
         button.pack()
         popup.update_idletasks()
-        popup.geometry(f"+{root_x + 10}+{root_y - 8}")
+        pw, ph = self._pet_draw_size()
+        pop_w = max(popup.winfo_reqwidth(), 1)
+        pop_h = max(popup.winfo_reqheight(), 1)
+        pop_x = self.x + pw / 2 - pop_w / 2
+        rect = self.app._pet_work_rect(self.x, self.y)
+        if rect is not None and self.y - pop_h - 6 >= rect[1]:
+            pop_y = self.y - pop_h - 6  # above the sprite
+        else:
+            pop_y = self.y + ph + 6  # below when there's no room on top
+        pop_x, pop_y = self.app._pet_clamp_point(pop_x, pop_y)
+        popup.geometry(f"+{int(pop_x)}+{int(pop_y)}")
         self.dismiss_popup = popup
         self.app.root.after(4000, self._close_dismiss_popup)
 
@@ -338,8 +348,24 @@ class MiniPet:
             if now - self.away_since > app.PET_RETURN_AFTER_SECONDS:
                 self.state = PET_STATE_FOLLOW
                 self.target = None
+                self.social = None
         else:
             self.away_since = None
+
+        if self.social is not None:
+            prev_state = self.state
+            if self._social_step(now):
+                return
+            self.social = None
+            if self.state == prev_state:
+                # The interaction may have moved the pet into its own end
+                # state (e.g. resting at a shared destination); only reset
+                # to following when it didn't.
+                self.state = PET_STATE_FOLLOW
+                self.target = None
+                self.idle_until = now + random.uniform(
+                    *app.PET_DECIDE_INTERVAL_SECONDS
+                )
 
         if self.state == PET_STATE_DANCE:
             if now < self.dance_until and app._is_pet_music_playing():
@@ -397,6 +423,14 @@ class MiniPet:
                         self.idle_hop_until = now + random.uniform(
                             *app.PET_IDLE_HOP_SECONDS
                         )
+                    elif roll < (
+                        app.PET_WANDER_CHANCE
+                        + app.PET_CIRCLE_CHANCE
+                        + app.PET_MOUSE_CHANCE
+                        + app.PET_IDLE_HOP_CHANCE
+                        + app.PET_SOCIAL_CHANCE
+                    ):
+                        app._pet_try_social(self)
                     self.idle_until = now + random.uniform(
                         *app.PET_DECIDE_INTERVAL_SECONDS
                     )
@@ -451,6 +485,184 @@ class MiniPet:
             self._move_toward(now, speed=app.PET_SPEED_PX * 1.3)
             if self._target_reached(app.PET_ARRIVE_RADIUS * 1.5):
                 self._stand_still(now)
+
+    def _social_step(self, now: float) -> bool:
+        """Run one tick of a pet-to-pet interaction; True while engaged."""
+        s = self.social
+        app = self.app
+        partner = s.get("partner")
+        if partner is not None and (partner.destroyed or partner.dragging):
+            return False
+        kind = s["kind"]
+        if now >= s.get("until", now):
+            return False
+
+        if kind == "chase":
+            self.target = (partner.x, partner.y)
+            self._move_toward(now, speed=app.PET_SPEED_PX * 1.6)
+            return True
+        if kind == "flee":
+            chasers = [
+                c for c in s.get("chasers", [partner])
+                if c is not None and not c.destroyed and not c.dragging
+            ]
+            if not chasers:
+                return False
+            threat = min(
+                chasers, key=lambda c: math.hypot(c.x - self.x, c.y - self.y)
+            )
+            dx, dy = self.x - threat.x, self.y - threat.y
+            dist = math.hypot(dx, dy) or 1.0
+            if dist > 100.0 and self.target is None:
+                self._stand_still(now)
+                return True
+            if self.target is None or self._target_reached(
+                app.PET_ARRIVE_RADIUS * 2
+            ):
+                self.target = app._pet_clamp_point(
+                    self.x + dx / dist * 150 + random.uniform(-40, 40),
+                    self.y + dy / dist * 150 + random.uniform(-40, 40),
+                )
+            self._move_toward(now, speed=app.PET_SPEED_PX * 1.4)
+            return True
+        if kind == "circle":
+            s["angle"] += 0.09
+            radius = 55.0
+            self.target = (
+                partner.x + math.cos(s["angle"]) * radius,
+                partner.y + math.sin(s["angle"]) * radius,
+            )
+            self._move_toward(now, speed=app.PET_SPEED_PX * 1.3)
+            return True
+        if kind == "orbit":
+            s["angle"] += 0.07
+            radius = 100.0
+            self.target = (
+                s["point"][0] + math.cos(s["angle"]) * radius,
+                s["point"][1] + math.sin(s["angle"]) * radius + 30.0,
+            )
+            self._move_toward(now, speed=app.PET_SPEED_PX * 1.4)
+            return True
+        if kind == "piggy_throw":
+            piggy = s.get("piggy")
+            if (
+                piggy is None
+                or piggy.destroyed
+                or piggy.dragging
+                or not piggy.social
+                or piggy.social.get("kind") not in ("piggy_mid", "piggy_fly")
+            ):
+                return False
+            piggy_s = piggy.social
+            if (
+                piggy_s["kind"] == "piggy_fly"
+                or piggy_s.get("active") is not self
+            ):
+                self.target = None
+                self._stand_still(now)
+                return True
+            other = next(
+                (
+                    t
+                    for t in piggy_s.get("throwers", [])
+                    if t is not self and not t.destroyed and not t.dragging
+                ),
+                None,
+            )
+            if other is None:
+                return False
+            dist = math.hypot(piggy.x - self.x, piggy.y - self.y) or 1.0
+            if dist > 48.0:
+                self.target = (piggy.x, piggy.y)
+                self._move_toward(now, speed=app.PET_SPEED_PX * 1.3)
+                return True
+            tx, ty = other.x - self.x, other.y - self.y
+            td = math.hypot(tx, ty) or 1.0
+            piggy.social = {
+                "kind": "piggy_fly",
+                "throwers": piggy_s.get("throwers", []),
+                "active": other,
+                "target": app._pet_clamp_point(
+                    other.x - tx / td * 55.0,
+                    other.y - ty / td * 55.0,
+                ),
+                "until": s["until"],
+            }
+            self.target = None
+            self._stand_still(now)
+            return True
+        if kind == "piggy_mid":
+            throwers = [
+                t
+                for t in s.get("throwers", [])
+                if not t.destroyed and not t.dragging
+            ]
+            if not throwers:
+                return False
+            s["throwers"] = throwers
+            active = s.get("active")
+            if active is None or active.destroyed or active.dragging:
+                s["active"] = throwers[0]
+            self.target = None
+            self._stand_still(now)
+            return True
+        if kind == "piggy_fly":
+            self.target = s["target"]
+            if self._target_reached(14.0):
+                self.social = {
+                    "kind": "piggy_mid",
+                    "throwers": s.get("throwers", []),
+                    "active": s.get("active"),
+                    "until": s.get("until", now),
+                }
+                self.target = None
+                self._stand_still(now)
+                return True
+            self._move_toward(now, speed=app.PET_SPEED_PX * 1.15)
+            return True
+        if kind in ("visit", "push"):
+            stop = 55.0 if kind == "visit" else 45.0
+            dx, dy = self.x - partner.x, self.y - partner.y
+            dist = math.hypot(dx, dy) or 1.0
+            self.target = (
+                partner.x + dx / dist * stop,
+                partner.y + dy / dist * stop,
+            )
+            if not self._target_reached(app.PET_ARRIVE_RADIUS):
+                self._move_toward(now, speed=app.PET_SPEED_PX * 1.2)
+                return True
+            if kind == "visit":
+                self.idle_hop_until = now + 0.6
+                self._stand_still(now)
+            else:
+                partner.social = {
+                    "kind": "shoved",
+                    "dir": (-dx / dist, -dy / dist),
+                    "until": now + 0.45,
+                }
+            return False
+        if kind == "shoved":
+            dx, dy = s["dir"]
+            self.x, self.y = app._pet_clamp_point(
+                self.x + dx * 4.0, self.y + dy * 4.0
+            )
+            self.hop_phase += 0.6
+            hop = abs(math.sin(self.hop_phase)) * 8.0
+            self._place(self.x, self.y - hop)
+            return True
+        if kind == "together":
+            self.target = s["point"]
+            if self._target_reached(app.PET_ARRIVE_RADIUS):
+                # Stay at the shared destination instead of heading straight
+                # back — travel time does not count as time spent there.
+                self.state = PET_STATE_REST
+                self.target = None
+                self.rest_until = now + random.uniform(20.0, 50.0)
+                self._stand_still(now)
+                return False
+            self._move_toward(now)
+            return True
+        return False
 
     def _pet_draw_size(self) -> tuple[float, float]:
         """Largest sprite photo size, for center-based positioning."""
@@ -540,6 +752,7 @@ class PetsMixin:
     PET_MOUSE_CHANCE = 0.01
     PET_IDLE_HOP_CHANCE = 0.04
     PET_IDLE_HOP_SECONDS = (0.4, 0.9)
+    PET_SOCIAL_CHANCE = 0.04
     PET_DECIDE_INTERVAL_SECONDS = (4.0, 9.0)
     PET_DANCE_CHANCE = 0.02
     PET_DANCE_SECONDS = (2.0, 5.0)
@@ -654,6 +867,7 @@ class PetsMixin:
             return
         pet.target = self._pet_exit_point_for(pet)
         pet.state = PET_STATE_LEAVE
+        pet.social = None
         self._ensure_pet_tick()
 
     def dismiss_all_pets(self, *, destroy: bool = False) -> None:
@@ -970,6 +1184,7 @@ class PetsMixin:
             p for p in getattr(self, "_pets", [])
             if not p.destroyed
             and not p.dragging
+            and p.social is None
             and p.state not in (PET_STATE_LEAVE, PET_STATE_HOPOUT)
         ]
         gap = 6.0
@@ -1026,6 +1241,99 @@ class PetsMixin:
                     )
                     mover._place(mover.x, mover.y)
                     break
+
+    def _pet_try_social(self, pet: MiniPet) -> bool:
+        """Start a pet-to-pet interaction involving *pet*; False if nobody free."""
+        others = [
+            p for p in getattr(self, "_pets", [])
+            if p is not pet
+            and not p.destroyed
+            and p.social is None
+            and p.state in (PET_STATE_FOLLOW, PET_STATE_WANDER, PET_STATE_REST)
+        ]
+        if not others:
+            return False
+        partner = random.choice(others)
+        now = time.monotonic()
+        kinds = ["chase", "circle", "visit", "push", "together", "orbit"]
+        if len(others) >= 2:
+            kinds.append("piggy")
+        kind = random.choice(kinds)
+        if kind == "chase":
+            until = now + random.uniform(5.0, 30.0)
+            chasers = [pet, *(o for o in others if o is not partner)]
+            partner.social = {
+                "kind": "flee",
+                "partner": pet,
+                "chasers": chasers,
+                "until": until,
+            }
+            # Everyone else free joins the hunt — all three can play tag.
+            for chaser in chasers:
+                chaser.social = {
+                    "kind": "chase",
+                    "partner": partner,
+                    "until": until,
+                }
+        elif kind == "circle":
+            pet.social = {
+                "kind": "circle",
+                "partner": partner,
+                "until": now + random.uniform(4.0, 10.0),
+                "angle": math.atan2(pet.y - partner.y, pet.x - partner.x),
+            }
+        elif kind == "visit":
+            pet.social = {
+                "kind": "visit",
+                "partner": partner,
+                "until": now + 12.0,
+            }
+        elif kind == "push":
+            pet.social = {
+                "kind": "push",
+                "partner": partner,
+                "until": now + 12.0,
+            }
+        elif kind == "piggy":
+            until = now + random.uniform(8.0, 16.0)
+            throwers = [pet, *(o for o in others if o is not partner)][:2]
+            partner.social = {
+                "kind": "piggy_mid",
+                "throwers": throwers,
+                "active": pet,
+                "until": until,
+            }
+            for thrower in throwers:
+                thrower.social = {
+                    "kind": "piggy_throw",
+                    "piggy": partner,
+                    "until": until,
+                }
+        elif kind == "orbit":
+            point = self._pet_anchor_point()
+            members = [pet, *others]
+            until = now + random.uniform(6.0, 12.0)
+            for i, member in enumerate(members):
+                # Stagger the starting angles so they spread around the ring.
+                member.social = {
+                    "kind": "orbit",
+                    "point": point,
+                    "angle": math.tau * i / len(members),
+                    "until": until,
+                }
+        else:
+            dest = self._pet_random_screen_point(pet)
+            # Every free pet joins — all three can head somewhere together.
+            for member in [pet, *others]:
+                member.social = {
+                    "kind": "together",
+                    "point": self._pet_clamp_point(
+                        dest[0] + random.uniform(-45, 45),
+                        dest[1] + random.uniform(-45, 45),
+                    ),
+                    "until": now + 40.0,
+                }
+        return True
 
     def _pet_random_screen_point(self, pet: MiniPet) -> tuple[float, float]:
         rect = self._pet_virtual_rect() or self._pet_screen_rect(pet.x, pet.y)

@@ -631,6 +631,169 @@ def test_pet_wander_can_hurry(pets):
     assert pet.x - 500.0 > pets.PET_SPEED_PX
 
 
+def test_social_chase_assigns_chaser_and_fleer(pets):
+    pets._pets = [_fake_pet(pets, "jade"), _fake_pet(pets, "sam")]
+    with patch(
+        "kinito.features.pets.random.choice",
+        side_effect=[pets._pets[1], "chase"],
+    ):
+        assert pets._pet_try_social(pets._pets[0]) is True
+    assert pets._pets[0].social["kind"] == "chase"
+    assert pets._pets[1].social["kind"] == "flee"
+    assert pets._pets[1].social["partner"] is pets._pets[0]
+
+
+def test_social_chase_group_all_chase_fleer(pets):
+    pets._pets = [_fake_pet(pets) for _ in range(3)]
+    fleer = pets._pets[2]
+    with patch(
+        "kinito.features.pets.random.choice",
+        side_effect=[fleer, "chase"],
+    ):
+        assert pets._pet_try_social(pets._pets[0]) is True
+    assert fleer.social["kind"] == "flee"
+    assert pets._pets[0].social["kind"] == "chase"
+    assert pets._pets[1].social["kind"] == "chase"
+    assert fleer.social["chasers"] == [pets._pets[0], pets._pets[1]]
+
+
+def test_social_orbit_all_circle_kinito(pets):
+    pets._pets = [_fake_pet(pets) for _ in range(3)]
+    pets._buddy_center = lambda: (500.0, 400.0)
+    with patch(
+        "kinito.features.pets.random.choice",
+        side_effect=[pets._pets[1], "orbit"],
+    ):
+        assert pets._pet_try_social(pets._pets[0]) is True
+    assert all(p.social and p.social["kind"] == "orbit" for p in pets._pets)
+    angles = [p.social["angle"] for p in pets._pets]
+    assert angles[0] == 0.0 and angles[1] == pytest.approx(math.tau / 3)
+
+
+def test_social_orbit_moves_pet_around_kinito(pets):
+    a = _fake_pet(pets)
+    a.x, a.y = 500.0, 300.0  # above the orbit point
+    a.social = {
+        "kind": "orbit",
+        "point": (500.0, 400.0),
+        "angle": 0.0,
+        "until": 2000.0,
+    }
+    a.tick(1000.0)
+    assert a.x > 500.0  # heading right along the ring
+
+
+def test_social_together_rests_at_destination(pets):
+    a = _fake_pet(pets)
+    a.x, a.y = 300.0, 300.0
+    a.social = {
+        "kind": "together",
+        "point": (300.0, 300.0),  # already there
+        "until": 2000.0,
+    }
+    a.tick(1000.0)
+    assert a.social is None
+    assert a.state == "rest"
+    assert a.rest_until > 1000.0
+
+
+def test_social_piggy_assigns_throwers_and_middle(pets):
+    pets._pets = [_fake_pet(pets) for _ in range(3)]
+    piggy = pets._pets[1]
+    with patch(
+        "kinito.features.pets.random.choice",
+        side_effect=[piggy, "piggy"],
+    ):
+        assert pets._pet_try_social(pets._pets[0]) is True
+    assert piggy.social["kind"] == "piggy_mid"
+    throwers = [pets._pets[0], pets._pets[2]]
+    assert piggy.social["throwers"] == throwers
+    assert piggy.social["active"] is pets._pets[0]
+    assert all(t.social["kind"] == "piggy_throw" for t in throwers)
+    assert all(t.social["piggy"] is piggy for t in throwers)
+
+
+def test_social_piggy_shove_sends_middle_to_other_thrower(pets):
+    a, b = _fake_pet(pets), _fake_pet(pets)
+    piggy = _fake_pet(pets)
+    a.x, a.y = 100.0, 200.0
+    piggy.x, piggy.y = 140.0, 200.0  # within shove range of a
+    b.x, b.y = 400.0, 200.0
+    piggy.social = {
+        "kind": "piggy_mid",
+        "throwers": [a, b],
+        "active": a,
+        "until": 2000.0,
+    }
+    a.social = {"kind": "piggy_throw", "piggy": piggy, "until": 2000.0}
+    a.tick(1000.0)
+    assert piggy.social["kind"] == "piggy_fly"
+    assert piggy.social["active"] is b
+    tx, ty = piggy.social["target"]
+    assert tx < b.x  # lands short of b
+    piggy.tick(1000.1)
+    assert piggy.x > 140.0  # flying toward b
+
+
+def test_social_chaser_moves_toward_partner(pets):
+    a, b = _fake_pet(pets), _fake_pet(pets)
+    a.x, a.y = 0.0, 0.0
+    b.x, b.y = 300.0, 0.0
+    a.social = {"kind": "chase", "partner": b, "until": 2000.0}
+    a.tick(1000.0)
+    assert a.x > 0.0  # ran after b
+
+
+def test_social_fleer_moves_away_from_partner(pets):
+    a, b = _fake_pet(pets), _fake_pet(pets)
+    a.x, a.y = 100.0, 0.0  # chaser close by
+    b.x, b.y = 120.0, 0.0
+    b.social = {"kind": "flee", "partner": a, "until": 2000.0}
+    b.tick(1000.0)
+    assert b.target is not None and b.target[0] > b.x
+
+
+def test_social_visit_arrives_and_finishes(pets):
+    a, b = _fake_pet(pets), _fake_pet(pets)
+    b.x, b.y = 300.0, 300.0
+    a.x, a.y = b.x + 50.0, b.y  # already next to b
+    a.social = {"kind": "visit", "partner": b, "until": 2000.0}
+    a.tick(1000.0)
+    assert a.social is None  # interaction done -> back to normal
+    assert a.idle_hop_until > 1000.0
+
+
+def test_social_push_shoves_partner(pets):
+    a, b = _fake_pet(pets), _fake_pet(pets)
+    a.x, a.y = 300.0, 300.0
+    b.x, b.y = a.x + 40.0, a.y
+    a.social = {"kind": "push", "partner": b, "until": 2000.0}
+    a.tick(1000.0)
+    assert a.social is None
+    assert b.social is not None and b.social["kind"] == "shoved"
+    assert b.social["dir"][0] > 0  # shoved away from the pusher
+
+
+def test_social_together_includes_all_free_pets(pets):
+    pets._pets = [_fake_pet(pets) for _ in range(3)]
+    pets._pet_virtual_rect = lambda: (0, 0, 1920, 1080)
+    pets._pet_work_rect = lambda *_: (0, 0, 1920, 1080)
+    with patch(
+        "kinito.features.pets.random.choice",
+        side_effect=[pets._pets[1], "together"],
+    ):
+        assert pets._pet_try_social(pets._pets[0]) is True
+    assert all(p.social and p.social["kind"] == "together" for p in pets._pets)
+
+
+def test_social_together_pets_travel_to_points(pets):
+    a = _fake_pet(pets)
+    a.x, a.y = 0.0, 0.0
+    a.social = {"kind": "together", "point": (500.0, 0.0), "until": 2000.0}
+    a.tick(1000.0)
+    assert a.x > 0.0
+
+
 def test_pet_tick_dances_to_music(pets):
     pets._is_background_music_playing.return_value = True
     pet = _fake_pet(pets)
