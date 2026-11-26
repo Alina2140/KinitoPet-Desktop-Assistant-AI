@@ -1,3 +1,4 @@
+import math
 import time
 from unittest.mock import MagicMock, patch
 
@@ -280,7 +281,7 @@ def test_maybe_dismiss_pet_hit_speaks_line_and_sends_away(pets):
 def test_sleep_spots_do_not_overlap_for_same_orbit(pets):
     pets._window_screen_size = lambda: (240, 180)
     pets._buddy_center = lambda: (620.0, 490.0)
-    pets._pet_screen_rect = lambda *_: (0, 0, 1920, 1080)
+    pets._pet_work_rect = lambda *_: (0, 0, 1920, 1080)
     pets._pets = [_fake_pet(pets) for _ in range(3)]
     for pet in pets._pets:
         pet.orbit_angle = 0.0
@@ -294,7 +295,7 @@ def test_sleep_spots_do_not_overlap_for_same_orbit(pets):
 @pytest.mark.parametrize("center", [(120, 90), (940, 690), (-1100, 690)])
 def test_sleep_layout_fits_monitor_and_pet_sizes(pets, count, center):
     mx = -1200 if center[0] < 0 else 0
-    pets._pet_screen_rect = lambda *_: (mx, 0, 1000, 800)
+    pets._pet_work_rect = lambda *_: (mx, 0, 1000, 800)
     pets._window_screen_size = lambda: (200, 140)
     pets._buddy_center = lambda: center
     pets._pets = [_fake_pet(pets, with_sleep=i != 1) for i in range(count)]
@@ -316,7 +317,7 @@ def test_sleep_layout_fits_monitor_and_pet_sizes(pets, count, center):
 
 
 def test_sleep_layout_wraps_on_narrow_monitor(pets):
-    pets._pet_screen_rect = lambda *_: (0, 0, 150, 800)
+    pets._pet_work_rect = lambda *_: (0, 0, 150, 800)
     pets._window_screen_size = lambda: (100, 100)
     pets._buddy_center = lambda: (75, 100)
     pets._pets = [_fake_pet(pets) for _ in range(3)]
@@ -327,7 +328,7 @@ def test_sleep_layout_wraps_on_narrow_monitor(pets):
 
 
 def test_sleep_layout_ignores_leaving_and_destroyed_pets(pets):
-    pets._pet_screen_rect = lambda *_: (0, 0, 1920, 1080)
+    pets._pet_work_rect = lambda *_: (0, 0, 1920, 1080)
     pets._pets = [_fake_pet(pets) for _ in range(3)]
     first, leaving, destroyed = pets._pets
     leaving.state = PET_STATE_LEAVE
@@ -344,7 +345,7 @@ def test_sleep_layout_ignores_leaving_and_destroyed_pets(pets):
 
 def test_sleep_arrival_stays_exact_and_retargets(pets):
     pets.paused = True
-    pets._pet_screen_rect = lambda *_: (0, 0, 1920, 1080)
+    pets._pet_work_rect = lambda *_: (0, 0, 1920, 1080)
     pet = _fake_pet(pets)
     pets._pets = [pet]
     target = pets._pet_sleep_spot_for(pet)
@@ -367,6 +368,18 @@ def test_pet_resumes_if_woken_before_arrival(pets):
     pet.tick(1000.0)
     assert pet.state == PET_STATE_FOLLOW
     assert not pet.sleeping
+
+
+def test_pet_sleep_walk_can_hurry(pets):
+    pets.paused = True
+    pets._pet_work_rect = lambda *_: (0, 0, 1920, 1080)
+    pet = _fake_pet(pets)
+    pets._pets = [pet]
+    pet.x, pet.y = 0.0, 0.0  # far from the sleep spot
+    with patch("kinito.features.pets.random.random", return_value=0.0):
+        pet.tick(1000.0)
+    assert pet.hurry_until > 1000.0
+    assert math.hypot(pet.x - 0.0, pet.y - 0.0) > pets.PET_SPEED_PX
 
 
 def test_pet_tick_sleep_when_kinito_paused(pets):
@@ -464,6 +477,160 @@ def test_pet_mouse_follow_rests_below_when_from_below(pets):
     assert ty + 25.0 > 500.0
 
 
+def test_spawn_pet_avoids_overlapping_existing(pets):
+    pets._pets_max_count = 3
+    pets._pets.append(_fake_pet(pets))
+    calls = []
+
+    def _overlap(x, y, w, h, *, skip=None):
+        calls.append((x, y))
+        return len(calls) < 2  # first candidate overlaps, second is free
+
+    pets._pet_box_overlaps = MagicMock(side_effect=_overlap)
+    pets._pet_clamp_point = lambda x, y: (x, y)
+    photos_patch, create_patch = _patched_spawn(pets)
+    with photos_patch, create_patch:
+        assert pets.spawn_pet() is True
+    new_pet = pets._pets[1]
+    assert (new_pet.x, new_pet.y) == calls[1]
+    assert pets._pet_box_overlaps.call_count == 2
+
+
+def test_separation_pass_splits_resting_overlap(pets):
+    pets._pet_work_rect = lambda *_: (0, 0, 1920, 1080)
+    pets.x, pets.y = 500, 470  # anchor lands at (590, 500) for orbit 0
+    a = _fake_pet(pets)
+    b = _fake_pet(pets)
+    a.orbit_angle = b.orbit_angle = 0.0
+    a.x, a.y = 590.0, 500.0  # 60x50 sprites, settled at the anchor
+    b.x, b.y = 610.0, 510.0  # overlapping a, also settled
+    pets._pets = [a, b]
+    with patch("kinito.features.pets.random.random", return_value=1.0):
+        pets._pets_tick()
+    assert b.x >= a.x + 60 or b.x + 60 <= a.x or b.y >= a.y + 50 or b.y + 50 <= a.y
+
+
+def test_separation_pass_keeps_pet_at_its_anchor(pets):
+    """The pet already home stays; the blocker gets pushed aside instead."""
+    pets._pet_work_rect = lambda *_: (0, 0, 1920, 1080)
+    pets.x, pets.y = 500, 400
+    home = _fake_pet(pets)
+    blocker = _fake_pet(pets)
+    home.orbit_angle = 0.0             # anchor (590, 430)
+    blocker.orbit_angle = math.pi      # anchor (410, 430) — far away
+    home.x, home.y = 590.0, 430.0      # exactly on its anchor
+    blocker.x, blocker.y = 600.0, 435.0  # slightly overlapping, off-anchor
+    blocker.state = PET_STATE_REST
+    blocker.rest_until = time.monotonic() + 1000.0
+    pets._pets = [home, blocker]
+    with patch("kinito.features.pets.random.random", return_value=1.0):
+        pets._pets_tick()
+    assert (home.x, home.y) == (590.0, 430.0)
+    assert blocker.x >= home.x + 60 or blocker.x + 60 <= home.x
+
+
+def test_separation_pass_no_pingpong_when_boxed_in(pets):
+    """A pet squeezed between neighbors on both sides is left alone."""
+    pets._pet_work_rect = lambda *_: (0, 0, 1920, 1080)
+    pets._pets = [_fake_pet(pets) for _ in range(4)]
+    # Chain of resting 60px pets: [410][480] mid(535) [590] — mid overlaps both
+    # inner neighbors and every escape side is taken as well.
+    positions = (410.0, 480.0, 535.0, 590.0)
+    for pet, x in zip(pets._pets, positions, strict=True):
+        pet.state = PET_STATE_REST
+        pet.rest_until = time.monotonic() + 1000.0
+        pet.x, pet.y = x, 430.0
+    mid = pets._pets[2]
+    xs = [mid.x]
+    for _ in range(4):
+        pets._pets_tick()
+        xs.append(mid.x)
+    # No oscillation: once moved (or not), the position must stay stable.
+    assert xs[-1] == xs[-2] == xs[-3]
+
+
+def test_separation_pass_leaves_movers_alone(pets):
+    pets._pet_work_rect = lambda *_: (0, 0, 1920, 1080)
+    a = _fake_pet(pets)
+    b = _fake_pet(pets)
+    a.x, a.y = 500.0, 500.0
+    b.x, b.y = 520.0, 510.0
+    b.state = "wander"
+    b.target = (1500.0, 510.0)  # mid-transit, may pass over a
+    pets._pets = [a, b]
+    pets._pets_tick()
+    assert b.x > 520.0  # kept walking, was not pushed aside
+
+
+def test_pet_follow_can_hurry_with_bigger_steps(pets):
+    pets.x, pets.y = 1000, 500
+    pet = _fake_pet(pets)
+    pet.orbit_angle = 0.0  # anchor at (1090, 530)
+    pet.x, pet.y = 500.0, 500.0  # far away -> follow triggers
+    with patch("kinito.features.pets.random.random", return_value=0.0):
+        pet.tick(1000.0)
+    assert pet.hurry_until > 1000.0
+    first_step = pet.x - 500.0
+    assert first_step > pets.PET_SPEED_PX  # hurried pets cover more ground
+
+
+def test_pet_follow_normal_speed_without_hurry(pets):
+    pets.x, pets.y = 1000, 500
+    pet = _fake_pet(pets)
+    pet.orbit_angle = 0.0
+    pet.x, pet.y = 500.0, 500.0
+    with patch("kinito.features.pets.random.random", return_value=1.0):
+        pet.tick(1000.0)
+    assert pet.hurry_until == 0.0
+    assert pet.x - 500.0 <= pets.PET_SPEED_PX + 0.01
+
+
+def test_pet_circle_stroll_returns_without_rest(pets):
+    pets.x, pets.y = 500, 400
+    pet = _fake_pet(pets)
+    pet.orbit_angle = 0.0  # anchor (590, 430)
+    pet.x, pet.y = 590.0, 430.0
+    roll = pets.PET_WANDER_CHANCE + pets.PET_CIRCLE_CHANCE / 2
+    with patch("kinito.features.pets.random.random", return_value=roll):
+        pet.tick(1000.0)
+    assert pet.state == "wander"
+    assert pet.rest_after_wander is False
+    # Arriving at the orbit spot returns to follow, not a long rest.
+    pet.x, pet.y = pet.target
+    pet.tick(1001.0)
+    assert pet.state == PET_STATE_FOLLOW
+
+
+def test_pet_idle_hop_chance_starts_hopping(pets):
+    pets.x, pets.y = 500, 400
+    pet = _fake_pet(pets)
+    pet.orbit_angle = 0.0
+    pet.x, pet.y = 590.0, 430.0
+    roll = (
+        pets.PET_WANDER_CHANCE
+        + pets.PET_CIRCLE_CHANCE
+        + pets.PET_MOUSE_CHANCE
+        + pets.PET_IDLE_HOP_CHANCE / 2
+    )
+    with patch("kinito.features.pets.random.random", return_value=roll):
+        pet.tick(1000.0)
+    assert pet.idle_hop_until > 1000.0
+    assert pet.state == PET_STATE_FOLLOW
+
+
+def test_pet_wander_can_hurry(pets):
+    pets.x, pets.y = 1000, 500
+    pet = _fake_pet(pets)
+    pet.state = "wander"
+    pet.x, pet.y = 500.0, 500.0
+    pet.target = (1500.0, 500.0)
+    pet.away_since = 999.0
+    with patch("kinito.features.pets.random.random", return_value=0.0):
+        pet.tick(1000.0)
+    assert pet.hurry_until > 1000.0
+    assert pet.x - 500.0 > pets.PET_SPEED_PX
+
+
 def test_pet_tick_dances_to_music(pets):
     pets._is_background_music_playing.return_value = True
     pet = _fake_pet(pets)
@@ -471,6 +638,32 @@ def test_pet_tick_dances_to_music(pets):
     pet.dance_until = 2000.0
     pet.tick(1000.0)
     pet.window.geometry.assert_called()
+
+
+def test_pets_tick_pushes_pet_above_taskbar(pets):
+    """A pet that slipped under the work area is pushed back up each tick."""
+    pets._pet_work_rect = lambda *_: (0, 0, 1920, 1030)
+    pets.x, pets.y = 500, 1000
+    pet = _fake_pet(pets)
+    pet.idle_until = 99999.0
+    pet.orbit_angle = 0.0  # anchor (590, 1030) -> pet stays settled
+    pet.x, pet.y = 590.0, 1060.0  # resting inside the taskbar strip
+    pets._pets = [pet]
+    pets._pets_tick()
+    assert pet.y <= 1030 - 20 - 60  # work-area bottom minus margin and size
+    pet.window.geometry.assert_called()
+
+
+def test_pets_tick_does_not_clamp_moving_pet(pets):
+    """A pet walking to another monitor must not be trapped at the edge."""
+    pets._pet_work_rect = lambda *_: (0, 0, 1920, 1030)
+    pet = _fake_pet(pets)
+    pet.state = "wander"
+    pet.x, pet.y = 1910.0, 500.0
+    pet.target = (2200.0, 500.0)  # heading onto a second monitor
+    pets._pets = [pet]
+    pets._pets_tick()
+    assert pet.x > 1910.0  # kept moving right, not pushed back
 
 
 def test_pet_leave_reaches_edge_and_destroys(pets):

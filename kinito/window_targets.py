@@ -420,6 +420,55 @@ def monitor_rect_for_point(
     return best
 
 
+def work_area_rect_for_point(
+    x: float,
+    y: float,
+    *,
+    monitors: list[tuple[int, int, int, int]] | None = None,
+) -> tuple[int, int, int, int] | None:
+    """Return the usable work area (monitor minus taskbar) containing (*x*, *y*).
+
+    Falls back to the full monitor rect when the Win32 query is unavailable.
+    """
+    fallback = monitor_rect_for_point(x, y, monitors=monitors)
+    if sys.platform != "win32":
+        return fallback
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        class RECT(ctypes.Structure):
+            _fields_ = [
+                ("left", wintypes.LONG),
+                ("top", wintypes.LONG),
+                ("right", wintypes.LONG),
+                ("bottom", wintypes.LONG),
+            ]
+
+        class MONITORINFO(ctypes.Structure):
+            _fields_ = [
+                ("cbSize", wintypes.DWORD),
+                ("rcMonitor", RECT),
+                ("rcWork", RECT),
+                ("dwFlags", wintypes.DWORD),
+            ]
+
+        user32 = ctypes.windll.user32
+        point = wintypes.POINT(int(x), int(y))
+        monitor = user32.MonitorFromPoint(point, 2)  # MONITOR_DEFAULTTONEAREST
+        info = MONITORINFO()
+        info.cbSize = ctypes.sizeof(MONITORINFO)
+        if not user32.GetMonitorInfoW(monitor, ctypes.byref(info)):
+            return fallback
+        width = int(info.rcWork.right - info.rcWork.left)
+        height = int(info.rcWork.bottom - info.rcWork.top)
+        if width <= 0 or height <= 0:
+            return fallback
+        return (int(info.rcWork.left), int(info.rcWork.top), width, height)
+    except (OSError, AttributeError, ValueError, TypeError):
+        return fallback
+
+
 def origin_bounds_on_rect(
     window_w: int,
     window_h: int,

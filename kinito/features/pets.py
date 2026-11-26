@@ -104,6 +104,9 @@ class MiniPet:
         self.away_since: float | None = None
         self.rest_until = 0.0
         self.hop_until = 0.0
+        self.hurry_until = 0.0
+        self.idle_hop_until = 0.0
+        self.rest_after_wander = True
         self.orbit_angle = random.uniform(0, math.tau)
         self.dragging = False
         self._drag_offset = (0, 0)
@@ -307,6 +310,13 @@ class MiniPet:
             if not self._target_reached(0.5):
                 self.sleeping = False
                 self._set_image("left" if self.facing_left else "right")
+                if (
+                    now >= self.hurry_until
+                    and random.random() < app.PET_HURRY_CHANCE
+                ):
+                    self.hurry_until = now + random.uniform(
+                        *app.PET_HURRY_SECONDS
+                    )
                 self._move_toward(now, speed=app.PET_SPEED_PX)
             if self._target_reached(0.5):
                 self.x, self.y = self.target
@@ -346,21 +356,47 @@ class MiniPet:
         if self.state == PET_STATE_FOLLOW:
             if dist > app.PET_NEAR_RADIUS * 0.4:
                 self.target = anchor
+                if (
+                    now >= self.hurry_until
+                    and dist > app.PET_NEAR_RADIUS
+                    and random.random() < app.PET_HURRY_CHANCE
+                ):
+                    self.hurry_until = now + random.uniform(*app.PET_HURRY_SECONDS)
                 self._move_toward(now)
             else:
                 self.target = None
-                self._stand_still()
+                self._stand_still(now)
                 if now >= self.idle_until:
                     roll = random.random()
                     if roll < app.PET_WANDER_CHANCE:
                         self.state = PET_STATE_WANDER
+                        self.rest_after_wander = True
                         self.target = app._pet_random_screen_point(self)
-                    elif roll < app.PET_WANDER_CHANCE + app.PET_MOUSE_CHANCE:
+                    elif roll < app.PET_WANDER_CHANCE + app.PET_CIRCLE_CHANCE:
+                        # Stroll to another spot on Kinito's orbit ring, no rest.
+                        self.state = PET_STATE_WANDER
+                        self.rest_after_wander = False
+                        self.orbit_angle = random.uniform(0, math.tau)
+                        self.target = app._pet_anchor_for(self)
+                    elif roll < (
+                        app.PET_WANDER_CHANCE
+                        + app.PET_CIRCLE_CHANCE
+                        + app.PET_MOUSE_CHANCE
+                    ):
                         cursor = app._pet_cursor_point()
                         if cursor is not None:
                             self.state = PET_STATE_MOUSE
                             self.mouse_until = now + app.PET_MOUSE_FOLLOW_SECONDS
                             self.target = cursor
+                    elif roll < (
+                        app.PET_WANDER_CHANCE
+                        + app.PET_CIRCLE_CHANCE
+                        + app.PET_MOUSE_CHANCE
+                        + app.PET_IDLE_HOP_CHANCE
+                    ):
+                        self.idle_hop_until = now + random.uniform(
+                            *app.PET_IDLE_HOP_SECONDS
+                        )
                     self.idle_until = now + random.uniform(
                         *app.PET_DECIDE_INTERVAL_SECONDS
                     )
@@ -368,11 +404,19 @@ class MiniPet:
             if self.target is None:
                 self.state = PET_STATE_FOLLOW
                 return
+            if now >= self.hurry_until and random.random() < app.PET_HURRY_CHANCE:
+                self.hurry_until = now + random.uniform(*app.PET_HURRY_SECONDS)
             self._move_toward(now)
             if self._target_reached(app.PET_ARRIVE_RADIUS):
-                self.state = PET_STATE_REST
                 self.target = None
-                self.rest_until = now + random.uniform(*app.PET_REST_SECONDS)
+                if self.rest_after_wander:
+                    self.state = PET_STATE_REST
+                    self.rest_until = now + random.uniform(*app.PET_REST_SECONDS)
+                else:
+                    self.state = PET_STATE_FOLLOW
+                    self.idle_until = now + random.uniform(
+                        *app.PET_DECIDE_INTERVAL_SECONDS
+                    )
         elif self.state == PET_STATE_REST:
             if now >= self.rest_until:
                 self.state = PET_STATE_FOLLOW
@@ -399,15 +443,14 @@ class MiniPet:
             dist = math.hypot(dx, dy)
             offset = app.PET_MOUSE_REST_OFFSET
             if dist > 0.5:
-                self.target = (
-                    cursor[0] + dx / dist * offset - pw / 2,
-                    cursor[1] + dy / dist * offset - ph / 2,
-                )
+                tx = cursor[0] + dx / dist * offset - pw / 2
+                ty = cursor[1] + dy / dist * offset - ph / 2
             else:
-                self.target = cursor
+                tx, ty = cursor
+            self.target = app._pet_clamp_point(tx, ty)
             self._move_toward(now, speed=app.PET_SPEED_PX * 1.3)
             if self._target_reached(app.PET_ARRIVE_RADIUS * 1.5):
-                self._stand_still()
+                self._stand_still(now)
 
     def _pet_draw_size(self) -> tuple[float, float]:
         """Largest sprite photo size, for center-based positioning."""
@@ -431,9 +474,13 @@ class MiniPet:
             math.hypot(self.target[0] - self.x, self.target[1] - self.y) <= radius
         )
 
-    def _stand_still(self) -> None:
+    def _stand_still(self, now: float | None = None) -> None:
+        hop = 0.0
+        if now is not None and now < self.idle_hop_until:
+            self.hop_phase += 0.5
+            hop = abs(math.sin(self.hop_phase)) * 6.0
         self._set_image("left" if self.facing_left else "right")
-        self._place(self.x, self.y)
+        self._place(self.x, self.y - hop)
 
     def _dance_step(self, now: float) -> None:
         self.dance_phase += 0.45
@@ -448,6 +495,10 @@ class MiniPet:
             self._stand_still()
             return
         speed = speed if speed is not None else self.app.PET_SPEED_PX
+        hop_height = 5.0
+        if now < self.hurry_until:
+            speed *= self.app.PET_HURRY_SPEED_MULT
+            hop_height *= self.app.PET_HURRY_HOP_MULT
         dx = self.target[0] - self.x
         dy = self.target[1] - self.y
         dist = math.hypot(dx, dy)
@@ -463,7 +514,7 @@ class MiniPet:
                 self.facing_left = facing_left
                 self._set_image("left" if facing_left else "right")
         self.hop_phase += 0.5
-        hop = abs(math.sin(self.hop_phase)) * 5.0
+        hop = abs(math.sin(self.hop_phase)) * hop_height
         self._place(self.x, self.y - hop)
 
 
@@ -477,11 +528,18 @@ class PetsMixin:
     PET_NEAR_RADIUS = 220.0
     PET_RETURN_AFTER_SECONDS = 120.0
     PET_REST_SECONDS = (30.0, 90.0)
+    PET_HURRY_CHANCE = 0.02
+    PET_HURRY_SECONDS = (1.0, 2.5)
+    PET_HURRY_SPEED_MULT = 2.2
+    PET_HURRY_HOP_MULT = 2.0
     PET_HOPOUT_SECONDS = (0.9, 1.6)
     PET_MOUSE_FOLLOW_SECONDS = 15.0
     PET_MOUSE_REST_OFFSET = 30.0
-    PET_WANDER_CHANCE = 0.015
+    PET_WANDER_CHANCE = 0.03
+    PET_CIRCLE_CHANCE = 0.05
     PET_MOUSE_CHANCE = 0.01
+    PET_IDLE_HOP_CHANCE = 0.04
+    PET_IDLE_HOP_SECONDS = (0.4, 0.9)
     PET_DECIDE_INTERVAL_SECONDS = (4.0, 9.0)
     PET_DANCE_CHANCE = 0.02
     PET_DANCE_SECONDS = (2.0, 5.0)
@@ -568,9 +626,14 @@ class PetsMixin:
             return False
         anchor = self._pet_anchor_point()
         pet = MiniPet(self, sprite, photos)
-        spawn_x = anchor[0] + random.uniform(-60, 60)
-        spawn_y = anchor[1] + random.uniform(0, 40)
-        spawn_x, spawn_y = self._pet_clamp_point(spawn_x, spawn_y)
+        pw, ph = pet._pet_draw_size()
+        spawn_x, spawn_y = anchor[0], anchor[1]
+        for _ in range(8):
+            spawn_x = anchor[0] + random.uniform(-90, 90)
+            spawn_y = anchor[1] + random.uniform(0, 50)
+            spawn_x, spawn_y = self._pet_clamp_point(spawn_x, spawn_y)
+            if not self._pet_box_overlaps(spawn_x, spawn_y, pw, ph):
+                break
         pet.create_window(spawn_x, spawn_y)
         self._pets.append(pet)
         self._ensure_pet_tick()
@@ -753,7 +816,7 @@ class PetsMixin:
         else:
             buddy_w = max(int(self.root.winfo_width()), 1)
             buddy_h = max(int(self.root.winfo_height()), 1)
-        rect = self._pet_screen_rect(cx, cy)
+        rect = self._pet_work_rect(cx, cy)
         gap = 10.0
         index = pets.index(pet)
         fallback = None
@@ -811,6 +874,17 @@ class PetsMixin:
         except tk.TclError:
             return None
 
+    def _pet_work_rect(
+        self, x: float = 0.0, y: float = 0.0
+    ) -> tuple[int, int, int, int] | None:
+        """Usable screen area (taskbar excluded) containing (*x*, *y*)."""
+        try:
+            from kinito.window_targets import work_area_rect_for_point
+
+            return work_area_rect_for_point(float(x), float(y))
+        except Exception:
+            return self._pet_screen_rect(x, y)
+
     def _pet_screen_rect(
         self, x: float = 0.0, y: float = 0.0
     ) -> tuple[int, int, int, int] | None:
@@ -859,7 +933,7 @@ class PetsMixin:
             return None
 
     def _pet_clamp_point(self, x: float, y: float) -> tuple[float, float]:
-        rect = self._pet_screen_rect(x, y)
+        rect = self._pet_work_rect(x, y)
         if rect is None:
             return x, y
         x0, y0, w, h = rect
@@ -869,16 +943,93 @@ class PetsMixin:
             max(y0 + margin, min(y0 + h - margin - 60, y)),
         )
 
+    def _pet_settled(self, pet: MiniPet) -> bool:
+        """Whether *pet* currently rests somewhere (not mid-transit)."""
+        if pet.dragging or pet.sleeping:
+            return False
+        return pet.target is None or pet._target_reached(self.PET_ARRIVE_RADIUS)
+
+    def _pet_box_overlaps(
+        self, x: float, y: float, w: float, h: float, *, skip: MiniPet | None = None
+    ) -> bool:
+        for other in getattr(self, "_pets", []):
+            if other is skip or other.destroyed:
+                continue
+            ow, oh = other._pet_draw_size()
+            if not (
+                x + w <= other.x or other.x + ow <= x
+                or y + h <= other.y or other.y + oh <= y
+            ):
+                return True
+        return False
+
+    def _pet_separation_pass(self) -> None:
+        """Push settled overlapping pets apart; movers may still pass over."""
+        pets = [
+            p for p in getattr(self, "_pets", [])
+            if not p.destroyed
+            and not p.dragging
+            and p.state not in (PET_STATE_LEAVE, PET_STATE_HOPOUT)
+        ]
+        gap = 6.0
+        for i in range(len(pets)):
+            for j in range(i + 1, len(pets)):
+                a, b = pets[i], pets[j]
+                if not (self._pet_settled(a) and self._pet_settled(b)):
+                    continue
+                aw, ah = a._pet_draw_size()
+                bw, bh = b._pet_draw_size()
+                if (
+                    a.x + aw <= b.x or b.x + bw <= a.x
+                    or a.y + ah <= b.y or b.y + bh <= a.y
+                ):
+                    continue
+                anchor_a = self._pet_anchor_for(a)
+                anchor_b = self._pet_anchor_for(b)
+                dist_a = math.hypot(anchor_a[0] - a.x, anchor_a[1] - a.y)
+                dist_b = math.hypot(anchor_b[0] - b.x, anchor_b[1] - b.y)
+                if (
+                    dist_a < self.PET_ARRIVE_RADIUS
+                    and dist_b < self.PET_ARRIVE_RADIUS
+                ):
+                    continue  # both home — overlapping anchors are tolerated
+                # Move the pet farther from its own anchor — the one already
+                # home must not be shoved or it walks back into the loop.
+                mover, stay = (b, a) if dist_b >= dist_a else (a, b)
+                mw, mh = mover._pet_draw_size()
+                sw, sh = stay._pet_draw_size()
+                right = stay.x + sw + gap
+                left = stay.x - mw - gap
+                # Prefer the nearer escape; but only take a side whose spot is
+                # actually free — otherwise pets ping-pong between neighbors.
+                if (stay.x + sw) - mover.x <= (mover.x + mw) - stay.x:
+                    candidates = (right, left)
+                else:
+                    candidates = (left, right)
+                for cand_x in candidates:
+                    new_x, _ = self._pet_clamp_point(cand_x, mover.y)
+                    if new_x == mover.x:
+                        continue
+                    if self._pet_box_overlaps(
+                        new_x, mover.y, mw, mh, skip=mover
+                    ):
+                        continue
+                    mover.x = new_x
+                    if mover.state in (PET_STATE_WANDER, PET_STATE_REST):
+                        mover.target = (new_x, mover.y)
+                    mover._place(mover.x, mover.y)
+                    break
+
     def _pet_random_screen_point(self, pet: MiniPet) -> tuple[float, float]:
         rect = self._pet_virtual_rect() or self._pet_screen_rect(pet.x, pet.y)
         if rect is None:
             return (pet.x + random.uniform(-300, 300), pet.y)
         x0, y0, w, h = rect
         margin = 40
-        return (
-            random.uniform(x0 + margin, x0 + w - margin - 60),
-            random.uniform(y0 + margin, y0 + h - margin - 60),
-        )
+        x = random.uniform(x0 + margin, x0 + w - margin - 60)
+        y = random.uniform(y0 + margin, y0 + h - margin - 60)
+        # Keep the destination off the taskbar even on the primary monitor.
+        return self._pet_clamp_point(x, y)
 
     def _is_pet_music_playing(self) -> bool:
         check = getattr(self, "_is_background_music_playing", None)
@@ -907,6 +1058,16 @@ class PetsMixin:
             pet.tick(now)
             if pet.destroyed and pet in self._pets:
                 self._pets.remove(pet)
+            elif pet.state not in (PET_STATE_LEAVE, PET_STATE_HOPOUT) and (
+                self._pet_settled(pet)
+            ):
+                # Clamp only resting pets — clamping mid-walk traps them sliding
+                # along a monitor edge instead of crossing to another screen.
+                cx, cy = self._pet_clamp_point(pet.x, pet.y)
+                if (cx, cy) != (pet.x, pet.y):
+                    pet.x, pet.y = cx, cy
+                    pet._place(cx, cy)
+        self._pet_separation_pass()
         if self._pets:
             if all(p.state == PET_STATE_HOPOUT for p in self._pets):
                 # During shutdown _running is False and schedule_after refuses;
