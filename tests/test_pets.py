@@ -649,7 +649,8 @@ def test_pets_tick_pushes_pet_above_taskbar(pets):
     pet.orbit_angle = 0.0  # anchor (590, 1030) -> pet stays settled
     pet.x, pet.y = 590.0, 1060.0  # resting inside the taskbar strip
     pets._pets = [pet]
-    pets._pets_tick()
+    for _ in range(60):
+        pets._pets_tick()  # walks up to its clamped anchor, then stays
     assert pet.y <= 1030 - 20 - 60  # work-area bottom minus margin and size
     pet.window.geometry.assert_called()
 

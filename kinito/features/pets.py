@@ -790,10 +790,11 @@ class PetsMixin:
 
     def _pet_anchor_for(self, pet: MiniPet) -> tuple[float, float]:
         cx, cy = self._pet_anchor_point()
-        return (
-            cx + math.cos(pet.orbit_angle) * self.PET_ORBIT_RADIUS_X,
-            cy + math.sin(pet.orbit_angle) * self.PET_ORBIT_RADIUS_Y + 30.0,
-        )
+        x = cx + math.cos(pet.orbit_angle) * self.PET_ORBIT_RADIUS_X
+        y = cy + math.sin(pet.orbit_angle) * self.PET_ORBIT_RADIUS_Y + 30.0
+        # Clamp into the work area — an anchor under the taskbar would trap the
+        # pet in a walk-down/get-pushed-up loop.
+        return self._pet_clamp_point(x, y)
 
     def _pet_sleep_spot_for(self, pet: MiniPet) -> tuple[float, float]:
         pets = [
@@ -1015,8 +1016,14 @@ class PetsMixin:
                     ):
                         continue
                     mover.x = new_x
-                    if mover.state in (PET_STATE_WANDER, PET_STATE_REST):
-                        mover.target = (new_x, mover.y)
+                    # Rest at the new spot — otherwise the pet walks straight
+                    # back onto the anchor it was shoved away from and the
+                    # separation pass loops forever.
+                    mover.state = PET_STATE_REST
+                    mover.target = None
+                    mover.rest_until = time.monotonic() + random.uniform(
+                        *self.PET_REST_SECONDS
+                    )
                     mover._place(mover.x, mover.y)
                     break
 
