@@ -32,6 +32,7 @@ DEFAULT_BOOL_SETTINGS: dict[str, bool] = {
     "window_grab_enabled": True,
     "camera_random_open_enabled": True,
     "pets_enabled": True,
+    "pets_spawn_at_startup": False,
     "tts_enabled": True,
     "player_focus_enabled": True,
     "music_comments_enabled": True,
@@ -97,6 +98,7 @@ ACTIVITY_WEIGHTS_KEY = "activity_weights"
 OLLAMA_MODEL_KEY = "ollama_model"
 CURSOR_STYLE_KEY = "cursor_style"
 PET_ENABLED_SPRITES_KEY = "pet_enabled_sprites"
+PET_STARTUP_SPRITES_KEY = "pet_startup_sprites"
 
 
 def clamp_tts_volume(value: int | float) -> int:
@@ -173,6 +175,7 @@ class SettingsStore:
             ACTIVITY_WEIGHTS_KEY: {},
             OLLAMA_MODEL_KEY: "",
             CURSOR_STYLE_KEY: "system",
+            PET_STARTUP_SPRITES_KEY: [],
             "saved_websites": [],
         }
 
@@ -275,6 +278,12 @@ class SettingsStore:
             raw.get(PET_ENABLED_SPRITES_KEY), str
         ):
             data[PET_ENABLED_SPRITES_KEY] = raw[PET_ENABLED_SPRITES_KEY]
+        startup_sprites = raw.get(PET_STARTUP_SPRITES_KEY, [])
+        if isinstance(startup_sprites, list):
+            data[PET_STARTUP_SPRITES_KEY] = [
+                str(item) for item in startup_sprites
+                if isinstance(item, str) and item.strip()
+            ]
         return data
 
     def get_saved_websites(self) -> list[dict]:
@@ -473,6 +482,22 @@ class SettingsStore:
                 self._data[PET_ENABLED_SPRITES_KEY] = ",".join(
                     sorted({str(sprite_id).strip().lower() for sprite_id in sprite_ids})
                 )
+            self.save()
+
+    def get_pet_startup_sprites(self) -> list[str]:
+        """Return the pet sprite ids present at last shutdown (may repeat)."""
+        raw = self._data.get(PET_STARTUP_SPRITES_KEY, [])
+        if not isinstance(raw, list):
+            return []
+        return [str(item) for item in raw if isinstance(item, str) and item.strip()]
+
+    def set_pet_startup_sprites(self, sprite_ids: Iterable[str]) -> None:
+        """Persist which pet sprite ids were present at shutdown."""
+        cleaned = [str(item).strip() for item in sprite_ids if str(item).strip()]
+        with self._lock:
+            if self._data.get(PET_STARTUP_SPRITES_KEY) == cleaned:
+                return
+            self._data[PET_STARTUP_SPRITES_KEY] = cleaned
             self.save()
 
     def get_activity_weights(self) -> dict[str, int]:

@@ -23,6 +23,8 @@ PET_STATE_FOLLOW = "follow"
 PET_STATE_WANDER = "wander"
 PET_STATE_MOUSE = "mouse"
 PET_STATE_SLEEP = "sleep"
+PET_STATE_REST = "rest"
+PET_STATE_HOPOUT = "hopout"
 PET_STATE_DANCE = "dance"
 PET_STATE_LEAVE = "leave"
 
@@ -100,6 +102,8 @@ class MiniPet:
         self.mouse_until = 0.0
         self.idle_until = 0.0
         self.away_since: float | None = None
+        self.rest_until = 0.0
+        self.hop_until = 0.0
         self.orbit_angle = random.uniform(0, math.tau)
         self.dragging = False
         self._drag_offset = (0, 0)
@@ -272,7 +276,16 @@ class MiniPet:
             self.destroyed = True
             return
 
-        if self.dragging:
+        if self.dragging and self.state != PET_STATE_HOPOUT:
+            return
+
+        if self.state == PET_STATE_HOPOUT:
+            if now >= self.hop_until:
+                self.destroy()
+                return
+            self.hop_phase += 0.5
+            hop = abs(math.sin(self.hop_phase)) * 12.0
+            self._place(self.x, self.y - hop)
             return
 
         if self.state == PET_STATE_LEAVE:
@@ -307,14 +320,12 @@ class MiniPet:
             self.state = PET_STATE_FOLLOW
             self._set_image("left" if self.facing_left else "right")
 
-        # Return rule: long time away or very far -> head back to Kinito.
+        # Return rule: long time away -> head back to Kinito. Wander targets
+        # may lie anywhere on the desktop, so distance alone never recalls.
         if dist > app.PET_NEAR_RADIUS:
             if self.away_since is None:
                 self.away_since = now
-            if (
-                dist > app.PET_RETURN_DISTANCE
-                or now - self.away_since > app.PET_RETURN_AFTER_SECONDS
-            ):
+            if now - self.away_since > app.PET_RETURN_AFTER_SECONDS:
                 self.state = PET_STATE_FOLLOW
                 self.target = None
         else:
@@ -359,10 +370,17 @@ class MiniPet:
                 return
             self._move_toward(now)
             if self._target_reached(app.PET_ARRIVE_RADIUS):
+                self.state = PET_STATE_REST
+                self.target = None
+                self.rest_until = now + random.uniform(*app.PET_REST_SECONDS)
+        elif self.state == PET_STATE_REST:
+            if now >= self.rest_until:
                 self.state = PET_STATE_FOLLOW
                 self.idle_until = now + random.uniform(
                     *app.PET_DECIDE_INTERVAL_SECONDS
                 )
+                return
+            self._stand_still()
         elif self.state == PET_STATE_MOUSE:
             if now >= self.mouse_until:
                 self.state = PET_STATE_FOLLOW
@@ -373,10 +391,33 @@ class MiniPet:
                 self.state = PET_STATE_FOLLOW
                 self.target = None
                 return
-            self.target = cursor
+            # Rest on a ring around the cursor on the side the pet approached
+            # from — pets coming from the left stay left, from below stay below.
+            pw, ph = self._pet_draw_size()
+            dx = (self.x + pw / 2) - cursor[0]
+            dy = (self.y + ph / 2) - cursor[1]
+            dist = math.hypot(dx, dy)
+            offset = app.PET_MOUSE_REST_OFFSET
+            if dist > 0.5:
+                self.target = (
+                    cursor[0] + dx / dist * offset - pw / 2,
+                    cursor[1] + dy / dist * offset - ph / 2,
+                )
+            else:
+                self.target = cursor
             self._move_toward(now, speed=app.PET_SPEED_PX * 1.3)
             if self._target_reached(app.PET_ARRIVE_RADIUS * 1.5):
                 self._stand_still()
+
+    def _pet_draw_size(self) -> tuple[float, float]:
+        """Largest sprite photo size, for center-based positioning."""
+        try:
+            return (
+                max(photo.width() for photo in self.photos.values()),
+                max(photo.height() for photo in self.photos.values()),
+            )
+        except (ValueError, TypeError, tk.TclError):
+            return 60.0, 50.0
 
     def _leave_target_reached(self) -> bool:
         if self.target is None:
@@ -434,9 +475,11 @@ class PetsMixin:
     PET_LEAVE_SPEED_PX = 7.0
     PET_ARRIVE_RADIUS = 18.0
     PET_NEAR_RADIUS = 220.0
-    PET_RETURN_DISTANCE = 1000.0
     PET_RETURN_AFTER_SECONDS = 120.0
+    PET_REST_SECONDS = (30.0, 90.0)
+    PET_HOPOUT_SECONDS = (0.9, 1.6)
     PET_MOUSE_FOLLOW_SECONDS = 15.0
+    PET_MOUSE_REST_OFFSET = 30.0
     PET_WANDER_CHANCE = 0.015
     PET_MOUSE_CHANCE = 0.01
     PET_DECIDE_INTERVAL_SECONDS = (4.0, 9.0)
@@ -452,7 +495,7 @@ class PetsMixin:
     PET_ORBIT_RADIUS_Y = 45.0
     PET_RENDER_SCALE = 0.5
     PET_SETTINGS_WIDTH = 360
-    PET_SETTINGS_HEIGHT = 340
+    PET_SETTINGS_HEIGHT = 370
 
     # -- sprite catalog / settings ---------------------------------------
 
@@ -617,6 +660,27 @@ class PetsMixin:
         self._last_pet_spawn_at = time.monotonic()
         self.root.after(0, self._start_random_pet_spawn)
         return True
+
+    def _spawn_startup_pets(self) -> None:
+        """Spawn up to the configured pet count right after startup."""
+        if not getattr(self, "_running", True):
+            return
+        if not getattr(self, "_pets_enabled", True):
+            return
+        if not getattr(self, "_pets_spawn_at_startup", False):
+            return
+        enabled = self._enabled_pet_sprite_ids()
+        stored = getattr(self, "_pet_startup_sprites", None) or []
+        sprite_ids = [sprite_id for sprite_id in stored if sprite_id in enabled]
+        if not sprite_ids:
+            sprite_ids = [
+                entry["id"]
+                for entry in self._mini_sprite_catalog()
+                if entry["id"] in enabled
+            ]
+        for sprite_id in sprite_ids[: self._pet_max_count()]:
+            if not self.spawn_pet(sprite_id=sprite_id):
+                break
 
     def _start_random_pet_spawn(self) -> None:
         if not getattr(self, "_running", True):
@@ -844,18 +908,54 @@ class PetsMixin:
             if pet.destroyed and pet in self._pets:
                 self._pets.remove(pet)
         if self._pets:
-            schedule_after(
-                self.root,
-                self,
-                "_pet_tick_timer",
-                self.PET_TICK_MS,
-                self._pets_tick,
-            )
+            if all(p.state == PET_STATE_HOPOUT for p in self._pets):
+                # During shutdown _running is False and schedule_after refuses;
+                # the hop-out animation still needs the tick to keep firing.
+                try:
+                    self._pet_tick_timer = self.root.after(
+                        self.PET_TICK_MS, self._pets_tick
+                    )
+                except tk.TclError:
+                    self._pet_tick_timer = None
+            else:
+                schedule_after(
+                    self.root,
+                    self,
+                    "_pet_tick_timer",
+                    self.PET_TICK_MS,
+                    self._pets_tick,
+                )
 
     def _stop_pets(self) -> None:
-        """Cancel the pet tick and destroy all pets (shutdown)."""
+        """Hop each pet briefly, then remove it as Kinito shuts down."""
+        pets = [p for p in getattr(self, "_pets", []) if not p.destroyed]
+        if not getattr(self, "_pet_lineup_saved", False):
+            # Persisted once per shutdown — the second call (root destroy) would
+            # otherwise overwrite the lineup with the post-hopout empty list.
+            self._pet_lineup_saved = True
+            self._pet_startup_sprites = [
+                p.sprite_id
+                for p in pets
+                if p.state != PET_STATE_LEAVE
+            ][: self._pet_max_count()]
+            store = getattr(self, "_settings", None)
+            if store is not None and hasattr(store, "set_pet_startup_sprites"):
+                try:
+                    store.set_pet_startup_sprites(self._pet_startup_sprites)
+                except Exception:
+                    pass
+        if not pets:
+            cancel_after(self.root, self, "_pet_tick_timer")
+            return
+        now = time.monotonic()
+        for pet in pets:
+            pet.state = PET_STATE_HOPOUT
+            pet.target = None
+            pet.sleeping = False
+            pet._set_image("left" if pet.facing_left else "right")
+            pet.hop_until = now + random.uniform(*self.PET_HOPOUT_SECONDS)
         cancel_after(self.root, self, "_pet_tick_timer")
-        self.dismiss_all_pets(destroy=True)
+        self._pets_tick()
 
     # -- settings window ------------------------------------------------------
 
@@ -945,6 +1045,24 @@ class PetsMixin:
         )
         slider.bind("<ButtonRelease-1>", _on_count_release)
         slider.pack(side="right", fill="x", expand=True, padx=8)
+
+        startup_var = IntVar(
+            value=1 if getattr(self, "_pets_spawn_at_startup", False) else 0
+        )
+
+        def _on_startup_toggle():
+            self._pets_spawn_at_startup = bool(startup_var.get())
+            self._persist_pet_settings()
+
+        tk.Checkbutton(
+            window,
+            text="Have them here right at startup",
+            variable=startup_var,
+            command=_on_startup_toggle,
+            bg=_UI_BG,
+            activebackground=_UI_BG,
+            anchor="w",
+        ).pack(fill="x", padx=12, pady=2)
 
         sprite_vars: dict[str, IntVar] = {}
         summon_buttons: dict[str, tk.Button] = {}
@@ -1041,7 +1159,12 @@ class PetsMixin:
         store = getattr(self, "_settings", None)
         if store is not None:
             try:
-                store.update(pets_max_count=int(self._pet_max_count()))
+                store.update(
+                    pets_max_count=int(self._pet_max_count()),
+                    pets_spawn_at_startup=bool(
+                        getattr(self, "_pets_spawn_at_startup", False)
+                    ),
+                )
             except Exception:
                 pass
             enabled = getattr(self, "_pet_enabled_sprites", None)

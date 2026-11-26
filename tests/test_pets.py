@@ -1,3 +1,4 @@
+import time
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -6,7 +7,9 @@ from content import dialogue as dlg
 from kinito.features.pets import (
     PET_STATE_DANCE,
     PET_STATE_FOLLOW,
+    PET_STATE_HOPOUT,
     PET_STATE_LEAVE,
+    PET_STATE_REST,
     PET_STATE_SLEEP,
     MiniPet,
     PetsMixin,
@@ -113,6 +116,103 @@ def test_spawn_pet_may_speak_summon_line(pets):
         assert pets.spawn_pet() is True
     pets.speak.assert_called_once()
     assert pets.speak.call_args[0][0] in dlg.PET_SUMMON_LINES
+
+
+def test_spawn_startup_pets_spawns_each_enabled_sprite_once(pets):
+    pets._pets_spawn_at_startup = True
+    pets._pets_max_count = 3
+    photos_patch, create_patch = _patched_spawn(pets)
+    with photos_patch, create_patch:
+        pets._spawn_startup_pets()
+    assert sorted(p.sprite_id for p in pets._pets) == ["jade", "kinito", "sam"]
+
+
+def test_spawn_startup_pets_restores_last_lineup_with_duplicates(pets):
+    pets._pets_spawn_at_startup = True
+    pets._pets_max_count = 3
+    pets._pet_startup_sprites = ["jade", "jade", "jade"]
+    photos_patch, create_patch = _patched_spawn(pets)
+    with photos_patch, create_patch:
+        pets._spawn_startup_pets()
+    assert [p.sprite_id for p in pets._pets] == ["jade", "jade", "jade"]
+
+
+def test_spawn_startup_pets_filters_stored_by_enabled(pets):
+    pets._pets_spawn_at_startup = True
+    pets._pets_max_count = 3
+    pets._pet_enabled_sprites = {"jade"}
+    pets._pet_startup_sprites = ["sam", "jade", "kinito"]
+    photos_patch, create_patch = _patched_spawn(pets)
+    with photos_patch, create_patch:
+        pets._spawn_startup_pets()
+    assert [p.sprite_id for p in pets._pets] == ["jade"]
+
+
+def test_stop_pets_persists_current_lineup(pets):
+    pets._pets_max_count = 3
+    pets._pets = [_fake_pet(pets, "jade"), _fake_pet(pets, "sam")]
+    pets._settings = MagicMock()
+    pets._stop_pets()
+    pets._settings.set_pet_startup_sprites.assert_called_once_with(
+        ["jade", "sam"]
+    )
+
+
+def test_stop_pets_lineup_skips_leaving_and_caps_at_max(pets):
+    leaving = _fake_pet(pets, "jade")
+    leaving.state = PET_STATE_LEAVE
+    pets._pets = [_fake_pet(pets, "jade"), _fake_pet(pets, "sam"), leaving]
+    pets._pets_max_count = 1
+    pets._settings = MagicMock()
+    pets._stop_pets()
+    pets._settings.set_pet_startup_sprites.assert_called_once_with(["jade"])
+
+
+def test_stop_pets_second_call_keeps_saved_lineup(pets):
+    """Shutdown calls _stop_pets twice; the lineup must not be wiped."""
+    pet = _fake_pet(pets, "jade")
+    pets._pets = [pet]
+    pets._settings = MagicMock()
+    pets._stop_pets()
+    pet.destroyed = True  # hop-out finished before root destroy
+    pets._stop_pets()
+    pets._settings.set_pet_startup_sprites.assert_called_once_with(["jade"])
+
+
+def test_spawn_startup_pets_respects_max_count(pets):
+    pets._pets_spawn_at_startup = True
+    pets._pets_max_count = 1
+    pets._pet_enabled_sprites = {"jade", "sam"}
+    photos_patch, create_patch = _patched_spawn(pets)
+    with photos_patch, create_patch:
+        pets._spawn_startup_pets()
+    assert len(pets._pets) == 1
+    assert pets._pets[0].sprite_id == "jade"  # catalog order wins
+
+
+def test_spawn_startup_pets_respects_toggle(pets):
+    pets._pets_spawn_at_startup = False
+    pets.spawn_pet = MagicMock()
+    pets._spawn_startup_pets()
+    pets.spawn_pet.assert_not_called()
+
+
+def test_spawn_startup_pets_blocked_when_pets_disabled(pets):
+    pets._pets_spawn_at_startup = True
+    pets._pets_enabled = False
+    pets.spawn_pet = MagicMock()
+    pets._spawn_startup_pets()
+    pets.spawn_pet.assert_not_called()
+
+
+def test_persist_pet_settings_saves_startup_flag(pets):
+    pets._pets_spawn_at_startup = True
+    pets._settings = MagicMock()
+    pets._settings.set_pet_enabled_sprites = MagicMock()
+    pets._persist_pet_settings()
+    pets._settings.update.assert_called_once_with(
+        pets_max_count=1, pets_spawn_at_startup=True
+    )
 
 
 def test_maybe_trigger_pet_blocked_when_not_running(pets):
@@ -283,6 +383,7 @@ def test_pet_tick_wakes_after_pause(pets):
     pet = _fake_pet(pets)
     pet.sleeping = True
     pet.state = PET_STATE_SLEEP
+    pet.idle_until = 99999.0
     pet.x, pet.y = pets.x, pets.y + 30.0
     pet.tick(1000.0)
     assert pet.sleeping is False
@@ -296,6 +397,71 @@ def test_pet_tick_returns_when_too_far(pets):
     pet.away_since = 0.0
     pet.tick(1000.0)
     assert pet.state == PET_STATE_FOLLOW
+
+
+def test_pet_tick_far_wander_keeps_walking_when_recently_away(pets):
+    """Distance alone must not recall the pet mid-walk."""
+    pet = _fake_pet(pets)
+    pet.state = "wander"
+    pet.x, pet.y = pets.x + 1500.0, pets.y
+    pet.target = (pets.x + 1800.0, pets.y)
+    pet.away_since = 990.0
+    pet.tick(1000.0)
+    assert pet.state == "wander"
+    assert pet.x > pets.x + 1500.0
+
+
+def test_pet_tick_wander_arrival_rests_in_place(pets):
+    pet = _fake_pet(pets)
+    pet.state = "wander"
+    pet.x, pet.y = pets.x + 800.0, pets.y
+    pet.target = (pet.x + 5.0, pet.y)
+    pet.away_since = 900.0
+    pet.tick(1000.0)
+    assert pet.state == PET_STATE_REST
+    assert pet.rest_until >= 1000.0 + pets.PET_REST_SECONDS[0]
+    assert pet.rest_until <= 1000.0 + pets.PET_REST_SECONDS[1]
+
+
+def test_pet_tick_rest_stays_then_returns(pets):
+    pet = _fake_pet(pets)
+    pet.state = PET_STATE_REST
+    pet.x, pet.y = pets.x + 800.0, pets.y
+    pet.rest_until = 1100.0
+    pet.away_since = 900.0
+    pet.tick(1000.0)
+    assert pet.state == PET_STATE_REST
+    assert pet.x == pets.x + 800.0  # rests in place, does not walk back
+    pet.tick(1100.0)
+    assert pet.state == PET_STATE_FOLLOW
+
+
+def test_pet_mouse_follow_rests_on_approach_side(pets):
+    """A pet arriving from the left rests left of the cursor."""
+    pets._pet_cursor_point = lambda: (1000.0, 500.0)
+    pet = _fake_pet(pets)  # 60x50 sprite -> center offsets 30/25
+    pet.state = "mouse"
+    pet.mouse_until = 2000.0
+    pet.x, pet.y = 700.0, 475.0  # approaching from the left
+    pet.tick(1000.0)
+    assert pet.target is not None
+    tx, ty = pet.target
+    center_x = tx + 30.0
+    center_y = ty + 25.0
+    assert center_x < 1000.0
+    dist = ((center_x - 1000.0) ** 2 + (center_y - 500.0) ** 2) ** 0.5
+    assert dist == pytest.approx(pets.PET_MOUSE_REST_OFFSET, abs=0.5)
+
+
+def test_pet_mouse_follow_rests_below_when_from_below(pets):
+    pets._pet_cursor_point = lambda: (1000.0, 500.0)
+    pet = _fake_pet(pets)
+    pet.state = "mouse"
+    pet.mouse_until = 2000.0
+    pet.x, pet.y = 970.0, 700.0  # approaching from below
+    pet.tick(1000.0)
+    tx, ty = pet.target
+    assert ty + 25.0 > 500.0
 
 
 def test_pet_tick_dances_to_music(pets):
@@ -357,6 +523,28 @@ def test_dismiss_pet_removes_from_list_when_not_animated(pets):
     pets.dismiss_pet(pet, animate=False)
     assert pet not in pets._pets
     assert pet.destroyed is True
+
+
+def test_stop_pets_hops_briefly_then_destroys(pets):
+    pet = _fake_pet(pets)
+    pet.sleeping = True
+    pets._pets.append(pet)
+    pets._stop_pets()
+    assert not pet.destroyed
+    assert pet.state == PET_STATE_HOPOUT
+    assert not pet.sleeping
+    remaining = pet.hop_until - time.monotonic()
+    assert 0 <= remaining <= pets.PET_HOPOUT_SECONDS[1]
+    pet.tick(pet.hop_until - 0.5)
+    assert not pet.destroyed
+    pet.tick(pet.hop_until + 0.01)
+    assert pet.destroyed
+
+
+def test_stop_pets_without_pets_cancels_tick(pets):
+    pets._pet_tick_timer = "timer-id"
+    pets._stop_pets()
+    pets.root.after_cancel.assert_called_once_with("timer-id")
 
 
 def test_dismiss_all_pets_destroys_everything(pets):

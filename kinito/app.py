@@ -362,11 +362,15 @@ class FloatingAssistant(
         self._camera_quiet_open = False
         self._pets = []
         self._pets_enabled = self._settings.get("pets_enabled", True)
+        self._pets_spawn_at_startup = self._settings.get(
+            "pets_spawn_at_startup", False
+        )
         self._pets_max_count = self._settings.get_int("pets_max_count", 1)
         self._pet_sprite_catalog = None
         self._pet_enabled_sprites = self._settings.get_pet_enabled_sprites(
             entry["id"] for entry in list_mini_sprites()
         )
+        self._pet_startup_sprites = self._settings.get_pet_startup_sprites()
         self._pet_tick_timer = None
         self._pet_settings_window = None
         self._last_pet_spawn_at = 0.0
@@ -577,6 +581,9 @@ class FloatingAssistant(
             text_size=int(getattr(self, "_text_size", 10)),
             pets_max_count=int(getattr(self, "_pets_max_count", 1)),
             pets_enabled=bool(getattr(self, "_pets_enabled", True)),
+            pets_spawn_at_startup=bool(
+                getattr(self, "_pets_spawn_at_startup", False)
+            ),
             terminal_enabled=bool(getattr(self, "_terminal_enabled", True)),
             browser_use_system=bool(getattr(self, "_browser_use_system", True)),
             snake_color=self.snake_color(),
@@ -723,6 +730,13 @@ class FloatingAssistant(
             self.speak(line)
         finally:
             self._startup_complete = True
+            if getattr(self, "_pets_spawn_at_startup", False) and hasattr(
+                self, "_spawn_startup_pets"
+            ):
+                try:
+                    self.root.after(0, self._spawn_startup_pets)
+                except tk.TclError:
+                    pass
 
     def _can_initiate_spontaneous_speech(self):
         """Return whether Kinito may ask questions or perform idle actions unprompted."""
