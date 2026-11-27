@@ -632,6 +632,9 @@ class MiniPet:
                     return True
                 s["jumped"] = True
                 s["jump_t0"] = now
+                soften = getattr(app, "soften_mood", None)
+                if callable(soften):
+                    soften(0.12)
             if now - s.get("jump_t0", now) < 0.9:
                 # Big hop right at Kinito.
                 self._face_x(ax)
@@ -1503,6 +1506,9 @@ class PetsMixin:
                     "until": until,
                 }
         elif kind == "orbit":
+            soften = getattr(self, "soften_mood", None)
+            if callable(soften):
+                soften(0.08)
             point = self._pet_anchor_point()
             members = [pet, *others]
             until = now + random.uniform(6.0, 12.0)
