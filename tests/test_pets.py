@@ -767,6 +767,7 @@ def test_social_piggy_shove_sends_middle_to_other_thrower(pets):
         "kind": "piggy_mid",
         "throwers": [a, b],
         "active": a,
+        "ready": True,
         "until": 2000.0,
     }
     a.social = {"kind": "piggy_throw", "piggy": piggy, "until": 2000.0}

@@ -498,7 +498,15 @@ class MiniPet:
             return False
 
         if kind == "chase":
-            self.target = (partner.x, partner.y)
+            if now < s.get("start_at", 0):
+                self.target = None
+                self._stand_still(now)
+                return True
+            angle = s.get("angle", 0.0)
+            self.target = (
+                partner.x + math.cos(angle) * 60.0,
+                partner.y + math.sin(angle) * 60.0,
+            )
             self._move_toward(now, speed=app.PET_SPEED_PX * 1.6)
             return True
         if kind == "flee":
@@ -616,8 +624,19 @@ class MiniPet:
             if (
                 piggy_s["kind"] == "piggy_fly"
                 or piggy_s.get("active") is not self
+                or not piggy_s.get("ready")
             ):
+                # Take the standoff position first — a thrower that is
+                # already next to the middle pet must still step back to
+                # its post, otherwise the shoves become instant ping-pong.
+                post = s.get("post")
+                if post:
+                    self.target = post
+                    if not self._target_reached(app.PET_ARRIVE_RADIUS):
+                        self._move_toward(now)
+                        return True
                 self.target = None
+                self._face_x(piggy.x)
                 self._stand_still(now)
                 return True
             other = next(
@@ -637,17 +656,28 @@ class MiniPet:
                 return True
             tx, ty = other.x - self.x, other.y - self.y
             td = math.hypot(tx, ty) or 1.0
+            goal = app._pet_clamp_point(
+                other.x - tx / td * 55.0,
+                other.y - ty / td * 55.0,
+            )
+            flight_dist = math.hypot(goal[0] - piggy.x, goal[1] - piggy.y)
             piggy.social = {
                 "kind": "piggy_fly",
                 "throwers": piggy_s.get("throwers", []),
                 "active": other,
-                "target": app._pet_clamp_point(
-                    other.x - tx / td * 55.0,
-                    other.y - ty / td * 55.0,
+                "from_pos": (piggy.x, piggy.y),
+                "target": goal,
+                "t0": now,
+                "dur": max(
+                    0.5,
+                    flight_dist
+                    / (app.PET_SPEED_PX * 1.15)
+                    * (app.PET_TICK_MS / 1000.0),
                 ),
                 "until": s["until"],
             }
             self.target = None
+            self._face_x(piggy.x)
             self._stand_still(now)
             return True
         if kind == "piggy_mid":
@@ -662,22 +692,46 @@ class MiniPet:
             active = s.get("active")
             if active is None or active.destroyed or active.dragging:
                 s["active"] = throwers[0]
+            if not s.get("ready") and all(
+                (t.social or {}).get("post") is None
+                or math.hypot(
+                    t.x - t.social["post"][0], t.y - t.social["post"][1]
+                )
+                < 60.0
+                for t in throwers
+            ):
+                s["ready"] = True
+                # Now the actual game clock starts for everyone.
+                end = now + s.get("duration", 10.0)
+                s["until"] = end
+                for t in throwers:
+                    if t.social:
+                        t.social["until"] = end
             self.target = None
             self._stand_still(now)
             return True
         if kind == "piggy_fly":
-            self.target = s["target"]
-            if self._target_reached(14.0):
+            # Parabolic lob between the throwers, not a ground-level hop.
+            x0, y0 = s.get("from_pos", (self.x, self.y))
+            x1, y1 = s["target"]
+            dur = max(0.1, s.get("dur", 1.0))
+            progress = min(1.0, (now - s.get("t0", now)) / dur)
+            self.x = x0 + (x1 - x0) * progress
+            self.y = y0 + (y1 - y0) * progress
+            self._face_x(x1)
+            arc = math.sin(math.pi * progress) * 55.0
+            self._place(self.x, self.y - arc)
+            if progress >= 1.0:
                 self.social = {
                     "kind": "piggy_mid",
                     "throwers": s.get("throwers", []),
                     "active": s.get("active"),
+                    "ready": True,
                     "until": s.get("until", now),
                 }
                 self.target = None
                 self._stand_still(now)
                 return True
-            self._move_toward(now, speed=app.PET_SPEED_PX * 1.15)
             return True
         if kind in ("visit", "push"):
             stop = 55.0 if kind == "visit" else 45.0
@@ -753,6 +807,13 @@ class MiniPet:
         self._set_image("left" if self.facing_left else "right")
         self._place(self.x, self.y - hop)
 
+    def _face_x(self, x: float) -> None:
+        """Turn the sprite to face the given screen x."""
+        facing_left = x < self.x
+        if facing_left != self.facing_left:
+            self.facing_left = facing_left
+            self._set_image("left" if facing_left else "right")
+
     def _dance_step(self, now: float) -> None:
         self.dance_phase += 0.45
         bounce = abs(math.sin(self.dance_phase)) * 10.0
@@ -821,8 +882,8 @@ class PetsMixin:
     PET_DISMISS_COOLDOWN_SECONDS = 300
     PET_SUMMON_LINE_CHANCE = 0.5
     PET_MAX_HARD = 3
-    PET_ORBIT_RADIUS_X = 90.0
-    PET_ORBIT_RADIUS_Y = 45.0
+    PET_ORBIT_RADIUS_X = 130.0
+    PET_ORBIT_RADIUS_Y = 75.0
     PET_RENDER_SCALE = 0.5
     PET_SETTINGS_WIDTH = 360
     PET_SETTINGS_HEIGHT = 370
@@ -1328,10 +1389,17 @@ class PetsMixin:
                 "until": until,
             }
             # Everyone else free joins the hunt — all three can play tag.
-            for chaser in chasers:
+            for i, chaser in enumerate(chasers):
+                # Each chaser approaches a different side — they surround the
+                # fleer instead of stacking on the exact same point.
                 chaser.social = {
                     "kind": "chase",
                     "partner": partner,
+                    "angle": math.tau * i / len(chasers),
+                    # Brief head start so the fleer gets away before the
+                    # chase begins — otherwise the faster chasers catch it
+                    # instantly and just trail behind it forever.
+                    "start_at": now + 1.2,
                     "until": until,
                 }
         elif kind == "circle":
@@ -1376,18 +1444,29 @@ class PetsMixin:
                 "until": until,
             }
         elif kind == "piggy":
-            until = now + random.uniform(8.0, 16.0)
+            # The real game duration only starts once both throwers reached
+            # their posts — traveling there gets its own generous budget so
+            # far-away pets don't burn the whole timer walking into place.
+            duration = random.uniform(8.0, 16.0)
+            until = now + 30.0
             throwers = [pet, *(o for o in others if o is not partner)][:2]
             partner.social = {
                 "kind": "piggy_mid",
                 "throwers": throwers,
                 "active": pet,
+                "duration": duration,
                 "until": until,
             }
-            for thrower in throwers:
+            # Standoff spots left and right of the middle pet, so it can
+            # actually be tossed back and forth instead of everyone stacking.
+            for side, thrower in zip((-1.0, 1.0), throwers, strict=False):
+                post = self._pet_clamp_point(
+                    partner.x + side * 170.0, partner.y
+                )
                 thrower.social = {
                     "kind": "piggy_throw",
                     "piggy": partner,
+                    "post": post,
                     "until": until,
                 }
         elif kind == "orbit":
