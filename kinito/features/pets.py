@@ -11,6 +11,7 @@ from tkinter import Frame, IntVar, Label, Scale, Toplevel
 from PIL import Image, ImageTk
 
 from content import dialogue as dlg
+from kinito.assets import bomp_file_path
 from kinito.tk_timers import cancel_after, schedule_after
 from kinito.tk_toplevels import (
     create_staged_toplevel,
@@ -111,6 +112,7 @@ class MiniPet:
         self.orbit_angle = random.uniform(0, math.tau)
         self.dragging = False
         self._drag_offset = (0, 0)
+        self._drag_moved = False
         self.destroyed = False
 
     # -- window lifecycle ------------------------------------------------
@@ -150,8 +152,12 @@ class MiniPet:
     def _on_drag_start(self, event=None):
         """Begin dragging the pet with the left mouse button."""
         self.dragging = True
+        self._drag_moved = False
         self.social = None
         self._close_dismiss_popup()
+        play = getattr(self.app, "play_sfx", None)
+        if callable(play):
+            play(bomp_file_path)
         try:
             self._drag_offset = (
                 int(event.x_root) - int(round(self.x)),
@@ -174,6 +180,7 @@ class MiniPet:
             if facing_left != self.facing_left:
                 self.facing_left = facing_left
                 self._set_image("left" if facing_left else "right")
+        self._drag_moved = True
         self.x, self.y = new_x, new_y
         self._place(self.x, self.y)
 
@@ -182,6 +189,10 @@ class MiniPet:
         if not self.dragging:
             return
         self.dragging = False
+        if self._drag_moved:
+            play = getattr(self.app, "play_sfx", None)
+            if callable(play):
+                play(bomp_file_path)
         self.away_since = None
         self.idle_until = 0.0
         if self.state == PET_STATE_LEAVE:
