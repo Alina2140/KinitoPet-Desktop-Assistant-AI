@@ -20,6 +20,7 @@ def hug():
     stub.tk_img_hug2 = "hug2"
     stub._hug_sprites = ("hug", "hug2", "hug3")
     stub._hug_frame = 0
+    stub._hug_squeezing = False
     stub.tk_img_normal = "normal"
     stub._hug_timer = None
     stub._hug_mode = False
@@ -58,7 +59,18 @@ def test_enter_hug_pose_shows_sprite(hug):
 def test_next_hug_sprite_advances_to_final_frame_and_holds(hug):
     assert hug._next_hug_sprite() == "hug2"
     assert hug._next_hug_sprite() == "hug3"
-    assert hug._next_hug_sprite() is None
+    with patch("kinito.features.hug.random.random", return_value=1.0):
+        assert hug._next_hug_sprite() is None
+    assert hug._hug_frame == 2
+
+
+def test_next_hug_sprite_squeezes_back_to_first_frame(hug):
+    hug._hug_frame = 2  # holding the final frame
+    with patch("kinito.features.hug.random.random", return_value=0.0):
+        assert hug._next_hug_sprite() == "hug"
+    assert hug._hug_squeezing is True
+    assert hug._next_hug_sprite() == "hug3"
+    assert hug._hug_squeezing is False
     assert hug._hug_frame == 2
 
 
@@ -66,15 +78,22 @@ def test_next_hug_sprite_falls_back_to_pair(hug):
     hug._hug_sprites = ()
     hug._hug_frame = 0
     assert hug._next_hug_sprite() == "hug2"
-    assert hug._next_hug_sprite() is None
+    with patch("kinito.features.hug.random.random", return_value=1.0):
+        assert hug._next_hug_sprite() is None
 
 
 def test_hug_sprite_delay_is_faster_for_intro_frames(hug):
     assert hug._hug_sprite_delay() == 0.4
     hug._hug_frame = 1
     assert hug._hug_sprite_delay() == 0.4
+
+
+def test_hug_sprite_delay_dwells_on_final_frame(hug):
     hug._hug_frame = 2
-    assert hug._hug_sprite_delay() == 1.0
+    delay = hug._hug_sprite_delay()
+    assert hug.HUG_HOLD_SECONDS[0] <= delay <= hug.HUG_HOLD_SECONDS[1]
+    hug._hug_squeezing = True
+    assert hug._hug_sprite_delay() == hug.HUG_SQUEEZE_SECONDS
 
 
 def test_end_hug_restores_normal_sprite_when_idle(hug):
