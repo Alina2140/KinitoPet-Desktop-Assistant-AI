@@ -75,6 +75,10 @@ class MovementMixin:
     MOUSE_FOLLOW_OUTSIDE_MAX_PX = 720
     MOUSE_FOLLOW_COOLDOWN_SECONDS = (35, 70)
     MOUSE_LOOK_STANCE_SECONDS = 1.0
+    PET_LOOK_RADIUS_PX = 500
+    PET_LOOK_CHANCE = 0.004
+    PET_LOOK_SECONDS = (2.0, 4.0)
+    PET_LOOK_COOLDOWN_SECONDS = (15.0, 30.0)
     DIZZY_ORBIT_MIN_RADIUS_PX = 55
     DIZZY_ORBIT_MAX_RADIUS_PX = 230
     DIZZY_ORBIT_REVOLUTIONS = 8
@@ -1235,6 +1239,62 @@ class MovementMixin:
         self._mouse_look_direction = direction
         self.change_sprite(sprite)
 
+    def _update_pet_look(self, now: float) -> bool:
+        """Occasionally watch the nearest nearby pet with the look sprites."""
+        pets = [
+            p
+            for p in getattr(self, "_pets", [])
+            if not p.destroyed
+            and not p.dragging
+            and not getattr(p, "sleeping", False)
+        ]
+        center_x, center_y = self._buddy_center()
+
+        def _pet_center(pet):
+            try:
+                w, h = pet._pet_draw_size()
+            except Exception:
+                w = h = 0.0
+            return pet.x + w / 2.0, pet.y + h / 2.0
+
+        target = getattr(self, "_pet_look_target", None)
+        if target is not None and (
+            target not in pets or now >= getattr(self, "_pet_look_until", 0.0)
+        ):
+            target = None
+            self._pet_look_target = None
+            self._pet_look_ready_at = now + random.uniform(
+                *self.PET_LOOK_COOLDOWN_SECONDS
+            )
+        if target is None:
+            if (
+                not pets
+                or now < getattr(self, "_pet_look_ready_at", 0.0)
+                or random.random() >= self.PET_LOOK_CHANCE
+            ):
+                return False
+            target = min(
+                pets,
+                key=lambda p: math.hypot(
+                    _pet_center(p)[0] - center_x,
+                    _pet_center(p)[1] - center_y,
+                ),
+            )
+            px, py = _pet_center(target)
+            if math.hypot(px - center_x, py - center_y) > self.PET_LOOK_RADIUS_PX:
+                return False
+            self._pet_look_target = target
+            self._pet_look_until = now + random.uniform(*self.PET_LOOK_SECONDS)
+        px, py = _pet_center(target)
+        direction = look_direction_from_delta(
+            px - center_x,
+            py - center_y,
+            deadzone_px=self.MOUSE_LOOK_DEADZONE_PX,
+        )
+        self._mouse_look_active = True
+        self._apply_mouse_look_sprite(direction)
+        return True
+
     def _begin_mouse_follow_cooldown(self) -> None:
         """Start the post-attempt cooldown so follow stays occasional."""
         low, high = self.MOUSE_FOLLOW_COOLDOWN_SECONDS
@@ -1385,6 +1445,9 @@ class MovementMixin:
                     self._mouse_look_crouch = False
                     self._mouse_look_stance_until = 0.0
                 self._reset_dizzy_orbit()
+                if self._update_pet_look(time.monotonic()):
+                    self._schedule_mouse_attention_poll()
+                    return
                 # Occasional surf toward the cursor even when it is outside the look radius.
                 if follow_state != "thinking" and self._can_follow_mouse():
                     if random.random() < self.MOUSE_FOLLOW_OUTSIDE_CHANCE:

@@ -621,6 +621,26 @@ class MiniPet:
             self.target = (goal, post.y)
             self._move_toward(now, speed=app.PET_SPEED_PX * 1.2)
             return True
+        if kind == "pounce":
+            ax, ay = app._pet_clamp_point(*app._pet_anchor_point())
+            dx, dy = ax - self.x, ay - self.y
+            dist = math.hypot(dx, dy) or 1.0
+            if not s.get("jumped"):
+                if dist > 55.0:
+                    self.target = (ax, ay)
+                    self._move_toward(now, speed=app.PET_SPEED_PX * 1.4)
+                    return True
+                s["jumped"] = True
+                s["jump_t0"] = now
+            if now - s.get("jump_t0", now) < 0.9:
+                # Big hop right at Kinito.
+                self._face_x(ax)
+                self.hop_phase += 0.6
+                hop = abs(math.sin(self.hop_phase)) * 14.0
+                self.x += dx / dist * 1.5
+                self._place(self.x, self.y - hop)
+                return True
+            return False
         if kind == "piggy_throw":
             piggy = s.get("piggy")
             if (
@@ -1386,7 +1406,7 @@ class PetsMixin:
             return False
         partner = random.choice(others)
         now = time.monotonic()
-        kinds = ["chase", "circle", "visit", "push", "together", "orbit", "leapfrog"]
+        kinds = ["chase", "circle", "visit", "push", "together", "orbit", "leapfrog", "pounce"]
         if len(others) >= 2:
             kinds.append("piggy")
         kind = random.choice(kinds)
@@ -1454,6 +1474,8 @@ class PetsMixin:
                 "index": -1,
                 "until": until,
             }
+        elif kind == "pounce":
+            pet.social = {"kind": "pounce", "until": now + 15.0}
         elif kind == "piggy":
             # The real game duration only starts once both throwers reached
             # their posts — traveling there gets its own generous budget so

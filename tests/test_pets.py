@@ -741,6 +741,20 @@ def test_social_leapfrog_leaper_jumps_posts_in_order(pets):
     assert leaper.x > start_x  # hopping over post1
 
 
+def test_social_pounce_runs_to_kinito_and_jumps(pets):
+    a = _fake_pet(pets)
+    a.x, a.y = 200.0, 400.0
+    pets._pet_anchor_point = lambda: (500.0, 400.0)
+    a.social = {"kind": "pounce", "until": 2000.0}
+    a.tick(1000.0)
+    assert a.x > 200.0  # running toward Kinito
+    a.x, a.y = 490.0, 400.0  # arrived
+    a.tick(1000.1)
+    assert a.social["jumped"] is True
+    a.tick(1001.1)
+    assert a.social is None  # pounce finished
+
+
 def test_social_piggy_assigns_throwers_and_middle(pets):
     pets._pets = [_fake_pet(pets) for _ in range(3)]
     piggy = pets._pets[1]

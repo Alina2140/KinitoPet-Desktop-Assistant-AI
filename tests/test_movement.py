@@ -12,6 +12,17 @@ class MovementStub(MovementMixin):
     pass
 
 
+class _FakePet:
+    def __init__(self, x, y):
+        self.x, self.y = x, y
+        self.destroyed = False
+        self.dragging = False
+        self.sleeping = False
+
+    def _pet_draw_size(self):
+        return 30.0, 30.0
+
+
 @pytest.fixture
 def movement():
     stub = MovementStub()
@@ -2100,3 +2111,46 @@ def test_place_path_does_not_speak_throw_line(movement):
     movement._follow_speech_bubble_to_kinito = MagicMock()
     movement.on_mouse_up(MagicMock())
     movement.speak.assert_not_called()
+
+
+def test_pet_look_watches_nearest_pet(movement):
+    near = _FakePet(300.0, 200.0)
+    far = _FakePet(2000.0, 200.0)
+    movement._pets = [far, near]
+    movement._buddy_center = lambda: (100.0, 200.0)
+    movement._pet_look_target = None
+    movement._pet_look_ready_at = 0.0
+    movement._mouse_look_active = False
+    movement._apply_mouse_look_sprite = MagicMock()
+    with patch("kinito.movement.random.random", return_value=0.0):
+        assert movement._update_pet_look(1000.0) is True
+    assert movement._pet_look_target is near
+    assert movement._mouse_look_active is True
+    movement._apply_mouse_look_sprite.assert_called_with("right")
+
+
+def test_pet_look_releases_after_duration(movement):
+    pet = _FakePet(300.0, 200.0)
+    movement._pets = [pet]
+    movement._buddy_center = lambda: (100.0, 200.0)
+    movement._pet_look_target = None
+    movement._pet_look_ready_at = 0.0
+    movement._mouse_look_active = False
+    movement._apply_mouse_look_sprite = MagicMock()
+    with patch("kinito.movement.random.random", return_value=0.0):
+        assert movement._update_pet_look(1000.0) is True
+    # Duration expired -> clears target, then the chance roll decides again.
+    with patch("kinito.movement.random.random", return_value=1.0):
+        assert movement._update_pet_look(1010.0) is False
+    assert movement._pet_look_target is None
+    assert movement._pet_look_ready_at > 1010.0
+
+
+def test_pet_look_ignores_far_pets(movement):
+    movement._pets = [_FakePet(5000.0, 200.0)]
+    movement._buddy_center = lambda: (100.0, 200.0)
+    movement._pet_look_target = None
+    movement._pet_look_ready_at = 0.0
+    movement._apply_mouse_look_sprite = MagicMock()
+    with patch("kinito.movement.random.random", return_value=0.0):
+        assert movement._update_pet_look(1000.0) is False
