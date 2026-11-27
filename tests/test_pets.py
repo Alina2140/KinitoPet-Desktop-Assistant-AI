@@ -697,6 +697,50 @@ def test_social_together_rests_at_destination(pets):
     assert a.rest_until > 1000.0
 
 
+def test_social_leapfrog_assigns_leaper_and_posts(pets):
+    pets._pets = [_fake_pet(pets) for _ in range(3)]
+    leaper = pets._pets[0]
+    with patch(
+        "kinito.features.pets.random.choice",
+        side_effect=[pets._pets[1], "leapfrog", 1.0],
+    ):
+        assert pets._pet_try_social(leaper) is True
+    assert leaper.social["kind"] == "leapfrog"
+    assert leaper.social["posts"] == [pets._pets[1], pets._pets[2]]
+    assert leaper.social["dir"] == 1.0
+    assert pets._pets[1].social["kind"] == "leapfrog_post"
+    assert pets._pets[2].social["kind"] == "leapfrog_post"
+    slots = [pets._pets[1].social["point"], pets._pets[2].social["point"]]
+    assert slots[1][0] > slots[0][0]  # row of slots going right
+
+
+def test_social_leapfrog_leaper_jumps_posts_in_order(pets):
+    leaper = _fake_pet(pets)
+    post1, post2 = _fake_pet(pets), _fake_pet(pets)
+    post1.x, post1.y = 300.0, 200.0
+    post2.x, post2.y = 380.0, 200.0
+    for post, px in ((post1, 300.0), (post2, 380.0)):
+        post.social = {
+            "kind": "leapfrog_post",
+            "point": (px, 200.0),
+            "leaper": leaper,
+            "until": 2000.0,
+        }
+    leaper.social = {
+        "kind": "leapfrog",
+        "posts": [post1, post2],
+        "dir": 1.0,
+        "index": -1,
+        "until": 2000.0,
+    }
+    leaper.x, leaper.y = 230.0, 200.0  # behind the first post slot
+    leaper.tick(1000.0)
+    assert leaper.social["index"] == 0  # took up position behind post1
+    start_x = leaper.x
+    leaper.tick(1000.1)
+    assert leaper.x > start_x  # hopping over post1
+
+
 def test_social_piggy_assigns_throwers_and_middle(pets):
     pets._pets = [_fake_pet(pets) for _ in range(3)]
     piggy = pets._pets[1]

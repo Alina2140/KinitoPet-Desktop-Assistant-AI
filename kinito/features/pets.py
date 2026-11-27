@@ -543,6 +543,65 @@ class MiniPet:
             )
             self._move_toward(now, speed=app.PET_SPEED_PX * 1.4)
             return True
+        if kind == "leapfrog_post":
+            leaper = s.get("leaper")
+            if (
+                leaper is None
+                or leaper.destroyed
+                or leaper.dragging
+                or not leaper.social
+                or leaper.social.get("kind") != "leapfrog"
+            ):
+                return False
+            self.target = s.get("point")
+            if self.target and not self._target_reached(app.PET_ARRIVE_RADIUS):
+                self._move_toward(now)
+                return True
+            self.target = None
+            self._stand_still(now)
+            return True
+        if kind == "leapfrog":
+            posts = [
+                p
+                for p in s.get("posts", [])
+                if not p.destroyed and not p.dragging
+            ]
+            if not posts:
+                return False
+            s["posts"] = posts
+            for post in posts:
+                slot = post.social.get("point") if post.social else None
+                if slot and math.hypot(post.x - slot[0], post.y - slot[1]) > 40:
+                    self.target = None
+                    self._stand_still(now)
+                    return True
+            direction = s.get("dir", 1.0)
+            index = s.get("index", -1)
+            if index < 0:
+                first = posts[0]
+                self.target = (first.x - direction * 70.0, first.y)
+                if not self._target_reached(app.PET_ARRIVE_RADIUS):
+                    self._move_toward(now, speed=app.PET_SPEED_PX * 1.3)
+                    return True
+                s["index"] = 0
+                return True
+            if index >= len(posts):
+                return False
+            if now < s.get("pause_until", 0):
+                self.target = None
+                self._stand_still(now)
+                return True
+            post = posts[index]
+            goal = post.x + direction * 60.0
+            if (self.x - goal) * direction >= -2.0:
+                s["index"] = index + 1
+                s["pause_until"] = now + 0.4
+                self.target = None
+                return True
+            self.hurry_until = now + 0.6
+            self.target = (goal, post.y)
+            self._move_toward(now, speed=app.PET_SPEED_PX * 1.2)
+            return True
         if kind == "piggy_throw":
             piggy = s.get("piggy")
             if (
@@ -1255,7 +1314,7 @@ class PetsMixin:
             return False
         partner = random.choice(others)
         now = time.monotonic()
-        kinds = ["chase", "circle", "visit", "push", "together", "orbit"]
+        kinds = ["chase", "circle", "visit", "push", "together", "orbit", "leapfrog"]
         if len(others) >= 2:
             kinds.append("piggy")
         kind = random.choice(kinds)
@@ -1294,6 +1353,28 @@ class PetsMixin:
                 "partner": partner,
                 "until": now + 12.0,
             }
+        elif kind == "leapfrog":
+            until = now + random.uniform(15.0, 25.0)
+            posts = [partner, *(o for o in others if o is not partner)][:2]
+            direction = random.choice((-1.0, 1.0))
+            slot_y = partner.y
+            for i, post in enumerate(posts):
+                px = self._pet_clamp_point(
+                    partner.x + direction * 80.0 * i, slot_y
+                )[0]
+                post.social = {
+                    "kind": "leapfrog_post",
+                    "point": (px, slot_y),
+                    "leaper": pet,
+                    "until": until,
+                }
+            pet.social = {
+                "kind": "leapfrog",
+                "posts": posts,
+                "dir": direction,
+                "index": -1,
+                "until": until,
+            }
         elif kind == "piggy":
             until = now + random.uniform(8.0, 16.0)
             throwers = [pet, *(o for o in others if o is not partner)][:2]
@@ -1324,12 +1405,17 @@ class PetsMixin:
         else:
             dest = self._pet_random_screen_point(pet)
             # Every free pet joins — all three can head somewhere together.
-            for member in [pet, *others]:
+            # Give each pet its own spaced slot around the destination so
+            # they arrive side by side instead of stacking on one point.
+            members = [pet, *others]
+            spacing = 90.0
+            for i, member in enumerate(members):
+                offset = (i - (len(members) - 1) / 2) * spacing
                 member.social = {
                     "kind": "together",
                     "point": self._pet_clamp_point(
-                        dest[0] + random.uniform(-45, 45),
-                        dest[1] + random.uniform(-45, 45),
+                        dest[0] + offset + random.uniform(-15, 15),
+                        dest[1] + random.uniform(-15, 15),
                     ),
                     "until": now + 40.0,
                 }
