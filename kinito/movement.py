@@ -79,6 +79,9 @@ class MovementMixin:
     PET_LOOK_CHANCE = 0.004
     PET_LOOK_SECONDS = (2.0, 4.0)
     PET_LOOK_COOLDOWN_SECONDS = (15.0, 30.0)
+    PET_REACT_RADIUS_PX = 170
+    PET_REACT_CHANCE = 0.012
+    PET_REACT_COOLDOWN_SECONDS = (60.0, 120.0)
     DIZZY_ORBIT_MIN_RADIUS_PX = 55
     DIZZY_ORBIT_MAX_RADIUS_PX = 230
     DIZZY_ORBIT_REVOLUTIONS = 8
@@ -1295,6 +1298,43 @@ class MovementMixin:
         self._apply_mouse_look_sprite(direction)
         return True
 
+    def _maybe_react_to_pet(self, now: float) -> bool:
+        """Small chance to greet a pet that is standing right next to Kinito."""
+        if now < getattr(self, "_pet_react_ready_at", 0.0):
+            return False
+        can_speak = getattr(self, "_can_initiate_spontaneous_speech", None)
+        if not (callable(can_speak) and can_speak()):
+            return False
+        pets = [
+            p
+            for p in getattr(self, "_pets", [])
+            if not p.destroyed
+            and not p.dragging
+            and not getattr(p, "sleeping", False)
+            and getattr(p, "state", "follow") not in ("leave", "hopout")
+        ]
+        if not pets:
+            return False
+        center_x, center_y = self._buddy_center()
+        near = [
+            p
+            for p in pets
+            if math.hypot(p.x - center_x, p.y - center_y)
+            <= self.PET_REACT_RADIUS_PX
+        ]
+        if not near or random.random() >= self.PET_REACT_CHANCE:
+            return False
+        self._pet_react_ready_at = now + random.uniform(
+            *self.PET_REACT_COOLDOWN_SECONDS
+        )
+        pet = random.choice(near)
+        from content.pet_lines import pick_pet_reaction_line
+
+        speak = getattr(self, "speak", None)
+        if callable(speak):
+            speak(pick_pet_reaction_line(getattr(pet, "name", "")), skip_ai=True)
+        return True
+
     def _begin_mouse_follow_cooldown(self) -> None:
         """Start the post-attempt cooldown so follow stays occasional."""
         low, high = self.MOUSE_FOLLOW_COOLDOWN_SECONDS
@@ -1437,6 +1477,10 @@ class MovementMixin:
             dx = cursor_x - center_x
             dy = cursor_y - center_y
             distance = math.hypot(dx, dy)
+
+            if self._maybe_react_to_pet(time.monotonic()):
+                self._schedule_mouse_attention_poll()
+                return
 
             if distance > self.MOUSE_LOOK_RADIUS_PX:
                 was_looking = getattr(self, "_mouse_look_active", False)

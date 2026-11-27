@@ -15,6 +15,12 @@ def main():
     root = tk.Tk()
     FloatingAssistant(root)
     root.mainloop()
+    # The Tk mainloop is over, but library driver threads (TTS engine,
+    # pygame/SDL audio) can keep the interpreter alive for seconds. App
+    # threads are daemons and state is already persisted — exit hard.
+    import os
+
+    os._exit(0)
 
 
 if __name__ == "__main__":

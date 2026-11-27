@@ -13,8 +13,10 @@ class MovementStub(MovementMixin):
 
 
 class _FakePet:
-    def __init__(self, x, y):
+    def __init__(self, x, y, name="Mini"):
         self.x, self.y = x, y
+        self.name = name
+        self.state = "follow"
         self.destroyed = False
         self.dragging = False
         self.sleeping = False
@@ -2154,3 +2156,35 @@ def test_pet_look_ignores_far_pets(movement):
     movement._apply_mouse_look_sprite = MagicMock()
     with patch("kinito.movement.random.random", return_value=0.0):
         assert movement._update_pet_look(1000.0) is False
+
+
+def test_pet_react_speaks_to_nearby_pet(movement):
+    movement._pets = [_FakePet(120.0, 210.0, name="Jade")]
+    movement._buddy_center = lambda: (100.0, 200.0)
+    movement._pet_react_ready_at = 0.0
+    movement._can_initiate_spontaneous_speech = MagicMock(return_value=True)
+    with patch("kinito.movement.random.random", return_value=0.0):
+        assert movement._maybe_react_to_pet(1000.0) is True
+    assert movement.speak.call_count == 1
+    assert "Jade" in movement.speak.call_args.args[0]
+    assert movement._pet_react_ready_at > 1000.0
+
+
+def test_pet_react_ignores_distant_pets(movement):
+    movement._pets = [_FakePet(2000.0, 200.0)]
+    movement._buddy_center = lambda: (100.0, 200.0)
+    movement._pet_react_ready_at = 0.0
+    movement._can_initiate_spontaneous_speech = MagicMock(return_value=True)
+    with patch("kinito.movement.random.random", return_value=0.0):
+        assert movement._maybe_react_to_pet(1000.0) is False
+    movement.speak.assert_not_called()
+
+
+def test_pet_react_respects_cooldown(movement):
+    movement._pets = [_FakePet(120.0, 210.0)]
+    movement._buddy_center = lambda: (100.0, 200.0)
+    movement._pet_react_ready_at = 2000.0
+    movement._can_initiate_spontaneous_speech = MagicMock(return_value=True)
+    with patch("kinito.movement.random.random", return_value=0.0):
+        assert movement._maybe_react_to_pet(1000.0) is False
+    movement.speak.assert_not_called()
